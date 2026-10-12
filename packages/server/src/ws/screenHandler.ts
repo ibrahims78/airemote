@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { deviceRegistry } from './registry'
 import type { AuthTokenPayload } from '@airemote/shared'
 import { consumeWsTicket } from '../lib/wsTickets'
+import { canAccessDevice } from '../lib/deviceAccess'
 import { getDb } from '../db/database'
 import {
   startRecording, stopRecording, isRecording,
@@ -14,7 +15,7 @@ const DEFAULT_FPS     = 20
 const MAX_FPS         = 30
 const CONNECT_TIMEOUT = 60_000
 
-export function handleScreenWebSocket(socket: WebSocket, request: FastifyRequest) {
+export async function handleScreenWebSocket(socket: WebSocket, request: FastifyRequest) {
   const query = request.query as {
     ticket?: string; token?: string; deviceId?: string
     fps?: string; quality?: string; maxWidth?: string
@@ -52,6 +53,13 @@ export function handleScreenWebSocket(socket: WebSocket, request: FastifyRequest
   const deviceId = query.deviceId
   if (!deviceId) {
     socket.send(JSON.stringify({ type: 'screen:error', payload: { message: 'deviceId required' } }))
+    socket.close()
+    return
+  }
+
+  // v3.2.1 hardening — admin or device owner only
+  if (!(await canAccessDevice({ userId, role: userRole }, deviceId))) {
+    socket.send(JSON.stringify({ type: 'screen:error', payload: { message: 'غير مصرح بالوصول لهذا الجهاز' } }))
     socket.close()
     return
   }

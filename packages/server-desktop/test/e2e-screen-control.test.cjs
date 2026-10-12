@@ -10,7 +10,10 @@
  *  D) binary frames (50-byte agent header) are transformed to the 13-byte
  *     dashboard packet and delivered;
  *  E) multi-viewer join (no capture restart) and leave-flow (stop only on the
- *     last viewer).
+ *     last viewer);
+ *  F) Round 8 — device authorization isolation: a non-owner user is denied on
+ *     REST (devices / fs / wol / stats), WS screen + pty, and client:command,
+ *     while admins keep full access.
  *
  * No real input is injected — a fake agent records what it receives.
  *
@@ -194,6 +197,75 @@ async function main() {
 
   agent.close()
   await sleep(300)
+
+  // ── Round 8: device authorization isolation ───────────────────────────────
+  const strangerId = crypto.randomUUID()
+  const dbc2 = new Database(dbPath)
+  dbc2.prepare('INSERT INTO users (id, email, name, role, password_hash) VALUES (?,?,?,?,?)').run(strangerId, 'stranger@local', 'Stranger', 'viewer', 'x')
+  dbc2.close()
+  const strangerJwt = jwt.sign({ userId: strangerId, email: 'stranger@local', role: 'viewer' }, SECRET, { expiresIn: '1h' })
+  const HA = { Authorization: 'Bearer ' + jwtToken }
+  const HS = { Authorization: 'Bearer ' + strangerJwt }
+
+  const sList = await fetch(BASE + '/api/devices', { headers: HS }).then((r) => r.json())
+  check('stranger device list excludes the admin device', Array.isArray(sList) && !sList.some((d) => d.id === devId))
+  const aList = await fetch(BASE + '/api/devices', { headers: HA }).then((r) => r.json())
+  check('admin device list includes the device', Array.isArray(aList) && aList.some((d) => d.id === devId))
+
+  const sGet = await fetch(BASE + '/api/devices/' + devId, { headers: HS })
+  check('stranger GET device → 403', sGet.status === 403)
+  const aGet = await fetch(BASE + '/api/devices/' + devId, { headers: HA })
+  check('admin GET device → 200', aGet.status === 200)
+
+  const sFs = await fetch(BASE + '/api/devices/' + devId + '/fs?path=/', { headers: HS })
+  check('stranger fs relay → 403', sFs.status === 403)
+  const aFs = await fetch(BASE + '/api/devices/' + devId + '/fs?path=/', { headers: HA })
+  check('admin fs relay passes gate (device offline → 502, not 403)', aFs.status !== 403 && aFs.status !== 200)
+
+  const sWol = await fetch(BASE + '/api/devices/' + devId + '/wol', { method: 'POST', headers: HS })
+  check('stranger WoL → 403', sWol.status === 403)
+  const sHist = await fetch(BASE + '/api/devices/' + devId + '/stats/history', { headers: HS })
+  check('stranger stats history → 403', sHist.status === 403)
+
+  // WS — screen gate (stranger rejected before any capture session)
+  const stk = await fetch(BASE + '/api/auth/ws-ticket', { method: 'POST', headers: HS }).then((r) => r.json())
+  const sScr = new WebSocket('ws://127.0.0.1:' + PORT + '/screen?deviceId=' + devId + '&ticket=' + stk.ticket)
+  const sScrMsgs = []
+  sScr.on('message', (data, isBinary) => { if (!isBinary) { try { sScrMsgs.push(JSON.parse(data.toString())) } catch {} } })
+  await new Promise((res) => { sScr.on('open', res); sScr.on('error', () => res()); sScr.on('close', () => res()) })
+  const sErr = await waitFor(sScrMsgs, (m) => m.type === 'screen:error', 6000)
+  check('stranger desktop /screen rejected (forbidden)', !!sErr && String(sErr.payload.message).indexOf('مصرح') !== -1)
+
+  // WS — pty gate (socket closed, no session)
+  const ptk = await fetch(BASE + '/api/auth/ws-ticket', { method: 'POST', headers: HS }).then((r) => r.json())
+  const sPty = new WebSocket('ws://127.0.0.1:' + PORT + '/pty?deviceId=' + devId + '&ticket=' + ptk.ticket)
+  const sPtyClosed = await new Promise((res) => {
+    const t = setTimeout(() => res(false), 5000)
+    sPty.on('close', () => { clearTimeout(t); res(true) })
+    sPty.on('error', () => { clearTimeout(t); res(true) })
+  })
+  check('stranger desktop /pty closed by gate', sPtyClosed)
+
+  // WS — client snapshot filter + command gate
+  const sCl = new WebSocket('ws://127.0.0.1:' + PORT + '/ws?token=' + strangerJwt)
+  const sClMsgs = []
+  sCl.on('message', (data) => { try { sClMsgs.push(JSON.parse(data.toString())) } catch {} })
+  const sSnap = await waitFor(sClMsgs, (m) => m.type === 'server:snapshot', 6000)
+  check('stranger snapshot excludes the admin device', !!sSnap && !(sSnap.payload.devices || []).some((d) => d.id === devId))
+  sCl.send(JSON.stringify({ type: 'client:command', payload: { deviceId: devId, commandId: 'st-1', command: 'whoami' } }))
+  // NOTE: the desktop server generates its own commandId for relays, so match on the error text
+  const sDeny = await waitFor(sClMsgs, (m) => m.type === 'agent:command_result' && String(m.payload.error || '').indexOf('مصرح') !== -1, 6000)
+  check('stranger desktop client:command denied', !!sDeny && String(sDeny.payload.error).indexOf('مصرح') !== -1)
+  sCl.close()
+
+  // WS — admin snapshot still includes the device
+  const aCl = new WebSocket('ws://127.0.0.1:' + PORT + '/ws?token=' + jwtToken)
+  const aClMsgs = []
+  aCl.on('message', (data) => { try { aClMsgs.push(JSON.parse(data.toString())) } catch {} })
+  const aSnap = await waitFor(aClMsgs, (m) => m.type === 'server:snapshot', 6000)
+  check('admin snapshot includes the device', !!aSnap && (aSnap.payload.devices || []).some((d) => d.id === devId))
+  aCl.close()
+
   await srv.stop()
   try { fs.rmSync(tmpDir, { recursive: true, force: true }) } catch {}
 

@@ -11,6 +11,7 @@ interface ConnectedDevice {
 
 interface ConnectedClient {
   userId: string
+  role: string
   socket: WebSocket
   subscribedDevices: Set<string>
 }
@@ -164,8 +165,8 @@ export class DeviceRegistry {
 
   // ── Client management ────────────────────────────────────────────────────
 
-  addClient(userId: string, socket: WebSocket): void {
-    this.clients.set(socket, { userId, socket, subscribedDevices: new Set() })
+  addClient(userId: string, socket: WebSocket, role: string = 'user'): void {
+    this.clients.set(socket, { userId, role, socket, subscribedDevices: new Set() })
   }
 
   removeClient(socket: WebSocket): void {
@@ -210,7 +211,9 @@ export class DeviceRegistry {
       payload: { deviceId, status, tunnelLayer, capabilities, info },
       timestamp: Date.now()
     })
+    // v3.2.1 hardening — only the device owner and admins receive this update
     for (const [, client] of this.clients) {
+      if (client.role !== 'admin' && !client.subscribedDevices.has(deviceId)) continue
       if (client.socket.readyState === 1) {
         try { client.socket.send(msg) } catch {}
       }
@@ -223,7 +226,9 @@ export class DeviceRegistry {
       payload: { deviceId, stats },
       timestamp: Date.now()
     })
+    // v3.2.1 hardening — only the device owner and admins receive this update
     for (const [, client] of this.clients) {
+      if (client.role !== 'admin' && !client.subscribedDevices.has(deviceId)) continue
       if (client.socket.readyState === 1) {
         try { client.socket.send(msg) } catch {}
       }

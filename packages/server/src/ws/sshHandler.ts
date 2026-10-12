@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { deviceRegistry } from './registry'
 import { logAudit } from '../db/audit'
 import { getDb } from '../db/database'
+import { canAccessDevice } from '../lib/deviceAccess'
 import type { AuthTokenPayload } from '@airemote/shared'
 
 export function handleSshWebSocket(socket: WebSocket, request: FastifyRequest) {
@@ -19,6 +20,13 @@ export function handleSshWebSocket(socket: WebSocket, request: FastifyRequest) {
 
         if (!deviceId) {
           socket.send(JSON.stringify({ type: 'ssh:error', payload: { message: 'deviceId is required' } }))
+          return
+        }
+
+        // v3.2.1 hardening — admin or device owner only (fail closed)
+        if (!jwtUser || (jwtUser.role !== 'admin' &&
+            !(await canAccessDevice({ userId: jwtUser.userId, role: jwtUser.role }, deviceId)))) {
+          socket.send(JSON.stringify({ type: 'ssh:error', payload: { message: 'غير مصرح بالوصول لهذا الجهاز' } }))
           return
         }
 

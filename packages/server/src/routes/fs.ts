@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify'
 import { requireAuth } from '../middleware/auth'
+import { canAccessDevice } from '../lib/deviceAccess'
 import { deviceRegistry } from '../ws/registry'
 import { sendFsRequest, sendFsDownload, sendFsWriteChunked } from '../ws/agentHandler'
 import type { AuthTokenPayload } from '@airemote/shared'
@@ -39,10 +40,25 @@ export async function fsRoutes(fastify: FastifyInstance) {
     return true
   }
 
+  // v3.2.1 hardening — admin or device owner only
+  async function assertDeviceAccess(
+    req: { user?: unknown },
+    deviceId: string,
+    reply: { code: (n: number) => { send: (b: unknown) => unknown } }
+  ): Promise<boolean> {
+    const user = req.user as unknown as AuthTokenPayload
+    if (!(await canAccessDevice(user, deviceId))) {
+      reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
+      return false
+    }
+    return true
+  }
+
   fastify.get<{ Params: { deviceId: string }; Querystring: { path?: string } }>(
     '/:deviceId/fs/list',
     async (req, reply) => {
       const { deviceId } = req.params
+      if (!(await assertDeviceAccess(req, deviceId, reply))) return
       const rawPath = req.query.path || '/'
       const safePath = sanitizePath(rawPath)
       if (!safePath) return reply.code(400).send({ error: 'مسار غير صالح' })
@@ -59,6 +75,7 @@ export async function fsRoutes(fastify: FastifyInstance) {
     '/:deviceId/fs/download',
     async (req, reply) => {
       const { deviceId } = req.params
+      if (!(await assertDeviceAccess(req, deviceId, reply))) return
       const rawPath = req.query.path
       if (!rawPath) return reply.code(400).send({ error: 'path مطلوب' })
       const safePath = sanitizePath(rawPath)
@@ -84,6 +101,7 @@ export async function fsRoutes(fastify: FastifyInstance) {
       if (!rawPath) return reply.code(400).send({ error: 'path مطلوب' })
       const safePath = sanitizePath(rawPath)
       if (!safePath) return reply.code(400).send({ error: 'مسار غير صالح' })
+      if (!(await assertDeviceAccess(req, deviceId, reply))) return
       if (!assertOnline(deviceId, reply)) return
       try {
         await sendFsRequest(deviceId, 'delete', safePath)
@@ -103,6 +121,7 @@ export async function fsRoutes(fastify: FastifyInstance) {
     '/:deviceId/fs/rename',
     async (req, reply) => {
       const { deviceId } = req.params
+      if (!(await assertDeviceAccess(req, deviceId, reply))) return
       const { oldPath, newPath } = req.body
       if (!oldPath || !newPath) return reply.code(400).send({ error: 'oldPath و newPath مطلوبان' })
       const safeOld = sanitizePath(oldPath)
@@ -131,6 +150,7 @@ export async function fsRoutes(fastify: FastifyInstance) {
       if (!rawPath) return reply.code(400).send({ error: 'path مطلوب' })
       const safePath = sanitizePath(rawPath)
       if (!safePath) return reply.code(400).send({ error: 'مسار غير صالح' })
+      if (!(await assertDeviceAccess(req, deviceId, reply))) return
       if (!assertOnline(deviceId, reply)) return
       try {
         await sendFsRequest(deviceId, 'mkdir', safePath)
@@ -151,6 +171,7 @@ export async function fsRoutes(fastify: FastifyInstance) {
     '/:deviceId/fs/upload',
     async (req, reply) => {
       const { deviceId } = (req.params as { deviceId: string })
+      if (!(await assertDeviceAccess(req, deviceId, reply))) return
       if (!assertOnline(deviceId, reply)) return
 
       const data = await req.file()

@@ -3,6 +3,7 @@ import type { FastifyRequest } from 'fastify'
 import { v4 as uuidv4 } from 'uuid'
 import { deviceRegistry } from './registry'
 import { getDb } from '../db/database'
+import { canAccessDevice } from '../lib/deviceAccess'
 import type { AuthTokenPayload } from '@airemote/shared'
 
 export function handlePtyWebSocket(socket: WebSocket, request: FastifyRequest) {
@@ -18,6 +19,13 @@ export function handlePtyWebSocket(socket: WebSocket, request: FastifyRequest) {
 
         if (!deviceId) {
           socket.send(JSON.stringify({ type: 'pty:error', payload: { message: 'deviceId is required' } }))
+          return
+        }
+
+        // v3.2.1 hardening — admin or device owner only (fail closed)
+        if (!jwtUser || (jwtUser.role !== 'admin' &&
+            !(await canAccessDevice({ userId: jwtUser.userId, role: jwtUser.role }, deviceId)))) {
+          socket.send(JSON.stringify({ type: 'pty:error', payload: { message: 'غير مصرح بالوصول لهذا الجهاز' } }))
           return
         }
 

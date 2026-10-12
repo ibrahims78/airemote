@@ -40,7 +40,7 @@ function getSsh2()     { if (!_ssh2)     _ssh2     = require('ssh2');        ret
 // 2. In-Memory Registries
 // ─────────────────────────────────────────────────────────────────────────────
 const agentSockets      = new Map()   // deviceId → { ws, info, deviceName, connectedAt, stats }
-const clientSockets     = new Set()   // Set<WebSocket>
+const clientSockets     = new Map()   // Map<WebSocket, { user }>
 const ptyClients        = new Map()   // sessionId → Set<WebSocket>
 const screenViewers     = new Map()   // deviceId  → Set<WebSocket>
 const screenSessions    = new Map()   // sessionId → { deviceId, viewers, startedAt, connectTimer }
@@ -236,6 +236,16 @@ function adminMiddleware(req, reply) {
   return user
 }
 
+// v3.2.1 hardening — device-scoped authorization: admins + device owner only.
+function canAccessDevice(user, deviceId) {
+  if (!user) return false
+  if (user.role === 'admin') return true
+  try {
+    const row = db.prepare("SELECT owner_id FROM devices WHERE id=?").get(deviceId)
+    return !!(row && row.owner_id && row.owner_id === user.userId)
+  } catch { return false }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // 5. Crypto — AES-256-CBC for SSH credential encryption
 // ─────────────────────────────────────────────────────────────────────────────
@@ -265,7 +275,12 @@ function sendJson(ws, obj) {
   try { if (ws.readyState === 1) ws.send(JSON.stringify(obj)) } catch {}
 }
 function broadcastToClients(msg) {
-  for (const ws of clientSockets) sendJson(ws, msg)
+  // v3.2.1 hardening — device-scoped messages reach only the device owner / admins
+  const devId = msg && msg.payload ? msg.payload.deviceId : null
+  for (const [ws, meta] of clientSockets) {
+    if (devId && !canAccessDevice(meta && meta.user, devId)) continue
+    sendJson(ws, msg)
+  }
 }
 function markDeviceOnline(deviceId, info) {
   if (info) {
@@ -694,10 +709,13 @@ function handleAgentWs(socket) {
 // ─────────────────────────────────────────────────────────────────────────────
 // 10. WebSocket — Dashboard Client
 // ─────────────────────────────────────────────────────────────────────────────
-function handleClientWs(socket) {
-  clientSockets.add(socket)
+function handleClientWs(socket, user) {
+  clientSockets.set(socket, { user })
 
-  const devices  = db.prepare("SELECT * FROM devices ORDER BY name").all()
+  // v3.2.1 hardening — non-admins only receive their own devices
+  const devices  = (user && user.role === 'admin')
+    ? db.prepare("SELECT * FROM devices ORDER BY name").all()
+    : db.prepare("SELECT * FROM devices WHERE owner_id=? ORDER BY name").all(user ? user.userId : '')
   const snapshot = devices.map(d => ({
     ...d, info: parseJson(d.info), tags: parseJson(d.tags, []),
     capabilities: parseJson(d.capabilities, {}), isOnline: agentSockets.has(d.id),
@@ -712,6 +730,7 @@ function handleClientWs(socket) {
     if (type === 'client:command') {
       const { deviceId, command, cmdType = 'shell', sessionId } = payload
       const commandId = uuidv4()
+      if (!canAccessDevice(user, deviceId)) { sendJson(socket, { type: 'agent:command_result', payload: { commandId, deviceId, error: 'غير مصرح بالوصول لهذا الجهاز' } }); return }
       const rec = agentSockets.get(deviceId)
       if (!rec) { sendJson(socket, { type: 'agent:command_result', payload: { commandId, deviceId, error: 'Device offline' } }); return }
       sendJson(rec.ws, { type: 'server:command', payload: { commandId, type: cmdType, command, sessionId } })
@@ -719,18 +738,21 @@ function handleClientWs(socket) {
     }
     if (type === 'client:screen_start') {
       const { deviceId, fps = 10, quality = 60, maxWidth = 1280, sessionId } = payload
+      if (!canAccessDevice(user, deviceId)) { sendJson(socket, { type: 'screen:error', payload: { message: 'غير مصرح بالوصول لهذا الجهاز' } }); return }
       const rec = agentSockets.get(deviceId)
       if (rec) sendJson(rec.ws, { type: 'server:screen_start', payload: { sessionId: sessionId || uuidv4(), fps, quality, maxWidth } })
       return
     }
     if (type === 'client:screen_stop') {
       const { deviceId, sessionId } = payload
+      if (!canAccessDevice(user, deviceId)) return
       const rec = agentSockets.get(deviceId)
       if (rec) sendJson(rec.ws, { type: 'server:screen_stop', payload: { sessionId } })
       return
     }
     if (type === 'client:screen_control') {
       const { deviceId, action, x, y, button, key, sessionId } = payload
+      if (!canAccessDevice(user, deviceId)) return
       const rec = agentSockets.get(deviceId)
       if (rec) sendJson(rec.ws, { type: 'server:screen_control', payload: { action, x, y, button, key, sessionId } })
       return
@@ -744,11 +766,12 @@ function handleClientWs(socket) {
 // ─────────────────────────────────────────────────────────────────────────────
 // 11. WebSocket — PTY Terminal
 // ─────────────────────────────────────────────────────────────────────────────
-function handlePtyWs(socket, request) {
+function handlePtyWs(socket, request, user) {
   const query     = request.query || {}
   const deviceId  = query.deviceId
   const sessionId = query.sessionId || uuidv4()
   if (!deviceId) { socket.close(); return }
+  if (!canAccessDevice(user, deviceId)) { try { socket.close() } catch {}; return }
 
   if (!ptyClients.has(sessionId)) ptyClients.set(sessionId, new Set())
   ptyClients.get(sessionId).add(socket)
@@ -781,6 +804,12 @@ function handleScreenWs(socket, request, user) {
   const query    = request.query || {}
   const deviceId = query.deviceId
   if (!deviceId) { socket.close(); return }
+
+  if (!canAccessDevice(user, deviceId)) {
+    try { socket.send(JSON.stringify({ type: 'screen:error', payload: { message: 'غير مصرح بالوصول لهذا الجهاز' } })) } catch {}
+    socket.close()
+    return
+  }
 
   const clamp = (n, lo, hi, dflt) => {
     const v = parseInt(n)
@@ -1231,7 +1260,10 @@ async function start(config) {
   // ── Devices ───────────────────────────────────────────────────────────────
   fastify.get('/api/devices', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
-    return db.prepare("SELECT * FROM devices ORDER BY name").all().map(d => ({
+    const rows = p.role === 'admin'
+      ? db.prepare("SELECT * FROM devices ORDER BY name").all()
+      : db.prepare("SELECT * FROM devices WHERE owner_id=? ORDER BY name").all(p.userId)
+    return rows.map(d => ({
       ...d, info: parseJson(d.info), tags: parseJson(d.tags, []),
       capabilities: parseJson(d.capabilities, {}), isOnline: agentSockets.has(d.id),
       stats: agentSockets.get(d.id)?.stats || null,
@@ -1250,6 +1282,7 @@ async function start(config) {
 
   fastify.get('/api/devices/:id', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
+    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
     const d = db.prepare("SELECT * FROM devices WHERE id=?").get(req.params.id)
     if (!d) return reply.code(404).send({ error: 'Not found' })
     return { ...d, info: parseJson(d.info), tags: parseJson(d.tags, []), capabilities: parseJson(d.capabilities, {}), isOnline: agentSockets.has(d.id), stats: agentSockets.get(d.id)?.stats || null }
@@ -1257,6 +1290,7 @@ async function start(config) {
 
   fastify.put('/api/devices/:id', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
+    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
     const { name, tags } = req.body || {}
     const updates = []; const vals = []
     if (name) { updates.push('name=?'); vals.push(name) }
@@ -1269,6 +1303,7 @@ async function start(config) {
 
   fastify.delete('/api/devices/:id', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
+    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
     const d = db.prepare("SELECT name FROM devices WHERE id=?").get(req.params.id)
     if (!d) return reply.code(404).send({ error: 'Not found' })
     db.prepare("DELETE FROM devices WHERE id=?").run(req.params.id)
@@ -1278,6 +1313,7 @@ async function start(config) {
 
   fastify.post('/api/devices/:id/wol', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
+    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
     const d = db.prepare("SELECT info FROM devices WHERE id=?").get(req.params.id)
     if (!d) return reply.code(404).send({ error: 'Device not found' })
     const info = parseJson(d.info) || {}
@@ -1296,6 +1332,7 @@ async function start(config) {
 
   fastify.get('/api/devices/:id/stats/history', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
+    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
     const hours = Math.min(parseInt(req.query?.hours || '24'), 168)
     const since = new Date(Date.now() - hours * 3600000).toISOString()
     return db.prepare("SELECT cpu_percent, ram_percent, disk_percent, net_in_kb, net_out_kb, recorded_at FROM stats_history WHERE device_id=? AND recorded_at > ? ORDER BY recorded_at ASC").all(req.params.id, since)
@@ -1304,12 +1341,14 @@ async function start(config) {
   // ── Device FS Relay ───────────────────────────────────────────────────────
   fastify.get('/api/devices/:id/fs', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
+    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
     try { return await agentFsRequest(req.params.id, 'list', { path: req.query?.path || '/' }) }
     catch (e) { return reply.code(502).send({ error: e.message }) }
   })
 
   fastify.get('/api/devices/:id/fs/download', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
+    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
     const { path: fsPath } = req.query || {}
     if (!fsPath) return reply.code(400).send({ error: 'path required' })
     try {
@@ -1322,6 +1361,7 @@ async function start(config) {
 
   fastify.post('/api/devices/:id/fs/mkdir', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
+    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
     const { path: fsPath } = req.body || {}
     if (!fsPath) return reply.code(400).send({ error: 'path required' })
     try { return await agentFsRequest(req.params.id, 'mkdir', { path: fsPath }) }
@@ -1330,6 +1370,7 @@ async function start(config) {
 
   fastify.delete('/api/devices/:id/fs', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
+    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
     const { path: fsPath } = req.query || {}
     if (!fsPath) return reply.code(400).send({ error: 'path required' })
     try { return await agentFsRequest(req.params.id, 'delete', { path: fsPath }) }
@@ -1540,7 +1581,7 @@ async function start(config) {
         conn.on('ready', () => {
           conn.sftp((err, sftp) => {
             if (err) { conn.end(); resolve(reply.code(502).send({ error: err.message })); return }
-            sftpSessions.set(sessionId, { sftp, conn })
+            sftpSessions.set(sessionId, { sftp, conn, userId: p.userId })
             setTimeout(() => { if (sftpSessions.has(sessionId)) { try { sftpSessions.get(sessionId).conn.end() } catch {}; sftpSessions.delete(sessionId) } }, 30 * 60000)
             resolve({ sessionId, host: fHost, username: fUser })
           })
@@ -1555,6 +1596,7 @@ async function start(config) {
     const p = authMiddleware(req, reply); if (!p) return
     const sess = sftpSessions.get(req.params.sessionId)
     if (!sess) return reply.code(404).send({ error: 'SFTP session not found' })
+    if (sess.userId && p.role !== 'admin' && sess.userId !== p.userId) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذه الجلسة' })
     return new Promise((resolve) => {
       sess.sftp.readdir(req.query?.path || '/', (err, list) => {
         if (err) { resolve(reply.code(502).send({ error: err.message })); return }
@@ -1568,6 +1610,7 @@ async function start(config) {
     const { path: fsPath } = req.query || {}
     const sess = sftpSessions.get(req.params.sessionId)
     if (!sess) return reply.code(404).send({ error: 'SFTP session not found' })
+    if (sess.userId && p.role !== 'admin' && sess.userId !== p.userId) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذه الجلسة' })
     if (!fsPath) return reply.code(400).send({ error: 'path required' })
     return new Promise((resolve) => {
       const chunks = []; const stream = sess.sftp.createReadStream(fsPath)
@@ -1585,6 +1628,7 @@ async function start(config) {
     const p = authMiddleware(req, reply); if (!p) return
     const sess = sftpSessions.get(req.params.sessionId)
     if (!sess) return reply.code(404).send({ error: 'SFTP session not found' })
+    if (sess.userId && p.role !== 'admin' && sess.userId !== p.userId) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذه الجلسة' })
     const { path: fsPath } = req.body || {}
     if (!fsPath) return reply.code(400).send({ error: 'path required' })
     return new Promise((resolve) => { sess.sftp.mkdir(fsPath, err => err ? resolve(reply.code(502).send({ error: err.message })) : resolve({ ok: true })) })
@@ -1594,6 +1638,7 @@ async function start(config) {
     const p = authMiddleware(req, reply); if (!p) return
     const sess = sftpSessions.get(req.params.sessionId)
     if (!sess) return reply.code(404).send({ error: 'SFTP session not found' })
+    if (sess.userId && p.role !== 'admin' && sess.userId !== p.userId) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذه الجلسة' })
     const { path: fsPath, type } = req.query || {}
     if (!fsPath) return reply.code(400).send({ error: 'path required' })
     return new Promise((resolve) => {
@@ -1605,6 +1650,7 @@ async function start(config) {
   fastify.post('/api/sftp/:sessionId/close', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
     const sess = sftpSessions.get(req.params.sessionId)
+    if (sess && sess.userId && p.role !== 'admin' && sess.userId !== p.userId) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذه الجلسة' })
     if (sess) { try { sess.conn.end() } catch {}; sftpSessions.delete(req.params.sessionId) }
     return { ok: true }
   })
@@ -1628,6 +1674,7 @@ async function start(config) {
     const p = authMiddleware(req, reply); if (!p) return
     const { deviceId, name } = req.body || {}
     if (!deviceId) return reply.code(400).send({ error: 'deviceId required' })
+    if (!canAccessDevice(p, deviceId)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
     const id = uuidv4(); const now = new Date().toISOString()
     db.prepare("INSERT INTO recordings (id, device_id, user_id, name, started_at) VALUES (?,?,?,?,?)").run(id, deviceId, p.userId, name || `Recording ${now.slice(0,10)}`, now)
     return reply.code(201).send({ id, deviceId, userId: p.userId, name, startedAt: now })
@@ -1635,7 +1682,9 @@ async function start(config) {
 
   fastify.patch('/api/recordings/:id', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
-    if (!db.prepare("SELECT id FROM recordings WHERE id=?").get(req.params.id)) return reply.code(404).send({ error: 'Not found' })
+    const recPatch = db.prepare("SELECT id, user_id FROM recordings WHERE id=?").get(req.params.id)
+    if (!recPatch) return reply.code(404).send({ error: 'Not found' })
+    if (p.role !== 'admin' && recPatch.user_id !== p.userId) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا التسجيل' })
     const now = new Date().toISOString()
     db.prepare("UPDATE recordings SET ended_at=? WHERE id=?").run(now, req.params.id)
     return { ok: true, endedAt: now }
@@ -1645,6 +1694,7 @@ async function start(config) {
     const p = authMiddleware(req, reply); if (!p) return
     const rec = db.prepare("SELECT * FROM recordings WHERE id=?").get(req.params.id)
     if (!rec) return reply.code(404).send({ error: 'Not found' })
+    if (p.role !== 'admin' && rec.user_id !== p.userId) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا التسجيل' })
     if (rec.file_path && fs.existsSync(rec.file_path)) try { fs.unlinkSync(rec.file_path) } catch {}
     db.prepare("DELETE FROM recordings WHERE id=?").run(req.params.id)
     return reply.code(204).send()
@@ -1853,7 +1903,7 @@ async function start(config) {
       const q = request.query || {}
       if (q.agent === '1' || q.type === 'agent') { handleAgentWs(socket); return }
       const user = resolveWsUser(q)
-      if (user) { handleClientWs(socket); return }
+      if (user) { handleClientWs(socket, user); return }
       // Compatibility: agents that connect with a plain ws:// URL (as shown by
       // the in-app connect string) authenticate via the agent:register message.
       // Sockets that never register are closed by the register timeout.
@@ -1862,8 +1912,9 @@ async function start(config) {
 
     app.get('/pty', { websocket: true }, (socket, request) => {
       const q = request.query || {}
-      if (!resolveWsUser(q)) { socket.close(); return }
-      handlePtyWs(socket, request)
+      const user = resolveWsUser(q)
+      if (!user) { socket.close(); return }
+      handlePtyWs(socket, request, user)
     })
 
     app.get('/screen', { websocket: true }, (socket, request) => {
