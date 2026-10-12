@@ -81744,7 +81744,7 @@ function getSsh2() {
   return _ssh2;
 }
 var agentSockets = /* @__PURE__ */ new Map();
-var clientSockets = /* @__PURE__ */ new Set();
+var clientSockets = /* @__PURE__ */ new Map();
 var ptyClients = /* @__PURE__ */ new Map();
 var screenViewers = /* @__PURE__ */ new Map();
 var screenSessions = /* @__PURE__ */ new Map();
@@ -81933,6 +81933,16 @@ function adminMiddleware(req, reply) {
   }
   return user;
 }
+function canAccessDevice(user, deviceId) {
+  if (!user) return false;
+  if (user.role === "admin") return true;
+  try {
+    const row = db.prepare("SELECT owner_id FROM devices WHERE id=?").get(deviceId);
+    return !!(row && row.owner_id && row.owner_id === user.userId);
+  } catch {
+    return false;
+  }
+}
 function getDerivedKey() {
   return crypto5.pbkdf2Sync(JWT || "airemote-default", "airemote-credentials-salt-v1", 1e5, 32, "sha256");
 }
@@ -81958,7 +81968,11 @@ function sendJson(ws, obj) {
   }
 }
 function broadcastToClients(msg) {
-  for (const ws of clientSockets) sendJson(ws, msg);
+  const devId = msg && msg.payload ? msg.payload.deviceId : null;
+  for (const [ws, meta] of clientSockets) {
+    if (devId && !canAccessDevice(meta && meta.user, devId)) continue;
+    sendJson(ws, msg);
+  }
 }
 function markDeviceOnline(deviceId, info) {
   if (info) {
@@ -82442,9 +82456,9 @@ function handleAgentWs(socket) {
   socket.on("error", () => {
   });
 }
-function handleClientWs(socket) {
-  clientSockets.add(socket);
-  const devices = db.prepare("SELECT * FROM devices ORDER BY name").all();
+function handleClientWs(socket, user) {
+  clientSockets.set(socket, { user });
+  const devices = user && user.role === "admin" ? db.prepare("SELECT * FROM devices ORDER BY name").all() : db.prepare("SELECT * FROM devices WHERE owner_id=? ORDER BY name").all(user ? user.userId : "");
   const snapshot = devices.map((d) => ({
     ...d,
     info: parseJson(d.info),
@@ -82465,6 +82479,10 @@ function handleClientWs(socket) {
     if (type === "client:command") {
       const { deviceId, command, cmdType = "shell", sessionId } = payload;
       const commandId = uuidv4();
+      if (!canAccessDevice(user, deviceId)) {
+        sendJson(socket, { type: "agent:command_result", payload: { commandId, deviceId, error: "\u063A\u064A\u0631 \u0645\u0635\u0631\u062D \u0628\u0627\u0644\u0648\u0635\u0648\u0644 \u0644\u0647\u0630\u0627 \u0627\u0644\u062C\u0647\u0627\u0632" } });
+        return;
+      }
       const rec = agentSockets.get(deviceId);
       if (!rec) {
         sendJson(socket, { type: "agent:command_result", payload: { commandId, deviceId, error: "Device offline" } });
@@ -82475,18 +82493,24 @@ function handleClientWs(socket) {
     }
     if (type === "client:screen_start") {
       const { deviceId, fps = 10, quality = 60, maxWidth = 1280, sessionId } = payload;
+      if (!canAccessDevice(user, deviceId)) {
+        sendJson(socket, { type: "screen:error", payload: { message: "\u063A\u064A\u0631 \u0645\u0635\u0631\u062D \u0628\u0627\u0644\u0648\u0635\u0648\u0644 \u0644\u0647\u0630\u0627 \u0627\u0644\u062C\u0647\u0627\u0632" } });
+        return;
+      }
       const rec = agentSockets.get(deviceId);
       if (rec) sendJson(rec.ws, { type: "server:screen_start", payload: { sessionId: sessionId || uuidv4(), fps, quality, maxWidth } });
       return;
     }
     if (type === "client:screen_stop") {
       const { deviceId, sessionId } = payload;
+      if (!canAccessDevice(user, deviceId)) return;
       const rec = agentSockets.get(deviceId);
       if (rec) sendJson(rec.ws, { type: "server:screen_stop", payload: { sessionId } });
       return;
     }
     if (type === "client:screen_control") {
       const { deviceId, action, x, y, button, key, sessionId } = payload;
+      if (!canAccessDevice(user, deviceId)) return;
       const rec = agentSockets.get(deviceId);
       if (rec) sendJson(rec.ws, { type: "server:screen_control", payload: { action, x, y, button, key, sessionId } });
       return;
@@ -82499,12 +82523,20 @@ function handleClientWs(socket) {
     clientSockets.delete(socket);
   });
 }
-function handlePtyWs(socket, request) {
+function handlePtyWs(socket, request, user) {
   const query = request.query || {};
   const deviceId = query.deviceId;
   const sessionId = query.sessionId || uuidv4();
   if (!deviceId) {
     socket.close();
+    return;
+  }
+  if (!canAccessDevice(user, deviceId)) {
+    try {
+      socket.close();
+    } catch {
+    }
+    ;
     return;
   }
   if (!ptyClients.has(sessionId)) ptyClients.set(sessionId, /* @__PURE__ */ new Set());
@@ -82543,6 +82575,14 @@ function handleScreenWs(socket, request, user) {
   const query = request.query || {};
   const deviceId = query.deviceId;
   if (!deviceId) {
+    socket.close();
+    return;
+  }
+  if (!canAccessDevice(user, deviceId)) {
+    try {
+      socket.send(JSON.stringify({ type: "screen:error", payload: { message: "\u063A\u064A\u0631 \u0645\u0635\u0631\u062D \u0628\u0627\u0644\u0648\u0635\u0648\u0644 \u0644\u0647\u0630\u0627 \u0627\u0644\u062C\u0647\u0627\u0632" } }));
+    } catch {
+    }
     socket.close();
     return;
   }
@@ -83036,7 +83076,8 @@ async function start(config) {
   fastify.get("/api/devices", async (req, reply) => {
     const p = authMiddleware(req, reply);
     if (!p) return;
-    return db.prepare("SELECT * FROM devices ORDER BY name").all().map((d) => ({
+    const rows = p.role === "admin" ? db.prepare("SELECT * FROM devices ORDER BY name").all() : db.prepare("SELECT * FROM devices WHERE owner_id=? ORDER BY name").all(p.userId);
+    return rows.map((d) => ({
       ...d,
       info: parseJson(d.info),
       tags: parseJson(d.tags, []),
@@ -83059,6 +83100,7 @@ async function start(config) {
   fastify.get("/api/devices/:id", async (req, reply) => {
     const p = authMiddleware(req, reply);
     if (!p) return;
+    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: "\u063A\u064A\u0631 \u0645\u0635\u0631\u062D \u0628\u0627\u0644\u0648\u0635\u0648\u0644 \u0644\u0647\u0630\u0627 \u0627\u0644\u062C\u0647\u0627\u0632" });
     const d = db.prepare("SELECT * FROM devices WHERE id=?").get(req.params.id);
     if (!d) return reply.code(404).send({ error: "Not found" });
     return { ...d, info: parseJson(d.info), tags: parseJson(d.tags, []), capabilities: parseJson(d.capabilities, {}), isOnline: agentSockets.has(d.id), stats: agentSockets.get(d.id)?.stats || null };
@@ -83066,6 +83108,7 @@ async function start(config) {
   fastify.put("/api/devices/:id", async (req, reply) => {
     const p = authMiddleware(req, reply);
     if (!p) return;
+    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: "\u063A\u064A\u0631 \u0645\u0635\u0631\u062D \u0628\u0627\u0644\u0648\u0635\u0648\u0644 \u0644\u0647\u0630\u0627 \u0627\u0644\u062C\u0647\u0627\u0632" });
     const { name, tags } = req.body || {};
     const updates = [];
     const vals = [];
@@ -83086,6 +83129,7 @@ async function start(config) {
   fastify.delete("/api/devices/:id", async (req, reply) => {
     const p = authMiddleware(req, reply);
     if (!p) return;
+    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: "\u063A\u064A\u0631 \u0645\u0635\u0631\u062D \u0628\u0627\u0644\u0648\u0635\u0648\u0644 \u0644\u0647\u0630\u0627 \u0627\u0644\u062C\u0647\u0627\u0632" });
     const d = db.prepare("SELECT name FROM devices WHERE id=?").get(req.params.id);
     if (!d) return reply.code(404).send({ error: "Not found" });
     db.prepare("DELETE FROM devices WHERE id=?").run(req.params.id);
@@ -83095,6 +83139,7 @@ async function start(config) {
   fastify.post("/api/devices/:id/wol", async (req, reply) => {
     const p = authMiddleware(req, reply);
     if (!p) return;
+    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: "\u063A\u064A\u0631 \u0645\u0635\u0631\u062D \u0628\u0627\u0644\u0648\u0635\u0648\u0644 \u0644\u0647\u0630\u0627 \u0627\u0644\u062C\u0647\u0627\u0632" });
     const d = db.prepare("SELECT info FROM devices WHERE id=?").get(req.params.id);
     if (!d) return reply.code(404).send({ error: "Device not found" });
     const info = parseJson(d.info) || {};
@@ -83115,6 +83160,7 @@ async function start(config) {
   fastify.get("/api/devices/:id/stats/history", async (req, reply) => {
     const p = authMiddleware(req, reply);
     if (!p) return;
+    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: "\u063A\u064A\u0631 \u0645\u0635\u0631\u062D \u0628\u0627\u0644\u0648\u0635\u0648\u0644 \u0644\u0647\u0630\u0627 \u0627\u0644\u062C\u0647\u0627\u0632" });
     const hours = Math.min(parseInt(req.query?.hours || "24"), 168);
     const since = new Date(Date.now() - hours * 36e5).toISOString();
     return db.prepare("SELECT cpu_percent, ram_percent, disk_percent, net_in_kb, net_out_kb, recorded_at FROM stats_history WHERE device_id=? AND recorded_at > ? ORDER BY recorded_at ASC").all(req.params.id, since);
@@ -83122,6 +83168,7 @@ async function start(config) {
   fastify.get("/api/devices/:id/fs", async (req, reply) => {
     const p = authMiddleware(req, reply);
     if (!p) return;
+    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: "\u063A\u064A\u0631 \u0645\u0635\u0631\u062D \u0628\u0627\u0644\u0648\u0635\u0648\u0644 \u0644\u0647\u0630\u0627 \u0627\u0644\u062C\u0647\u0627\u0632" });
     try {
       return await agentFsRequest(req.params.id, "list", { path: req.query?.path || "/" });
     } catch (e) {
@@ -83131,6 +83178,7 @@ async function start(config) {
   fastify.get("/api/devices/:id/fs/download", async (req, reply) => {
     const p = authMiddleware(req, reply);
     if (!p) return;
+    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: "\u063A\u064A\u0631 \u0645\u0635\u0631\u062D \u0628\u0627\u0644\u0648\u0635\u0648\u0644 \u0644\u0647\u0630\u0627 \u0627\u0644\u062C\u0647\u0627\u0632" });
     const { path: fsPath } = req.query || {};
     if (!fsPath) return reply.code(400).send({ error: "path required" });
     try {
@@ -83145,6 +83193,7 @@ async function start(config) {
   fastify.post("/api/devices/:id/fs/mkdir", async (req, reply) => {
     const p = authMiddleware(req, reply);
     if (!p) return;
+    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: "\u063A\u064A\u0631 \u0645\u0635\u0631\u062D \u0628\u0627\u0644\u0648\u0635\u0648\u0644 \u0644\u0647\u0630\u0627 \u0627\u0644\u062C\u0647\u0627\u0632" });
     const { path: fsPath } = req.body || {};
     if (!fsPath) return reply.code(400).send({ error: "path required" });
     try {
@@ -83156,6 +83205,7 @@ async function start(config) {
   fastify.delete("/api/devices/:id/fs", async (req, reply) => {
     const p = authMiddleware(req, reply);
     if (!p) return;
+    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: "\u063A\u064A\u0631 \u0645\u0635\u0631\u062D \u0628\u0627\u0644\u0648\u0635\u0648\u0644 \u0644\u0647\u0630\u0627 \u0627\u0644\u062C\u0647\u0627\u0632" });
     const { path: fsPath } = req.query || {};
     if (!fsPath) return reply.code(400).send({ error: "path required" });
     try {
@@ -83402,7 +83452,7 @@ ${agentLogs}` : ""}`;
               resolve(reply.code(502).send({ error: err.message }));
               return;
             }
-            sftpSessions.set(sessionId, { sftp, conn });
+            sftpSessions.set(sessionId, { sftp, conn, userId: p.userId });
             setTimeout(() => {
               if (sftpSessions.has(sessionId)) {
                 try {
@@ -83428,6 +83478,7 @@ ${agentLogs}` : ""}`;
     if (!p) return;
     const sess = sftpSessions.get(req.params.sessionId);
     if (!sess) return reply.code(404).send({ error: "SFTP session not found" });
+    if (sess.userId && p.role !== "admin" && sess.userId !== p.userId) return reply.code(403).send({ error: "\u063A\u064A\u0631 \u0645\u0635\u0631\u062D \u0628\u0627\u0644\u0648\u0635\u0648\u0644 \u0644\u0647\u0630\u0647 \u0627\u0644\u062C\u0644\u0633\u0629" });
     return new Promise((resolve) => {
       sess.sftp.readdir(req.query?.path || "/", (err, list) => {
         if (err) {
@@ -83444,6 +83495,7 @@ ${agentLogs}` : ""}`;
     const { path: fsPath } = req.query || {};
     const sess = sftpSessions.get(req.params.sessionId);
     if (!sess) return reply.code(404).send({ error: "SFTP session not found" });
+    if (sess.userId && p.role !== "admin" && sess.userId !== p.userId) return reply.code(403).send({ error: "\u063A\u064A\u0631 \u0645\u0635\u0631\u062D \u0628\u0627\u0644\u0648\u0635\u0648\u0644 \u0644\u0647\u0630\u0647 \u0627\u0644\u062C\u0644\u0633\u0629" });
     if (!fsPath) return reply.code(400).send({ error: "path required" });
     return new Promise((resolve) => {
       const chunks = [];
@@ -83462,6 +83514,7 @@ ${agentLogs}` : ""}`;
     if (!p) return;
     const sess = sftpSessions.get(req.params.sessionId);
     if (!sess) return reply.code(404).send({ error: "SFTP session not found" });
+    if (sess.userId && p.role !== "admin" && sess.userId !== p.userId) return reply.code(403).send({ error: "\u063A\u064A\u0631 \u0645\u0635\u0631\u062D \u0628\u0627\u0644\u0648\u0635\u0648\u0644 \u0644\u0647\u0630\u0647 \u0627\u0644\u062C\u0644\u0633\u0629" });
     const { path: fsPath } = req.body || {};
     if (!fsPath) return reply.code(400).send({ error: "path required" });
     return new Promise((resolve) => {
@@ -83473,6 +83526,7 @@ ${agentLogs}` : ""}`;
     if (!p) return;
     const sess = sftpSessions.get(req.params.sessionId);
     if (!sess) return reply.code(404).send({ error: "SFTP session not found" });
+    if (sess.userId && p.role !== "admin" && sess.userId !== p.userId) return reply.code(403).send({ error: "\u063A\u064A\u0631 \u0645\u0635\u0631\u062D \u0628\u0627\u0644\u0648\u0635\u0648\u0644 \u0644\u0647\u0630\u0647 \u0627\u0644\u062C\u0644\u0633\u0629" });
     const { path: fsPath, type } = req.query || {};
     if (!fsPath) return reply.code(400).send({ error: "path required" });
     return new Promise((resolve) => {
@@ -83484,6 +83538,7 @@ ${agentLogs}` : ""}`;
     const p = authMiddleware(req, reply);
     if (!p) return;
     const sess = sftpSessions.get(req.params.sessionId);
+    if (sess && sess.userId && p.role !== "admin" && sess.userId !== p.userId) return reply.code(403).send({ error: "\u063A\u064A\u0631 \u0645\u0635\u0631\u062D \u0628\u0627\u0644\u0648\u0635\u0648\u0644 \u0644\u0647\u0630\u0647 \u0627\u0644\u062C\u0644\u0633\u0629" });
     if (sess) {
       try {
         sess.conn.end();
@@ -83509,6 +83564,7 @@ ${agentLogs}` : ""}`;
     if (!p) return;
     const { deviceId, name } = req.body || {};
     if (!deviceId) return reply.code(400).send({ error: "deviceId required" });
+    if (!canAccessDevice(p, deviceId)) return reply.code(403).send({ error: "\u063A\u064A\u0631 \u0645\u0635\u0631\u062D \u0628\u0627\u0644\u0648\u0635\u0648\u0644 \u0644\u0647\u0630\u0627 \u0627\u0644\u062C\u0647\u0627\u0632" });
     const id = uuidv4();
     const now = (/* @__PURE__ */ new Date()).toISOString();
     db.prepare("INSERT INTO recordings (id, device_id, user_id, name, started_at) VALUES (?,?,?,?,?)").run(id, deviceId, p.userId, name || `Recording ${now.slice(0, 10)}`, now);
@@ -83517,7 +83573,9 @@ ${agentLogs}` : ""}`;
   fastify.patch("/api/recordings/:id", async (req, reply) => {
     const p = authMiddleware(req, reply);
     if (!p) return;
-    if (!db.prepare("SELECT id FROM recordings WHERE id=?").get(req.params.id)) return reply.code(404).send({ error: "Not found" });
+    const recPatch = db.prepare("SELECT id, user_id FROM recordings WHERE id=?").get(req.params.id);
+    if (!recPatch) return reply.code(404).send({ error: "Not found" });
+    if (p.role !== "admin" && recPatch.user_id !== p.userId) return reply.code(403).send({ error: "\u063A\u064A\u0631 \u0645\u0635\u0631\u062D \u0628\u0627\u0644\u0648\u0635\u0648\u0644 \u0644\u0647\u0630\u0627 \u0627\u0644\u062A\u0633\u062C\u064A\u0644" });
     const now = (/* @__PURE__ */ new Date()).toISOString();
     db.prepare("UPDATE recordings SET ended_at=? WHERE id=?").run(now, req.params.id);
     return { ok: true, endedAt: now };
@@ -83527,6 +83585,7 @@ ${agentLogs}` : ""}`;
     if (!p) return;
     const rec = db.prepare("SELECT * FROM recordings WHERE id=?").get(req.params.id);
     if (!rec) return reply.code(404).send({ error: "Not found" });
+    if (p.role !== "admin" && rec.user_id !== p.userId) return reply.code(403).send({ error: "\u063A\u064A\u0631 \u0645\u0635\u0631\u062D \u0628\u0627\u0644\u0648\u0635\u0648\u0644 \u0644\u0647\u0630\u0627 \u0627\u0644\u062A\u0633\u062C\u064A\u0644" });
     if (rec.file_path && fs.existsSync(rec.file_path)) try {
       fs.unlinkSync(rec.file_path);
     } catch {
@@ -83783,18 +83842,19 @@ ${agentLogs}` : ""}`;
       }
       const user = resolveWsUser(q);
       if (user) {
-        handleClientWs(socket);
+        handleClientWs(socket, user);
         return;
       }
       handleAgentWs(socket);
     });
     app.get("/pty", { websocket: true }, (socket, request) => {
       const q = request.query || {};
-      if (!resolveWsUser(q)) {
+      const user = resolveWsUser(q);
+      if (!user) {
         socket.close();
         return;
       }
-      handlePtyWs(socket, request);
+      handlePtyWs(socket, request, user);
     });
     app.get("/screen", { websocket: true }, (socket, request) => {
       const q = request.query || {};
