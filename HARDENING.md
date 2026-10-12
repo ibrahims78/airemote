@@ -62,8 +62,8 @@ The desktop-server E2E needs `better-sqlite3` loadable under plain Node:
 
 ## Known remaining items
 
-- Tunnel strategy for stable remote access (Quick Tunnel URL rotates) —
-  pending product decision.
+- Tunnel strategy: **Tailscale (M2) selected** — see `docs/TAILSCALE_SETUP.md` for
+  the stable-access guide; the Cloudflare Quick Tunnel remains available as a fallback.
 - Live two-machine input test checklist (typing/consent) — see the hardening
   report; mac input path is compile-verified only.
 - Hold-to-move for plain character keys is not supported (special keys do
