@@ -132,8 +132,8 @@ function updateDashboard(status) {
   document.getElementById('btn-tunnel-stop').style.display  = tunnelRunning ? '' : 'none'
 
   // Agent connect string
-  const wsUrl  = status.tunnelUrl ? status.tunnelUrl + '/ws'
-    : status.localUrl  ? status.localUrl.replace('http', 'ws') + '/ws'
+  const wsUrl  = status.tunnelUrl ? status.tunnelUrl + '/ws?agent=1'
+    : status.localUrl  ? status.localUrl.replace('http', 'ws') + '/ws?agent=1'
     : null
   const card   = document.getElementById('card-connect-str')
   card.style.display = wsUrl ? '' : 'none'

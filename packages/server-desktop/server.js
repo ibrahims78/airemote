@@ -43,6 +43,8 @@ const agentSockets      = new Map()   // deviceId → { ws, info, deviceName, co
 const clientSockets     = new Set()   // Set<WebSocket>
 const ptyClients        = new Map()   // sessionId → Set<WebSocket>
 const screenViewers     = new Map()   // deviceId  → Set<WebSocket>
+const screenSessions    = new Map()   // sessionId → { deviceId, viewers, startedAt, connectTimer }
+const deviceScreenSess  = new Map()   // deviceId  → sessionId
 const sshSessions       = new Map()   // sessionId → { conn, stream }
 const sftpSessions      = new Map()   // sessionId → { sftp, conn }
 const wsTickets         = new Map()   // ticketId  → { userId, email, role, expires }
@@ -412,6 +414,78 @@ function fireOfflineAlerts(deviceId) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// 8b. Screen session management — interactive relay (v3.2 dashboard protocol)
+// ─────────────────────────────────────────────────────────────────────────────
+function sendToScreenViewers(deviceId, obj) {
+  const viewers = screenViewers.get(deviceId)
+  if (!viewers) return
+  const s = JSON.stringify(obj)
+  for (const vws of viewers) { try { if (vws.readyState === 1) vws.send(s) } catch {} }
+}
+
+function broadcastViewerCount(session) {
+  const s = JSON.stringify({ type: 'screen:viewer_count', payload: { count: session.viewers.size } })
+  for (const vws of session.viewers) { try { if (vws.readyState === 1) vws.send(s) } catch {} }
+}
+
+function clearConnectTimer(session) {
+  if (session && session.connectTimer) { clearTimeout(session.connectTimer); session.connectTimer = null }
+}
+
+// Resolve an agent-reported session id to a live server-side session.
+// v3.2.x agents can report a stale id — fall back to the device’s active session.
+function resolveScreenSession(deviceId, key) {
+  let sid     = key || null
+  let session = sid ? screenSessions.get(sid) : null
+  if (!session) {
+    const active = deviceScreenSess.get(deviceId)
+    if (active) { sid = active; session = screenSessions.get(sid) }
+  }
+  return { sid, session }
+}
+
+function leaveScreenSession(sessionId, socket) {
+  const session = screenSessions.get(sessionId)
+  if (!session) return
+  if (socket) session.viewers.delete(socket)
+  else session.viewers.clear()
+
+  const set = screenViewers.get(session.deviceId)
+  if (set) {
+    if (socket) set.delete(socket)
+    else set.clear()
+    if (!set.size) screenViewers.delete(session.deviceId)
+  }
+
+  if (session.viewers.size === 0) {
+    clearConnectTimer(session)
+    const rec = agentSockets.get(session.deviceId)
+    if (rec) sendJson(rec.ws, { type: 'server:screen_stop', payload: { sessionId }, timestamp: Date.now() })
+    screenSessions.delete(sessionId)
+    if (deviceScreenSess.get(session.deviceId) === sessionId) deviceScreenSess.delete(session.deviceId)
+  } else {
+    broadcastViewerCount(session)
+  }
+}
+
+function closeScreenSession(sessionId, errMsg) {
+  const session = screenSessions.get(sessionId)
+  if (!session) return
+  clearConnectTimer(session)
+  for (const vws of session.viewers) {
+    try {
+      if (vws.readyState === 1) {
+        if (errMsg) vws.send(JSON.stringify({ type: 'screen:error', payload: { message: errMsg } }))
+        vws.close()
+      }
+    } catch {}
+  }
+  screenSessions.delete(sessionId)
+  if (deviceScreenSess.get(session.deviceId) === sessionId) deviceScreenSess.delete(session.deviceId)
+  screenViewers.delete(session.deviceId)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // 9. WebSocket — Agent
 // ─────────────────────────────────────────────────────────────────────────────
 function handleAgentWs(socket) {
@@ -421,6 +495,8 @@ function handleAgentWs(socket) {
 
   const PING_MS = 15000; const PONG_MS = 12000
   let pingTimer = null; let pongTimer = null
+  // Sockets that never register (e.g. unauthenticated probes) are dropped.
+  const regTimer = setTimeout(() => { if (!registered) { try { socket.close() } catch {} } }, 10000)
 
   function schedulePing() {
     clearTimeout(pingTimer)
@@ -437,14 +513,33 @@ function handleAgentWs(socket) {
   socket.on('message', (raw, isBinary) => {
     if (isBinary) {
       if (!deviceId) return
+      // v3.1+ binary frame from the agent:
+      //   [0x01][sessionId:36B][width:4B][height:4B][seq:4B][flags:1B][JPEG...]
+      // Forwarded to dashboard viewers as:
+      //   [width:4B][height:4B][seq:4B][flags:1B][JPEG...]
       try {
-        const buf       = Buffer.isBuffer(raw) ? raw : Buffer.from(raw)
-        const idLen     = buf.readUInt32BE(0)
-        const sessionId = buf.slice(4, 4 + idLen).toString('utf8')
-        const frame     = buf.slice(4 + idLen)
-        broadcastToClients({ type: 'screen:frame', payload: { deviceId, sessionId, data: frame.toString('base64') } })
+        const buf = Buffer.isBuffer(raw) ? raw : Buffer.from(raw)
+        if (buf.length < 50 || buf[0] !== 0x01) return
+
+        const embeddedId = buf.slice(1, 37).toString('utf8').replace(/\0/g, '')
+        const width  = buf.readUInt32BE(37)
+        const height = buf.readUInt32BE(41)
+        const seq    = buf.readUInt32BE(45)
+        const flags  = buf[49]
+        const jpeg   = buf.slice(50)
+
+        const { session } = resolveScreenSession(deviceId, embeddedId)
+        if (!session) return
+        clearConnectTimer(session)
+
+        const header = Buffer.allocUnsafe(13)
+        header.writeUInt32BE(width,  0)
+        header.writeUInt32BE(height, 4)
+        header.writeUInt32BE(seq,    8)
+        header[12] = flags
+        const packet  = Buffer.concat([header, jpeg])
         const viewers = screenViewers.get(deviceId)
-        if (viewers?.size > 0) { for (const vws of viewers) { try { if (vws.readyState === 1) vws.send(raw) } catch {} } }
+        if (viewers) { for (const vws of viewers) { try { if (vws.readyState === 1) vws.send(packet) } catch {} } }
       } catch {}
       return
     }
@@ -459,6 +554,7 @@ function handleAgentWs(socket) {
       const device = db.prepare("SELECT * FROM devices WHERE token=?").get(token)
       if (!device) { sendJson(socket, { type: 'server:error', payload: { message: 'Invalid token' } }); socket.close(); return }
       deviceId = device.id; registered = true
+      clearTimeout(regTimer)
       markDeviceOnline(deviceId, info)
       if (capabilities) db.prepare("UPDATE devices SET capabilities=? WHERE id=?").run(JSON.stringify(capabilities), deviceId)
       agentSockets.set(deviceId, { ws: socket, info, deviceName: device.name, connectedAt: Date.now(), stats: null })
@@ -507,7 +603,72 @@ function handleAgentWs(socket) {
     }
 
     if (type === 'agent:screen_frame') {
-      broadcastToClients({ type: 'screen:frame', payload: { deviceId, ...payload } })
+      const { session } = resolveScreenSession(deviceId, payload.sessionId)
+      if (!session) return
+      clearConnectTimer(session)
+      sendToScreenViewers(deviceId, {
+        type: 'screen:frame',
+        payload: {
+          data:        payload.data,
+          width:       payload.width,
+          height:      payload.height,
+          seq:         payload.seq,
+          keyframe:    payload.keyframe,
+          quality:     payload.quality,
+          deltaRegion: payload.deltaRegion
+        },
+        timestamp: Date.now()
+      })
+      return
+    }
+
+    if (type === 'agent:screen_closed') {
+      const { sid, session } = resolveScreenSession(deviceId, payload.sessionId)
+      if (session) {
+        sendToScreenViewers(deviceId, { type: 'screen:closed', payload: {} })
+        clearConnectTimer(session)
+        screenSessions.delete(sid)
+        if (deviceScreenSess.get(deviceId) === sid) deviceScreenSess.delete(deviceId)
+      }
+      return
+    }
+
+    if (type === 'agent:screen_error' || type === 'agent:screen_unavailable') {
+      const { sid, session } = resolveScreenSession(deviceId, payload.sessionId)
+      if (session) {
+        sendToScreenViewers(deviceId, {
+          type:  type === 'agent:screen_error' ? 'screen:error' : 'screen:unavailable',
+          payload: { message: payload.message || '' }
+        })
+        closeScreenSession(sid, null)
+      }
+      return
+    }
+
+    if (type === 'agent:screen_control_granted' || type === 'agent:screen_control_denied') {
+      sendToScreenViewers(deviceId, {
+        type:    type === 'agent:screen_control_granted' ? 'screen:control_granted' : 'screen:control_denied',
+        payload: { requestId: payload.requestId },
+        timestamp: Date.now()
+      })
+      return
+    }
+
+    if (type === 'agent:screen_monitors') {
+      sendToScreenViewers(deviceId, { type: 'screen:monitors', payload: { monitors: payload.monitors } })
+      return
+    }
+
+    if (type === 'agent:screen_clipboard') {
+      sendToScreenViewers(deviceId, { type: 'screen:clipboard', payload: { text: payload.text } })
+      return
+    }
+
+    if (type === 'agent:screen_chat') {
+      sendToScreenViewers(deviceId, {
+        type: 'screen:chat',
+        payload: { text: payload.text, sender: payload.sender || 'host', ts: payload.ts || Date.now() }
+      })
       return
     }
 
@@ -520,8 +681,12 @@ function handleAgentWs(socket) {
   })
 
   socket.on('close', () => {
-    clearTimeout(pingTimer); clearTimeout(pongTimer)
-    if (deviceId) { agentSockets.delete(deviceId); markDeviceOffline(deviceId); fireOfflineAlerts(deviceId) }
+    clearTimeout(pingTimer); clearTimeout(pongTimer); clearTimeout(regTimer)
+    if (deviceId) {
+      const sid = deviceScreenSess.get(deviceId)
+      if (sid) closeScreenSession(sid, 'الجهاز انقطع اتصاله / Device disconnected')
+      agentSockets.delete(deviceId); markDeviceOffline(deviceId); fireOfflineAlerts(deviceId)
+    }
   })
   socket.on('error', () => {})
 }
@@ -612,30 +777,136 @@ function handlePtyWs(socket, request) {
 // ─────────────────────────────────────────────────────────────────────────────
 // 12. WebSocket — Screen Viewer
 // ─────────────────────────────────────────────────────────────────────────────
-function handleScreenWs(socket, request) {
+function handleScreenWs(socket, request, user) {
   const query    = request.query || {}
   const deviceId = query.deviceId
   if (!deviceId) { socket.close(); return }
 
+  const clamp = (n, lo, hi, dflt) => {
+    const v = parseInt(n)
+    return isNaN(v) ? dflt : Math.min(hi, Math.max(lo, v))
+  }
+  const fps      = clamp(query.fps,      1,   30,   20)
+  const quality  = clamp(query.quality,  10,  95,   65)
+  const maxWidth = clamp(query.maxWidth, 320, 1920, 1280)
+
+  if (!agentSockets.get(deviceId)) {
+    try { socket.send(JSON.stringify({ type: 'screen:error', payload: { message: 'الجهاز غير متصل / Device is offline' } })) } catch {}
+    socket.close()
+    return
+  }
+
+  // ── Join an existing capture session, or start a new one ─────────────────
+  let sessionId = deviceScreenSess.get(deviceId)
+  let session   = sessionId ? screenSessions.get(sessionId) : null
+
+  if (session && session.viewers.size > 0) {
+    session.viewers.add(socket)
+  } else {
+    sessionId = uuidv4()
+    session   = { deviceId, viewers: new Set([socket]), startedAt: Date.now(), connectTimer: null }
+    screenSessions.set(sessionId, session)
+    deviceScreenSess.set(deviceId, sessionId)
+
+    const rec = agentSockets.get(deviceId)
+    if (rec) sendJson(rec.ws, { type: 'server:screen_start', payload: { sessionId, fps, quality, maxWidth }, timestamp: Date.now() })
+
+    session.connectTimer = setTimeout(() => {
+      try { if (socket.readyState === 1) socket.send(JSON.stringify({ type: 'screen:error', payload: { message: 'Agent did not start screen capture — make sure the agent is v2.0.0+' } })) } catch {}
+      leaveScreenSession(sessionId, socket)
+    }, 60000)
+  }
+
   if (!screenViewers.has(deviceId)) screenViewers.set(deviceId, new Set())
   screenViewers.get(deviceId).add(socket)
 
-  const agentRec = agentSockets.get(deviceId)
-  if (!agentRec) { sendJson(socket, { type: 'error', error: 'Device offline' }) }
-  else sendJson(socket, { type: 'screen_ready', deviceId })
+  if (session.viewers.size > 1) {
+    try { socket.send(JSON.stringify({ type: 'screen:viewer_count', payload: { count: session.viewers.size } })) } catch {}
+  }
+  broadcastViewerCount(session)
 
+  // ── Keep-alive (protocol ping) ───────────────────────────────────────────
+  const keepAlive = setInterval(() => {
+    try { if (socket.readyState === 1) socket.ping() } catch {}
+  }, 15000)
+
+  // ── Dashboard → agent relay ──────────────────────────────────────────────
   socket.on('message', (raw) => {
     let msg; try { msg = JSON.parse(raw) } catch { return }
+    const payload = msg.payload || {}
     const rec = agentSockets.get(deviceId)
     if (!rec) return
-    if (msg.type === 'screen_start')   sendJson(rec.ws, { type: 'server:screen_start',   payload: { sessionId: uuidv4(), fps: msg.fps || 10, quality: msg.quality || 60, maxWidth: msg.maxWidth || 1280 } })
-    if (msg.type === 'screen_stop')    sendJson(rec.ws, { type: 'server:screen_stop',    payload: { sessionId: msg.sessionId } })
-    if (msg.type === 'screen_control') sendJson(rec.ws, { type: 'server:screen_control', payload: msg })
+
+    switch (msg.type) {
+      case 'screen:mouse_event':
+        sendJson(rec.ws, { type: 'server:screen_mouse', payload: { ...payload, sessionId }, timestamp: Date.now() })
+        break
+      case 'screen:key_event':
+        sendJson(rec.ws, { type: 'server:screen_key', payload: { ...payload, sessionId }, timestamp: Date.now() })
+        break
+      case 'screen:set_quality':
+        sendJson(rec.ws, {
+          type: 'server:screen_start',
+          payload: {
+            sessionId,
+            fps:      clamp(payload.fps,      1,   30,   fps),
+            quality:  clamp(payload.quality,  10,  95,   quality),
+            maxWidth: clamp(payload.maxWidth, 320, 1920, maxWidth),
+            monitorId: payload.monitorId || 0
+          },
+          timestamp: Date.now()
+        })
+        break
+      case 'screen:set_monitor':
+        sendJson(rec.ws, { type: 'server:screen_set_monitor', payload: { sessionId, monitorId: payload.monitorId || 0 }, timestamp: Date.now() })
+        sendJson(rec.ws, { type: 'server:screen_start', payload: { sessionId, fps, quality, maxWidth, monitorId: payload.monitorId || 0 }, timestamp: Date.now() })
+        break
+      case 'screen:get_monitors':
+        sendJson(rec.ws, { type: 'server:screen_get_monitors', payload: { sessionId }, timestamp: Date.now() })
+        break
+      case 'screen:clipboard_read':
+        sendJson(rec.ws, { type: 'server:screen_clipboard_read', payload: { sessionId }, timestamp: Date.now() })
+        break
+      case 'screen:clipboard_write':
+        sendJson(rec.ws, { type: 'server:screen_clipboard_write', payload: { sessionId, text: String(payload.text || '').slice(0, 100000) }, timestamp: Date.now() })
+        break
+      case 'screen:privacy':
+        sendJson(rec.ws, { type: 'server:screen_privacy', payload: { enable: !!payload.enable }, timestamp: Date.now() })
+        break
+      case 'screen:request_control':
+        sendJson(rec.ws, {
+          type: 'server:screen_control_request',
+          payload: { sessionId, requestId: payload.requestId || uuidv4(), requesterName: (user && user.email) || 'viewer' },
+          timestamp: Date.now()
+        })
+        break
+      case 'screen:chat':
+        sendJson(rec.ws, { type: 'server:screen_chat', payload: { sessionId, text: String(payload.text || '').slice(0, 2000), sender: 'viewer', ts: Date.now() }, timestamp: Date.now() })
+        break
+      case 'screen:ping':
+        try { if (socket.readyState === 1) socket.send(JSON.stringify({ type: 'screen:pong', payload: { clientTs: payload.ts, serverTs: Date.now() }, timestamp: Date.now() })) } catch {}
+        break
+      case 'screen:stop':
+        leaveScreenSession(sessionId, socket)
+        try { socket.close() } catch {}
+        break
+
+      // ── Legacy protocol (older dashboards / clients) ─────────────────────
+      case 'screen_start':
+        sendJson(rec.ws, { type: 'server:screen_start', payload: { sessionId: uuidv4(), fps: msg.fps || 10, quality: msg.quality || 60, maxWidth: msg.maxWidth || 1280 } })
+        break
+      case 'screen_stop':
+        sendJson(rec.ws, { type: 'server:screen_stop', payload: { sessionId: msg.sessionId } })
+        break
+      case 'screen_control':
+        sendJson(rec.ws, { type: 'server:screen_control', payload: msg })
+        break
+    }
   })
 
   socket.on('close', () => {
-    const set = screenViewers.get(deviceId)
-    if (set) { set.delete(socket); if (!set.size) screenViewers.delete(deviceId) }
+    clearInterval(keepAlive)
+    leaveScreenSession(sessionId, socket)
   })
   socket.on('error', () => {})
 }
@@ -1582,8 +1853,11 @@ async function start(config) {
       const q = request.query || {}
       if (q.agent === '1' || q.type === 'agent') { handleAgentWs(socket); return }
       const user = resolveWsUser(q)
-      if (!user) { socket.close(); return }
-      handleClientWs(socket)
+      if (user) { handleClientWs(socket); return }
+      // Compatibility: agents that connect with a plain ws:// URL (as shown by
+      // the in-app connect string) authenticate via the agent:register message.
+      // Sockets that never register are closed by the register timeout.
+      handleAgentWs(socket)
     })
 
     app.get('/pty', { websocket: true }, (socket, request) => {
@@ -1594,8 +1868,9 @@ async function start(config) {
 
     app.get('/screen', { websocket: true }, (socket, request) => {
       const q = request.query || {}
-      if (!resolveWsUser(q)) { socket.close(); return }
-      handleScreenWs(socket, request)
+      const user = resolveWsUser(q)
+      if (!user) { socket.close(); return }
+      handleScreenWs(socket, request, user)
     })
 
     app.get('/ssh', { websocket: true }, (socket, request) => {
