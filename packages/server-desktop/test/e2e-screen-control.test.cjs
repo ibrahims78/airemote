@@ -30,7 +30,15 @@ function loadWs() {
 }
 
 const WebSocket = loadWs()
-const Database = require('better-sqlite3')
+let Database
+try {
+  Database = require('better-sqlite3')
+  const _probe = new Database(':memory:'); _probe.close()
+} catch (e) {
+  console.log('SKIP: better-sqlite3 is not usable under Node in this checkout (most likely built for Electron).')
+  console.log('      Run desktop-server tests in a source checkout where better-sqlite3 targets Node.')
+  process.exit(0)
+}
 const jwt = require('jsonwebtoken')
 
 const SERVER_DIR = path.resolve(__dirname, '..')
