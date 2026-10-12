@@ -566,15 +566,22 @@ export function ScreenViewer({ deviceId, deviceName }: Props) {
     const handleKeyDown = (e: KeyboardEvent) => {
       e.preventDefault(); e.stopPropagation(); resetIdle()
       const mods = getMods(e)
-      // Send both 'down' (for held-key support: Ctrl+drag, Shift+select, game keys)
-      // and 'press' (for SendKeys text input on Windows)
-      sendWs({ type: 'screen:key_event', payload: { type: 'down',  key: e.key, modifiers: mods } })
-      sendWs({ type: 'screen:key_event', payload: { type: 'press', key: e.key, modifiers: mods } })
+      const hasAccel = !!(mods && mods.some(m => m === 'ctrl' || m === 'alt' || m === 'meta'))
+      if (e.key.length === 1 && !hasAccel) {
+        // Printable text (incl. Arabic/Unicode): a single semantic "press".
+        // Sending down+press together used to duplicate input on every agent.
+        sendWs({ type: 'screen:key_event', payload: { type: 'press', key: e.key, modifiers: mods } })
+        return
+      }
+      // Physical keys: modifiers, accelerators (Ctrl+C …) and special keys.
+      sendWs({ type: 'screen:key_event', payload: { type: 'down', key: e.key, modifiers: mods } })
     }
 
     const handleKeyUp = (e: KeyboardEvent) => {
       e.preventDefault(); e.stopPropagation()
       const mods = getMods(e)
+      const hasAccel = !!(mods && mods.some(m => m === 'ctrl' || m === 'alt' || m === 'meta'))
+      if (e.key.length === 1 && !hasAccel) return // completed by the single 'press'
       sendWs({ type: 'screen:key_event', payload: { type: 'up', key: e.key, modifiers: mods } })
     }
 

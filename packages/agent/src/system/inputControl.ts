@@ -30,7 +30,17 @@ public class WinIC{
   [DllImport("user32.dll")] public static extern bool SetCursorPos(int x,int y);
   [DllImport("user32.dll")] public static extern void mouse_event(uint f,int x,int y,int d,IntPtr e);
   [DllImport("user32.dll")] public static extern void keybd_event(byte vk,byte sc,uint flags,IntPtr extra);
+  [DllImport("user32.dll")] public static extern uint SendInput(uint n,INPUT[] inputs,int cb);
+  [StructLayout(LayoutKind.Sequential)] public struct INPUT{ public uint type; public InputUnion U; }
+  [StructLayout(LayoutKind.Explicit)] public struct InputUnion{ [FieldOffset(0)] public KEYBDINPUT ki; }
+  [StructLayout(LayoutKind.Sequential)] public struct KEYBDINPUT{ public ushort wVk; public ushort wScan; public uint dwFlags; public uint time; public IntPtr dwExtraInfo; }
   public const uint LD=2,LU=4,RD=8,RU=16,MD=32,MU=64,WH=2048,KEYUP=2;
+  public static void SendUnicode(int code){
+    INPUT[] a=new INPUT[2];
+    a[0].type=1; a[0].U.ki.wScan=(ushort)code; a[0].U.ki.dwFlags=4;
+    a[1].type=1; a[1].U.ki.wScan=(ushort)code; a[1].U.ki.dwFlags=6;
+    SendInput(2,a,Marshal.SizeOf(typeof(INPUT)));
+  }
 }
 '@ -Language CSharp
 Add-Type -AssemblyName System.Windows.Forms
@@ -344,19 +354,29 @@ export async function controlKeyboard(evt: KeyEvent): Promise<void> {
 async function controlKeyboardLinux(evt: KeyEvent, mods: string[]): Promise<void> {
   const display = process.env.DISPLAY || ':0'
   const env = { ...process.env, DISPLAY: display }
-  const keyCombo = buildXdotoolKeyCombo(evt.key, mods)
+  const isSingleChar = evt.key.length === 1
+  const hasAccel     = mods.includes('ctrl') || mods.includes('alt') || mods.includes('meta')
 
   try {
-    switch (evt.type) {
-      case 'press':
-        await execAsync(`xdotool key ${keyCombo}`, { env, timeout: 1000 })
-        break
-      case 'down':
-        await execAsync(`xdotool keydown ${keyCombo}`, { env, timeout: 1000 })
-        break
-      case 'up':
-        await execAsync(`xdotool keyup ${keyCombo}`, { env, timeout: 1000 })
-        break
+    if (evt.type === 'press') {
+      if (isSingleChar && !hasAccel) {
+        // Type the exact character (Unicode) exactly once. Modifiers are
+        // cleared so a physically-held Shift cannot alter the character.
+        await execFileAsync('xdotool', ['type', '--clearmodifiers', '--delay', '0', '--', evt.key], { env, timeout: 2000 })
+        return
+      }
+      // Legacy specials-press → the down/up path owns them now.
+      return
+    }
+
+    // Plain printable chars are typed via the single 'press' event only.
+    if (isSingleChar && !hasAccel) return
+
+    const keyCombo = buildXdotoolKeyCombo(evt.key, mods)
+    if (evt.type === 'down') {
+      await execAsync(`xdotool keydown ${keyCombo}`, { env, timeout: 1000 })
+    } else if (evt.type === 'up') {
+      await execAsync(`xdotool keyup ${keyCombo}`, { env, timeout: 1000 })
     }
   } catch (err) {
     console.error('[input] xdotool key error:', (err as Error).message)
@@ -364,18 +384,27 @@ async function controlKeyboardLinux(evt: KeyEvent, mods: string[]): Promise<void
 }
 
 async function controlKeyboardWindows(evt: KeyEvent, mods: string[]): Promise<void> {
-  const keyLower = evt.key.toLowerCase()
+  const keyLower     = evt.key.toLowerCase()
+  const isSingleChar = evt.key.length === 1
+  const hasAccel     = mods.includes('ctrl') || mods.includes('alt') || mods.includes('meta')
 
   if (evt.type === 'press') {
-    // SendKeys for text input (handles layout-aware chars, IME, etc.)
-    const keyCombo = buildPsKeyCombo(evt.key, mods)
-    const escaped  = keyCombo.replace(/'/g, "''")
-    sendWinCmd(`[System.Windows.Forms.SendKeys]::SendWait('${escaped}')`)
+    if (isSingleChar && !hasAccel) {
+      // Layout-independent Unicode input — types the exact character once
+      // (Arabic, symbols, any keyboard layout) via SendInput KEYEVENTF_UNICODE.
+      const code = evt.key.codePointAt(0) ?? 0
+      if (code > 0) { sendWinCmd(`[WinIC]::SendUnicode(${code})`); return }
+    }
+    // Legacy: older dashboards sent 'press' for special keys too. The down/up
+    // path is authoritative now — ignoring this avoids duplicated input.
     return
   }
 
-  // 'down' / 'up' — use keybd_event for held-key support (Ctrl+drag, Shift+select, gaming)
-  const vk = WIN_VK[keyLower] ?? (evt.key.length === 1 ? evt.key.toUpperCase().charCodeAt(0) : null)
+  // 'down' / 'up' — keybd_event for held keys, modifiers, accelerators and
+  // special keys. Plain printable chars are typed via 'press' only.
+  if (isSingleChar && !hasAccel) return
+
+  const vk = WIN_VK[keyLower] ?? (isSingleChar ? evt.key.toUpperCase().charCodeAt(0) : null)
   if (!vk) return
 
   const kflag = evt.type === 'up' ? '[WinIC]::KEYUP' : '0'
@@ -398,27 +427,46 @@ async function controlKeyboardWindows(evt: KeyEvent, mods: string[]): Promise<vo
   sendWinCmd(cmds.join(';'))
 }
 
+// AppleScript virtual key codes for special keys (macOS)
+const MAC_KEY_CODE: Record<string, number> = {
+  'enter': 36, 'return': 36, 'numpadenter': 76, 'tab': 48, 'escape': 53, 'esc': 53,
+  'backspace': 51, 'delete': 117, 'forwarddelete': 117, 'space': 49,
+  'arrowleft': 123, 'arrowright': 124, 'arrowdown': 125, 'arrowup': 126,
+  'home': 115, 'end': 119, 'pageup': 116, 'pagedown': 121,
+  'f1': 122, 'f2': 120, 'f3': 99, 'f4': 118, 'f5': 96, 'f6': 97,
+  'f7': 98, 'f8': 100, 'f9': 101, 'f10': 109, 'f11': 103, 'f12': 111,
+}
+
 async function controlKeyboardMac(evt: KeyEvent, mods: string[]): Promise<void> {
-  if (evt.type !== 'press') return
+  // macOS cannot hold physical keys through osascript — single-shot actions only.
+  //  - plain characters arrive as 'press' (sent once by the dashboard)
+  //  - specials and accelerator combos arrive as 'down'; 'up' is a no-op.
+  if (evt.type === 'up') return
 
-  const keyName = XDOTOOL_KEY_MAP[evt.key.toLowerCase()] ?? evt.key
-  let script = ''
+  const lower        = evt.key.toLowerCase()
+  const isSingleChar = evt.key.length === 1
+  const hasAccel     = mods.includes('ctrl') || mods.includes('alt') || mods.includes('meta')
 
-  if (mods.length > 0) {
-    const modUsing = mods.map(m => {
-      if (m === 'ctrl')  return 'control down'
-      if (m === 'alt')   return 'option down'
-      if (m === 'shift') return 'shift down'
-      if (m === 'meta')  return 'command down'
-      return m
-    })
-    script = `tell application "System Events" to keystroke "${keyName}" using {${modUsing.join(', ')}}`
-  } else {
-    script = `tell application "System Events" to keystroke "${keyName}"`
-  }
+  if (['shift', 'control', 'alt', 'meta', 'capslock'].includes(lower)) return
+  if (evt.type === 'press' && !isSingleChar) return           // legacy specials-press → down path owns them
+  if (evt.type === 'press' && hasAccel) return                // accelerator chars → down path owns them
+  if (evt.type === 'down' && isSingleChar && !hasAccel) return // plain chars → 'press' owns them
+
+  const usingClause = mods.length > 0
+    ? ' using {' + mods.map(m => m === 'ctrl' ? 'control down' : m === 'alt' ? 'option down' : m === 'shift' ? 'shift down' : m === 'meta' ? 'command down' : m).join(', ') + '}'
+    : ''
 
   try {
-    await execAsync(`osascript -e '${script}'`, { timeout: 2000 })
+    if (isSingleChar) {
+      // The character is already fully resolved (incl. Shift) by the browser.
+      const usingForChar = hasAccel ? usingClause : ''
+      const esc = evt.key.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
+      await execFileAsync('osascript', ['-e', `tell application "System Events" to keystroke "${esc}"${usingForChar}`], { timeout: 2000 })
+      return
+    }
+    const code = MAC_KEY_CODE[lower]
+    if (code === undefined) return
+    await execFileAsync('osascript', ['-e', `tell application "System Events" to key code ${code}${usingClause}`], { timeout: 2000 })
   } catch (err) {
     console.error('[input] osascript key error:', (err as Error).message)
   }

@@ -36,6 +36,7 @@ let reconnectTimer = null
 let reconnectDelay = RECONNECT_BASE
 let lastRegisterPayload = null
 let lastReRegisterAt = 0
+const grantedSessions = new Set()
 let sessionStart   = null
 let config         = loadConfig()
 let logEntries     = []
@@ -461,10 +462,11 @@ function handleMsg(msg) {
       handleScreenStop(msg.payload)
       break
     case 'server:screen_mouse':
-      injectMouse(msg.payload)
+      // Consent enforcement: input requires a granted control session.
+      if (grantedSessions.has(msg.payload?.sessionId)) injectMouse(msg.payload)
       break
     case 'server:screen_key':
-      injectKey(msg.payload)
+      if (grantedSessions.has(msg.payload?.sessionId)) injectKey(msg.payload)
       break
     case 'server:screen_clipboard_read': {
       const clipText = clipboard.readText()
@@ -495,6 +497,7 @@ function handleMsg(msg) {
         detail:    'هل تسمح بالتحكم الكامل بالفأرة ولوحة المفاتيح؟\nAllow full mouse & keyboard control?'
       }).then(({ response }) => {
         const type = response === 0 ? 'agent:screen_control_granted' : 'agent:screen_control_denied'
+        if (response === 0 && scSid) grantedSessions.add(scSid)
         send({ type, payload: { sessionId: scSid, requestId }, timestamp: Date.now() })
         addLog('info', response === 0 ? '✅ منحت إذن التحكم' : '❌ رفضت طلب التحكم')
       }).catch(() => {
@@ -1006,7 +1009,17 @@ public class WinUI{
   [DllImport("user32.dll")]public static extern bool SetCursorPos(int x,int y);
   [DllImport("user32.dll")]public static extern void mouse_event(uint f,int x,int y,int d,IntPtr e);
   [DllImport("user32.dll")]public static extern void keybd_event(byte vk,byte sc,uint f,IntPtr e);
+  [DllImport("user32.dll")]public static extern uint SendInput(uint n,INPUT[] inputs,int cb);
+  [StructLayout(LayoutKind.Sequential)] public struct INPUT{ public uint type; public InputUnion U; }
+  [StructLayout(LayoutKind.Explicit)] public struct InputUnion{ [FieldOffset(0)] public KEYBDINPUT ki; }
+  [StructLayout(LayoutKind.Sequential)] public struct KEYBDINPUT{ public ushort wVk; public ushort wScan; public uint dwFlags; public uint time; public IntPtr dwExtraInfo; }
   public const uint LD=2,LU=4,RD=8,RU=16,MD=32,MU=64,WH=2048,KU=2;
+  public static void SendUnicode(int code){
+    INPUT[] a=new INPUT[2];
+    a[0].type=1; a[0].U.ki.wScan=(ushort)code; a[0].U.ki.dwFlags=4;
+    a[1].type=1; a[1].U.ki.wScan=(ushort)code; a[1].U.ki.dwFlags=6;
+    SendInput(2,a,Marshal.SizeOf(typeof(INPUT)));
+  }
 }
 '@ -Language CSharp
 Add-Type -AssemblyName System.Windows.Forms
@@ -1083,22 +1096,28 @@ const WIN_VK_MAP = {
 function injectKey(payload) {
   if (process.platform !== 'win32') return
   const { key, modifiers, type } = payload
+  const isSingleChar = typeof key === 'string' && key.length === 1
+  const modsArr      = Array.isArray(modifiers) ? modifiers : []
+  const hasAccel     = modsArr.includes('ctrl') || modsArr.includes('alt') || modsArr.includes('meta') ||
+                       !!(modifiers && (modifiers.ctrl || modifiers.alt || modifiers.meta))
 
   if (type === 'press') {
-    // SendKeys — best for text input and layout-aware characters
-    let sk = KEY_TO_SENDKEYS[key] ?? (key && key.length === 1 ? key : null)
-    if (!sk) return
-    let prefix = ''
-    if (modifiers?.includes('ctrl')  || modifiers?.ctrl)  prefix += '^'
-    if (modifiers?.includes('alt')   || modifiers?.alt)   prefix += '%'
-    if (modifiers?.includes('shift') || modifiers?.shift) prefix += '+'
-    const sendStr = prefix ? `${prefix}(${sk})` : sk
-    sendPsCmd(`[System.Windows.Forms.SendKeys]::SendWait('${sendStr.replace(/'/g, "''")}')`)
+    if (isSingleChar && !hasAccel) {
+      // Layout-independent Unicode input — types the exact character once
+      // (Arabic, symbols, any layout) via SendInput KEYEVENTF_UNICODE.
+      const code = key.codePointAt(0)
+      if (code) { sendPsCmd(`[WinUI]::SendUnicode(${code})`); return }
+    }
+    // Legacy: older dashboards sent 'press' for special keys too. The down/up
+    // path is authoritative now — ignoring this avoids duplicated input.
     return
   }
 
-  // 'down' / 'up' — keybd_event for held-key support
-  const vk = WIN_VK_MAP[key] ?? (key && key.length === 1 ? key.toUpperCase().charCodeAt(0) : null)
+  // 'down' / 'up' — keybd_event for held keys, modifiers, accelerators and
+  // special keys. Plain printable chars are typed via 'press' only.
+  if (isSingleChar && !hasAccel) return
+
+  const vk = WIN_VK_MAP[key] ?? (isSingleChar ? key.toUpperCase().charCodeAt(0) : null)
   if (!vk) return
 
   const isUp   = type === 'up'

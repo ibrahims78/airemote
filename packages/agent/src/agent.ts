@@ -49,6 +49,7 @@ export class AgentService {
   private running = false
   private lastRegisterPayload: AgentRegisterPayload | null = null
   private lastReRegisterAt = 0
+  private controlGranted   = new Set<string>()
   private ptyProcs         = new Map<string, PtyProcess>()
   private screenTimers     = new Map<string, NodeJS.Timeout>()
   private screenSeq        = new Map<string, number>()
@@ -249,8 +250,9 @@ export class AgentService {
 
         // ── Remote Control ─────────────────────────────────────────────────
         case 'server:screen_mouse': {
-          const p = message.payload as RemoteMouseEvent
-          if (this.controlAvailable) {
+          const p = message.payload as RemoteMouseEvent & { sessionId?: string }
+          // Consent enforcement: mouse input requires a granted control session.
+          if (this.controlAvailable && p.sessionId && this.controlGranted.has(p.sessionId)) {
             controlMouse({
               type: p.type,
               x: p.x, y: p.y,
@@ -261,8 +263,9 @@ export class AgentService {
           break
         }
         case 'server:screen_key': {
-          const p = message.payload as RemoteKeyEvent
-          if (this.controlAvailable) {
+          const p = message.payload as RemoteKeyEvent & { sessionId?: string }
+          // Consent enforcement: keyboard input requires a granted control session.
+          if (this.controlAvailable && p.sessionId && this.controlGranted.has(p.sessionId)) {
             controlKeyboard({
               type: p.type,
               key: p.key,
@@ -335,6 +338,7 @@ export class AgentService {
 
           if (unattended) {
             console.log(`🔐 Control request from "${p.requesterName}" — auto-granting (AGENT_UNATTENDED=true)`)
+            this.controlGranted.add(p.sessionId)
             this.send({
               type: 'agent:screen_control_granted',
               payload: { sessionId: p.sessionId, requestId: p.requestId },
@@ -348,6 +352,7 @@ export class AgentService {
             const { sessionId, requestId } = p
             setTimeout(() => {
               console.log(`🔐 Auto-granting control to "${p.requesterName}" after timeout`)
+              this.controlGranted.add(sessionId)
               this.send({
                 type: 'agent:screen_control_granted',
                 payload: { sessionId, requestId },
