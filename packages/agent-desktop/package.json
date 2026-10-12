@@ -35,6 +35,12 @@
     "win": {
       "target": [
         {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
           "target": "zip",
           "arch": [
             "x64"
@@ -44,8 +50,21 @@
       "icon": "build/icon.ico",
       "requestedExecutionLevel": "asInvoker",
       "signAndEditExecutable": false,
-      "signingHashAlgorithms": null
+      "signingHashAlgorithms": null,
+      "artifactName": "AiRemote-Agent-v${version}-Windows-x64.zip"
     },
-    "publish": null
+    "publish": null,
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "AiRemote Agent",
+      "artifactName": "AiRemote-Agent-Setup-v${version}-x64.exe",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "deleteAppDataOnUninstall": false
+    }
   }
 }
