@@ -29,6 +29,12 @@ releases/**/win-unpacked/
 releases/**/builder-debug.yml
 releases/**/builder-effective-config.yaml
 
+# Heavy release binaries & runtime data (stay out of git; use GitHub Releases)
+/data/
+releases/**/AiRemote-Agent-*-linux-x64
+releases/**/AiRemote-Agent-*-linux-arm64
+releases/**/AiRemote-Agent-*-macos-*
+
 # ── OS ───────────────────────────────────────────────────────
 .DS_Store
 Thumbs.db
