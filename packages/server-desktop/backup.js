@@ -37,7 +37,7 @@ async function exportBackup(destPath) {
 
     // Metadata
     const meta = JSON.stringify({
-      version:     '3.2.0',
+      version:     '3.2.1',
       created_at:  new Date().toISOString(),
       hostname:    require('os').hostname(),
     }, null, 2)

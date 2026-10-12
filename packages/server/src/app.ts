@@ -91,7 +91,7 @@ export async function buildServer() {
   // ── Health check ─────────────────────────────────────────────────────────
   app.get('/health', async () => ({
     status: 'ok',
-    version: '3.2.0',
+    version: '3.2.1',
     time: new Date().toISOString()
   }))
 

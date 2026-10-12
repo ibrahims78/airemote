@@ -43,7 +43,7 @@ contextBridge.exposeInMainWorld('airemote', {
   // ── Desktop extras (for React Dashboard detection) ───────────────────────
   desktop: {
     isDesktop:    true,
-    version:      '3.2.0',
+    version:      '3.2.1',
     status:       ()      => ipcRenderer.invoke('desktop:status'),
     startTunnel:  ()      => ipcRenderer.invoke('tunnel:start'),
     stopTunnel:   ()      => ipcRenderer.invoke('tunnel:stop'),

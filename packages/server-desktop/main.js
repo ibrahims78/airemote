@@ -1,7 +1,7 @@
 'use strict'
 /**
  * main.js — AiRemote Server Desktop (Electron Main Process)
- * Version: v3.2.0
+ * Version: v3.2.1
  */
 const { app, BrowserWindow, Tray, Menu, ipcMain, shell, dialog, Notification, nativeImage } = require('electron')
 const path  = require('path')
@@ -18,7 +18,7 @@ const backup  = require('./backup.bundle')
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
-const APP_VERSION  = '3.2.0'
+const APP_VERSION  = '3.2.1'
 const APP_NAME     = 'AiRemote Server'
 const DATA_DIR     = path.join(app.getPath('appData'), 'AiRemote-Server')
 const CONFIG_PATH  = path.join(DATA_DIR, 'config.json')

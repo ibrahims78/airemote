@@ -22,7 +22,7 @@ const RECONNECT_BASE = 2_000
 const RECONNECT_MAX  = 30_000
 const CONFIG_FILE    = path.join(app.getPath('userData'), 'airemote-config.json')
 const LOG_MAX        = 300
-const AGENT_VERSION  = '3.2.0'
+const AGENT_VERSION  = '3.2.1'
 
 // ─── State ────────────────────────────────────────────────────────────────
 let win            = null

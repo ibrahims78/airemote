@@ -82744,7 +82744,7 @@ var fastify = null;
 var started = false;
 var _config = {};
 var _startedAt = null;
-var AGENT_VERSION = "3.2.0";
+var AGENT_VERSION = "3.2.1";
 async function start(config) {
   if (started) return;
   _config = config;

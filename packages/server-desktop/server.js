@@ -1,6 +1,6 @@
 'use strict'
 /**
- * server.js — AiRemote Server Desktop v3.2.0
+ * server.js — AiRemote Server Desktop v3.2.1
  * Full-featured Fastify server — complete parity with the web server.
  * Runs inside the Electron main process (better-sqlite3, jsonwebtoken).
  */
@@ -993,7 +993,7 @@ let started    = false
 let _config    = {}
 let _startedAt = null
 
-const AGENT_VERSION = '3.2.0'
+const AGENT_VERSION = '3.2.1'
 
 async function start(config) {
   if (started) return
