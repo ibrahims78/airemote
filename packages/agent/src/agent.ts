@@ -47,6 +47,8 @@ export class AgentService {
   private reconnectTimer: NodeJS.Timeout | null = null
   private reconnectDelay = RECONNECT_BASE_DELAY
   private running = false
+  private lastRegisterPayload: AgentRegisterPayload | null = null
+  private lastReRegisterAt = 0
   private ptyProcs         = new Map<string, PtyProcess>()
   private screenTimers     = new Map<string, NodeJS.Timeout>()
   private screenSeq        = new Map<string, number>()
@@ -128,6 +130,7 @@ export class AgentService {
       sshInfo: { available: false, port: 22 }
     }
 
+    this.lastRegisterPayload = payload
     this.send({ type: 'agent:register', payload, timestamp: Date.now() })
     this.startHeartbeat()
   }
@@ -356,6 +359,20 @@ export class AgentService {
         }
 
         case 'server:error': {
+          {
+            const errMsg = String((message.payload as { message?: string }).message ?? '')
+            const lastPayload = this.lastRegisterPayload
+            // Self-healing: the server rejected our heartbeat (it no longer
+            // recognises this socket — e.g. it was replaced) → re-register.
+            if (errMsg.includes('Heartbeat rejected') && lastPayload) {
+              const now = Date.now()
+              if (now - this.lastReRegisterAt > 30_000) {
+                this.lastReRegisterAt = now
+                console.warn('🔁 Heartbeat rejected — re-registering with server...')
+                this.send({ type: 'agent:register', payload: lastPayload, timestamp: Date.now() })
+              }
+            }
+          }
           const p = message.payload as { message: string }
           console.error(`❌ Server error: ${p.message}`)
           break

@@ -675,7 +675,7 @@ export interface FfmpegCaptureOpts {
 export function startFfmpegCaptureLoop(opts: FfmpegCaptureOpts): () => void {
   let stopped   = false
   let proc:       ChildProcess | null = null
-  let remainder   = Buffer.alloc(0)
+  let remainder: Buffer = Buffer.alloc(0)
   const q         = qualityToFfmpegQ(opts.quality)
   const hasMonitor = !!(opts.monitorW && opts.monitorH)
 

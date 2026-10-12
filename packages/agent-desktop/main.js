@@ -34,6 +34,8 @@ let deviceId       = null
 let heartbeatTimer = null
 let reconnectTimer = null
 let reconnectDelay = RECONNECT_BASE
+let lastRegisterPayload = null
+let lastReRegisterAt = 0
 let sessionStart   = null
 let config         = loadConfig()
 let logEntries     = []
@@ -358,19 +360,20 @@ function doConnect() {
       const stats = await getStats()
       const shell = process.platform === 'win32' ? 'powershell' : (process.env.SHELL || '/bin/bash')
       addLog('info', `📋 [register] hostname=${info.hostname} os=${info.osVersion} shell=${shell}`)
+      lastRegisterPayload = {
+        token:        config.token.trim(),
+        info:         { ...info, agentVersion: AGENT_VERSION },
+        stats,
+        tunnelLayer:  'relay',
+        capabilities: {
+          pty: true, shell, fs: true,
+          screenControl: true, clipboard: true, multiMonitor: true,
+          docker: dockerAvailable
+        }
+      }
       send({
         type: 'agent:register',
-        payload: {
-          token:        config.token.trim(),
-          info:         { ...info, agentVersion: AGENT_VERSION },
-          stats,
-          tunnelLayer:  'relay',
-          capabilities: {
-            pty: true, shell, fs: true,
-            screenControl: true, clipboard: true, multiMonitor: true,
-            docker: dockerAvailable
-          }
-        },
+        payload: lastRegisterPayload,
         timestamp: Date.now()
       })
       startHeartbeat()
@@ -416,6 +419,17 @@ function handleMsg(msg) {
       break
     }
     case 'server:error': {
+      {
+        const errMsg = String(msg.payload?.message || '')
+        const lastPayload = lastRegisterPayload
+        // Self-healing: re-register when the server rejects our heartbeat
+        // (this socket was replaced / no longer recognised).
+        if (errMsg.includes('Heartbeat rejected') && lastPayload && Date.now() - lastReRegisterAt > 30000) {
+          lastReRegisterAt = Date.now()
+          addLog('warn', 'Heartbeat rejected - re-registering with server...')
+          send({ type: 'agent:register', payload: lastPayload, timestamp: Date.now() })
+        }
+      }
       addLog('error', `❌ خطأ من الخادم: ${msg.payload?.message}`)
       break
     }

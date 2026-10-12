@@ -64,6 +64,18 @@ export async function handleAgentBinaryFrame(socket: WebSocket, buf: Buffer, dev
     return
   }
 
+  // Ownership gate: only the device's CURRENT connection may inject frames.
+  // A replaced (stale) socket must not keep pumping frames into live sessions.
+  const ownerId = deviceRegistry.getDeviceIdBySocket(socket)
+  if (!ownerId || (deviceId && ownerId !== deviceId)) {
+    const flagged = socket as unknown as { __staleFrameLogged?: boolean }
+    if (!flagged.__staleFrameLogged) {
+      flagged.__staleFrameLogged = true
+      console.warn(`[${ts()}] 📸 [bin] dropping frames from stale/unregistered socket${deviceId ? ' (device=' + deviceId.slice(0, 8) + ')' : ''}`)
+    }
+    return
+  }
+
   const embeddedId = buf.slice(1, 37).toString('utf8').replace(/\0/g, '')
   const width      = buf.readUInt32BE(37)
   const height     = buf.readUInt32BE(41)
@@ -374,6 +386,8 @@ export async function handleAgentMessage(
 
     // ── Screen frame (agent → server → ALL viewers) ───────────────────────
     case 'agent:screen_frame': {
+      const ownerId = deviceRegistry.getDeviceIdBySocket(socket)
+      if (!ownerId) return null
       const p = message.payload as {
         sessionId: string
         data:      string
@@ -384,8 +398,9 @@ export async function handleAgentMessage(
         quality?:  number
         deltaRegion?: { x: number; y: number; w: number; h: number }
       }
-      deviceRegistry.clearScreenConnectTimeout(p.sessionId)
       const session = deviceRegistry.getScreenSession(p.sessionId)
+      if (session && session.deviceId !== ownerId) return null
+      deviceRegistry.clearScreenConnectTimeout(p.sessionId)
       if (session) {
         const { count: fc, fps } = recordSessionFrame(p.sessionId)
         const viewers = session.dashboardSockets.size
@@ -422,6 +437,10 @@ export async function handleAgentMessage(
 
     case 'agent:screen_closed': {
       const { sessionId } = message.payload as { sessionId: string }
+      const ownerId = deviceRegistry.getDeviceIdBySocket(socket)
+      const closedSession = deviceRegistry.getScreenSession(sessionId)
+      if (!ownerId) return null
+      if (closedSession && closedSession.deviceId !== ownerId) return null
       deviceRegistry.clearScreenConnectTimeout(sessionId)
       deviceRegistry.sendToScreenViewers(sessionId, JSON.stringify({ type: 'screen:closed', payload: {} }))
       deviceRegistry.removeScreenSession(sessionId)
@@ -432,6 +451,10 @@ export async function handleAgentMessage(
 
     case 'agent:screen_error': {
       const { sessionId, message: errMsg } = message.payload as { sessionId: string; message: string }
+      const ownerId = deviceRegistry.getDeviceIdBySocket(socket)
+      const errSession = deviceRegistry.getScreenSession(sessionId)
+      if (!ownerId) return null
+      if (errSession && errSession.deviceId !== ownerId) return null
       deviceRegistry.clearScreenConnectTimeout(sessionId)
       deviceRegistry.sendToScreenViewers(sessionId, JSON.stringify({ type: 'screen:error', payload: { message: errMsg } }))
       deviceRegistry.closeAllScreenViewers(sessionId)
@@ -443,6 +466,10 @@ export async function handleAgentMessage(
 
     case 'agent:screen_unavailable': {
       const { sessionId, message: errMsg } = message.payload as { sessionId: string; message: string }
+      const ownerId = deviceRegistry.getDeviceIdBySocket(socket)
+      const unavSession = deviceRegistry.getScreenSession(sessionId)
+      if (!ownerId) return null
+      if (unavSession && unavSession.deviceId !== ownerId) return null
       deviceRegistry.clearScreenConnectTimeout(sessionId)
       deviceRegistry.sendToScreenViewers(sessionId, JSON.stringify({
         type: 'screen:unavailable',
@@ -455,6 +482,10 @@ export async function handleAgentMessage(
 
     case 'agent:screen_monitors': {
       const p = message.payload as { sessionId: string; monitors: unknown[] }
+      const ownerId = deviceRegistry.getDeviceIdBySocket(socket)
+      const monSession = deviceRegistry.getScreenSession(p.sessionId)
+      if (!ownerId) return null
+      if (monSession && monSession.deviceId !== ownerId) return null
       deviceRegistry.sendToScreenViewers(p.sessionId, JSON.stringify({
         type:    'screen:monitors',
         payload: { monitors: p.monitors }
@@ -464,6 +495,10 @@ export async function handleAgentMessage(
 
     case 'agent:screen_clipboard': {
       const p = message.payload as { sessionId: string; text: string }
+      const ownerId = deviceRegistry.getDeviceIdBySocket(socket)
+      const clipSession = deviceRegistry.getScreenSession(p.sessionId)
+      if (!ownerId) return null
+      if (clipSession && clipSession.deviceId !== ownerId) return null
       deviceRegistry.sendToScreenViewers(p.sessionId, JSON.stringify({
         type:    'screen:clipboard',
         payload: { text: p.text }
@@ -473,13 +508,16 @@ export async function handleAgentMessage(
 
     case 'agent:screen_chat': {
       const p = message.payload as { sessionId?: string; text: string; sender: string; ts: number }
+      const chatOwnerId = deviceRegistry.getDeviceIdBySocket(socket)
+      if (!chatOwnerId) return null
       // Resolve sessionId: use explicit value, or fall back to the device's active session
       let sid = p.sessionId
       if (!sid) {
-        const devId = deviceRegistry.getDeviceIdBySocket(socket)
-        if (devId) sid = deviceRegistry.getActiveScreenSessionForDevice(devId)
+        sid = deviceRegistry.getActiveScreenSessionForDevice(chatOwnerId)
       }
       if (!sid) return null
+      const chatSession = deviceRegistry.getScreenSession(sid)
+      if (chatSession && chatSession.deviceId !== chatOwnerId) return null
       deviceRegistry.sendToScreenViewers(sid, JSON.stringify({
         type:    'screen:chat',
         payload: { text: p.text, sender: p.sender || 'host', ts: p.ts || Date.now() }
@@ -489,6 +527,10 @@ export async function handleAgentMessage(
 
     case 'agent:screen_control_granted': {
       const p = message.payload as { sessionId: string; requestId: string }
+      const ownerId = deviceRegistry.getDeviceIdBySocket(socket)
+      const grantSession = deviceRegistry.getScreenSession(p.sessionId)
+      if (!ownerId) return null
+      if (grantSession && grantSession.deviceId !== ownerId) return null
       deviceRegistry.sendToScreenViewers(p.sessionId, JSON.stringify({
         type:    'screen:control_granted',
         payload: { requestId: p.requestId }
@@ -498,6 +540,10 @@ export async function handleAgentMessage(
 
     case 'agent:screen_control_denied': {
       const p = message.payload as { sessionId: string; requestId: string }
+      const ownerId = deviceRegistry.getDeviceIdBySocket(socket)
+      const denySession = deviceRegistry.getScreenSession(p.sessionId)
+      if (!ownerId) return null
+      if (denySession && denySession.deviceId !== ownerId) return null
       deviceRegistry.sendToScreenViewers(p.sessionId, JSON.stringify({
         type:    'screen:control_denied',
         payload: { requestId: p.requestId }
@@ -622,6 +668,18 @@ export async function sendFsReadChunked(
 }
 
 /**
+ * Download a file from the agent using the chunked protocol.
+ * Thin wrapper kept for route compatibility (routes/fs.ts).
+ */
+export function sendFsDownload(
+  deviceId:  string,
+  filePath:  string,
+  timeoutMs  = 120000
+): Promise<Buffer> {
+  return sendFsReadChunked(deviceId, filePath, timeoutMs)
+}
+
+/**
  * Called by handler.ts when an agent WebSocket disconnects.
  * Cleans up per-device in-memory state that the registry doesn't track.
  */
@@ -631,14 +689,13 @@ export function cleanupDevice(deviceId: string): void {
   void deviceId
 }
 
-export async function sendCommand(
+export async function sendCommandToAgent(
   deviceId:  string,
+  commandId: string,
   command:   string,
   timeoutMs  = 30000
 ): Promise<AgentCommandResultPayload> {
   return new Promise((resolve, reject) => {
-    const commandId = uuidv4()
-
     const sent = deviceRegistry.sendToDevice(deviceId, {
       type: 'server:command',
       payload: { commandId, type: 'shell', command },

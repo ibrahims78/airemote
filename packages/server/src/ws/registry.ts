@@ -43,7 +43,7 @@ interface ScreenSession {
   frameThrottle?: () => boolean
 }
 
-class DeviceRegistry {
+export class DeviceRegistry {
   private devices        = new Map<string, ConnectedDevice>()
   private clients        = new Map<WebSocket, ConnectedClient>()
   private sshSessions    = new Map<string, SshTunnelSession>()
@@ -87,7 +87,23 @@ class DeviceRegistry {
     if (dev) dev.capabilities = { ...dev.capabilities, ...caps }
   }
 
-  disconnectDevice(deviceId: string): void {
+  /**
+   * Disconnect a device.
+   *
+   * When `socket` is provided, the disconnect is only honored if that socket is
+   * still the CURRENT connection for the device. A stale socket that was already
+   * replaced by a newer connection must never remove the newer registration —
+   * that caused "device offline while connected" states.
+   *
+   * Returns true when the device entry was actually removed.
+   */
+  disconnectDevice(deviceId: string, socket?: WebSocket): boolean {
+    const current = this.devices.get(deviceId)
+    if (!current) return false
+    if (socket && current.socket !== socket) {
+      // Stale socket close — a newer connection owns this device now.
+      return false
+    }
     // Notify and close all screen sessions watching this device
     for (const [sessionId, session] of this.screenSessions) {
       if (session.deviceId === deviceId) {
@@ -109,6 +125,7 @@ class DeviceRegistry {
     this.deviceScreenSessions.delete(deviceId)
     this.devices.delete(deviceId)
     this.broadcastDeviceStatus(deviceId, 'offline')
+    return true
   }
 
   getDevice(deviceId: string): ConnectedDevice | undefined {
@@ -349,7 +366,7 @@ class DeviceRegistry {
     const existingId = this.deviceScreenSessions.get(deviceId)
     const existing   = existingId ? this.screenSessions.get(existingId) : undefined
 
-    if (existing && existing.dashboardSockets.size > 0) {
+    if (existing && existingId && existing.dashboardSockets.size > 0) {
       existing.dashboardSockets.add(dashboardSocket)
       return { agentSessionId: existingId, isNew: false }
     }

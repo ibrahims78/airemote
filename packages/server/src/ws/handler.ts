@@ -68,10 +68,14 @@ export function wsHandler(socket: WebSocket, request: FastifyRequest) {
     disconnected = true
     clearTimers()
     if (connectionType === 'agent' && connectionId) {
-      deviceRegistry.disconnectDevice(connectionId)
-      updateDeviceStatus(connectionId, 'offline').catch(() => {})
-      cleanupDevice(connectionId)
-      console.log(`📴 Agent disconnected: ${connectionId}`)
+      const removed = deviceRegistry.disconnectDevice(connectionId, socket)
+      if (removed) {
+        updateDeviceStatus(connectionId, 'offline').catch(() => {})
+        cleanupDevice(connectionId)
+        console.log(`📴 Agent disconnected: ${connectionId}`)
+      } else {
+        console.log(`↩️ Stale agent socket closed — keeping device ${connectionId} (newer connection active)`)
+      }
     } else if (connectionType === 'client') {
       deviceRegistry.removeClient(socket)
     }
@@ -87,7 +91,7 @@ export function wsHandler(socket: WebSocket, request: FastifyRequest) {
       if (connectionType === 'unknown') connectionType = 'agent'
       clearPongTimer()
       schedulePing()
-      handleAgentBinaryFrame(socket, raw, connectionId).catch(err => console.error('Binary frame error:', err))
+      handleAgentBinaryFrame(socket, raw, connectionId ?? undefined).catch(err => console.error('Binary frame error:', err))
       return
     }
 
