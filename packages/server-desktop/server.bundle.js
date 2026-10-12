@@ -439,15 +439,15 @@ var require_errors = __commonJS({
 var require_symbols = __commonJS({
   "../../node_modules/.pnpm/avvio@8.4.0/node_modules/avvio/lib/symbols.js"(exports2, module2) {
     "use strict";
-    var kAvvio = Symbol("avvio.Boot");
-    var kIsOnCloseHandler = Symbol("isOnCloseHandler");
-    var kThenifyDoNotWrap = Symbol("avvio.ThenifyDoNotWrap");
-    var kUntrackNode = Symbol("avvio.TimeTree.untrackNode");
-    var kTrackNode = Symbol("avvio.TimeTree.trackNode");
-    var kGetParent = Symbol("avvio.TimeTree.getParent");
-    var kGetNode = Symbol("avvio.TimeTree.getNode");
-    var kAddNode = Symbol("avvio.TimeTree.addNode");
-    var kPluginMeta = Symbol.for("plugin-meta");
+    var kAvvio = /* @__PURE__ */ Symbol("avvio.Boot");
+    var kIsOnCloseHandler = /* @__PURE__ */ Symbol("isOnCloseHandler");
+    var kThenifyDoNotWrap = /* @__PURE__ */ Symbol("avvio.ThenifyDoNotWrap");
+    var kUntrackNode = /* @__PURE__ */ Symbol("avvio.TimeTree.untrackNode");
+    var kTrackNode = /* @__PURE__ */ Symbol("avvio.TimeTree.trackNode");
+    var kGetParent = /* @__PURE__ */ Symbol("avvio.TimeTree.getParent");
+    var kGetNode = /* @__PURE__ */ Symbol("avvio.TimeTree.getNode");
+    var kAddNode = /* @__PURE__ */ Symbol("avvio.TimeTree.addNode");
+    var kPluginMeta = /* @__PURE__ */ Symbol.for("plugin-meta");
     module2.exports = {
       kAvvio,
       kIsOnCloseHandler,
@@ -1432,65 +1432,65 @@ var require_symbols2 = __commonJS({
   "../../node_modules/.pnpm/fastify@4.29.1/node_modules/fastify/lib/symbols.js"(exports2, module2) {
     "use strict";
     var keys = {
-      kAvvioBoot: Symbol("fastify.avvioBoot"),
-      kChildren: Symbol("fastify.children"),
-      kServerBindings: Symbol("fastify.serverBindings"),
-      kBodyLimit: Symbol("fastify.bodyLimit"),
-      kRoutePrefix: Symbol("fastify.routePrefix"),
-      kLogLevel: Symbol("fastify.logLevel"),
-      kLogSerializers: Symbol("fastify.logSerializers"),
-      kHooks: Symbol("fastify.hooks"),
-      kContentTypeParser: Symbol("fastify.contentTypeParser"),
-      kState: Symbol("fastify.state"),
-      kOptions: Symbol("fastify.options"),
-      kDisableRequestLogging: Symbol("fastify.disableRequestLogging"),
-      kPluginNameChain: Symbol("fastify.pluginNameChain"),
-      kRouteContext: Symbol("fastify.context"),
-      kPublicRouteContext: Symbol("fastify.routeOptions"),
-      kGenReqId: Symbol("fastify.genReqId"),
+      kAvvioBoot: /* @__PURE__ */ Symbol("fastify.avvioBoot"),
+      kChildren: /* @__PURE__ */ Symbol("fastify.children"),
+      kServerBindings: /* @__PURE__ */ Symbol("fastify.serverBindings"),
+      kBodyLimit: /* @__PURE__ */ Symbol("fastify.bodyLimit"),
+      kRoutePrefix: /* @__PURE__ */ Symbol("fastify.routePrefix"),
+      kLogLevel: /* @__PURE__ */ Symbol("fastify.logLevel"),
+      kLogSerializers: /* @__PURE__ */ Symbol("fastify.logSerializers"),
+      kHooks: /* @__PURE__ */ Symbol("fastify.hooks"),
+      kContentTypeParser: /* @__PURE__ */ Symbol("fastify.contentTypeParser"),
+      kState: /* @__PURE__ */ Symbol("fastify.state"),
+      kOptions: /* @__PURE__ */ Symbol("fastify.options"),
+      kDisableRequestLogging: /* @__PURE__ */ Symbol("fastify.disableRequestLogging"),
+      kPluginNameChain: /* @__PURE__ */ Symbol("fastify.pluginNameChain"),
+      kRouteContext: /* @__PURE__ */ Symbol("fastify.context"),
+      kPublicRouteContext: /* @__PURE__ */ Symbol("fastify.routeOptions"),
+      kGenReqId: /* @__PURE__ */ Symbol("fastify.genReqId"),
       // Schema
-      kSchemaController: Symbol("fastify.schemaController"),
-      kSchemaHeaders: Symbol("headers-schema"),
-      kSchemaParams: Symbol("params-schema"),
-      kSchemaQuerystring: Symbol("querystring-schema"),
-      kSchemaBody: Symbol("body-schema"),
-      kSchemaResponse: Symbol("response-schema"),
-      kSchemaErrorFormatter: Symbol("fastify.schemaErrorFormatter"),
-      kSchemaVisited: Symbol("fastify.schemas.visited"),
+      kSchemaController: /* @__PURE__ */ Symbol("fastify.schemaController"),
+      kSchemaHeaders: /* @__PURE__ */ Symbol("headers-schema"),
+      kSchemaParams: /* @__PURE__ */ Symbol("params-schema"),
+      kSchemaQuerystring: /* @__PURE__ */ Symbol("querystring-schema"),
+      kSchemaBody: /* @__PURE__ */ Symbol("body-schema"),
+      kSchemaResponse: /* @__PURE__ */ Symbol("response-schema"),
+      kSchemaErrorFormatter: /* @__PURE__ */ Symbol("fastify.schemaErrorFormatter"),
+      kSchemaVisited: /* @__PURE__ */ Symbol("fastify.schemas.visited"),
       // Request
-      kRequest: Symbol("fastify.Request"),
-      kRequestPayloadStream: Symbol("fastify.RequestPayloadStream"),
-      kRequestAcceptVersion: Symbol("fastify.RequestAcceptVersion"),
-      kRequestCacheValidateFns: Symbol("fastify.request.cache.validateFns"),
-      kRequestOriginalUrl: Symbol("fastify.request.originalUrl"),
+      kRequest: /* @__PURE__ */ Symbol("fastify.Request"),
+      kRequestPayloadStream: /* @__PURE__ */ Symbol("fastify.RequestPayloadStream"),
+      kRequestAcceptVersion: /* @__PURE__ */ Symbol("fastify.RequestAcceptVersion"),
+      kRequestCacheValidateFns: /* @__PURE__ */ Symbol("fastify.request.cache.validateFns"),
+      kRequestOriginalUrl: /* @__PURE__ */ Symbol("fastify.request.originalUrl"),
       // 404
-      kFourOhFour: Symbol("fastify.404"),
-      kCanSetNotFoundHandler: Symbol("fastify.canSetNotFoundHandler"),
-      kFourOhFourLevelInstance: Symbol("fastify.404LogLevelInstance"),
-      kFourOhFourContext: Symbol("fastify.404ContextKey"),
-      kDefaultJsonParse: Symbol("fastify.defaultJSONParse"),
+      kFourOhFour: /* @__PURE__ */ Symbol("fastify.404"),
+      kCanSetNotFoundHandler: /* @__PURE__ */ Symbol("fastify.canSetNotFoundHandler"),
+      kFourOhFourLevelInstance: /* @__PURE__ */ Symbol("fastify.404LogLevelInstance"),
+      kFourOhFourContext: /* @__PURE__ */ Symbol("fastify.404ContextKey"),
+      kDefaultJsonParse: /* @__PURE__ */ Symbol("fastify.defaultJSONParse"),
       // Reply
-      kReply: Symbol("fastify.Reply"),
-      kReplySerializer: Symbol("fastify.reply.serializer"),
-      kReplyIsError: Symbol("fastify.reply.isError"),
-      kReplyHeaders: Symbol("fastify.reply.headers"),
-      kReplyTrailers: Symbol("fastify.reply.trailers"),
-      kReplyHasStatusCode: Symbol("fastify.reply.hasStatusCode"),
-      kReplyHijacked: Symbol("fastify.reply.hijacked"),
-      kReplyStartTime: Symbol("fastify.reply.startTime"),
-      kReplyNextErrorHandler: Symbol("fastify.reply.nextErrorHandler"),
-      kReplyEndTime: Symbol("fastify.reply.endTime"),
-      kReplyErrorHandlerCalled: Symbol("fastify.reply.errorHandlerCalled"),
-      kReplyIsRunningOnErrorHook: Symbol("fastify.reply.isRunningOnErrorHook"),
-      kReplySerializerDefault: Symbol("fastify.replySerializerDefault"),
-      kReplyCacheSerializeFns: Symbol("fastify.reply.cache.serializeFns"),
+      kReply: /* @__PURE__ */ Symbol("fastify.Reply"),
+      kReplySerializer: /* @__PURE__ */ Symbol("fastify.reply.serializer"),
+      kReplyIsError: /* @__PURE__ */ Symbol("fastify.reply.isError"),
+      kReplyHeaders: /* @__PURE__ */ Symbol("fastify.reply.headers"),
+      kReplyTrailers: /* @__PURE__ */ Symbol("fastify.reply.trailers"),
+      kReplyHasStatusCode: /* @__PURE__ */ Symbol("fastify.reply.hasStatusCode"),
+      kReplyHijacked: /* @__PURE__ */ Symbol("fastify.reply.hijacked"),
+      kReplyStartTime: /* @__PURE__ */ Symbol("fastify.reply.startTime"),
+      kReplyNextErrorHandler: /* @__PURE__ */ Symbol("fastify.reply.nextErrorHandler"),
+      kReplyEndTime: /* @__PURE__ */ Symbol("fastify.reply.endTime"),
+      kReplyErrorHandlerCalled: /* @__PURE__ */ Symbol("fastify.reply.errorHandlerCalled"),
+      kReplyIsRunningOnErrorHook: /* @__PURE__ */ Symbol("fastify.reply.isRunningOnErrorHook"),
+      kReplySerializerDefault: /* @__PURE__ */ Symbol("fastify.replySerializerDefault"),
+      kReplyCacheSerializeFns: /* @__PURE__ */ Symbol("fastify.reply.cache.serializeFns"),
       // This symbol is only meant to be used for fastify tests and should not be used for any other purpose
-      kTestInternals: Symbol("fastify.testInternals"),
-      kErrorHandler: Symbol("fastify.errorHandler"),
-      kChildLoggerFactory: Symbol("fastify.childLoggerFactory"),
-      kHasBeenDecorated: Symbol("fastify.hasBeenDecorated"),
-      kKeepAliveConnections: Symbol("fastify.keepAliveConnections"),
-      kRouteByFastify: Symbol("fastify.routeByFastify")
+      kTestInternals: /* @__PURE__ */ Symbol("fastify.testInternals"),
+      kErrorHandler: /* @__PURE__ */ Symbol("fastify.errorHandler"),
+      kChildLoggerFactory: /* @__PURE__ */ Symbol("fastify.childLoggerFactory"),
+      kHasBeenDecorated: /* @__PURE__ */ Symbol("fastify.hasBeenDecorated"),
+      kKeepAliveConnections: /* @__PURE__ */ Symbol("fastify.keepAliveConnections"),
+      kRouteByFastify: /* @__PURE__ */ Symbol("fastify.routeByFastify")
     };
     module2.exports = keys;
   }
@@ -3214,7 +3214,7 @@ var require_handleRequest = __commonJS({
       }
     }
     module2.exports = handleRequest;
-    module2.exports[Symbol.for("internals")] = { handler, preHandlerCallback };
+    module2.exports[/* @__PURE__ */ Symbol.for("internals")] = { handler, preHandlerCallback };
   }
 });
 
@@ -3301,8 +3301,8 @@ var require_err_helpers = __commonJS({
 var require_err_proto = __commonJS({
   "../../node_modules/.pnpm/pino-std-serializers@7.1.0/node_modules/pino-std-serializers/lib/err-proto.js"(exports2, module2) {
     "use strict";
-    var seen = Symbol("circular-ref-tag");
-    var rawSymbol = Symbol("pino-raw-err-ref");
+    var seen = /* @__PURE__ */ Symbol("circular-ref-tag");
+    var rawSymbol = /* @__PURE__ */ Symbol("pino-raw-err-ref");
     var pinoErrProto = Object.create({}, {
       type: {
         enumerable: true,
@@ -3439,7 +3439,7 @@ var require_req = __commonJS({
       mapHttpRequest,
       reqSerializer
     };
-    var rawSymbol = Symbol("pino-raw-req-ref");
+    var rawSymbol = /* @__PURE__ */ Symbol("pino-raw-req-ref");
     var pinoReqProto = Object.create({}, {
       id: {
         enumerable: true,
@@ -3534,7 +3534,7 @@ var require_res = __commonJS({
       mapHttpResponse,
       resSerializer
     };
-    var rawSymbol = Symbol("pino-raw-res-ref");
+    var rawSymbol = /* @__PURE__ */ Symbol("pino-raw-res-ref");
     var pinoResProto = Object.create({}, {
       statusCode: {
         enumerable: true,
@@ -3776,7 +3776,7 @@ var require_redact = __commonJS({
       }
       return true;
     }
-    var PATH_NOT_FOUND = Symbol("PATH_NOT_FOUND");
+    var PATH_NOT_FOUND = /* @__PURE__ */ Symbol("PATH_NOT_FOUND");
     function getValueIfExists(obj, parts) {
       let current = obj;
       for (const part of parts) {
@@ -4077,37 +4077,37 @@ var require_redact = __commonJS({
 var require_symbols3 = __commonJS({
   "../../node_modules/.pnpm/pino@9.14.0/node_modules/pino/lib/symbols.js"(exports2, module2) {
     "use strict";
-    var setLevelSym = Symbol("pino.setLevel");
-    var getLevelSym = Symbol("pino.getLevel");
-    var levelValSym = Symbol("pino.levelVal");
-    var levelCompSym = Symbol("pino.levelComp");
-    var useLevelLabelsSym = Symbol("pino.useLevelLabels");
-    var useOnlyCustomLevelsSym = Symbol("pino.useOnlyCustomLevels");
-    var mixinSym = Symbol("pino.mixin");
-    var lsCacheSym = Symbol("pino.lsCache");
-    var chindingsSym = Symbol("pino.chindings");
-    var asJsonSym = Symbol("pino.asJson");
-    var writeSym = Symbol("pino.write");
-    var redactFmtSym = Symbol("pino.redactFmt");
-    var timeSym = Symbol("pino.time");
-    var timeSliceIndexSym = Symbol("pino.timeSliceIndex");
-    var streamSym = Symbol("pino.stream");
-    var stringifySym = Symbol("pino.stringify");
-    var stringifySafeSym = Symbol("pino.stringifySafe");
-    var stringifiersSym = Symbol("pino.stringifiers");
-    var endSym = Symbol("pino.end");
-    var formatOptsSym = Symbol("pino.formatOpts");
-    var messageKeySym = Symbol("pino.messageKey");
-    var errorKeySym = Symbol("pino.errorKey");
-    var nestedKeySym = Symbol("pino.nestedKey");
-    var nestedKeyStrSym = Symbol("pino.nestedKeyStr");
-    var mixinMergeStrategySym = Symbol("pino.mixinMergeStrategy");
-    var msgPrefixSym = Symbol("pino.msgPrefix");
-    var wildcardFirstSym = Symbol("pino.wildcardFirst");
-    var serializersSym = Symbol.for("pino.serializers");
-    var formattersSym = Symbol.for("pino.formatters");
-    var hooksSym = Symbol.for("pino.hooks");
-    var needsMetadataGsym = Symbol.for("pino.metadata");
+    var setLevelSym = /* @__PURE__ */ Symbol("pino.setLevel");
+    var getLevelSym = /* @__PURE__ */ Symbol("pino.getLevel");
+    var levelValSym = /* @__PURE__ */ Symbol("pino.levelVal");
+    var levelCompSym = /* @__PURE__ */ Symbol("pino.levelComp");
+    var useLevelLabelsSym = /* @__PURE__ */ Symbol("pino.useLevelLabels");
+    var useOnlyCustomLevelsSym = /* @__PURE__ */ Symbol("pino.useOnlyCustomLevels");
+    var mixinSym = /* @__PURE__ */ Symbol("pino.mixin");
+    var lsCacheSym = /* @__PURE__ */ Symbol("pino.lsCache");
+    var chindingsSym = /* @__PURE__ */ Symbol("pino.chindings");
+    var asJsonSym = /* @__PURE__ */ Symbol("pino.asJson");
+    var writeSym = /* @__PURE__ */ Symbol("pino.write");
+    var redactFmtSym = /* @__PURE__ */ Symbol("pino.redactFmt");
+    var timeSym = /* @__PURE__ */ Symbol("pino.time");
+    var timeSliceIndexSym = /* @__PURE__ */ Symbol("pino.timeSliceIndex");
+    var streamSym = /* @__PURE__ */ Symbol("pino.stream");
+    var stringifySym = /* @__PURE__ */ Symbol("pino.stringify");
+    var stringifySafeSym = /* @__PURE__ */ Symbol("pino.stringifySafe");
+    var stringifiersSym = /* @__PURE__ */ Symbol("pino.stringifiers");
+    var endSym = /* @__PURE__ */ Symbol("pino.end");
+    var formatOptsSym = /* @__PURE__ */ Symbol("pino.formatOpts");
+    var messageKeySym = /* @__PURE__ */ Symbol("pino.messageKey");
+    var errorKeySym = /* @__PURE__ */ Symbol("pino.errorKey");
+    var nestedKeySym = /* @__PURE__ */ Symbol("pino.nestedKey");
+    var nestedKeyStrSym = /* @__PURE__ */ Symbol("pino.nestedKeyStr");
+    var mixinMergeStrategySym = /* @__PURE__ */ Symbol("pino.mixinMergeStrategy");
+    var msgPrefixSym = /* @__PURE__ */ Symbol("pino.msgPrefix");
+    var wildcardFirstSym = /* @__PURE__ */ Symbol("pino.wildcardFirst");
+    var serializersSym = /* @__PURE__ */ Symbol.for("pino.serializers");
+    var formattersSym = /* @__PURE__ */ Symbol.for("pino.formatters");
+    var hooksSym = /* @__PURE__ */ Symbol.for("pino.hooks");
+    var needsMetadataGsym = /* @__PURE__ */ Symbol.for("pino.metadata");
     module2.exports = {
       setLevelSym,
       getLevelSym,
@@ -4296,6 +4296,7 @@ var require_quick_format_unescaped = __commonJS({
           lastPos = lastPos > -1 ? lastPos : 0;
           switch (f.charCodeAt(i + 1)) {
             case 100:
+            // 'd'
             case 102:
               if (a >= argLen)
                 break;
@@ -4317,7 +4318,9 @@ var require_quick_format_unescaped = __commonJS({
               i++;
               break;
             case 79:
+            // 'O'
             case 111:
+            // 'o'
             case 106:
               if (a >= argLen)
                 break;
@@ -5242,7 +5245,7 @@ var require_thread_stream = __commonJS({
     } = require_indexes();
     var buffer = require("buffer");
     var assert = require("assert");
-    var kImpl = Symbol("kImpl");
+    var kImpl = /* @__PURE__ */ Symbol("kImpl");
     var MAX_STRING = buffer.constants.MAX_STRING_LENGTH;
     function updateState(stream, fn) {
       Atomics.add(stream[kImpl].state, SEQ_INDEX, 1);
@@ -5946,6 +5949,7 @@ var require_tools = __commonJS({
               if (Number.isFinite(value) === false) {
                 value = null;
               }
+            // this case explicitly falls through to the next one
             case "boolean":
               if (stringifier) value = stringifier(value);
               break;
@@ -5971,6 +5975,7 @@ var require_tools = __commonJS({
             if (Number.isFinite(value) === false) {
               value = null;
             }
+          // this case explicitly falls through to the next one
           case "boolean":
             if (stringifier) value = stringifier(value);
             msgStr = ',"' + messageKey + '":' + value;
@@ -6857,6 +6862,7 @@ ${originalIndentation}`;
             if (bigint) {
               return String(value);
             }
+          // fallthrough
           default:
             return fail ? fail(value) : void 0;
         }
@@ -6947,6 +6953,7 @@ ${originalIndentation}`;
             if (bigint) {
               return String(value);
             }
+          // fallthrough
           default:
             return fail ? fail(value) : void 0;
         }
@@ -7058,6 +7065,7 @@ ${originalIndentation}`;
             if (bigint) {
               return String(value);
             }
+          // fallthrough
           default:
             return fail ? fail(value) : void 0;
         }
@@ -7153,6 +7161,7 @@ ${originalIndentation}`;
             if (bigint) {
               return String(value);
             }
+          // fallthrough
           default:
             return fail ? fail(value) : void 0;
         }
@@ -7188,7 +7197,7 @@ ${originalIndentation}`;
 var require_multistream = __commonJS({
   "../../node_modules/.pnpm/pino@9.14.0/node_modules/pino/lib/multistream.js"(exports2, module2) {
     "use strict";
-    var metadata = Symbol.for("pino.metadata");
+    var metadata = /* @__PURE__ */ Symbol.for("pino.metadata");
     var { DEFAULT_LEVELS } = require_constants();
     var DEFAULT_INFO_LEVEL = DEFAULT_LEVELS.info;
     function multistream(streamsArray, opts) {
@@ -7878,7 +7887,7 @@ var require_schemas = __commonJS({
     "use strict";
     var fastClone = require_rfdc()({ circles: false, proto: true });
     var { kSchemaVisited, kSchemaResponse } = require_symbols2();
-    var kFluentSchema = Symbol.for("fluent-schema-object");
+    var kFluentSchema = /* @__PURE__ */ Symbol.for("fluent-schema-object");
     var {
       FSTDEP022
     } = require_warnings();
@@ -8174,7 +8183,7 @@ var require_error_serializer = __commonJS({
     var serializerState = { "mode": "standalone" };
     var serializer = Serializer.restoreFromState(serializerState);
     var validator = null;
-    module2.exports = function anonymous(validator2, serializer2) {
+    module2.exports = (function anonymous(validator2, serializer2) {
       const JSON_STR_BEGIN_OBJECT = "{";
       const JSON_STR_END_OBJECT = "}";
       const JSON_STR_BEGIN_ARRAY = "[";
@@ -8256,7 +8265,7 @@ var require_error_serializer = __commonJS({
       }
       const main = anonymous0;
       return main;
-    }(validator, serializer);
+    })(validator, serializer);
   }
 });
 
@@ -8447,7 +8456,7 @@ var require_reply = __commonJS({
       preHandlerHookRunner,
       preSerializationHookRunner
     } = require_hooks();
-    var internals = require_handleRequest()[Symbol.for("internals")];
+    var internals = require_handleRequest()[/* @__PURE__ */ Symbol.for("internals")];
     var loggerUtils = require_logger();
     var now = loggerUtils.now;
     var { handleError } = require_error_handler();
@@ -9268,7 +9277,7 @@ var require_ipaddr = __commonJS({
         }
         return defaultName;
       };
-      ipaddr.IPv4 = function() {
+      ipaddr.IPv4 = (function() {
         function IPv4(octets) {
           var k, len, octet;
           if (octets.length !== 4) {
@@ -9353,7 +9362,7 @@ var require_ipaddr = __commonJS({
           return 32 - cidr;
         };
         return IPv4;
-      }();
+      })();
       ipv4Part = "(0?\\d+|0x[a-f0-9]+)";
       ipv4Regexes = {
         fourOctet: new RegExp("^" + ipv4Part + "\\." + ipv4Part + "\\." + ipv4Part + "\\." + ipv4Part + "$", "i"),
@@ -9369,7 +9378,7 @@ var require_ipaddr = __commonJS({
           }
         };
         if (match = string.match(ipv4Regexes.fourOctet)) {
-          return function() {
+          return (function() {
             var k, len, ref, results;
             ref = match.slice(1, 6);
             results = [];
@@ -9378,25 +9387,25 @@ var require_ipaddr = __commonJS({
               results.push(parseIntAuto(part));
             }
             return results;
-          }();
+          })();
         } else if (match = string.match(ipv4Regexes.longValue)) {
           value = parseIntAuto(match[1]);
           if (value > 4294967295 || value < 0) {
             throw new Error("ipaddr: address outside defined range");
           }
-          return function() {
+          return (function() {
             var k, results;
             results = [];
             for (shift = k = 0; k <= 24; shift = k += 8) {
               results.push(value >> shift & 255);
             }
             return results;
-          }().reverse();
+          })().reverse();
         } else {
           return null;
         }
       };
-      ipaddr.IPv6 = function() {
+      ipaddr.IPv6 = (function() {
         function IPv6(parts, zoneId) {
           var i, k, l, len, part, ref;
           if (parts.length === 16) {
@@ -9456,7 +9465,7 @@ var require_ipaddr = __commonJS({
         };
         IPv6.prototype.toNormalizedString = function() {
           var addr, part, suffix;
-          addr = function() {
+          addr = (function() {
             var k, len, ref, results;
             ref = this.parts;
             results = [];
@@ -9465,7 +9474,7 @@ var require_ipaddr = __commonJS({
               results.push(part.toString(16));
             }
             return results;
-          }.call(this).join(":");
+          }).call(this).join(":");
           suffix = "";
           if (this.zoneId) {
             suffix = "%" + this.zoneId;
@@ -9474,7 +9483,7 @@ var require_ipaddr = __commonJS({
         };
         IPv6.prototype.toFixedLengthString = function() {
           var addr, part, suffix;
-          addr = function() {
+          addr = (function() {
             var k, len, ref, results;
             ref = this.parts;
             results = [];
@@ -9483,7 +9492,7 @@ var require_ipaddr = __commonJS({
               results.push(part.toString(16).padStart(4, "0"));
             }
             return results;
-          }.call(this).join(":");
+          }).call(this).join(":");
           suffix = "";
           if (this.zoneId) {
             suffix = "%" + this.zoneId;
@@ -9568,7 +9577,7 @@ var require_ipaddr = __commonJS({
           return 128 - cidr;
         };
         return IPv6;
-      }();
+      })();
       ipv6Part = "(?:[0-9a-f]+::?)+";
       zoneIndex = "%[0-9a-z]{1,}";
       ipv6Regexes = {
@@ -9612,7 +9621,7 @@ var require_ipaddr = __commonJS({
         if (string[string.length - 1] === ":") {
           string = string.slice(0, -1);
         }
-        parts = function() {
+        parts = (function() {
           var k, len, ref, results;
           ref = string.split(":");
           results = [];
@@ -9621,7 +9630,7 @@ var require_ipaddr = __commonJS({
             results.push(parseInt(part, 16));
           }
           return results;
-        }();
+        })();
         return {
           parts,
           zoneId
@@ -10365,6 +10374,8 @@ var require_semver = __commonJS({
             this.inc("patch", identifier, identifierBase);
             this.inc("pre", identifier, identifierBase);
             break;
+          // If the input is a non-prerelease version, this acts the same as
+          // prepatch.
           case "prerelease":
             if (this.prerelease.length === 0) {
               this.inc("patch", identifier, identifierBase);
@@ -10398,6 +10409,8 @@ var require_semver = __commonJS({
             }
             this.prerelease = [];
             break;
+          // This probably shouldn't be used publicly.
+          // 1.0.0 'pre' would become 1.0.0-0 which is the wrong direction.
           case "pre": {
             const base = Number(identifierBase) ? 1 : 0;
             if (this.prerelease.length === 0) {
@@ -11288,7 +11301,7 @@ var require_range = __commonJS({
 var require_comparator = __commonJS({
   "../../node_modules/.pnpm/semver@7.8.1/node_modules/semver/classes/comparator.js"(exports2, module2) {
     "use strict";
-    var ANY = Symbol("SemVer ANY");
+    var ANY = /* @__PURE__ */ Symbol("SemVer ANY");
     var Comparator = class _Comparator {
       static get ANY() {
         return ANY;
@@ -11513,6 +11526,7 @@ var require_min_version = __commonJS({
                 compver.prerelease.push(0);
               }
               compver.raw = compver.format();
+            /* fallthrough */
             case "":
             case ">=":
               if (!setMin || gt(compver, setMin)) {
@@ -11522,6 +11536,7 @@ var require_min_version = __commonJS({
             case "<":
             case "<=":
               break;
+            /* istanbul ignore next */
             default:
               throw new Error(`Unexpected operation: ${comparator.operator}`);
           }
@@ -13819,7 +13834,7 @@ var require_json_schema_ref_resolver = __commonJS({
   "../../node_modules/.pnpm/json-schema-ref-resolver@1.0.1/node_modules/json-schema-ref-resolver/index.js"(exports2, module2) {
     "use strict";
     var deepEqual = require_fast_deep_equal();
-    var jsonSchemaRefSymbol = Symbol.for("json-schema-ref");
+    var jsonSchemaRefSymbol = /* @__PURE__ */ Symbol.for("json-schema-ref");
     var RefResolver = class {
       #schemas;
       #derefSchemas;
@@ -26317,7 +26332,7 @@ var require_standalone4 = __commonJS({
 var require_ajv_compiler = __commonJS({
   "../../node_modules/.pnpm/@fastify+ajv-compiler@3.6.0/node_modules/@fastify/ajv-compiler/index.js"(exports2, module2) {
     "use strict";
-    var AjvReference = Symbol.for("fastify.ajv-compiler.reference");
+    var AjvReference = /* @__PURE__ */ Symbol.for("fastify.ajv-compiler.reference");
     var ValidatorCompiler = require_validator_compiler();
     var SerializerCompiler = require_serializer_compiler();
     function AjvCompiler(opts) {
@@ -26486,7 +26501,7 @@ var require_pluginUtils = __commonJS({
     "use strict";
     var semver = require_semver2();
     var assert = require("node:assert");
-    var kRegisteredPlugins = Symbol.for("registered-plugin");
+    var kRegisteredPlugins = /* @__PURE__ */ Symbol.for("registered-plugin");
     var {
       kTestInternals
     } = require_symbols2();
@@ -26497,7 +26512,7 @@ var require_pluginUtils = __commonJS({
     } = require_errors2();
     var { FSTWRN002 } = require_warnings();
     function getMeta(fn) {
-      return fn[Symbol.for("plugin-meta")];
+      return fn[/* @__PURE__ */ Symbol.for("plugin-meta")];
     }
     function getPluginName(func) {
       const display = getDisplayName(func);
@@ -26523,10 +26538,10 @@ var require_pluginUtils = __commonJS({
       return func.toString().split("\n").slice(0, 2).map((s) => s.trim()).join(" -- ");
     }
     function getDisplayName(fn) {
-      return fn[Symbol.for("fastify.display-name")];
+      return fn[/* @__PURE__ */ Symbol.for("fastify.display-name")];
     }
     function shouldSkipOverride(fn) {
-      return !!fn[Symbol.for("skip-override")];
+      return !!fn[/* @__PURE__ */ Symbol.for("skip-override")];
     }
     function checkDependencies(fn) {
       const meta = getMeta(fn);
@@ -27497,15 +27512,15 @@ var require_set_lookup = __commonJS({
 var require_types4 = __commonJS({
   "../../node_modules/.pnpm/ret@0.4.3/node_modules/ret/dist/types/index.js"(exports2) {
     "use strict";
-    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? function(o, m, k, k2) {
+    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       Object.defineProperty(o, k2, { enumerable: true, get: function() {
         return m[k];
       } });
-    } : function(o, m, k, k2) {
+    }) : (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m[k];
-    });
+    }));
     var __exportStar = exports2 && exports2.__exportStar || function(m, exports3) {
       for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports3, p)) __createBinding(exports3, m, p);
     };
@@ -27567,18 +27582,18 @@ var require_sets = __commonJS({
 var require_util2 = __commonJS({
   "../../node_modules/.pnpm/ret@0.4.3/node_modules/ret/dist/util.js"(exports2) {
     "use strict";
-    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? function(o, m, k, k2) {
+    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       Object.defineProperty(o, k2, { enumerable: true, get: function() {
         return m[k];
       } });
-    } : function(o, m, k, k2) {
+    }) : (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m[k];
-    });
-    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? function(o, v) {
+    }));
+    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? (function(o, v) {
       Object.defineProperty(o, "default", { enumerable: true, value: v });
-    } : function(o, v) {
+    }) : function(o, v) {
       o["default"] = v;
     });
     var __importStar = exports2 && exports2.__importStar || function(mod) {
@@ -27638,18 +27653,18 @@ var require_util2 = __commonJS({
 var require_tokenizer = __commonJS({
   "../../node_modules/.pnpm/ret@0.4.3/node_modules/ret/dist/tokenizer.js"(exports2) {
     "use strict";
-    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? function(o, m, k, k2) {
+    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       Object.defineProperty(o, k2, { enumerable: true, get: function() {
         return m[k];
       } });
-    } : function(o, m, k, k2) {
+    }) : (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m[k];
-    });
-    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? function(o, v) {
+    }));
+    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? (function(o, v) {
       Object.defineProperty(o, "default", { enumerable: true, value: v });
-    } : function(o, v) {
+    }) : function(o, v) {
       o["default"] = v;
     });
     var __importStar = exports2 && exports2.__importStar || function(mod) {
@@ -27680,6 +27695,7 @@ var require_tokenizer = __commonJS({
       let str = util.strToChars(regexpStr);
       while (i < str.length) {
         switch (c = str[i++]) {
+          // Handle escaped characters, inclues a few sets.
           case "\\":
             if (i === str.length) {
               throw new SyntaxError(`Invalid regular expression: /${regexpStr}/: \\ at end of pattern`);
@@ -27724,12 +27740,14 @@ var require_tokenizer = __commonJS({
                 }
             }
             break;
+          // Positionals.
           case "^":
             last.push({ type: types_1.types.POSITION, value: "^" });
             break;
           case "$":
             last.push({ type: types_1.types.POSITION, value: "$" });
             break;
+          // Handle custom sets.
           case "[": {
             let not;
             if (str[i] === "^") {
@@ -27747,9 +27765,11 @@ var require_tokenizer = __commonJS({
             });
             break;
           }
+          // Class of any character except \n.
           case ".":
             last.push(sets.anyChar());
             break;
+          // Push group onto stack.
           case "(": {
             let group = {
               type: types_1.types.GROUP,
@@ -27776,6 +27796,7 @@ var require_tokenizer = __commonJS({
             last = group.stack;
             break;
           }
+          // Pop group out of stack.
           case ")":
             if (groupStack.length === 0) {
               throw new SyntaxError(`Invalid regular expression: /${regexpStr}/: Unmatched ) at column ${i - 1}`);
@@ -27783,6 +27804,7 @@ var require_tokenizer = __commonJS({
             lastGroup = groupStack.pop();
             last = lastGroup.options ? lastGroup.options[lastGroup.options.length - 1] : lastGroup.stack;
             break;
+          // Use pipe character to give more choices.
           case "|": {
             if (!lastGroup.options) {
               lastGroup.options = [lastGroup.stack];
@@ -27793,6 +27815,11 @@ var require_tokenizer = __commonJS({
             last = stack;
             break;
           }
+          // Repetition.
+          // For every repetition, remove last element from last stack
+          // then insert back a RANGE object.
+          // This design is chosen because there could be more than
+          // one repetition symbols in a regex i.e. `a?+{2,3}`.
           case "{": {
             let rs = /^(\d+)(,(\d+)?)?\}/.exec(str.slice(i)), min, max;
             if (rs !== null) {
@@ -27849,6 +27876,7 @@ var require_tokenizer = __commonJS({
               value: last.pop()
             });
             break;
+          // Default is a character that is not `\[](){}?+*^$`.
           default:
             last.push({
               type: types_1.types.CHAR,
@@ -27900,18 +27928,18 @@ var require_tokenizer = __commonJS({
 var require_sets_lookup = __commonJS({
   "../../node_modules/.pnpm/ret@0.4.3/node_modules/ret/dist/sets-lookup.js"(exports2) {
     "use strict";
-    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? function(o, m, k, k2) {
+    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       Object.defineProperty(o, k2, { enumerable: true, get: function() {
         return m[k];
       } });
-    } : function(o, m, k, k2) {
+    }) : (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m[k];
-    });
-    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? function(o, v) {
+    }));
+    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? (function(o, v) {
       Object.defineProperty(o, "default", { enumerable: true, value: v });
-    } : function(o, v) {
+    }) : function(o, v) {
       o["default"] = v;
     });
     var __importStar = exports2 && exports2.__importStar || function(mod) {
@@ -27955,18 +27983,18 @@ var require_sets_lookup = __commonJS({
 var require_write_set_tokens = __commonJS({
   "../../node_modules/.pnpm/ret@0.4.3/node_modules/ret/dist/write-set-tokens.js"(exports2) {
     "use strict";
-    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? function(o, m, k, k2) {
+    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       Object.defineProperty(o, k2, { enumerable: true, get: function() {
         return m[k];
       } });
-    } : function(o, m, k, k2) {
+    }) : (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m[k];
-    });
-    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? function(o, v) {
+    }));
+    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? (function(o, v) {
       Object.defineProperty(o, "default", { enumerable: true, value: v });
-    } : function(o, v) {
+    }) : function(o, v) {
       o["default"] = v;
     });
     var __importStar = exports2 && exports2.__importStar || function(mod) {
@@ -28108,15 +28136,15 @@ var require_reconstruct = __commonJS({
 var require_dist3 = __commonJS({
   "../../node_modules/.pnpm/ret@0.4.3/node_modules/ret/dist/index.js"(exports2, module2) {
     "use strict";
-    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? function(o, m, k, k2) {
+    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       Object.defineProperty(o, k2, { enumerable: true, get: function() {
         return m[k];
       } });
-    } : function(o, m, k, k2) {
+    }) : (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m[k];
-    });
+    }));
     var __exportStar = exports2 && exports2.__exportStar || function(m, exports3) {
       for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports3, p)) __createBinding(exports3, m, p);
     };
@@ -28155,7 +28183,7 @@ var require_safe_regex2 = __commonJS({
         return false;
       }
       let reps = 0;
-      return function walk(node, starHeight) {
+      return (function walk(node, starHeight) {
         let i;
         let ok;
         let len;
@@ -28178,7 +28206,7 @@ var require_safe_regex2 = __commonJS({
           if (!ok) return false;
         }
         return true;
-      }(re, 0);
+      })(re, 0);
     }
     function isRegExp(x) {
       return {}.toString.call(x) === "[object RegExp]";
@@ -28221,7 +28249,7 @@ var require_pretty_print = __commonJS({
     "use strict";
     var deepEqual = require_fast_deep_equal();
     var httpMethodStrategy = require_http_method();
-    var treeDataSymbol = Symbol("treeData");
+    var treeDataSymbol = /* @__PURE__ */ Symbol("treeData");
     function printObjectTree(obj, parentPrefix = "") {
       let tree = "";
       const keys = Object.keys(obj);
@@ -34062,9 +34090,9 @@ var require_plugin2 = __commonJS({
         autoName = true;
         options.name = getPluginName(fn) + "-auto-" + count++;
       }
-      fn[Symbol.for("skip-override")] = options.encapsulate !== true;
-      fn[Symbol.for("fastify.display-name")] = options.name;
-      fn[Symbol.for("plugin-meta")] = options;
+      fn[/* @__PURE__ */ Symbol.for("skip-override")] = options.encapsulate !== true;
+      fn[/* @__PURE__ */ Symbol.for("fastify.display-name")] = options.name;
+      fn[/* @__PURE__ */ Symbol.for("plugin-meta")] = options;
       if (!fn.default) {
         fn.default = fn;
       }
@@ -34496,7 +34524,7 @@ var require_lru_cache = __commonJS({
       return proxy;
     };
     if (typeof Symbol !== "undefined")
-      LRUCache.prototype[Symbol.for("nodejs.util.inspect.custom")] = LRUCache.prototype.inspect;
+      LRUCache.prototype[/* @__PURE__ */ Symbol.for("nodejs.util.inspect.custom")] = LRUCache.prototype.inspect;
     LRUCache.from = function(iterable, Keys, Values, capacity) {
       if (arguments.length < 2) {
         capacity = iterables.guessLength(iterable);
@@ -34851,10 +34879,10 @@ var require_constants3 = __commonJS({
       EMPTY_BUFFER: Buffer.alloc(0),
       GUID: "258EAFA5-E914-47DA-95CA-C5AB0DC85B11",
       hasBlob,
-      kForOnEventAttribute: Symbol("kIsForOnEventAttribute"),
-      kListener: Symbol("kListener"),
-      kStatusCode: Symbol("status-code"),
-      kWebSocket: Symbol("websocket"),
+      kForOnEventAttribute: /* @__PURE__ */ Symbol("kIsForOnEventAttribute"),
+      kListener: /* @__PURE__ */ Symbol("kListener"),
+      kStatusCode: /* @__PURE__ */ Symbol("status-code"),
+      kWebSocket: /* @__PURE__ */ Symbol("websocket"),
       NOOP: () => {
       }
     };
@@ -34940,8 +34968,8 @@ var require_buffer_util = __commonJS({
 var require_limiter = __commonJS({
   "../../node_modules/.pnpm/ws@8.21.0/node_modules/ws/lib/limiter.js"(exports2, module2) {
     "use strict";
-    var kDone = Symbol("kDone");
-    var kRun = Symbol("kRun");
+    var kDone = /* @__PURE__ */ Symbol("kDone");
+    var kRun = /* @__PURE__ */ Symbol("kRun");
     var Limiter = class {
       /**
        * Creates a new `Limiter`.
@@ -34996,11 +35024,11 @@ var require_permessage_deflate = __commonJS({
     var { kStatusCode } = require_constants3();
     var FastBuffer = Buffer[Symbol.species];
     var TRAILER = Buffer.from([0, 0, 255, 255]);
-    var kPerMessageDeflate = Symbol("permessage-deflate");
-    var kTotalLength = Symbol("total-length");
-    var kCallback = Symbol("callback");
-    var kBuffers = Symbol("buffers");
-    var kError = Symbol("error");
+    var kPerMessageDeflate = /* @__PURE__ */ Symbol("permessage-deflate");
+    var kTotalLength = /* @__PURE__ */ Symbol("total-length");
+    var kCallback = /* @__PURE__ */ Symbol("callback");
+    var kBuffers = /* @__PURE__ */ Symbol("buffers");
+    var kError = /* @__PURE__ */ Symbol("error");
     var zlibLimiter;
     var PerMessageDeflate = class {
       /**
@@ -36215,7 +36243,7 @@ var require_sender = __commonJS({
     var { EMPTY_BUFFER, kWebSocket, NOOP } = require_constants3();
     var { isBlob, isValidStatusCode } = require_validation3();
     var { mask: applyMask, toBuffer } = require_buffer_util();
-    var kByteLength = Symbol("kByteLength");
+    var kByteLength = /* @__PURE__ */ Symbol("kByteLength");
     var maskBuffer = Buffer.alloc(4);
     var RANDOM_POOL_SIZE = 8 * 1024;
     var randomPool;
@@ -36700,14 +36728,14 @@ var require_event_target = __commonJS({
   "../../node_modules/.pnpm/ws@8.21.0/node_modules/ws/lib/event-target.js"(exports2, module2) {
     "use strict";
     var { kForOnEventAttribute, kListener } = require_constants3();
-    var kCode = Symbol("kCode");
-    var kData = Symbol("kData");
-    var kError = Symbol("kError");
-    var kMessage = Symbol("kMessage");
-    var kReason = Symbol("kReason");
-    var kTarget = Symbol("kTarget");
-    var kType = Symbol("kType");
-    var kWasClean = Symbol("kWasClean");
+    var kCode = /* @__PURE__ */ Symbol("kCode");
+    var kData = /* @__PURE__ */ Symbol("kData");
+    var kError = /* @__PURE__ */ Symbol("kError");
+    var kMessage = /* @__PURE__ */ Symbol("kMessage");
+    var kReason = /* @__PURE__ */ Symbol("kReason");
+    var kTarget = /* @__PURE__ */ Symbol("kTarget");
+    var kType = /* @__PURE__ */ Symbol("kType");
+    var kWasClean = /* @__PURE__ */ Symbol("kWasClean");
     var Event = class {
       /**
        * Create a new `Event`.
@@ -37109,7 +37137,7 @@ var require_websocket = __commonJS({
     } = require_event_target();
     var { format, parse: parse2 } = require_extension();
     var { toBuffer } = require_buffer_util();
-    var kAborted = Symbol("kAborted");
+    var kAborted = /* @__PURE__ */ Symbol("kAborted");
     var protocolVersions = [8, 13];
     var readyStates = ["CONNECTING", "OPEN", "CLOSING", "CLOSED"];
     var subprotocolRegex = /^[!#$%&'*+\-.0-9A-Z^_`|a-z~]+$/;
@@ -38625,7 +38653,7 @@ var require_buffer_list = __commonJS({
     function copyBuffer(src, target, offset) {
       Buffer2.prototype.copy.call(src, target, offset);
     }
-    module2.exports = /* @__PURE__ */ function() {
+    module2.exports = /* @__PURE__ */ (function() {
       function BufferList() {
         _classCallCheck(this, BufferList);
         this.head = null;
@@ -38787,7 +38815,7 @@ var require_buffer_list = __commonJS({
         }
       }]);
       return BufferList;
-    }();
+    })();
   }
 });
 
@@ -40036,13 +40064,13 @@ var require_async_iterator = __commonJS({
       return (hint === "string" ? String : Number)(input);
     }
     var finished = require_end_of_stream();
-    var kLastResolve = Symbol("lastResolve");
-    var kLastReject = Symbol("lastReject");
-    var kError = Symbol("error");
-    var kEnded = Symbol("ended");
-    var kLastPromise = Symbol("lastPromise");
-    var kHandlePromise = Symbol("handlePromise");
-    var kStream = Symbol("stream");
+    var kLastResolve = /* @__PURE__ */ Symbol("lastResolve");
+    var kLastReject = /* @__PURE__ */ Symbol("lastReject");
+    var kError = /* @__PURE__ */ Symbol("error");
+    var kEnded = /* @__PURE__ */ Symbol("ended");
+    var kLastPromise = /* @__PURE__ */ Symbol("lastPromise");
+    var kHandlePromise = /* @__PURE__ */ Symbol("handlePromise");
+    var kStream = /* @__PURE__ */ Symbol("stream");
     function createIterResult(value, done) {
       return {
         value,
@@ -40922,11 +40950,11 @@ var require_stream_readable = __commonJS({
       });
       for (var i in stream) {
         if (this[i] === void 0 && typeof stream[i] === "function") {
-          this[i] = /* @__PURE__ */ function methodWrap(method) {
+          this[i] = /* @__PURE__ */ (function methodWrap(method) {
             return function methodWrapReturnFunction() {
               return stream[method].apply(stream, arguments);
             };
-          }(i);
+          })(i);
         }
       }
       for (var n = 0; n < kProxyEvents.length; n++) {
@@ -41652,8 +41680,8 @@ var require_websocket2 = __commonJS({
     var fp = require_plugin2();
     var WebSocket = require_ws();
     var Duplexify = require_duplexify();
-    var kWs = Symbol("ws-socket");
-    var kWsHead = Symbol("ws-head");
+    var kWs = /* @__PURE__ */ Symbol("ws-socket");
+    var kWsHead = /* @__PURE__ */ Symbol("ws-head");
     function fastifyWebsocket(fastify2, opts, next) {
       fastify2.decorateRequest("ws", null);
       let errorHandler = defaultErrorHandler;
@@ -42496,7 +42524,7 @@ var require_rate_limit = __commonJS({
         globalParams.isCustomErrorMessage = true;
       }
       globalParams.skipOnError = settings.skipOnError || false;
-      const run = Symbol("rate-limit-did-run");
+      const run = /* @__PURE__ */ Symbol("rate-limit-did-run");
       pluginComponent.run = run;
       fastify2.decorateRequest(run, false);
       if (!fastify2.hasDecorator("rateLimit")) {
@@ -43053,7 +43081,7 @@ var require_bcrypt = __commonJS({
           res.push(rs[off].charCodeAt(0));
         return res;
       }
-      var utfx = function() {
+      var utfx = (function() {
         "use strict";
         var utfx2 = {};
         utfx2.MAX_CODEPOINT = 1114111;
@@ -43155,7 +43183,7 @@ var require_bcrypt = __commonJS({
           return [n, l];
         };
         return utfx2;
-      }();
+      })();
       Date.now = Date.now || function() {
         return +/* @__PURE__ */ new Date();
       };
@@ -50485,7 +50513,7 @@ var require_bitpacker = __commonJS({
         options.colorType
       ) !== -1;
       if (options.colorType === options.inputColorType) {
-        let bigEndian = function() {
+        let bigEndian = (function() {
           let buffer = new ArrayBuffer(2);
           new DataView(buffer).setInt16(
             0,
@@ -50494,7 +50522,7 @@ var require_bitpacker = __commonJS({
             /* littleEndian */
           );
           return new Int16Array(buffer)[0] !== 256;
-        }();
+        })();
         if (options.bitDepth === 8 || options.bitDepth === 16 && bigEndian) {
           return dataIn;
         }
@@ -53105,7 +53133,7 @@ var require_commonjs = __commonJS({
     };
     exports2.sep = defaultPlatform === "win32" ? path2.win32.sep : path2.posix.sep;
     exports2.minimatch.sep = exports2.sep;
-    exports2.GLOBSTAR = Symbol("globstar **");
+    exports2.GLOBSTAR = /* @__PURE__ */ Symbol("globstar **");
     exports2.minimatch.GLOBSTAR = exports2.GLOBSTAR;
     var qmark = "[^/]";
     var star = qmark + "*?";
@@ -53897,7 +53925,6 @@ var require_commonjs2 = __commonJS({
       };
     }
     var shouldWarn = (code) => !warned.has(code);
-    var TYPE = Symbol("type");
     var isPosInt = (n) => n && n === Math.floor(n) && n > 0 && isFinite(n);
     var getUintArray = (max) => !isPosInt(max) ? null : max <= Math.pow(2, 8) ? Uint8Array : max <= Math.pow(2, 16) ? Uint16Array : max <= Math.pow(2, 32) ? Uint32Array : max <= Number.MAX_SAFE_INTEGER ? ZeroArray : null;
     var ZeroArray = class extends Array {
@@ -55248,37 +55275,37 @@ var require_commonjs3 = __commonJS({
     exports2.isReadable = isReadable;
     var isWritable = (s) => !!s && typeof s === "object" && s instanceof node_events_1.EventEmitter && typeof s.write === "function" && typeof s.end === "function";
     exports2.isWritable = isWritable;
-    var EOF = Symbol("EOF");
-    var MAYBE_EMIT_END = Symbol("maybeEmitEnd");
-    var EMITTED_END = Symbol("emittedEnd");
-    var EMITTING_END = Symbol("emittingEnd");
-    var EMITTED_ERROR = Symbol("emittedError");
-    var CLOSED = Symbol("closed");
-    var READ = Symbol("read");
-    var FLUSH = Symbol("flush");
-    var FLUSHCHUNK = Symbol("flushChunk");
-    var ENCODING = Symbol("encoding");
-    var DECODER = Symbol("decoder");
-    var FLOWING = Symbol("flowing");
-    var PAUSED = Symbol("paused");
-    var RESUME = Symbol("resume");
-    var BUFFER = Symbol("buffer");
-    var PIPES = Symbol("pipes");
-    var BUFFERLENGTH = Symbol("bufferLength");
-    var BUFFERPUSH = Symbol("bufferPush");
-    var BUFFERSHIFT = Symbol("bufferShift");
-    var OBJECTMODE = Symbol("objectMode");
-    var DESTROYED = Symbol("destroyed");
-    var ERROR = Symbol("error");
-    var EMITDATA = Symbol("emitData");
-    var EMITEND = Symbol("emitEnd");
-    var EMITEND2 = Symbol("emitEnd2");
-    var ASYNC = Symbol("async");
-    var ABORT = Symbol("abort");
-    var ABORTED = Symbol("aborted");
-    var SIGNAL = Symbol("signal");
-    var DATALISTENERS = Symbol("dataListeners");
-    var DISCARDED = Symbol("discarded");
+    var EOF = /* @__PURE__ */ Symbol("EOF");
+    var MAYBE_EMIT_END = /* @__PURE__ */ Symbol("maybeEmitEnd");
+    var EMITTED_END = /* @__PURE__ */ Symbol("emittedEnd");
+    var EMITTING_END = /* @__PURE__ */ Symbol("emittingEnd");
+    var EMITTED_ERROR = /* @__PURE__ */ Symbol("emittedError");
+    var CLOSED = /* @__PURE__ */ Symbol("closed");
+    var READ = /* @__PURE__ */ Symbol("read");
+    var FLUSH = /* @__PURE__ */ Symbol("flush");
+    var FLUSHCHUNK = /* @__PURE__ */ Symbol("flushChunk");
+    var ENCODING = /* @__PURE__ */ Symbol("encoding");
+    var DECODER = /* @__PURE__ */ Symbol("decoder");
+    var FLOWING = /* @__PURE__ */ Symbol("flowing");
+    var PAUSED = /* @__PURE__ */ Symbol("paused");
+    var RESUME = /* @__PURE__ */ Symbol("resume");
+    var BUFFER = /* @__PURE__ */ Symbol("buffer");
+    var PIPES = /* @__PURE__ */ Symbol("pipes");
+    var BUFFERLENGTH = /* @__PURE__ */ Symbol("bufferLength");
+    var BUFFERPUSH = /* @__PURE__ */ Symbol("bufferPush");
+    var BUFFERSHIFT = /* @__PURE__ */ Symbol("bufferShift");
+    var OBJECTMODE = /* @__PURE__ */ Symbol("objectMode");
+    var DESTROYED = /* @__PURE__ */ Symbol("destroyed");
+    var ERROR = /* @__PURE__ */ Symbol("error");
+    var EMITDATA = /* @__PURE__ */ Symbol("emitData");
+    var EMITEND = /* @__PURE__ */ Symbol("emitEnd");
+    var EMITEND2 = /* @__PURE__ */ Symbol("emitEnd2");
+    var ASYNC = /* @__PURE__ */ Symbol("async");
+    var ABORT = /* @__PURE__ */ Symbol("abort");
+    var ABORTED = /* @__PURE__ */ Symbol("aborted");
+    var SIGNAL = /* @__PURE__ */ Symbol("signal");
+    var DATALISTENERS = /* @__PURE__ */ Symbol("dataListeners");
+    var DISCARDED = /* @__PURE__ */ Symbol("discarded");
     var defer = (fn) => Promise.resolve().then(fn);
     var nodefer = (fn) => fn();
     var isEndish = (ev) => ev === "end" || ev === "finish" || ev === "prefinish";
@@ -56125,7 +56152,7 @@ var require_commonjs3 = __commonJS({
 var require_commonjs4 = __commonJS({
   "../../node_modules/.pnpm/path-scurry@1.11.1/node_modules/path-scurry/dist/commonjs/index.js"(exports2) {
     "use strict";
-    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? function(o, m, k, k2) {
+    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       var desc = Object.getOwnPropertyDescriptor(m, k);
       if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
@@ -56134,13 +56161,13 @@ var require_commonjs4 = __commonJS({
         } };
       }
       Object.defineProperty(o, k2, desc);
-    } : function(o, m, k, k2) {
+    }) : (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m[k];
-    });
-    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? function(o, v) {
+    }));
+    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? (function(o, v) {
       Object.defineProperty(o, "default", { enumerable: true, value: v });
-    } : function(o, v) {
+    }) : function(o, v) {
       o["default"] = v;
     });
     var __importStar = exports2 && exports2.__importStar || function(mod) {
@@ -56239,7 +56266,7 @@ var require_commonjs4 = __commonJS({
       }
     };
     exports2.ChildrenCache = ChildrenCache;
-    var setAsCwd = Symbol("PathScurry setAsCwd");
+    var setAsCwd = /* @__PURE__ */ Symbol("PathScurry setAsCwd");
     var PathBase = class {
       /**
        * the basename of this path
@@ -60397,6 +60424,7 @@ var require_SendStream = __commonJS({
       if ((debug.enabled || // if debugging is enabled, then check for all cases to log allow case
       this._dotfiles !== 0) && containsDotFile(parts)) {
         switch (this._dotfiles) {
+          /* istanbul ignore next: unreachable, because NODE_DEBUG can not be set after process is running */
           case 0:
             debug('allow dotfile "%s"', path3);
             break;
@@ -60405,6 +60433,7 @@ var require_SendStream = __commonJS({
             this.error(403);
             return res;
           case 1:
+          // 'ignore'
           default:
             debug('ignore dotfile "%s"', path3);
             this.error(404);
@@ -66046,6 +66075,7 @@ var require_utils5 = __commonJS({
             case "maybe":
               if (buffer[pos] > 31)
                 return BigInt(`0x${buffer.hexSlice(pos, pos += 8)}`);
+            // FALLTHROUGH
             default:
               return buffer[pos++] * 72057594037927940 + buffer[pos++] * 281474976710656 + buffer[pos++] * 1099511627776 + buffer[pos++] * 4294967296 + buffer[pos++] * 16777216 + buffer[pos++] * 65536 + buffer[pos++] * 256 + buffer[pos++];
           }
@@ -66306,10 +66336,10 @@ var require_utils5 = __commonJS({
 // ../../node_modules/.pnpm/ssh2@1.17.0/node_modules/ssh2/lib/protocol/crypto/poly1305.js
 var require_poly1305 = __commonJS({
   "../../node_modules/.pnpm/ssh2@1.17.0/node_modules/ssh2/lib/protocol/crypto/poly1305.js"(exports2, module2) {
-    var createPoly1305 = function() {
+    var createPoly1305 = (function() {
       var _scriptDir = typeof document !== "undefined" && document.currentScript ? document.currentScript.src : void 0;
       if (typeof __filename !== "undefined") _scriptDir = _scriptDir || __filename;
-      return function(createPoly13052) {
+      return (function(createPoly13052) {
         createPoly13052 = createPoly13052 || {};
         var b;
         b || (b = typeof createPoly13052 !== "undefined" ? createPoly13052 : {});
@@ -66456,7 +66486,7 @@ var require_poly1305 = __commonJS({
             aa ? (0 === a && (a = da()), A[t] = aa(e[t])) : A[t] = e[t];
           }
           d = l.apply(null, A);
-          d = function(g) {
+          d = (function(g) {
             if ("string" === c) if (g) {
               for (var p = P, n = g + NaN, k = g; p[k] && !(k >= n); ) ++k;
               if (16 < k - g && p.subarray && ea) g = ea.decode(p.subarray(g, k));
@@ -66478,7 +66508,7 @@ var require_poly1305 = __commonJS({
             } else g = "";
             else g = "boolean" === c ? !!g : g;
             return g;
-          }(d);
+          })(d);
           0 !== a && fa(a);
           return d;
         }
@@ -66718,8 +66748,8 @@ var require_poly1305 = __commonJS({
         if (b.preInit) for ("function" == typeof b.preInit && (b.preInit = [b.preInit]); 0 < b.preInit.length; ) b.preInit.pop()();
         Z();
         return createPoly13052.ready;
-      };
-    }();
+      });
+    })();
     if (typeof exports2 === "object" && typeof module2 === "object")
       module2.exports = createPoly1305;
     else if (typeof define === "function" && define["amd"])
@@ -68082,11 +68112,11 @@ var require_keyParser = __commonJS({
       readUInt32BE,
       writeUInt32BE
     } = require_utils5();
-    var SYM_HASH_ALGO = Symbol("Hash Algorithm");
-    var SYM_PRIV_PEM = Symbol("Private key PEM");
-    var SYM_PUB_PEM = Symbol("Public key PEM");
-    var SYM_PUB_SSH = Symbol("Public key SSH");
-    var SYM_DECRYPTED = Symbol("Decrypted Key");
+    var SYM_HASH_ALGO = /* @__PURE__ */ Symbol("Hash Algorithm");
+    var SYM_PRIV_PEM = /* @__PURE__ */ Symbol("Private key PEM");
+    var SYM_PUB_PEM = /* @__PURE__ */ Symbol("Public key PEM");
+    var SYM_PUB_SSH = /* @__PURE__ */ Symbol("Public key SSH");
+    var SYM_DECRYPTED = /* @__PURE__ */ Symbol("Decrypted Key");
     var CIPHER_INFO_OPENSSL = /* @__PURE__ */ Object.create(null);
     {
       const keys = Object.keys(CIPHER_INFO);
@@ -68525,11 +68555,13 @@ ${formatted}-----END ${type} KEY-----`;
             case "ecdsa-sha2-nistp256":
               algo = "sha256";
               oid = "1.2.840.10045.3.1.7";
+            // FALLTHROUGH
             case "ecdsa-sha2-nistp384":
               if (algo === void 0) {
                 algo = "sha384";
                 oid = "1.3.132.0.34";
               }
+            // FALLTHROUGH
             case "ecdsa-sha2-nistp521": {
               if (algo === void 0) {
                 algo = "sha512";
@@ -69192,11 +69224,13 @@ ${formatted}-----END ${type} KEY-----`;
         case "ecdsa-sha2-nistp256":
           algo = "sha256";
           oid = "1.2.840.10045.3.1.7";
+        // FALLTHROUGH
         case "ecdsa-sha2-nistp384":
           if (algo === void 0) {
             algo = "sha384";
             oid = "1.3.132.0.34";
           }
+        // FALLTHROUGH
         case "ecdsa-sha2-nistp521": {
           if (algo === void 0) {
             algo = "sha512";
@@ -69227,6 +69261,7 @@ ${formatted}-----END ${type} KEY-----`;
         case "ssh-ed25519":
           if (eddsaSupported)
             return true;
+        // FALLTHROUGH
         default:
           return false;
       }
@@ -69626,9 +69661,9 @@ var require_agent = __commonJS({
         }
         return ret;
       }
-      const SYM_TYPE = Symbol("Inbound Request Type");
-      const SYM_RESP = Symbol("Inbound Request Response");
-      const SYM_CTX = Symbol("Inbound Request Context");
+      const SYM_TYPE = /* @__PURE__ */ Symbol("Inbound Request Type");
+      const SYM_RESP = /* @__PURE__ */ Symbol("Inbound Request Response");
+      const SYM_CTX = /* @__PURE__ */ Symbol("Inbound Request Context");
       class AgentInboundRequest {
         constructor(type, ctx) {
           this[SYM_TYPE] = type;
@@ -69676,12 +69711,12 @@ var require_agent = __commonJS({
       function onEnd() {
         this[SYM_ENDED] = true;
       }
-      const SYM_REQS = Symbol("Requests");
-      const SYM_MODE = Symbol("Agent Protocol Role");
-      const SYM_BUFFER = Symbol("Agent Protocol Buffer");
-      const SYM_MSGLEN = Symbol("Agent Protocol Current Message Length");
-      const SYM_CLOSED = Symbol("Agent Protocol Closed");
-      const SYM_ENDED = Symbol("Agent Protocol Ended");
+      const SYM_REQS = /* @__PURE__ */ Symbol("Requests");
+      const SYM_MODE = /* @__PURE__ */ Symbol("Agent Protocol Role");
+      const SYM_BUFFER = /* @__PURE__ */ Symbol("Agent Protocol Buffer");
+      const SYM_MSGLEN = /* @__PURE__ */ Symbol("Agent Protocol Current Message Length");
+      const SYM_CLOSED = /* @__PURE__ */ Symbol("Agent Protocol Closed");
+      const SYM_ENDED = /* @__PURE__ */ Symbol("Agent Protocol Ended");
       return class AgentProtocol extends Duplex {
         /*
             Notes:
@@ -70022,10 +70057,10 @@ var require_agent = __commonJS({
         }
       };
     })();
-    var SYM_AGENT = Symbol("Agent");
-    var SYM_AGENT_KEYS = Symbol("Agent Keys");
-    var SYM_AGENT_KEYS_IDX = Symbol("Agent Keys Index");
-    var SYM_AGENT_CBS = Symbol("Agent Init Callbacks");
+    var SYM_AGENT = /* @__PURE__ */ Symbol("Agent");
+    var SYM_AGENT_KEYS = /* @__PURE__ */ Symbol("Agent Keys");
+    var SYM_AGENT_KEYS_IDX = /* @__PURE__ */ Symbol("Agent Keys Index");
+    var SYM_AGENT_CBS = /* @__PURE__ */ Symbol("Agent Init Callbacks");
     var AgentContext = class {
       constructor(agent) {
         if (typeof agent === "string")
@@ -70847,6 +70882,7 @@ var require_handlers_misc = __commonJS({
         let channelInfo;
         switch (type) {
           case "forwarded-tcpip":
+          // S->C
           case "direct-tcpip": {
             const destIP = bufferParser.readString(true);
             const destPort = bufferParser.readUInt32BE();
@@ -70864,6 +70900,7 @@ var require_handlers_misc = __commonJS({
             break;
           }
           case "forwarded-streamlocal@openssh.com":
+          // S->C
           case "direct-streamlocal@openssh.com": {
             const socketPath = bufferParser.readString(true);
             if (socketPath !== void 0) {
@@ -72004,6 +72041,7 @@ var require_kex = __commonJS({
                     rw.write = new ZlibPacketWriter(this._protocol);
                   break;
                 }
+              // FALLTHROUGH
               default:
                 if (isServer)
                   rw.read = new PacketReader();
@@ -72025,6 +72063,7 @@ var require_kex = __commonJS({
                     rw.read = new ZlibPacketReader();
                   break;
                 }
+              // FALLTHROUGH
               default:
                 if (isServer)
                   rw.write = new PacketWriter(this._protocol);
@@ -72191,6 +72230,7 @@ var require_kex = __commonJS({
                     case "rsa-sha2-512":
                       if (hostPubKeyType === "ssh-rsa")
                         break;
+                    // FALLTHROUGH
                     default:
                       return doFatalError(
                         this._protocol,
@@ -80729,6 +80769,7 @@ var require_server3 = __commonJS({
                 return;
               }
               switch (type) {
+                // "pre-real session start" requests
                 case "env":
                   if (listenerCount(session, "env")) {
                     session.emit("env", accept, reject, {
@@ -80756,6 +80797,7 @@ var require_server3 = __commonJS({
                     return;
                   }
                   break;
+                // "post-real session start" requests
                 case "signal":
                   if (listenerCount(session, "signal")) {
                     session.emit("signal", accept, reject, {
@@ -80764,12 +80806,15 @@ var require_server3 = __commonJS({
                     return;
                   }
                   break;
+                // XXX: is `auth-agent-req@openssh.com` really "post-real session
+                // start"?
                 case "auth-agent-req@openssh.com":
                   if (listenerCount(session, "auth-agent")) {
                     session.emit("auth-agent", accept, reject);
                     return;
                   }
                   break;
+                // "real session start" requests
                 case "shell":
                   if (listenerCount(session, "shell")) {
                     accept = () => {
@@ -82619,6 +82664,7 @@ function handleScreenWs(socket, request, user) {
         } catch {
         }
         break;
+      // ── Legacy protocol (older dashboards / clients) ─────────────────────
       case "screen_start":
         sendJson(rec.ws, { type: "server:screen_start", payload: { sessionId: uuidv4(), fps: msg.fps || 10, quality: msg.quality || 60, maxWidth: msg.maxWidth || 1280 } });
         break;
@@ -83926,30 +83972,11 @@ escape-html/index.js:
    *)
 
 @fastify/send/lib/clearHeaders.js:
-  (*!
-   * send
-   * Copyright(c) 2012 TJ Holowaychuk
-   * Copyright(c) 2014-2022 Douglas Christopher Wilson
-   * MIT Licensed
-   *)
-
 @fastify/send/lib/containsDotFile.js:
-  (*!
-   * send
-   * Copyright(c) 2012 TJ Holowaychuk
-   * Copyright(c) 2014-2022 Douglas Christopher Wilson
-   * MIT Licensed
-   *)
-
 @fastify/send/lib/contentRange.js:
-  (*!
-   * send
-   * Copyright(c) 2012 TJ Holowaychuk
-   * Copyright(c) 2014-2022 Douglas Christopher Wilson
-   * MIT Licensed
-   *)
-
 @fastify/send/lib/createHtmlDocument.js:
+@fastify/send/lib/SendStream.js:
+@fastify/send/index.js:
   (*!
    * send
    * Copyright(c) 2012 TJ Holowaychuk
@@ -83993,22 +84020,6 @@ http-errors/index.js:
    *
    * Copyright(c) 2012-2014 TJ Holowaychuk
    * Copyright(c) 2015-2016 Douglas Christopher Wilson
-   * MIT Licensed
-   *)
-
-@fastify/send/lib/SendStream.js:
-  (*!
-   * send
-   * Copyright(c) 2012 TJ Holowaychuk
-   * Copyright(c) 2014-2022 Douglas Christopher Wilson
-   * MIT Licensed
-   *)
-
-@fastify/send/index.js:
-  (*!
-   * send
-   * Copyright(c) 2012 TJ Holowaychuk
-   * Copyright(c) 2014-2022 Douglas Christopher Wilson
    * MIT Licensed
    *)
 

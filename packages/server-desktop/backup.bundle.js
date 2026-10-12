@@ -235,7 +235,7 @@ var require_minimatch = __commonJS({
     module2.exports = minimatch;
     var path2 = require_path();
     minimatch.sep = path2.sep;
-    var GLOBSTAR = Symbol("globstar **");
+    var GLOBSTAR = /* @__PURE__ */ Symbol("globstar **");
     minimatch.GLOBSTAR = GLOBSTAR;
     var expand = require_brace_expansion();
     var plTypes = {
@@ -299,7 +299,7 @@ var require_minimatch = __commonJS({
         throw new TypeError("pattern is too long");
       }
     };
-    var SUBPARSE = Symbol("subparse");
+    var SUBPARSE = /* @__PURE__ */ Symbol("subparse");
     minimatch.makeRe = (pattern, options) => new Minimatch(pattern, options || {}).makeRe();
     minimatch.match = (list, pattern, options = {}) => {
       const mm = new Minimatch(pattern, options);
@@ -595,6 +595,7 @@ var require_minimatch = __commonJS({
             continue;
           }
           switch (c) {
+            /* istanbul ignore next */
             case "/": {
               return false;
             }
@@ -606,6 +607,8 @@ var require_minimatch = __commonJS({
               clearStateChar();
               escaping = true;
               continue;
+            // the various stateChar values
+            // for the "extglob" stuff.
             case "?":
             case "*":
             case "+":
@@ -681,6 +684,7 @@ var require_minimatch = __commonJS({
               }
               continue;
             }
+            // these are mostly the same in regexp and glob
             case "[":
               clearStateChar();
               if (inClass) {
@@ -892,12 +896,16 @@ var require_readdir_glob = __commonJS({
                 }
                 break;
               case "ENOTSUP":
+              // Operation not supported
               case "ENOENT":
+              // No such file or directory
               case "ENAMETOOLONG":
+              // Filename too long
               case "UNKNOWN":
                 resolve2([]);
                 break;
               case "ELOOP":
+              // Too many levels of symbolic links
               default:
                 reject(err);
                 break;
@@ -1094,7 +1102,7 @@ var require_async = __commonJS({
   "../../node_modules/.pnpm/async@3.2.6/node_modules/async/dist/async.js"(exports2, module2) {
     (function(global2, factory) {
       typeof exports2 === "object" && typeof module2 !== "undefined" ? factory(exports2) : typeof define === "function" && define.amd ? define(["exports"], factory) : (global2 = typeof globalThis !== "undefined" ? globalThis : global2 || self, factory(global2.async = {}));
-    })(exports2, function(exports3) {
+    })(exports2, (function(exports3) {
       "use strict";
       function apply(fn, ...args) {
         return (...callArgs) => fn(...args, ...callArgs);
@@ -1430,7 +1438,7 @@ var require_async = __commonJS({
       }
       var mapSeries$1 = awaitify(mapSeries, 3);
       var applyEachSeries = applyEach$1(mapSeries$1);
-      const PROMISE_SYMBOL = Symbol("promiseCallback");
+      const PROMISE_SYMBOL = /* @__PURE__ */ Symbol("promiseCallback");
       function promiseCallback() {
         let resolve, reject2;
         function callback(err, ...args) {
@@ -2945,7 +2953,7 @@ var require_async = __commonJS({
       exports3.whilst = whilst$1;
       exports3.wrapSync = asyncify;
       Object.defineProperty(exports3, "__esModule", { value: true });
-    });
+    }));
   }
 });
 
@@ -3015,7 +3023,7 @@ var require_polyfills = __commonJS({
         };
       }
       if (platform === "win32") {
-        fs2.rename = typeof fs2.rename !== "function" ? fs2.rename : function(fs$rename) {
+        fs2.rename = typeof fs2.rename !== "function" ? fs2.rename : (function(fs$rename) {
           function rename(from, to, cb) {
             var start = Date.now();
             var backoff = 0;
@@ -3038,9 +3046,9 @@ var require_polyfills = __commonJS({
           }
           if (Object.setPrototypeOf) Object.setPrototypeOf(rename, fs$rename);
           return rename;
-        }(fs2.rename);
+        })(fs2.rename);
       }
-      fs2.read = typeof fs2.read !== "function" ? fs2.read : function(fs$read) {
+      fs2.read = typeof fs2.read !== "function" ? fs2.read : (function(fs$read) {
         function read(fd, buffer, offset, length, position, callback_) {
           var callback;
           if (callback_ && typeof callback_ === "function") {
@@ -3057,8 +3065,8 @@ var require_polyfills = __commonJS({
         }
         if (Object.setPrototypeOf) Object.setPrototypeOf(read, fs$read);
         return read;
-      }(fs2.read);
-      fs2.readSync = typeof fs2.readSync !== "function" ? fs2.readSync : /* @__PURE__ */ function(fs$readSync) {
+      })(fs2.read);
+      fs2.readSync = typeof fs2.readSync !== "function" ? fs2.readSync : /* @__PURE__ */ (function(fs$readSync) {
         return function(fd, buffer, offset, length, position) {
           var eagCounter = 0;
           while (true) {
@@ -3073,7 +3081,7 @@ var require_polyfills = __commonJS({
             }
           }
         };
-      }(fs2.readSync);
+      })(fs2.readSync);
       function patchLchmod(fs3) {
         fs3.lchmod = function(path2, mode, callback) {
           fs3.open(
@@ -3367,8 +3375,8 @@ var require_graceful_fs = __commonJS({
     var gracefulQueue;
     var previousSymbol;
     if (typeof Symbol === "function" && typeof Symbol.for === "function") {
-      gracefulQueue = Symbol.for("graceful-fs.queue");
-      previousSymbol = Symbol.for("graceful-fs.previous");
+      gracefulQueue = /* @__PURE__ */ Symbol.for("graceful-fs.queue");
+      previousSymbol = /* @__PURE__ */ Symbol.for("graceful-fs.previous");
     } else {
       gracefulQueue = "___graceful-fs.queue";
       previousSymbol = "___graceful-fs.previous";
@@ -3394,7 +3402,7 @@ var require_graceful_fs = __commonJS({
     if (!fs2[gracefulQueue]) {
       queue = global[gracefulQueue] || [];
       publishQueue(fs2, queue);
-      fs2.close = function(fs$close) {
+      fs2.close = (function(fs$close) {
         function close(fd, cb) {
           return fs$close.call(fs2, fd, function(err) {
             if (!err) {
@@ -3408,8 +3416,8 @@ var require_graceful_fs = __commonJS({
           value: fs$close
         });
         return close;
-      }(fs2.close);
-      fs2.closeSync = function(fs$closeSync) {
+      })(fs2.close);
+      fs2.closeSync = (function(fs$closeSync) {
         function closeSync(fd) {
           fs$closeSync.apply(fs2, arguments);
           resetQueue();
@@ -3418,7 +3426,7 @@ var require_graceful_fs = __commonJS({
           value: fs$closeSync
         });
         return closeSync;
-      }(fs2.closeSync);
+      })(fs2.closeSync);
       if (/\bgfs4\b/i.test(process.env.NODE_DEBUG || "")) {
         process.on("exit", function() {
           debug(fs2[gracefulQueue]);
@@ -3988,7 +3996,7 @@ var require_BufferList = __commonJS({
     function copyBuffer(src, target, offset) {
       src.copy(target, offset);
     }
-    module2.exports = function() {
+    module2.exports = (function() {
       function BufferList() {
         _classCallCheck(this, BufferList);
         this.head = null;
@@ -4042,7 +4050,7 @@ var require_BufferList = __commonJS({
         return ret;
       };
       return BufferList;
-    }();
+    })();
     if (util && util.inspect && util.inspect.custom) {
       module2.exports.prototype[util.inspect.custom] = function() {
         var obj = util.inspect({ length: this.length });
@@ -5436,11 +5444,11 @@ var require_stream_readable = __commonJS({
       });
       for (var i in stream) {
         if (this[i] === void 0 && typeof stream[i] === "function") {
-          this[i] = /* @__PURE__ */ function(method) {
+          this[i] = /* @__PURE__ */ (function(method) {
             return function() {
               return stream[method].apply(stream, arguments);
             };
-          }(i);
+          })(i);
         }
       }
       for (var n = 0; n < kProxyEvents.length; n++) {
@@ -5990,10 +5998,10 @@ var require_coreJsData = __commonJS({
 var require_isMasked = __commonJS({
   "../../node_modules/.pnpm/lodash@4.18.1/node_modules/lodash/_isMasked.js"(exports2, module2) {
     var coreJsData = require_coreJsData();
-    var maskSrcKey = function() {
+    var maskSrcKey = (function() {
       var uid = /[^.]+$/.exec(coreJsData && coreJsData.keys && coreJsData.keys.IE_PROTO || "");
       return uid ? "Symbol(src)_1." + uid : "";
-    }();
+    })();
     function isMasked(func) {
       return !!maskSrcKey && maskSrcKey in func;
     }
@@ -6077,14 +6085,14 @@ var require_getNative = __commonJS({
 var require_defineProperty = __commonJS({
   "../../node_modules/.pnpm/lodash@4.18.1/node_modules/lodash/_defineProperty.js"(exports2, module2) {
     var getNative = require_getNative();
-    var defineProperty = function() {
+    var defineProperty = (function() {
       try {
         var func = getNative(Object, "defineProperty");
         func({}, "", {});
         return func;
       } catch (e) {
       }
-    }();
+    })();
     module2.exports = defineProperty;
   }
 });
@@ -6268,9 +6276,9 @@ var require_isArguments = __commonJS({
     var objectProto = Object.prototype;
     var hasOwnProperty = objectProto.hasOwnProperty;
     var propertyIsEnumerable = objectProto.propertyIsEnumerable;
-    var isArguments = baseIsArguments(/* @__PURE__ */ function() {
+    var isArguments = baseIsArguments(/* @__PURE__ */ (function() {
       return arguments;
-    }()) ? baseIsArguments : function(value) {
+    })()) ? baseIsArguments : function(value) {
       return isObjectLike(value) && hasOwnProperty.call(value, "callee") && !propertyIsEnumerable.call(value, "callee");
     };
     module2.exports = isArguments;
@@ -6370,7 +6378,7 @@ var require_nodeUtil = __commonJS({
     var freeModule = freeExports && typeof module2 == "object" && module2 && !module2.nodeType && module2;
     var moduleExports = freeModule && freeModule.exports === freeExports;
     var freeProcess = moduleExports && freeGlobal.process;
-    var nodeUtil = function() {
+    var nodeUtil = (function() {
       try {
         var types = freeModule && freeModule.require && freeModule.require("util").types;
         if (types) {
@@ -6379,7 +6387,7 @@ var require_nodeUtil = __commonJS({
         return freeProcess && freeProcess.binding && freeProcess.binding("util");
       } catch (e) {
       }
-    }();
+    })();
     module2.exports = nodeUtil;
   }
 });
@@ -6635,8 +6643,8 @@ var require_primordials = __commonJS({
       SymbolAsyncIterator: Symbol.asyncIterator,
       SymbolHasInstance: Symbol.hasInstance,
       SymbolIterator: Symbol.iterator,
-      SymbolDispose: Symbol.dispose || Symbol("Symbol.dispose"),
-      SymbolAsyncDispose: Symbol.asyncDispose || Symbol("Symbol.asyncDispose"),
+      SymbolDispose: Symbol.dispose || /* @__PURE__ */ Symbol("Symbol.dispose"),
+      SymbolAsyncDispose: Symbol.asyncDispose || /* @__PURE__ */ Symbol("Symbol.asyncDispose"),
       TypedArrayPrototypeSet(self2, buf, len) {
         return self2.set(buf, len);
       },
@@ -6704,7 +6712,7 @@ var require_errors = __commonJS({
     var { format, inspect } = require_inspect();
     var { AggregateError: CustomAggregateError } = require_primordials();
     var AggregateError = globalThis.AggregateError || CustomAggregateError;
-    var kIsNodeError = Symbol("kIsNodeError");
+    var kIsNodeError = /* @__PURE__ */ Symbol("kIsNodeError");
     var kTypes = [
       "string",
       "function",
@@ -7818,7 +7826,7 @@ var require_util2 = __commonJS({
         return ac.signal;
       }
     };
-    module2.exports.promisify.custom = Symbol.for("nodejs.util.promisify.custom");
+    module2.exports.promisify.custom = /* @__PURE__ */ Symbol.for("nodejs.util.promisify.custom");
   }
 });
 
@@ -9090,7 +9098,7 @@ var require_buffer_list = __commonJS({
         return ret;
       }
       // Make sure the linked list only shows the minimal necessary information.
-      [Symbol.for("nodejs.util.inspect.custom")](_2, options) {
+      [/* @__PURE__ */ Symbol.for("nodejs.util.inspect.custom")](_2, options) {
         return inspect(this, {
           ...options,
           // Only inspect one level.
@@ -11315,7 +11323,7 @@ var require_duplexify = __commonJS({
       const ac = new AbortController();
       const signal = ac.signal;
       const value = fn(
-        async function* () {
+        (async function* () {
           while (true) {
             const _promise = promise;
             promise = null;
@@ -11329,7 +11337,7 @@ var require_duplexify = __commonJS({
             ({ promise, resolve } = createDeferredPromise());
             yield chunk;
           }
-        }(),
+        })(),
         {
           signal
         }
@@ -14623,7 +14631,7 @@ var require_commonjs = __commonJS({
     };
     exports2.sep = defaultPlatform === "win32" ? path2.win32.sep : path2.posix.sep;
     exports2.minimatch.sep = exports2.sep;
-    exports2.GLOBSTAR = Symbol("globstar **");
+    exports2.GLOBSTAR = /* @__PURE__ */ Symbol("globstar **");
     exports2.minimatch.GLOBSTAR = exports2.GLOBSTAR;
     var qmark = "[^/]";
     var star = qmark + "*?";
@@ -15415,7 +15423,6 @@ var require_commonjs2 = __commonJS({
       };
     }
     var shouldWarn = (code) => !warned.has(code);
-    var TYPE = Symbol("type");
     var isPosInt = (n) => n && n === Math.floor(n) && n > 0 && isFinite(n);
     var getUintArray = (max) => !isPosInt(max) ? null : max <= Math.pow(2, 8) ? Uint8Array : max <= Math.pow(2, 16) ? Uint16Array : max <= Math.pow(2, 32) ? Uint32Array : max <= Number.MAX_SAFE_INTEGER ? ZeroArray : null;
     var ZeroArray = class extends Array {
@@ -16766,37 +16773,37 @@ var require_commonjs3 = __commonJS({
     exports2.isReadable = isReadable;
     var isWritable = (s) => !!s && typeof s === "object" && s instanceof node_events_1.EventEmitter && typeof s.write === "function" && typeof s.end === "function";
     exports2.isWritable = isWritable;
-    var EOF = Symbol("EOF");
-    var MAYBE_EMIT_END = Symbol("maybeEmitEnd");
-    var EMITTED_END = Symbol("emittedEnd");
-    var EMITTING_END = Symbol("emittingEnd");
-    var EMITTED_ERROR = Symbol("emittedError");
-    var CLOSED = Symbol("closed");
-    var READ = Symbol("read");
-    var FLUSH = Symbol("flush");
-    var FLUSHCHUNK = Symbol("flushChunk");
-    var ENCODING = Symbol("encoding");
-    var DECODER = Symbol("decoder");
-    var FLOWING = Symbol("flowing");
-    var PAUSED = Symbol("paused");
-    var RESUME = Symbol("resume");
-    var BUFFER = Symbol("buffer");
-    var PIPES = Symbol("pipes");
-    var BUFFERLENGTH = Symbol("bufferLength");
-    var BUFFERPUSH = Symbol("bufferPush");
-    var BUFFERSHIFT = Symbol("bufferShift");
-    var OBJECTMODE = Symbol("objectMode");
-    var DESTROYED = Symbol("destroyed");
-    var ERROR = Symbol("error");
-    var EMITDATA = Symbol("emitData");
-    var EMITEND = Symbol("emitEnd");
-    var EMITEND2 = Symbol("emitEnd2");
-    var ASYNC = Symbol("async");
-    var ABORT = Symbol("abort");
-    var ABORTED = Symbol("aborted");
-    var SIGNAL = Symbol("signal");
-    var DATALISTENERS = Symbol("dataListeners");
-    var DISCARDED = Symbol("discarded");
+    var EOF = /* @__PURE__ */ Symbol("EOF");
+    var MAYBE_EMIT_END = /* @__PURE__ */ Symbol("maybeEmitEnd");
+    var EMITTED_END = /* @__PURE__ */ Symbol("emittedEnd");
+    var EMITTING_END = /* @__PURE__ */ Symbol("emittingEnd");
+    var EMITTED_ERROR = /* @__PURE__ */ Symbol("emittedError");
+    var CLOSED = /* @__PURE__ */ Symbol("closed");
+    var READ = /* @__PURE__ */ Symbol("read");
+    var FLUSH = /* @__PURE__ */ Symbol("flush");
+    var FLUSHCHUNK = /* @__PURE__ */ Symbol("flushChunk");
+    var ENCODING = /* @__PURE__ */ Symbol("encoding");
+    var DECODER = /* @__PURE__ */ Symbol("decoder");
+    var FLOWING = /* @__PURE__ */ Symbol("flowing");
+    var PAUSED = /* @__PURE__ */ Symbol("paused");
+    var RESUME = /* @__PURE__ */ Symbol("resume");
+    var BUFFER = /* @__PURE__ */ Symbol("buffer");
+    var PIPES = /* @__PURE__ */ Symbol("pipes");
+    var BUFFERLENGTH = /* @__PURE__ */ Symbol("bufferLength");
+    var BUFFERPUSH = /* @__PURE__ */ Symbol("bufferPush");
+    var BUFFERSHIFT = /* @__PURE__ */ Symbol("bufferShift");
+    var OBJECTMODE = /* @__PURE__ */ Symbol("objectMode");
+    var DESTROYED = /* @__PURE__ */ Symbol("destroyed");
+    var ERROR = /* @__PURE__ */ Symbol("error");
+    var EMITDATA = /* @__PURE__ */ Symbol("emitData");
+    var EMITEND = /* @__PURE__ */ Symbol("emitEnd");
+    var EMITEND2 = /* @__PURE__ */ Symbol("emitEnd2");
+    var ASYNC = /* @__PURE__ */ Symbol("async");
+    var ABORT = /* @__PURE__ */ Symbol("abort");
+    var ABORTED = /* @__PURE__ */ Symbol("aborted");
+    var SIGNAL = /* @__PURE__ */ Symbol("signal");
+    var DATALISTENERS = /* @__PURE__ */ Symbol("dataListeners");
+    var DISCARDED = /* @__PURE__ */ Symbol("discarded");
     var defer = (fn) => Promise.resolve().then(fn);
     var nodefer = (fn) => fn();
     var isEndish = (ev) => ev === "end" || ev === "finish" || ev === "prefinish";
@@ -17643,7 +17650,7 @@ var require_commonjs3 = __commonJS({
 var require_commonjs4 = __commonJS({
   "../../node_modules/.pnpm/path-scurry@1.11.1/node_modules/path-scurry/dist/commonjs/index.js"(exports2) {
     "use strict";
-    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? function(o, m, k, k2) {
+    var __createBinding = exports2 && exports2.__createBinding || (Object.create ? (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       var desc = Object.getOwnPropertyDescriptor(m, k);
       if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
@@ -17652,13 +17659,13 @@ var require_commonjs4 = __commonJS({
         } };
       }
       Object.defineProperty(o, k2, desc);
-    } : function(o, m, k, k2) {
+    }) : (function(o, m, k, k2) {
       if (k2 === void 0) k2 = k;
       o[k2] = m[k];
-    });
-    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? function(o, v) {
+    }));
+    var __setModuleDefault = exports2 && exports2.__setModuleDefault || (Object.create ? (function(o, v) {
       Object.defineProperty(o, "default", { enumerable: true, value: v });
-    } : function(o, v) {
+    }) : function(o, v) {
       o["default"] = v;
     });
     var __importStar = exports2 && exports2.__importStar || function(mod) {
@@ -17757,7 +17764,7 @@ var require_commonjs4 = __commonJS({
       }
     };
     exports2.ChildrenCache = ChildrenCache;
-    var setAsCwd = Symbol("PathScurry setAsCwd");
+    var setAsCwd = /* @__PURE__ */ Symbol("PathScurry setAsCwd");
     var PathBase = class {
       /**
        * the basename of this path
@@ -23219,7 +23226,7 @@ var require_streamx = __commonJS({
     var WRITE_BACKPRESSURE_STATUS = WRITE_UNDRAINED | DESTROY_STATUS | WRITE_FINISHING | WRITE_DONE;
     var WRITE_UPDATE_SYNC_STATUS = WRITE_UPDATING | OPEN_STATUS | WRITE_NEXT_TICK | WRITE_PRIMARY;
     var WRITE_DROP_DATA = WRITE_FINISHING | WRITE_DONE | DESTROY_STATUS;
-    var asyncIterator = Symbol.asyncIterator || Symbol("asyncIterator");
+    var asyncIterator = Symbol.asyncIterator || /* @__PURE__ */ Symbol("asyncIterator");
     var WritableState = class {
       constructor(stream, { highWaterMark = 16384, map = null, mapWritable, byteLength, byteLengthWritable } = {}) {
         this.stream = stream;
@@ -25634,14 +25641,6 @@ safe-buffer/index.js:
   (*! safe-buffer. MIT License. Feross Aboukhadijeh <https://feross.org/opensource> *)
 
 archiver/lib/error.js:
-  (**
-   * Archiver Core
-   *
-   * @ignore
-   * @license [MIT]{@link https://github.com/archiverjs/node-archiver/blob/master/LICENSE}
-   * @copyright (c) 2012-2014 Chris Talkington, contributors.
-   *)
-
 archiver/lib/core.js:
   (**
    * Archiver Core

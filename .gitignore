@@ -41,3 +41,8 @@ Thumbs.db
 
 # ── Replit internal ──────────────────────────────────────────
 .cache/
+
+# Windows build outputs
+releases/**/*.blockmap
+releases/**/builder-debug.yml
+releases/**/win-unpacked/
