@@ -299,8 +299,10 @@ export async function handleAgentMessage(
 
     case 'agent:ssh_opened': {
       const { sessionId } = message.payload as { sessionId: string }
-      deviceRegistry.clearSshConnectTimeout(sessionId)
+      const sshOwnerId = deviceRegistry.getDeviceIdBySocket(socket)
       const session = deviceRegistry.getSshSession(sessionId)
+      if (!sshOwnerId || !session || session.deviceId !== sshOwnerId) return null
+      deviceRegistry.clearSshConnectTimeout(sessionId)
       if (session?.dashboardSocket.readyState === 1) {
         session.dashboardSocket.send(JSON.stringify({ type: 'ssh:connected', payload: { message: 'Connected' } }))
       }
@@ -309,7 +311,9 @@ export async function handleAgentMessage(
 
     case 'agent:ssh_data': {
       const { sessionId, data } = message.payload as { sessionId: string; data: string }
+      const sshOwnerId = deviceRegistry.getDeviceIdBySocket(socket)
       const session = deviceRegistry.getSshSession(sessionId)
+      if (!sshOwnerId || !session || session.deviceId !== sshOwnerId) return null
       if (session?.dashboardSocket.readyState === 1) {
         session.dashboardSocket.send(JSON.stringify({ type: 'ssh:data', payload: { data } }))
       }
@@ -318,7 +322,9 @@ export async function handleAgentMessage(
 
     case 'agent:ssh_closed': {
       const { sessionId } = message.payload as { sessionId: string }
+      const sshOwnerId = deviceRegistry.getDeviceIdBySocket(socket)
       const session = deviceRegistry.getSshSession(sessionId)
+      if (!sshOwnerId || !session || session.deviceId !== sshOwnerId) return null
       if (session?.dashboardSocket.readyState === 1) {
         session.dashboardSocket.send(JSON.stringify({ type: 'ssh:closed', payload: {} }))
       }
@@ -328,8 +334,10 @@ export async function handleAgentMessage(
 
     case 'agent:ssh_error': {
       const { sessionId, message: errMsg } = message.payload as { sessionId: string; message: string }
-      deviceRegistry.clearSshConnectTimeout(sessionId)
+      const sshOwnerId = deviceRegistry.getDeviceIdBySocket(socket)
       const session = deviceRegistry.getSshSession(sessionId)
+      if (!sshOwnerId || !session || session.deviceId !== sshOwnerId) return null
+      deviceRegistry.clearSshConnectTimeout(sessionId)
       if (session?.dashboardSocket.readyState === 1) {
         session.dashboardSocket.send(JSON.stringify({ type: 'ssh:error', payload: { message: errMsg } }))
       }
@@ -339,8 +347,10 @@ export async function handleAgentMessage(
 
     case 'agent:pty_opened': {
       const { sessionId } = message.payload as { sessionId: string }
-      deviceRegistry.clearPtyConnectTimeout(sessionId)
+      const ptyOwnerId = deviceRegistry.getDeviceIdBySocket(socket)
       const session = deviceRegistry.getPtySession(sessionId)
+      if (!ptyOwnerId || !session || session.deviceId !== ptyOwnerId) return null
+      deviceRegistry.clearPtyConnectTimeout(sessionId)
       if (session?.dashboardSocket.readyState === 1) {
         session.dashboardSocket.send(JSON.stringify({
           type: 'pty:connected',
@@ -353,7 +363,9 @@ export async function handleAgentMessage(
 
     case 'agent:pty_data': {
       const { sessionId, data } = message.payload as { sessionId: string; data: string }
+      const ptyOwnerId = deviceRegistry.getDeviceIdBySocket(socket)
       const session = deviceRegistry.getPtySession(sessionId)
+      if (!ptyOwnerId || !session || session.deviceId !== ptyOwnerId) return null
       if (session?.dashboardSocket.readyState === 1) {
         session.dashboardSocket.send(JSON.stringify({ type: 'pty:data', payload: { data } }))
       }
@@ -362,8 +374,10 @@ export async function handleAgentMessage(
 
     case 'agent:pty_closed': {
       const { sessionId } = message.payload as { sessionId: string }
-      deviceRegistry.clearPtyConnectTimeout(sessionId)
+      const ptyOwnerId = deviceRegistry.getDeviceIdBySocket(socket)
       const session = deviceRegistry.getPtySession(sessionId)
+      if (!ptyOwnerId || !session || session.deviceId !== ptyOwnerId) return null
+      deviceRegistry.clearPtyConnectTimeout(sessionId)
       if (session?.dashboardSocket.readyState === 1) {
         session.dashboardSocket.send(JSON.stringify({ type: 'pty:closed', payload: {} }))
       }
@@ -374,8 +388,10 @@ export async function handleAgentMessage(
 
     case 'agent:pty_error': {
       const { sessionId, message: errMsg } = message.payload as { sessionId: string; message: string }
-      deviceRegistry.clearPtyConnectTimeout(sessionId)
+      const ptyOwnerId = deviceRegistry.getDeviceIdBySocket(socket)
       const session = deviceRegistry.getPtySession(sessionId)
+      if (!ptyOwnerId || !session || session.deviceId !== ptyOwnerId) return null
+      deviceRegistry.clearPtyConnectTimeout(sessionId)
       if (session?.dashboardSocket.readyState === 1) {
         session.dashboardSocket.send(JSON.stringify({ type: 'pty:error', payload: { message: errMsg } }))
       }
