@@ -9,7 +9,10 @@ const path = require('path')
 const fs   = require('fs')
 
 const ROOT    = path.join(__dirname, '..')
-const ESBUILD = path.join(__dirname, '..', '..', '..', 'node_modules', '.pnpm', 'node_modules', '.bin', 'esbuild')
+const ESBUILD = path.join(
+  __dirname, '..', '..', '..', 'node_modules', '.pnpm', 'node_modules', '.bin',
+  process.platform === 'win32' ? 'esbuild.cmd' : 'esbuild'
+)
 
 // ssh2 is bundled (cpu-features is optional and gracefully skipped)
 // Only truly native modules that cannot be bundled stay external
@@ -17,6 +20,7 @@ const EXTERNALS = [
   'electron',
   'better-sqlite3',
   'cpu-features',
+  '*.node',
 ].map(e => `--external:${e}`).join(' ')
 
 const entries = [
