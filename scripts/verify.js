@@ -16,6 +16,13 @@ const fs = require('fs')
 const ROOT = path.resolve(__dirname, '..')
 
 function pnpmCmd() {
+  // Run every step on the same pnpm that launched this script. The repo declares
+  // "pnpm" as a root dependency, so node_modules/.bin/pnpm shadows the global CLI
+  // inside `pnpm run` and a newer pnpm rejects a store created by an older one.
+  const execPath = process.env.npm_execpath
+  if (execPath && /pnpm/i.test(execPath) && fs.existsSync(execPath)) {
+    return '"' + process.execPath + '" "' + execPath + '"'
+  }
   if (process.platform === 'win32') {
     const p = path.join(process.env.APPDATA || '', 'npm', 'pnpm.cmd')
     if (fs.existsSync(p)) return '"' + p + '"'

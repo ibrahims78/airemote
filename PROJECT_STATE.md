@@ -1,4 +1,4 @@
-# PROJECT_STATE — AiRemote
+﻿# PROJECT_STATE — AiRemote
 
 **آخر تحديث:** 2026-10-25 (جلسة البناء والتحقق)  
 **المسار:** `D:\autoclaw projects-new\AiRemote`  
@@ -8,8 +8,8 @@
 ## 1) ملخص في ثلاثة أسطر
 
 1. AiRemote منصة وصول عن بعد وإدارة أجهزة مفتوحة المصدر، مبنية كـmonorepo وتشمل سيرفر Fastify ولوحة React ووكلاء Windows وAndroid.
-2. الواجهة الجديدة (الرئيسية، الدخول، الإعدادات، الوضع الفاتح، البث المتعدد) نُفِّذت واختُبرت فعلياً على WIN10-VM وWIN11-VM وAndroid-Emulator وTECNO، لكن كود السيرفر ما زال يعلن `3.2.1` بينما الحزم والمثبتات تحمل `3.6.0`.
-3. الخطوة التالية الحقيقية: توحيد رقم الإصدار في `packages/server/src/app.ts` من `3.2.1` إلى `3.6.0`، ثم إعادة بناء حزم السيرفر/الوكيل — وهذا يتطلب أولاً تفعيل بناء `better-sqlite3` (Visual Studio غير مُسجَّل)، والصوت يبقى مؤجَّلاً بعد ذلك.
+2. الواجهة الجديدة (الرئيسية، الدخول، الإعدادات، الوضع الفاتح، البث المتعدد) نُفِّذت واختُبرت فعلياً على WIN10-VM وWIN11-VM وAndroid-Emulator وTECNO، ورقم الإصدار في `/health` صُحِّح إلى `3.6.0` ليطابق الحزم بعد أن كان `3.2.1`.
+3. الخطوة التالية الحقيقية: تفعيل بناء `better-sqlite3` (تسجيل Visual Studio أو تثبيت VS 2022 Build Tools بحملة C++) ثم إعادة بناء مثبتات السيرفر/الوكيل والتحقق من البصمات — بعدها فقط يبدأ نقاش الصوت.
 
 ## 1.1 قرارات معتمدة (2026-10-25)
 
@@ -79,7 +79,7 @@ AiRemote/
 | `packages/server-desktop` | `airemote-server-desktop` | 3.6.0 |
 | `packages/ai-engine` | `@airemote/ai-engine` | 1.0.0 |
 | `packages/dashboard` | `@airemote/dashboard` | 1.0.0 (الواجهة تعرض 3.6.0 من بيئة البناء) |
-| `packages/server` | `@airemote/server` | 1.0.0 (بينما `src/app.ts` يعلن 3.2.1) |
+| `packages/server` | `@airemote/server` | 1.0.0؛ `/health` يعلن `3.6.0` بعد تصحيح 2026-10-25 |
 | `packages/shared` | `@airemote/shared` | 1.0.0 |
 | `packages/android-agent` | Android Agent | 3.6.0 (versionName 3.6.0 / versionCode 8) |
 | `packages/script-agent` | Script Agent | لا يوجد `package.json` |
@@ -148,10 +148,12 @@ AiRemote/
 - **الأثر محدود:** `better-sqlite3` يُستخدم في `packages/server-desktop` فقط (سيرفر Electron واختباره). سيرفر الويب `@airemote/server` يستخدم `@libsql/client`، ولهذا نجحت كل اختبارات الخادم والاتصال.
 - كود المشروع و`pnpm-lock.yaml` لم يتغيّرا؛ الشجرة نظيفة.
 
-### 6.2 انحراف الإصدار
+### 6.2 رقم الإصدار — مُصلَح ومُتحقَّق (2026-10-25)
 
-- `packages/server/src/app.ts` ما زال يعلن `3.2.1`، بينما السيرفر المبني و`/api/health` يعيدان `3.6.0`. أي إعادة بناء من المصدر دون تصحيح هذا السطر قد ترجع إلى 3.2.1.
-- `packages/dashboard/package.json` يعلن `1.0.0` بينما الواجهة تعرض 3.6.0 من بيئة البناء.
+- `packages/server/src/app.ts`: صُحِّح من `3.2.1` إلى `3.6.0`. الدليل: بعد إعادة بناء `dist`، أعاد `app.inject({ url: '/health' })` الجسم `{"status":"ok","version":"3.6.0"}` بحالة HTTP 200.
+- `packages/server-desktop/backup.js`: بيانات النسخ الاحتياطي تحمل الآن `3.6.0`، و`scripts/download-cloudflared.js` يرسل `User-Agent: AiRemote-Build/3.6.0`.
+- `packages/dashboard/package.json` يبقى `1.0.0` **بقرار**: الحزم الداخلية (shared، ai-engine، server، dashboard) تحمل `1.0.0`، وتطبيقات التوزيع (agent، agent-desktop، headless-agent، server-desktop) تحمل `3.6.0`. هذا نظام ترقيم لا انحراف، ولم أغيّر إصدارات الحزم الداخلية.
+- تعليقات `v3.2.1 hardening` داخل الكود و`docs/HARDENING.md` مراجع تاريخية لجولات التقوية، تُركت كما هي عن قصد.
 
 ### 6.3 جاهزية الإنتاج
 
@@ -179,7 +181,7 @@ AiRemote/
 
 1. ~~إصلاح تنزيل `app-builder-bin@4.0.0` وإكمال `pnpm install`~~ — **أُنجز 2026-10-25** بأمر `pnpm install --ignore-scripts`.
 2. ~~تشغيل `pnpm typecheck` و`build` و`verify`~~ — **أُنجز**؛ 9 خطوات حقيقية ناجحة وخطوة سطح المكتب تخطّت نفسها.
-3. **توحيد رقم الإصدار:** تصحيح `packages/server/src/app.ts` من `3.2.1` إلى `3.6.0`، وتوحيد `packages/dashboard/package.json`، وتحديث الوثائق التي تذكر الإصدار.
+3. ~~توحيد رقم الإصدار~~ — **أُنجز 2026-10-25**: `/health` ونسخ الاحتياطي وUser-Agent تحمل `3.6.0`، ومُتحقَّق بـ`app.inject`.
 4. **إعادة بناء الحزم:** تحتاج أولاً إصلاح بيئة البناء الأصلية — إما تسجيل BuildTools 2019 في الكتالوج (`vswhere`)، أو تثبيت VS 2022 Build Tools مع حملة C++، أو ترقية `better-sqlite3` لإصدار له prebuild لـNode 24. بدون ذلك لا يمكن بناء مثبتات Windows ولا تشغيل اختبار سطح المكتب.
 5. بعد إغلاق 3 و4: إعادة بناء مثبتات السيرفر/الوكيل والتحقق من البصمات، ثم اختبار المثبت على VM نظيف.
 6. بعد ذلك: بدء نقاش ميزة الصوت وتنفيذ المرحلة 6.0 (تحكم صوت واستماع) قبل 6.1 (Softphone).
@@ -213,6 +215,7 @@ AiRemote/
 | التقاط صوت مكالمات VoIP عبر AudioPlaybackCapture | غير مضمون؛ فئة الصوت محمية | وضع «استماع» فقط، مع توضيح الحدود |
 | فحص NSIS على VM نظيف | لم يُنفذ؛ نجح على Win10 host فقط | يبقى بند تحقق قبل الإنتاج |
 | تشغيل عشرات الوكلاء المتوازيين للتدقيق | كثير منها فشل بـ402/timeout | التحقق الرئيسي يُجرى يدوياً؛ الوكلاء مساعدون لا مصدر حقيقة |
+| `pnpm verify` بعد اكتمال الربط | كل خطوات البناء تفشل في `runDepsStatusCheck` | السبب: الجذر يعرّف `pnpm@^11.5.1` كاعتمادية، فصار `node_modules/.bin/pnpm` يحجب pnpm 9 الذي بنى المخزن. أُصلح `scripts/verify.js` ليستخدم `npm_execpath` (pnpm الذي أطلق السكربت) |
 
 ## 11) بيئة الاختبار والأجهزة
 
@@ -242,3 +245,4 @@ AiRemote/
 | 2026-10-25 | تسجيل فشل `pnpm install` عند `app-builder-bin@4.0.0`، ورفض Safety Guard للتنظيف، وبقاء `node_modules` جزئياً. |
 | 2026-10-25 | جلسة تحقق: مطابقة `_MASTER_CONTEXT.md` و`_INVENTORY.md` و`PROJECT_STATE.md` مع الواقع على القرص؛ صحّح ادعاء «الشجرة نظيفة» والالتزام بوثائق الجلسة السابقة محلياً في `cd2832a`. |
 | 2026-10-25 | جلسة تنفيذ: إكمال `pnpm install` (749 حزمة، `app-builder-bin` متاح)، نجاح `typecheck` (8 مشاريع)، `verify` 9 خطوات حقيقية + 1 SKIP، وبناء لوحة التحكم (50 ملفاً). توثيق أن `better-sqlite3` غير مبني ومحدود الأثر. |
+| 2026-10-25 | توحيد الإصدار إلى `3.6.0` في `app.ts` و`backup.js` و`download-cloudflared.js`، التحقق من `/health` عبر `app.inject`، وإصلاح `verify.js` ليعمل بنفس pnpm المُشغِّل؛ `pnpm verify` رجع 10/10. |

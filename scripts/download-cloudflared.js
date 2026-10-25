@@ -25,7 +25,7 @@ console.log(`   URL: ${URL}`)
 
 function download(url, dest, redirectCount = 0) {
   if (redirectCount > 5) { console.error('Too many redirects'); process.exit(1) }
-  https.get(url, { headers: { 'User-Agent': 'AiRemote-Build/3.2.1' } }, (res) => {
+  https.get(url, { headers: { 'User-Agent': 'AiRemote-Build/3.6.0' } }, (res) => {
     if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
       console.log(`   → Redirect: ${res.headers.location}`)
       return download(res.headers.location, dest, redirectCount + 1)
