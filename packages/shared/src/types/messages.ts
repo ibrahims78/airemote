@@ -30,6 +30,18 @@ export type WSMessageType =
   // ── In-session chat (v3.0.0) ─────────────────────────────────────────────
   | 'agent:screen_chat'
   | 'server:screen_chat'
+  // ── v3.6: audio / rotation / brightness ────────────────────────────────
+  | 'agent:audio_chunk'
+  | 'agent:audio_status'
+  | 'agent:screen_rotate_status'
+  | 'agent:screen_rotate_result'
+  | 'agent:screen_brightness_status'
+  | 'agent:screen_state'
+  | 'agent:screen_display_state'
+  | 'server:audio_control'
+  | 'server:screen_rotate'
+  | 'server:screen_rotate_auto'
+  | 'server:screen_brightness'
   // ── Chunked file write (v3.0.0) ──────────────────────────────────────────
   | 'server:fs_write_chunk'
   | 'server:registered'

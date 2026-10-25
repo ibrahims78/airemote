@@ -5,7 +5,7 @@ import { jwtPlugin } from './plugins/jwt'
 import cookie from '@fastify/cookie'
 import multipart from '@fastify/multipart'
 import rateLimit from '@fastify/rate-limit'
-import { initDatabase } from './db/database'
+import { getDb, initDatabase } from './db/database'
 import { resetAllDevicesOffline, updateDeviceStatus } from './db/devices'
 import { authRoutes } from './routes/auth'
 import { deviceRoutes } from './routes/devices'
@@ -41,6 +41,18 @@ export async function buildServer() {
 
   await initDatabase()
   await resetAllDevicesOffline()
+
+  // Close sessions left open by a previous crash/restart. Without this,
+  // the Sessions page shows days-old screen sessions as still active.
+  try {
+    await getDb().execute({
+      sql: `UPDATE sessions
+            SET ended_at = datetime('now'),
+                duration_sec = CAST((julianday('now') - julianday(started_at)) * 86400 AS INTEGER)
+            WHERE ended_at IS NULL`,
+      args: []
+    })
+  } catch {}
 
   // ── Zombie sweeper — every 12s, purge sockets that closed without a clean FIN
   // This catches agents killed via SIGKILL or network drops that bypass ping/pong.

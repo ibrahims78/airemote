@@ -49,6 +49,15 @@ const LANG = {
     settingsTitle:   'الإعدادات',
     connectedToast:  'تم الاتصال بالخادم',
     screenActive:    'جارٍ مشاركة الشاشة',
+    ctrlTitle:  'التحكم عن بُعد',
+    ctrlHint:   'اختر كيف يُمنح التحكم من هذا الجهاز للمشاهد:',
+    ctrlConsent:'موافقة يدوية (نافذة تأكيد عند كل طلب)',
+    ctrlPwMode: 'كلمة سر (تُطلب من المتحكم)',
+    ctrlPwLabel:'كلمة السر',
+    saveCtrl:   'حفظ إعدادات التحكم',
+    ctrlSaved:  'تم حفظ إعدادات التحكم',
+    ctrlShort:  'كلمة السر قصيرة — 4 أحرف على الأقل',
+    ctrlPwSet:  'كلمة السر مضبوطة ومفعّلة',
   },
   en: {
     stopped:        'Stopped',
@@ -96,6 +105,15 @@ const LANG = {
     settingsTitle:   'Settings',
     connectedToast:  'Connected to server',
     screenActive:    'Screen sharing active',
+    ctrlTitle:  'Remote Control',
+    ctrlHint:   'Choose how remote control is granted from this device:',
+    ctrlConsent:'Manual approval (confirm dialog each request)',
+    ctrlPwMode: 'Password (required from the controller)',
+    ctrlPwLabel:'Password',
+    saveCtrl:   'Save control settings',
+    ctrlSaved:  'Control settings saved',
+    ctrlShort:  'Password too short — at least 4 characters',
+    ctrlPwSet:  'Password is set and active',
   }
 }
 
@@ -420,6 +438,55 @@ $('save-btn').addEventListener('click', () => {
   showToast(t.saved, 'success')
 })
 
+// ── Remote Control Auth (v3.3.1) ────────────────────────────────────────
+const ctrlPwField = $('ctrl-pw-field')
+const ctrlPwInput = $('inp-ctrl-pw')
+const ctrlStateEl = $('ctrl-pw-state')
+
+function applyCtrlMode(mode, hasPw) {
+  const t = LANG[currentLang]
+  const rb1 = $('ctrl-mode-consent'); const rb2 = $('ctrl-mode-password')
+  if (rb1) rb1.checked = mode !== 'password'
+  if (rb2) rb2.checked = mode === 'password'
+  if (ctrlPwField) ctrlPwField.style.display = mode === 'password' ? '' : 'none'
+  if (ctrlStateEl) ctrlStateEl.textContent = (mode === 'password' && hasPw) ? t.ctrlPwSet : ''
+}
+function refreshCtrlPwVisibility() {
+  const rb2 = $('ctrl-mode-password')
+  if (ctrlPwField) ctrlPwField.style.display = (rb2 && rb2.checked) ? '' : 'none'
+}
+{
+  const rb1 = $('ctrl-mode-consent'); const rb2 = $('ctrl-mode-password')
+  if (rb1) rb1.addEventListener('change', refreshCtrlPwVisibility)
+  if (rb2) rb2.addEventListener('change', refreshCtrlPwVisibility)
+}
+const saveCtrlBtn = $('save-ctrl-btn')
+if (saveCtrlBtn) {
+  saveCtrlBtn.addEventListener('click', () => {
+    const mode = ($('ctrl-mode-password') && $('ctrl-mode-password').checked) ? 'password' : 'consent'
+    const pw   = ctrlPwInput ? ctrlPwInput.value : ''
+    if (typeof airemote.saveControlAuth === 'function') airemote.saveControlAuth({ mode, password: pw })
+  })
+}
+if (typeof airemote.onControlAuthState === 'function') {
+  airemote.onControlAuthState(({ mode, ok, error, hasPassword }) => {
+    const t = LANG[currentLang]
+    if (error === 'short_password') { showToast(t.ctrlShort, 'error'); return }
+    if (ok) {
+      applyCtrlMode(mode, mode === 'password')
+      if (ctrlPwInput) ctrlPwInput.value = ''
+      showToast(t.ctrlSaved, 'success')
+    } else {
+      applyCtrlMode(mode || 'consent', !!hasPassword)
+    }
+  })
+}
+if (typeof airemote.getState === 'function') {
+  airemote.getState().then(st => {
+    try { applyCtrlMode((st && st.config && st.config.controlAuthMode) || 'consent', !!(st && st.config && st.config.hasControlPassword)) } catch {}
+  }).catch(() => {})
+}
+
 // ─── Public IP ─────────────────────────────────────────────────────────────
 let ipReceived = false
 
@@ -676,6 +743,7 @@ airemote.onLog(entry => appendLog(entry))
 let chatUnread = 0
 
 function showChatSection() {
+  try { if (window.__switchTab) window.__switchTab('viewers') } catch (e) {}
   const sec = $('chat-section')
   if (sec) sec.classList.remove('hidden')
 }
@@ -721,16 +789,19 @@ function updateChatUnread(delta) {
 if (typeof airemote.onScreenChat === 'function') {
   airemote.onScreenChat(({ text, sender, ts }) => {
     appendLog({ level: 'info', msg: `💬 ${sender}: ${text}`, ts: ts || Date.now() })
-    showChatSection()
     appendChatMessage({ text, sender: sender || 'viewer', ts })
     updateChatUnread(+1)
-    if ('Notification' in window && Notification.permission === 'granted') {
-      new Notification('AiRemote — رسالة دردشة', { body: `${sender}: ${text}`, silent: false })
-    }
+    // Do not steal the current tab; the unread badge is enough while focused.
+    // A native toast is shown by main.js only when the window is in the background.
   })
-  if ('Notification' in window && Notification.permission === 'default') {
-    Notification.requestPermission().catch(() => {})
-  }
+}
+
+if (typeof airemote.onOpenChatSection === 'function') {
+  airemote.onOpenChatSection(() => {
+    showChatSection()
+    updateChatUnread(-chatUnread)
+    if (chatInput) setTimeout(() => chatInput.focus(), 150)
+  })
 }
 
 // Chat send
@@ -743,7 +814,6 @@ function doSendChat() {
   if (!text) return
   if (typeof airemote.sendChat === 'function') {
     airemote.sendChat({ text })
-    appendChatMessage({ text, sender: 'host', ts: Date.now() })
     showChatSection()
   }
   chatInput.value = ''

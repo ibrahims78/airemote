@@ -1,7 +1,7 @@
 'use strict'
 /**
  * main.js — AiRemote Server Desktop (Electron Main Process)
- * Version: v3.2.1
+ * Version: v3.6.0
  */
 const { app, BrowserWindow, Tray, Menu, ipcMain, shell, dialog, Notification, nativeImage } = require('electron')
 const path  = require('path')
@@ -18,7 +18,7 @@ const backup  = require('./backup.bundle')
 // ─────────────────────────────────────────────────────────────────────────────
 // Constants
 // ─────────────────────────────────────────────────────────────────────────────
-const APP_VERSION  = '3.2.1'
+const APP_VERSION  = require('./package.json').version
 const APP_NAME     = 'AiRemote Server'
 const DATA_DIR     = path.join(app.getPath('appData'), 'AiRemote-Server')
 const CONFIG_PATH  = path.join(DATA_DIR, 'config.json')
@@ -132,7 +132,7 @@ async function startServer() {
       }, 600)
     }
   } catch (e) {
-    logger.error('main', 'Failed to start server: ' + e.message)
+    logger.error('main', 'Failed to start server: ' + e.message + (String((e && e.message) || '').includes('EADDRINUSE') ? (' (port ' + config.port + ' is busy - close other instances or change the port)') : ''))
     serverRunning = false
     broadcastStatus()
   }
@@ -472,6 +472,26 @@ function updateTrayMenu() {
 // ─────────────────────────────────────────────────────────────────────────────
 // Main Window
 // ─────────────────────────────────────────────────────────────────────────────
+ipcMain.on('window:fullscreen', (e, on) => {
+  try { const w = BrowserWindow.fromWebContents(e.sender); if (w) w.setFullScreen(!!on) } catch {}
+})
+ipcMain.on('window:minimize', (e) => {
+  try { const w = BrowserWindow.fromWebContents(e.sender); if (w) w.minimize() } catch {}
+})
+ipcMain.on('window:close', (e) => {
+  try { const w = BrowserWindow.fromWebContents(e.sender); if (w) w.close() } catch {}
+})
+ipcMain.on('window:maximize', (e) => {
+  try {
+    const w = BrowserWindow.fromWebContents(e.sender)
+    if (!w) return
+    w.isMaximized() ? w.unmaximize() : w.maximize()
+  } catch {}
+})
+ipcMain.handle('window:isMaximized', (e) => {
+  try { const w = BrowserWindow.fromWebContents(e.sender); return !!w?.isMaximized() } catch { return false }
+})
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width:           1000,
@@ -479,6 +499,8 @@ function createWindow() {
     minWidth:        820,
     minHeight:       580,
     title:           APP_NAME,
+    frame:            false,
+    autoHideMenuBar:  true,
     backgroundColor: '#0d1117',
     icon:            fs.existsSync(ICON_PATH) ? ICON_PATH : undefined,
     webPreferences: {
@@ -489,7 +511,34 @@ function createWindow() {
     show: false,
   })
 
+  try { mainWindow.setMenu(null) } catch {}
+  mainWindow.on('maximize', () => { try { mainWindow.webContents.send('window:maximized', true) } catch {} })
+  mainWindow.on('unmaximize', () => { try { mainWindow.webContents.send('window:maximized', false) } catch {} })
+
   mainWindow.loadFile(path.join(__dirname, 'renderer', 'index.html'))
+
+  // v3.5 — standalone screen window: no File/Edit/View/Windows/Help menu,
+  // native-sized like Remote Desktop Connection.
+  mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+    if (/\/view\//.test(url)) {
+      return {
+        action: 'allow',
+        overrideBrowserWindowOptions: {
+          width: 1400, height: 900, minWidth: 900, minHeight: 600,
+          autoHideMenuBar: true, backgroundColor: '#000000',
+          webPreferences: {
+            preload: path.join(__dirname, 'preload.js'),
+            nodeIntegration: false,
+            contextIsolation: true,
+          },
+        },
+      }
+    }
+    return { action: 'allow' }
+  })
+  mainWindow.webContents.on('did-create-window', (child) => {
+    try { child.setMenu(null); child.setMenuBarVisibility(false); child.setAutoHideMenuBar(true) } catch {}
+  })
 
   mainWindow.once('ready-to-show', () => mainWindow.show())
 
@@ -569,9 +618,9 @@ app.on('before-quit', async () => {
 // Handle second instance
 const gotLock = app.requestSingleInstanceLock()
 if (!gotLock) {
-  app.quit()
+  app.exit(0)
 } else {
   app.on('second-instance', () => {
-    if (mainWindow) { mainWindow.show(); mainWindow.focus() }
+    if (mainWindow) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.show(); mainWindow.focus() }
   })
 }

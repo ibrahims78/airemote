@@ -1,0 +1,1794 @@
+package com.airemote.agent;
+
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.Service;
+import android.app.ActivityManager;
+import android.app.KeyguardManager;
+import android.content.Context;
+import android.content.Intent;
+import android.content.pm.ServiceInfo;
+import android.graphics.Bitmap;
+import android.graphics.PixelFormat;
+import android.hardware.display.DisplayManager;
+import android.hardware.display.VirtualDisplay;
+import android.media.Image;
+import android.media.ImageReader;
+import android.media.projection.MediaProjection;
+import android.media.projection.MediaProjectionManager;
+import android.media.AudioRecord;
+import android.os.Build;
+import android.os.Handler;
+import android.os.HandlerThread;
+import android.os.IBinder;
+import android.os.PowerManager;
+import android.os.SystemClock;
+import android.util.Base64;
+import android.util.DisplayMetrics;
+
+import org.java_websocket.client.WebSocketClient;
+import org.java_websocket.handshake.ServerHandshake;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.FileInputStream;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.RandomAccessFile;
+import java.net.NetworkInterface;
+import java.net.URI;
+import java.nio.ByteBuffer;
+import java.util.Collections;
+import java.util.Locale;
+
+/** Foreground service: WebSocket agent for AiRemote (Android). */
+public class AgentService extends Service {
+
+    public static final String ACTION_START = "com.airemote.agent.START";
+    public static final String ACTION_STOP = "com.airemote.agent.STOP";
+
+    private volatile WebSocketClient ws = null;
+    private volatile String deviceId = "";
+    private volatile boolean running = false;
+    private long reconnectDelay = 3000;
+    private Handler hbHandler;
+    private HandlerThread hbThread;
+
+    private long lastCpuTotal = -1, lastCpuIdle = -1;
+    private volatile int cachedCpuPercent = -1;
+    private volatile int cpuFromTop = -1;
+    private volatile long cpuFromTopAt = 0;
+    private volatile boolean cpuSampling = false;
+    private long lastAppCpuTicks = -1, lastAppCpuAt = 0;
+    private volatile long cachedCpuAt = 0;
+
+    // v1.1 — screen streaming state
+    private volatile boolean streamRunning = false;
+    private Thread streamThread = null;
+    private volatile String streamSessionId = "";
+    private volatile int streamQuality = 60;
+    private volatile int streamMaxWidth = 1280;
+    private volatile MediaProjection activeProjection = null;
+    private volatile VirtualDisplay activeVd = null;
+    private volatile ImageReader activeReader = null;
+    private volatile int activeW = 0, activeH = 0, activeDpi = 0;
+    private PowerManager.WakeLock screenWakeLock = null;
+    // Keep the CPU and Wi-Fi radio alive while the foreground agent is running.
+    // Without these, aggressive OEM power saving (seen on TECNO) freezes the
+    // process or drops Wi-Fi when the screen turns off, so a remote wake/start
+    // command can never arrive. These are released when the user stops the agent.
+    private PowerManager.WakeLock agentCpuWakeLock = null;
+    private PowerManager.WakeLock agentScreenLock = null;
+    private android.net.wifi.WifiManager.WifiLock agentWifiLock = null;
+    // Screen-off streaming mode: release the panel wake lock while keeping
+    // CPU/network alive so MediaProjection can continue.
+    private volatile boolean screenOffMode = false;
+    private volatile boolean registered = false;
+    private volatile long agentStartedAt = 0;
+    private volatile String deviceDisplay = "";
+    private boolean displaySettingsSaved = false;
+    private int preStreamBrightnessMode = 1;
+    private int preStreamBrightness = 255;
+    private int preStreamAccel = 1;
+    private int preStreamUserRotation = 0;
+    private boolean brightnessSaved = false;
+    private int savedBrightness = 255;
+    private int savedBrightnessMode = 1;
+    private android.view.View screenOffOverlay = null;
+    private android.view.WindowManager screenOffWm = null;
+    private volatile boolean audioRunning = false;
+    private AudioRecord audioRecord = null;
+    private Thread audioThread = null;
+    private int audioSeq = 0;
+    private volatile int streamFps = 8;
+    private volatile int capW = 0, capH = 0;
+    private volatile int lastDownX = -1, lastDownY = -1;
+    private final java.util.List<Long> ctrlAuthAttempts = new java.util.ArrayList<>();
+
+    /** v1.3.0 — running instance for the UI */
+    public static volatile AgentService INSTANCE = null;
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        INSTANCE = this;
+    }
+
+    @Override
+    public IBinder onBind(Intent intent) { return null; }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        ensureChannel();
+        startForeground(11, buildNotification("AiRemote Agent — يعمل"));
+
+        boolean manual = intent != null && intent.getBooleanExtra("manual", false);
+        if (manual) Prefs.sp(this).edit().putBoolean("kicked", false).apply();
+        if (Prefs.sp(this).getBoolean("kicked", false) && !manual) {
+            MainActivity.setStatus("متوقف by server", false);
+            MainActivity.log("Server متوقف the connection - manual start required");
+            return START_STICKY;
+        }
+        String action = intent != null ? intent.getAction() : null;
+        if (ACTION_STOP.equals(action)) {
+            stopAgent();
+            stopSelf();
+            return START_NOT_STICKY;
+        }
+        if (!running) startAgent();
+        else if (!isConnected()) reconnectNow();
+        return START_STICKY;
+    }
+
+
+    private void ensureProjectionForeground() {
+        if (Build.VERSION.SDK_INT >= 29) {
+            try {
+                startForeground(11, buildNotification("AiRemote Agent - screen capture"), ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION);
+            } catch (Exception ignore) { }
+        }
+    }
+
+    private void ensureChannel() {
+        if (Build.VERSION.SDK_INT >= 26) {
+            NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            NotificationChannel ch = new NotificationChannel("agent", getString(R.string.notif_channel), NotificationManager.IMPORTANCE_LOW);
+            nm.createNotificationChannel(ch);
+            NotificationChannel chat = new NotificationChannel("chat_v2", "رسائل الدردشة", NotificationManager.IMPORTANCE_HIGH);
+            chat.setDescription("رسائل المشاهدين الواردة إلى الوكيل");
+            chat.setSound(null, null);
+            chat.enableVibration(false);
+            chat.setShowBadge(true);
+            chat.setLockscreenVisibility(Notification.VISIBILITY_PRIVATE);
+            nm.createNotificationChannel(chat);
+        }
+    }
+
+    private long lastChatNotifyAt = 0;
+    private String lastChatNotifyText = "";
+    private int chatNotifyId = 2100;
+
+    private void notifyChat(final String sender, final String text) {
+        try {
+            if (text == null || text.trim().isEmpty()) return;
+            if (Build.VERSION.SDK_INT >= 33 &&
+                    checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) return;
+            long now = System.currentTimeMillis();
+            if (text.equals(lastChatNotifyText) && now - lastChatNotifyAt < 1800) return;
+            lastChatNotifyText = text;
+            lastChatNotifyAt = now;
+
+            NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            android.content.Intent open = new android.content.Intent(this, MainActivity.class);
+            open.putExtra("openChat", true);
+            open.setFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                    | android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    | android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            int piFlags = android.app.PendingIntent.FLAG_UPDATE_CURRENT;
+            if (Build.VERSION.SDK_INT >= 23) piFlags |= android.app.PendingIntent.FLAG_IMMUTABLE;
+            android.app.PendingIntent pi = android.app.PendingIntent.getActivity(this, 7, open, piFlags);
+
+            Notification.Builder b = Build.VERSION.SDK_INT >= 26
+                    ? new Notification.Builder(this, "chat_v2")
+                    : new Notification.Builder(this);
+            b.setContentTitle("رسالة من " + (sender == null ? "مشاهد" : sender))
+                    .setContentText(text)
+                    .setSmallIcon(android.R.drawable.stat_notify_chat)
+                    .setAutoCancel(true)
+                    .setContentIntent(pi)
+                    .setCategory(Notification.CATEGORY_MESSAGE)
+                    .setVisibility(Notification.VISIBILITY_PRIVATE)
+                    .setOnlyAlertOnce(true);
+            if (Build.VERSION.SDK_INT < 26) b.setPriority(Notification.PRIORITY_DEFAULT);
+            nm.notify(chatNotifyId++, b.build());
+        } catch (Exception ignore) { }
+    }
+
+    private Notification buildNotification(String text) {
+        Notification.Builder b;
+        if (Build.VERSION.SDK_INT >= 26) b = new Notification.Builder(this, "agent");
+        else b = new Notification.Builder(this);
+        return b.setContentTitle("AiRemote Android")
+                .setContentText(text)
+                .setSmallIcon(android.R.drawable.stat_sys_upload)
+                .setOngoing(true)
+                .build();
+    }
+
+    private void startAgent() {
+        running = true;
+        agentStartedAt = android.os.SystemClock.elapsedRealtime();
+        reconnectDelay = 3000;
+        acquireAgentLocks();
+        MainActivity.log("جارٍ الاتصال بالخادم...");
+        connect();
+        hbThread = new HandlerThread("airemote-hb");
+        hbThread.start();
+        hbHandler = new Handler(hbThread.getLooper());
+        hbHandler.postDelayed(hbLoop, 2500);
+    }
+
+    private void stopAgent() {
+        running = false;
+        registered = false;
+        try { if (ws != null) ws.close(); } catch (Exception ignore) { }
+        ws = null;
+        if (hbHandler != null) hbHandler.removeCallbacksAndMessages(null);
+        if (hbThread != null) hbThread.quitSafely();
+        releaseAgentLocks();
+        MainActivity.setStatus("متوقف", false);
+        MainActivity.log("أُوقف الوكيل");
+    }
+
+    private final Runnable hbLoop = new Runnable() {
+        @Override
+        public void run() {
+            if (running) {
+                acquireAgentLocks();
+                if (registered) MainActivity.updateConn(Prefs.server(AgentService.this), deviceDisplay, formatUptime());
+            }
+            try {
+                if (ws != null && ws.isOpen()) {
+                    JSONObject stats = buildStats();
+                    MainActivity.updateStats(stats);
+                    JSONObject payload = new JSONObject();
+                    payload.put("deviceId", deviceId);
+                    payload.put("stats", stats);
+                    payload.put("tunnelLayer", "relay");
+                    payload.put("capabilities", buildCapabilities());
+                    sendMsg("agent:heartbeat", payload);
+                }
+            } catch (Exception ignore) { }
+            if (hbHandler != null && running) hbHandler.postDelayed(this, 5000);
+        }
+    };
+
+    private JSONObject buildCapabilities() throws Exception {
+        JSONObject cap = new JSONObject();
+        cap.put("pty", false);
+        cap.put("shell", "sh");
+        cap.put("fs", true);
+        cap.put("screenControl", true);
+        cap.put("clipboard", true);
+        cap.put("chat", true);
+        cap.put("ai", true);
+        cap.put("multiMonitor", false);
+        cap.put("docker", false);
+        cap.put("android", true);
+        cap.put("accessibility", AiRemoteA11y.I != null);
+        cap.put("capture", CaptureHolder.ready());
+        cap.put("streaming", true);
+        cap.put("controlAuth", Prefs.hasControlPassword(this) ? "password" : ("con" + "sent"));
+        return cap;
+    }
+
+    private void connect() {
+        registered = false;
+        if (!running) return;
+        final String url = Prefs.server(this);
+        final String token = Prefs.token(this);
+        try {
+            final URI uri = new URI(url);
+            final WebSocketClient client = new WebSocketClient(uri) {
+                @Override
+                public void onOpen(ServerHandshake handshake) {
+                    android.util.Log.d("AiRemoteAgent", "WebSocket onOpen");
+                    reconnectDelay = 3000;
+                    MainActivity.setStatus("متصل — جارٍ التسجيل", true);
+                    MainActivity.updateConn(Prefs.server(AgentService.this), "جارٍ التسجيل…", "—");
+                    registered = true;
+                    MainActivity.log("✅ اتصل بالخادم");
+                    try {
+                        JSONObject payload = new JSONObject();
+                        payload.put("token", token);
+                        JSONObject info = new JSONObject();
+                        info.put("hostname", Build.MODEL);
+                        info.put("platform", "Android");
+                        info.put("osVersion", "Android " + Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")");
+                        info.put("arch", Build.SUPPORTED_ABIS.length > 0 ? Build.SUPPORTED_ABIS[0] : "?");
+                        info.put("ipLocal", localIp());
+                        info.put("ipPublic", "");
+                        info.put("agentVersion", "3.6.0-android");
+                        payload.put("info", info);
+                        payload.put("stats", buildStats());
+                        payload.put("tunnelLayer", "relay");
+                        payload.put("capabilities", buildCapabilities());
+                        JSONObject reg = new JSONObject();
+                        reg.put("type", "agent:register");
+                        reg.put("payload", payload);
+                        reg.put("timestamp", System.currentTimeMillis());
+                        send(reg.toString());
+                    } catch (Exception e) {
+                        MainActivity.log("فشل إرسال التسجيل: " + e.getMessage());
+                    }
+                }
+
+                @Override
+                public void onMessage(String message) {
+                    try {
+                        handleMessage(new JSONObject(message));
+                    } catch (Exception e) {
+                        MainActivity.log("رسالة غير مفهومة");
+                    }
+                }
+
+                @Override
+                public void onClose(int code, String reason, boolean remote) {
+                    android.util.Log.d("AiRemoteAgent", "WebSocket onClose code=" + code + " reason=" + reason);
+                    MainActivity.setStatus("انقطع — إعادة المحاولة", false);
+                    MainActivity.log("انقطع الاتصال (" + code + ")");
+                    ws = null;
+                    if (code == 4001) {
+                        Prefs.sp(AgentService.this).edit().putBoolean("kicked", true).apply();
+                        MainActivity.setStatus("أوقفه الخادم — بانتظار السماح", false);
+                        MainActivity.log("أوقف الخادم الاتصال — إعادة محاولة كل 5 ثوانٍ حتى يسمح");
+                        running = true;
+                        startKickPoller();
+                        if (hbHandler != null) hbHandler.postDelayed(AgentService.this::connect, 5000);
+                        return;
+                    }
+                    if (running) {
+                        final long delay = reconnectDelay;
+                        reconnectDelay = Math.min(reconnectDelay + 3000, 30000);
+                        hbHandler.postDelayed(AgentService.this::connect, delay);
+                    }
+                }
+
+                @Override
+                public void onError(Exception ex) {
+                    android.util.Log.e("AiRemoteAgent", "WebSocket onError", ex);
+                    MainActivity.log("خطأ اتصال: " + (ex != null ? ex.getMessage() : "?"));
+                }
+            };
+            android.util.Log.d("AiRemoteAgent", "connect() url=" + url + " tokenLen=" + token.length());
+            ws = client;
+            // Keep small audio/video frames from waiting behind Nagle coalescing.
+            try { client.setTcpNoDelay(true); } catch (Exception ignore) { }
+            client.connect();
+        } catch (Exception e) {
+            MainActivity.log("عنوان غير صالح: " + e.getMessage());
+            if (running) hbHandler.postDelayed(this::connect, reconnectDelay);
+        }
+    }
+
+
+
+    private android.os.Handler kickHandler = null;
+
+    private void startKickPoller() {
+        try {
+            if (kickHandler == null) kickHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+            kickHandler.removeCallbacksAndMessages(null);
+            final Runnable[] poll = new Runnable[1];
+            poll[0] = new Runnable() {
+                @Override
+                public void run() {
+                    if (!Prefs.sp(AgentService.this).getBoolean("kicked", false)) return;
+                    new Thread(new Runnable() {
+                        @Override
+                        public void run() {
+                            boolean allowed = false;
+                            try {
+                                String srv = Prefs.server(AgentService.this);
+                                String http = srv.replaceFirst("^ws://", "http://").replaceFirst("^wss://", "https://");
+                                int q = http.indexOf("/ws");
+                                if (q > 0) http = http.substring(0, q);
+                                String tok = Prefs.token(AgentService.this);
+                                java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL(
+                                        http + "/api/agent/allowed?token=" + java.net.URLEncoder.encode(tok, "UTF-8")).openConnection();
+                                c.setConnectTimeout(6000);
+                                c.setReadTimeout(6000);
+                                int code = c.getResponseCode();
+                                if (code == 200) {
+                                    java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(c.getInputStream()));
+                                    StringBuilder sb = new StringBuilder();
+                                    String line;
+                                    while ((line = br.readLine()) != null) sb.append(line);
+                                    br.close();
+                                    allowed = sb.toString().contains("\"allowed\":true");
+                                }
+                            } catch (Exception ignore2) { }
+                            final boolean ok = allowed;
+                            kickHandler.post(new Runnable() {
+                                @Override
+                                public void run() {
+                                    if (ok) {
+                                        if (kickHandler != null) kickHandler.removeCallbacksAndMessages(null);
+                                        Prefs.sp(AgentService.this).edit().putBoolean("kicked", false).apply();
+                                        MainActivity.setStatus("مسموح — إعادة الاتصال", false);
+                                        MainActivity.log("سمح الخادم بالاتصال — إعادة المحاولة");
+                                        running = true;
+                                        connect();
+                                    } else {
+                                        kickHandler.postDelayed(poll[0], 5000);
+                                    }
+                                }
+                            });
+                        }
+                    }).start();
+                }
+            };
+            kickHandler.postDelayed(poll[0], 3000);
+        } catch (Exception ignore) { }
+    }
+
+    private android.view.View chatOverlay = null;
+    private android.os.Handler chatHide = null;
+
+    private void showChatOverlay(final String sender, final String text) {
+        try {
+            if (Build.VERSION.SDK_INT >= 23 && !android.provider.Settings.canDrawOverlays(this)) {
+                new android.os.Handler(android.os.Looper.getMainLooper()).post(() ->
+                    android.widget.Toast.makeText(getApplicationContext(), sender + ": " + text, android.widget.Toast.LENGTH_LONG).show());
+                return;
+            }
+            final android.view.WindowManager wm = (android.view.WindowManager) getSystemService(WINDOW_SERVICE);
+            new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+                try {
+                    if (chatOverlay == null) {
+                        android.widget.LinearLayout ll = new android.widget.LinearLayout(AgentService.this);
+                        ll.setOrientation(android.widget.LinearLayout.VERTICAL);
+                        ll.setBackgroundColor(0xE6202124);
+                        int pad = (int) (14 * getResources().getDisplayMetrics().density);
+                        ll.setPadding(pad, pad, pad, pad);
+                        android.widget.TextView tv = new android.widget.TextView(AgentService.this);
+                        tv.setTextColor(0xFFFFFFFF);
+                        tv.setTextSize(15);
+                        tv.setId(android.R.id.text1);
+                        ll.addView(tv);
+                        android.view.WindowManager.LayoutParams lp = new android.view.WindowManager.LayoutParams(
+                                android.view.WindowManager.LayoutParams.WRAP_CONTENT,
+                                android.view.WindowManager.LayoutParams.WRAP_CONTENT,
+                                Build.VERSION.SDK_INT >= 26 ? android.view.WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : android.view.WindowManager.LayoutParams.TYPE_PHONE,
+                                android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL,
+                                android.graphics.PixelFormat.TRANSLUCENT);
+                        lp.gravity = android.view.Gravity.TOP | android.view.Gravity.CENTER_HORIZONTAL;
+                        lp.y = (int) (42 * getResources().getDisplayMetrics().density);
+                        wm.addView(ll, lp);
+                        chatOverlay = ll;
+                    }
+                    android.widget.TextView tv = chatOverlay.findViewById(android.R.id.text1);
+                    tv.setText(sender + ": " + text);
+                    chatOverlay.setVisibility(android.view.View.VISIBLE);
+                    if (chatHide != null) chatHide.removeCallbacksAndMessages(null);
+                    chatHide = new android.os.Handler(android.os.Looper.getMainLooper());
+                    chatHide.postDelayed(() -> { if (chatOverlay != null) chatOverlay.setVisibility(android.view.View.GONE); }, 9000);
+                } catch (Exception ignore) { }
+            });
+        } catch (Exception ignore) { }
+    }
+
+    private void sendMsg(String type, JSONObject payload) {
+        try {
+            JSONObject m = new JSONObject();
+            m.put("type", type);
+            m.put("payload", payload);
+            m.put("timestamp", System.currentTimeMillis());
+            send(m.toString());
+        } catch (Exception ignore) { }
+    }
+
+    private void send(String s) {
+        WebSocketClient c = ws;
+        if (c != null && c.isOpen()) {
+            try { c.send(s); } catch (Exception ignore) { }
+        }
+    }
+
+    private void handleMessage(JSONObject msg) {
+        String type = msg.optString("type", "");
+        JSONObject payload = msg.optJSONObject("payload");
+        if (payload == null) payload = new JSONObject();
+        switch (type) {
+            case "server:registered": {
+                android.util.Log.d("AiRemoteAgent", "server:registered");
+                if (kickHandler != null) kickHandler.removeCallbacksAndMessages(null);
+                Prefs.sp(AgentService.this).edit().putBoolean("kicked", false).apply();
+                registered = true;
+                deviceId = payload.optString("deviceId", "");
+                String name = payload.optString("name", "");
+                deviceDisplay = name + " — " + deviceId;
+                MainActivity.setStatus("متصل ✓", true);
+                MainActivity.updateConn(Prefs.server(AgentService.this), deviceDisplay, formatUptime());
+                MainActivity.log("✅ مسجل بنجاح — " + name + " — " + deviceId);
+                break;
+            }
+            case "server:ping":
+                sendMsg("agent:pong", new JSONObject());
+                break;
+            case "server:command":
+                final JSONObject cmdPayload = payload;
+                new Thread(() -> handleCommand(cmdPayload)).start();
+                break;
+            case "server:screen_start":
+                startScreenStream(payload);
+                break;
+            case "server:audio_control": {
+                boolean enabled = payload.optBoolean("enabled", false);
+                if (enabled) startSystemAudio(); else stopSystemAudio();
+                break;
+            }
+            case "server:screen_rotate_auto":
+                setAutoRotate(payload.optBoolean("enabled", true));
+                break;
+            case "server:screen_rotate":
+                rotateScreenManual();
+                break;
+            case "server:screen_display":
+                // Legacy command retained for compatibility; the current UI
+                // uses screen:brightness instead.
+                setScreenBrightness(payload.optBoolean("off", false) ? 0 : 255);
+                break;
+            case "server:screen_brightness":
+                setScreenBrightness(payload.optInt("value", 255));
+                break;
+            case "server:screen_stop":
+                stopScreenStream(payload.optString("sessionId", ""));
+                break;
+            case "server:screen_chat": {
+                // v3.5 — in-app banner when visible; system notification when in the background
+                String csender = payload.optString("sender", "viewer");
+                String ctext = payload.optString("text", "");
+                MainActivity.viewerChat(csender, ctext);
+                if (MainActivity.visibleNow()) {
+                    showChatOverlay(csender, ctext);
+                } else {
+                    notifyChat(csender, ctext);
+                }
+                break;
+            }
+            case "server:screen_clipboard_read": {
+                final String csid = payload.optString("sessionId", "");
+                new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+                    try {
+                        String txt = "";
+                        android.content.ClipboardManager cm = (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+                        if (cm != null && cm.hasPrimaryClip() && cm.getPrimaryClip() != null && cm.getPrimaryClip().getItemCount() > 0) {
+                            CharSequence cs = cm.getPrimaryClip().getItemAt(0).coerceToText(AgentService.this);
+                            if (cs != null) txt = cs.toString();
+                        }
+                        JSONObject o = new JSONObject();
+                        o.put("sessionId", csid);
+                        o.put("text", txt);
+                        sendMsg("agent:screen_clipboard", o);
+                    } catch (Exception ignore) { }
+                });
+                break;
+            }
+            case "server:screen_clipboard_write": {
+                final String ctxt = payload.optString("text", "");
+                new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+                    try {
+                        android.content.ClipboardManager cm = (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+                        if (cm != null) cm.setPrimaryClip(android.content.ClipData.newPlainText("AiRemote", ctxt));
+                        MainActivity.log("📋 نُسخ النص إلى حافظة الجهاز");
+                    } catch (Exception ignore) { }
+                });
+                break;
+            }
+            case "server:screen_mouse":
+                handleScreenMouse(payload);
+                break;
+            case "server:screen_key":
+                handleScreenKey(payload);
+                break;
+            case "server:screen_control_request":
+                try {
+                    wakeScreenForRemote();
+                    String scSid = payload.optString("sessionId", "");
+                    String scReq = payload.optString("requestId", "");
+                    if (Prefs.hasControlPassword(AgentService.this)) {
+                        long nowTs = System.currentTimeMillis();
+                        try { ctrlAuthAttempts.removeIf(t -> nowTs - t >= 60000); } catch (Exception ignore) { }
+                        if (ctrlAuthAttempts.size() >= 10) {
+                            JSONObject d = new JSONObject();
+                            d.put("sessionId", scSid); d.put("requestId", scReq); d.put("reason", "rate_limited");
+                            sendMsg("agent:screen_control_denied", d);
+                            break;
+                        }
+                        ctrlAuthAttempts.add(nowTs);
+                        if (Prefs.verifyControlPassword(AgentService.this, payload.optString("password", ""))) {
+                            JSONObject g = new JSONObject();
+                            g.put("sessionId", scSid); g.put("requestId", scReq); g.put("via", "password");
+                            sendMsg("agent:screen_control_granted", g);
+                            MainActivity.log("🔓 منح التحكم بكلمة مرور");
+                        } else {
+                            JSONObject d = new JSONObject();
+                            d.put("sessionId", scSid); d.put("requestId", scReq); d.put("reason", "bad_password");
+                            sendMsg("agent:screen_control_denied", d);
+                            MainActivity.log("❌ كلمة مرور تحكم خاطئة");
+                        }
+                    } else {
+                        final String fSid = scSid, fReq = scReq;
+                        final String requester = payload.optString("requesterName", "مشاهد");
+                        if (MainActivity.visibleNow()) {
+                            MainActivity.askConsent(requester, allowed -> {
+                                try {
+                                    JSONObject o = new JSONObject();
+                                    o.put("sessionId", fSid);
+                                    o.put("requestId", fReq);
+                                    if (allowed) { sendMsg("agent:screen_control_granted", o); MainActivity.log("✅ منحت إذن التحكم"); }
+                                    else { sendMsg("agent:screen_control_denied", o); MainActivity.log("❌ رفضت طلب التحكم"); }
+                                } catch (Exception ignore) { }
+                            });
+                        } else {
+                            try {
+                                android.content.Intent ci = new android.content.Intent(AgentService.this, MainActivity.class);
+                                ci.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK | android.content.Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+                                startActivity(ci);
+                            } catch (Exception ignore3) { }
+                            JSONObject g = new JSONObject();
+                            g.put("sessionId", fSid); g.put("requestId", fReq); g.put("reason", "manual_approval_required");
+                            sendMsg("agent:screen_control_denied", g);
+                            MainActivity.log("منح التحكم تلقائياً (التطبيق في الخلفية)");
+                        }
+                    }
+                } catch (Exception ignore) { }
+                break;
+            case "server:screen_get_monitors":
+                try {
+                    JSONObject mp = new JSONObject();
+                    mp.put("sessionId", payload.optString("sessionId", ""));
+                    org.json.JSONArray arr = new org.json.JSONArray();
+                    JSONObject mon = new JSONObject();
+                    DisplayMetrics dm2 = getResources().getDisplayMetrics();
+                    mon.put("id", 0);
+                    mon.put("name", "Android");
+                    mon.put("width", dm2.widthPixels);
+                    mon.put("height", dm2.heightPixels);
+                    mon.put("primary", true);
+                    mon.put("x", 0);
+                    mon.put("y", 0);
+                    arr.put(mon);
+                    mp.put("monitors", arr);
+                    sendMsg("agent:screen_monitors", mp);
+                } catch (Exception ignore) { }
+                break;
+            case "server:screen_set_quality":
+                streamQuality = Math.min(Math.max(payload.optInt("quality", 60), 10), 95);
+                break;
+            case "server:fs_write_chunk": {
+                final JSONObject chunkPayload = payload;
+                new Thread(() -> handleFsChunk(chunkPayload)).start();
+                break;
+            }
+            case "server:fs_request":
+                final JSONObject fsPayload = payload;
+                new Thread(() -> handleFs(fsPayload)).start();
+                break;
+            case "server:error":
+                MainActivity.log("خطأ من الخادم: " + payload.optString("message"));
+                break;
+        }
+    }
+
+    private void handleCommand(JSONObject payload) {
+        String commandId = payload.optString("commandId", "");
+        String command = payload.optString("command", "");
+        long t0 = SystemClock.elapsedRealtime();
+        try {
+            if (command.startsWith("AICTL:")) {
+                String b64 = command.substring(6);
+                String json = new String(Base64.decode(b64, Base64.DEFAULT), "UTF-8");
+                JSONObject action = new JSONObject(json);
+                String res = AiRemoteA11y.runSync(action);
+                boolean ok = !res.startsWith("unknown") && !res.startsWith("type failed") && !res.startsWith("timeout") && !res.equals("a11y-not-enabled") && !res.equals("name-not-found");
+                replyCommand(commandId, res, ok ? "" : res, ok ? 0 : 1, SystemClock.elapsedRealtime() - t0);
+                return;
+            }
+            if (command.startsWith("AISHOT:")) {
+                String path = command.substring(7).trim();
+                String err = captureToFile(path);
+                if (err == null) replyCommand(commandId, "shot-ok", "", 0, SystemClock.elapsedRealtime() - t0);
+                else replyCommand(commandId, "", err, 1, SystemClock.elapsedRealtime() - t0);
+                return;
+            }
+            // generic shell
+            Process p = new ProcessBuilder("sh", "-c", command).redirectErrorStream(false).start();
+            InputStream is = p.getInputStream(), es = p.getErrorStream();
+            ByteArrayOutputStream os = new ByteArrayOutputStream(), ose = new ByteArrayOutputStream();
+            byte[] buf = new byte[4096];
+            int n;
+            while ((n = is.read(buf)) > 0) os.write(buf, 0, n);
+            while ((n = es.read(buf)) > 0) ose.write(buf, 0, n);
+            int code = p.waitFor();
+            replyCommand(commandId, new String(os.toByteArray(), "UTF-8"), new String(ose.toByteArray(), "UTF-8"), code, SystemClock.elapsedRealtime() - t0);
+        } catch (Exception e) {
+            replyCommand(commandId, "", String.valueOf(e.getMessage()), 1, SystemClock.elapsedRealtime() - t0);
+        }
+    }
+
+    private void replyCommand(String commandId, String stdout, String stderr, int exitCode, long duration) {
+        try {
+            JSONObject p = new JSONObject();
+            p.put("commandId", commandId);
+            p.put("stdout", stdout);
+            p.put("stderr", stderr);
+            p.put("exitCode", exitCode);
+            p.put("duration", duration);
+            sendMsg("agent:command_result", p);
+        } catch (Exception ignore) { }
+    }
+
+
+    private final java.util.HashMap<String, java.io.FileOutputStream> fsChunks = new java.util.HashMap<>();
+
+    private void handleFsChunk(JSONObject payload) {
+        String opId = payload.optString("opId", "");
+        String path = payload.optString("path", "");
+        String data = payload.optString("data", "");
+        boolean last = payload.optBoolean("isLast", false);
+        try {
+            java.io.FileOutputStream fos;
+            synchronized (fsChunks) { fos = fsChunks.get(opId); }
+            if (fos == null) {
+                File f = new File(path);
+                File parent = f.getParentFile();
+                if (parent != null && !parent.exists()) parent.mkdirs();
+                fos = new java.io.FileOutputStream(f, false);
+                synchronized (fsChunks) { fsChunks.put(opId, fos); }
+            }
+            byte[] bytes = Base64.decode(data, Base64.DEFAULT);
+            fos.write(bytes);
+            if (last) {
+                try { fos.close(); } catch (Exception ignore) { }
+                synchronized (fsChunks) { fsChunks.remove(opId); }
+                JSONObject out = new JSONObject();
+                out.put("requestId", opId);
+                out.put("opId", opId);
+                JSONObject d = new JSONObject();
+                d.put("ok", true);
+                d.put("path", path);
+                out.put("data", d);
+                sendMsg("agent:fs_response", out);
+            }
+        } catch (Exception e) {
+            try {
+                synchronized (fsChunks) { fsChunks.remove(opId); }
+                JSONObject out = new JSONObject();
+                out.put("requestId", opId);
+                out.put("opId", opId);
+                out.put("error", String.valueOf(e.getMessage()));
+                sendMsg("agent:fs_response", out);
+            } catch (Exception ignore) { }
+        }
+    }
+
+    private void deleteRecursive(File f) {
+        if (f == null || !f.exists()) return;
+        if (f.isDirectory()) {
+            File[] kids = f.listFiles();
+            if (kids != null) for (File k : kids) deleteRecursive(k);
+        }
+        //noinspection ResultOfMethodCallIgnored
+        f.delete();
+    }
+
+    private void handleFs(JSONObject payload) {
+        String requestId = payload.optString("requestId", payload.optString("opId", ""));
+        String op = payload.optString("op", payload.optString("action", ""));
+        String path = payload.optString("path", "");
+        try {
+            JSONObject out = new JSONObject();
+            out.put("requestId", requestId);
+            out.put("opId", requestId);
+            if ("read".equals(op)) {
+                File f = new File(path);
+                byte[] data = new byte[(int) f.length()];
+                RandomAccessFile raf = new RandomAccessFile(f, "r");
+                raf.readFully(data);
+                raf.close();
+                String b64 = Base64.encodeToString(data, Base64.NO_WRAP);
+                JSONObject d = new JSONObject();
+                d.put("base64", b64);
+                d.put("size", data.length);
+                out.put("data", d);
+                out.put("base64", b64);
+                out.put("encoding", "base64");
+            } else if ("write".equals(op)) {
+                String b64 = payload.optString("content", payload.optString("base64", ""));
+                byte[] data = Base64.decode(b64, Base64.DEFAULT);
+                File f = new File(path);
+                File parent = f.getParentFile();
+                if (parent != null && !parent.exists()) parent.mkdirs();
+                FileOutputStream fos = new FileOutputStream(f);
+                fos.write(data);
+                fos.close();
+                JSONObject d = new JSONObject();
+                d.put("ok", true);
+                d.put("size", data.length);
+                out.put("data", d);
+            } else if ("mkdir".equals(op)) {
+                File dir = new File(path);
+                boolean made = dir.isDirectory() || dir.mkdirs();
+                JSONObject d = new JSONObject();
+                d.put("ok", made);
+                d.put("path", dir.getAbsolutePath());
+                out.put("data", d);
+            } else if ("delete".equals(op)) {
+                File target = new File(path);
+                deleteRecursive(target);
+                JSONObject d = new JSONObject();
+                d.put("ok", true);
+                out.put("data", d);
+            } else if ("rename".equals(op)) {
+                String newPath = payload.optString("newPath", "");
+                File src = new File(path);
+                File dst = new File(newPath);
+                boolean ok = src.renameTo(dst);
+                JSONObject d = new JSONObject();
+                d.put("ok", ok);
+                out.put("data", d);
+            } else if ("read_chunked".equals(op)) {
+                // v3.5 — stream large files in 512KB chunks (parity with Windows agent)
+                File f = new File(path);
+                FileInputStream fis = new FileInputStream(f);
+                byte[] buf = new byte[512 * 1024];
+                int seq = 0, n;
+                while ((n = fis.read(buf)) > 0) {
+                    JSONObject ch = new JSONObject();
+                    ch.put("opId", requestId);
+                    ch.put("seq", seq++);
+                    ch.put("data", Base64.encodeToString(buf, 0, n, Base64.NO_WRAP));
+                    ch.put("done", false);
+                    sendMsg("agent:fs_chunk", ch);
+                }
+                fis.close();
+                JSONObject done = new JSONObject();
+                done.put("opId", requestId);
+                done.put("seq", seq);
+                done.put("data", "");
+                done.put("done", true);
+                sendMsg("agent:fs_chunk", done);
+                return;
+            } else if ("list".equals(op)) {
+                File dir = new File(path.isEmpty() ? "/sdcard" : path);
+                File[] kids = dir.listFiles();
+                org.json.JSONArray arr = new org.json.JSONArray();
+                if (kids != null) {
+                    for (File k : kids) {
+                        JSONObject e = new JSONObject();
+                        e.put("name", k.getName());
+                        e.put("path", k.getAbsolutePath());
+                        e.put("isDirectory", k.isDirectory());
+                        e.put("size", k.length());
+                        e.put("modified", k.lastModified());
+                        arr.put(e);
+                    }
+                }
+                out.put("data", arr);
+            } else {
+                out.put("error", "op not supported: " + op);
+            }
+            sendMsg("agent:fs_response", out);
+        } catch (Exception e) {
+            try {
+                JSONObject out = new JSONObject();
+                out.put("requestId", requestId);
+                out.put("opId", requestId);
+                out.put("error", String.valueOf(e.getMessage()));
+                sendMsg("agent:fs_response", out);
+            } catch (Exception ignore) { }
+        }
+    }
+
+    /** Returns null on success, error text otherwise. */
+    private String captureToFile(String path) {
+        MediaProjection projection = null;
+        VirtualDisplay vd = null;
+        ImageReader reader = null;
+        try {
+            if (!CaptureHolder.ready()) return "لا يوجد إذن التقاط الشاشة — امنحه من التطبيق";
+            DisplayMetrics dm = getResources().getDisplayMetrics();
+            int w = dm.widthPixels, h = dm.heightPixels, dpi = dm.densityDpi;
+            MediaProjectionManager mgr = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
+            ensureProjectionForeground(); projection = mgr.getMediaProjection(CaptureHolder.resultCode, CaptureHolder.data);
+            if (projection == null) return "projection null";
+            reader = ImageReader.newInstance(w, h, PixelFormat.RGBA_8888, 2);
+            vd = projection.createVirtualDisplay("airemote", w, h, dpi,
+                    DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, reader.getSurface(), null, null);
+            Thread.sleep(600);
+            Image image = reader.acquireLatestImage();
+            if (image == null) { Thread.sleep(500); image = reader.acquireLatestImage(); }
+            if (image == null) return "no frame";
+            Image.Plane[] planes = image.getPlanes();
+            ByteBuffer buffer = planes[0].getBuffer();
+            int pixelStride = planes[0].getPixelStride();
+            int rowStride = planes[0].getRowStride();
+            int rowPadding = rowStride - pixelStride * w;
+            Bitmap bmp = Bitmap.createBitmap(w + rowPadding / pixelStride, h, Bitmap.Config.ARGB_8888);
+            bmp.copyPixelsFromBuffer(buffer);
+            Bitmap cropped = Bitmap.createBitmap(bmp, 0, 0, w, h);
+            File f = new File(path);
+            File parent = f.getParentFile();
+            if (parent != null && !parent.exists()) parent.mkdirs();
+            FileOutputStream fos = new FileOutputStream(f);
+            cropped.compress(Bitmap.CompressFormat.JPEG, 85, fos);
+            fos.close();
+            bmp.recycle();
+            cropped.recycle();
+            image.close();
+            return null;
+        } catch (Exception e) {
+            return "capture error: " + e.getMessage();
+        } finally {
+            try { if (vd != null) vd.release(); } catch (Exception ignore) { }
+            try { if (reader != null) reader.close(); } catch (Exception ignore) { }
+            try { if (projection != null) projection.stop(); } catch (Exception ignore) { }
+        }
+    }
+
+    /** Android 14 denies /proc/stat to normal apps. Read the kernel counters when
+     *  possible; otherwise use the toybox top summary (which is permitted). */
+    /** Run top off the heartbeat thread; a wedged top must never stop heartbeats. */
+    /** /proc/self/stat is readable even on Android 14; use the agent process
+     *  CPU as a useful fallback when system-wide counters are blocked. */
+    private int readAppCpuPercent() {
+        try {
+            RandomAccessFile raf = new RandomAccessFile("/proc/self/stat", "r");
+            String line = raf.readLine();
+            raf.close();
+            int rp = line.lastIndexOf(')');
+            String[] f = line.substring(rp + 2).trim().split("\\s+");
+            long ticks = Long.parseLong(f[11]) + Long.parseLong(f[12]);
+            long now = SystemClock.elapsedRealtime();
+            int pct = 0;
+            if (lastAppCpuTicks >= 0 && now > lastAppCpuAt) {
+                pct = (int) Math.round((ticks - lastAppCpuTicks) * 1000.0 / (now - lastAppCpuAt));
+            }
+            lastAppCpuTicks = ticks;
+            lastAppCpuAt = now;
+            return Math.max(0, Math.min(100, pct));
+        } catch (Exception ignore) {
+            return 0;
+        }
+    }
+
+    private void scheduleCpuTopSample() {
+        if (cpuSampling) return;
+        cpuSampling = true;
+        Thread t = new Thread(() -> {
+            Process p = null;
+            try {
+                p = new ProcessBuilder("sh", "-c", "top -b -n 1 -m 1").redirectErrorStream(true).start();
+                BufferedReader br = new BufferedReader(new InputStreamReader(p.getInputStream()));
+                String line;
+                int total = -1, idle = -1;
+                while ((line = br.readLine()) != null) {
+                    if (line.contains("%cpu") && line.contains("%idle")) {
+                        for (String tok : line.trim().split("\\s+")) {
+                            if (tok.endsWith("%cpu")) total = Integer.parseInt(tok.substring(0, tok.length() - 4));
+                            if (tok.endsWith("%idle")) idle = Integer.parseInt(tok.substring(0, tok.length() - 5));
+                        }
+                        break;
+                    }
+                }
+                br.close();
+                if (total > 0 && idle >= 0) {
+                    cpuFromTop = Math.max(0, Math.min(100, Math.round((total - idle) * 100f / total)));
+                    cpuFromTopAt = SystemClock.elapsedRealtime();
+                }
+            } catch (Exception ignore) {
+            } finally {
+                try { if (p != null) p.destroy(); } catch (Exception ignore) { }
+                cpuSampling = false;
+            }
+        });
+        t.setDaemon(true);
+        t.start();
+    }
+
+    private int readCpuPercent() {
+        long now = SystemClock.elapsedRealtime();
+        if (cachedCpuPercent >= 0 && now - cachedCpuAt < 8000) return cachedCpuPercent;
+        int pct = -1;
+        try {
+            RandomAccessFile raf = new RandomAccessFile("/proc/stat", "r");
+            String line = raf.readLine();
+            raf.close();
+            String[] parts = line.trim().split("\\s+");
+            long sum = 0;
+            for (int i = 1; i < parts.length && i <= 7; i++) sum += Long.parseLong(parts[i]);
+            long idle = Long.parseLong(parts[4]);
+            if (lastCpuTotal > 0) {
+                long dt = sum - lastCpuTotal, di = idle - lastCpuIdle;
+                if (dt > 0) pct = (int) Math.round((dt - di) * 100.0 / dt);
+            }
+            lastCpuTotal = sum;
+            lastCpuIdle = idle;
+        } catch (Exception ignore) { }
+        if (pct < 0) {
+            if (cpuFromTop >= 0 && now - cpuFromTopAt < 30000) pct = cpuFromTop;
+            else scheduleCpuTopSample();
+        }
+
+        if (pct <= 0) pct = readAppCpuPercent();        pct = Math.max(0, Math.min(100, pct < 0 ? 0 : pct));
+        cachedCpuPercent = pct;
+        cachedCpuAt = now;
+        return pct;
+    }
+
+    private JSONObject buildStats() {
+        JSONObject s = new JSONObject();
+        try {
+            ActivityManager am = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+            ActivityManager.MemoryInfo mi = new ActivityManager.MemoryInfo();
+            am.getMemoryInfo(mi);
+            long totalMb = mi.totalMem / 1048576L;
+            long usedMb = (mi.totalMem - mi.availMem) / 1048576L;
+            s.put("ramTotalMb", totalMb);
+            s.put("ramUsedMb", usedMb);
+            s.put("ramPercent", totalMb > 0 ? Math.round(usedMb * 100.0 / totalMb) : 0);
+        } catch (Exception ignore) { }
+        try { s.put("cpuPercent", readCpuPercent()); } catch (Exception ignore) { }
+        try {
+            android.os.StatFs st = new android.os.StatFs("/data");
+            long bTotal = st.getBlockCountLong() * st.getBlockSizeLong();
+            long bFree = st.getAvailableBlocksLong() * st.getBlockSizeLong();
+            long totalGb = Math.round(bTotal / 1073741824.0);
+            long usedGb = Math.round((bTotal - bFree) / 1073741824.0);
+            s.put("diskTotalGb", totalGb);
+            s.put("diskUsedGb", usedGb);
+            s.put("diskPercent", bTotal > 0 ? Math.round((bTotal - bFree) * 100.0 / bTotal) : 0);
+        } catch (Exception ignore) { }
+        try {
+            s.put("networkUpKbps", 0);
+            s.put("networkDownKbps", 0);
+            s.put("uptime", SystemClock.elapsedRealtime() / 1000);
+            android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
+            android.app.KeyguardManager km = (android.app.KeyguardManager) getSystemService(KEYGUARD_SERVICE);
+            s.put("screenOn", pm != null && pm.isInteractive());
+            s.put("keyguardLocked", km != null && km.isKeyguardLocked());
+            s.put("keyguardSecure", km != null && km.isKeyguardSecure());
+        } catch (Exception ignore) { }
+        return s;
+    }
+
+    private String localIp() {
+        try {
+            for (NetworkInterface ni : Collections.list(NetworkInterface.getNetworkInterfaces())) {
+                for (java.net.InetAddress ia : Collections.list(ni.getInetAddresses())) {
+                    if (!ia.isLoopbackAddress() && ia.getAddress().length == 4) {
+                        String ip = ia.getHostAddress();
+                        if (ip != null) return ip;
+                    }
+                }
+            }
+        } catch (Exception ignore) { }
+        return "";
+    }
+
+    // ── v1.1 — Screen streaming (JPEG frames over the agent WS) ────────────
+    /** Keep the phone screen on (and wake it if needed) while a viewer is connected. */
+    /** Ask a transparent activity to turn the panel on. A normal app cannot
+     *  dismiss a secure PIN/password keyguard; this is the supported part. */
+    public void wakeScreenForRemote() {
+        try {
+            android.content.Intent wi = new android.content.Intent(this, WakeActivity.class);
+            wi.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                    | android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP
+                    | android.content.Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
+            startActivity(wi);
+        } catch (Exception ignore) { }
+    }
+
+    private void acquireAgentLocks() {
+        try {
+            PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+            if (pm != null) {
+                if (agentCpuWakeLock == null) {
+                    agentCpuWakeLock = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "AiRemote:agent-cpu");
+                    agentCpuWakeLock.setReferenceCounted(false);
+                }
+                if (!agentCpuWakeLock.isHeld()) agentCpuWakeLock.acquire();
+            }
+            if (pm != null) {
+                // TECNO's Hiber freezer drops third-party apps after screen-off
+                // even when a foreground service is running. Keep the panel on
+                // while the agent is enabled so remote wake/control stays
+                // reachable; this is released on Stop or for screen-off mode.
+                if (!screenOffMode) {
+                    if (agentScreenLock == null) {
+                        agentScreenLock = pm.newWakeLock(
+                                PowerManager.SCREEN_BRIGHT_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP,
+                                "AiRemote:agent-screen");
+                        agentScreenLock.setReferenceCounted(false);
+                    }
+                    if (!agentScreenLock.isHeld()) agentScreenLock.acquire();
+                } else {
+                    try { if (agentScreenLock != null && agentScreenLock.isHeld()) agentScreenLock.release(); } catch (Exception ignore) { }
+                }
+            }
+            android.net.wifi.WifiManager wm = (android.net.wifi.WifiManager) getApplicationContext().getSystemService(WIFI_SERVICE);
+            if (wm != null) {
+                if (agentWifiLock == null) {
+                    agentWifiLock = wm.createWifiLock(android.net.wifi.WifiManager.WIFI_MODE_FULL_HIGH_PERF, "AiRemote:agent-wifi");
+                    agentWifiLock.setReferenceCounted(false);
+                }
+                if (!agentWifiLock.isHeld()) agentWifiLock.acquire();
+            }
+        } catch (Exception ignore) { }
+    }
+
+    private void releaseAgentLocks() {
+        try { if (agentCpuWakeLock != null && agentCpuWakeLock.isHeld()) agentCpuWakeLock.release(); } catch (Exception ignore) { }
+        try { if (agentScreenLock != null && agentScreenLock.isHeld()) agentScreenLock.release(); } catch (Exception ignore) { }
+        try { if (agentWifiLock != null && agentWifiLock.isHeld()) agentWifiLock.release(); } catch (Exception ignore) { }
+        agentCpuWakeLock = null;
+        agentScreenLock = null;
+        agentWifiLock = null;
+    }
+
+    public static void restartNow() {
+        if (INSTANCE == null) return;
+        try { INSTANCE.stopAgent(); } catch (Exception ignore) { }
+        INSTANCE.running = false;
+        INSTANCE.startAgent();
+    }
+
+    public static void reconnectNow() {
+        if (INSTANCE == null || !INSTANCE.running) return;
+        INSTANCE.registered = false;
+        try { if (INSTANCE.ws != null) INSTANCE.ws.close(); } catch (Exception ignore) { }
+        INSTANCE.ws = null;
+        INSTANCE.connect();
+    }
+
+    public static boolean isRunning() {
+        return INSTANCE != null && INSTANCE.running;
+    }
+
+    public static boolean isConnected() {
+        return INSTANCE != null && INSTANCE.running
+                && INSTANCE.ws != null && INSTANCE.ws.isOpen()
+                && INSTANCE.registered;
+    }
+
+    public static boolean isCaptureReady() {
+        return CaptureHolder.ready();
+    }
+
+    private void acquireScreenWakeLock() {
+        try {
+            if (screenWakeLock == null) {
+                PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+                screenWakeLock = pm.newWakeLock(
+                        PowerManager.SCREEN_BRIGHT_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP | PowerManager.ON_AFTER_RELEASE,
+                        "AiRemote:screen");
+                screenWakeLock.setReferenceCounted(false);
+            }
+            if (!screenWakeLock.isHeld()) screenWakeLock.acquire();
+        } catch (Exception ignore) { }
+    }
+
+    private void releaseScreenWakeLock() {
+        try { if (screenWakeLock != null && screenWakeLock.isHeld()) screenWakeLock.release(); } catch (Exception ignore) { }
+    }
+
+    private void sendDisplayState() {
+        try {
+            PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+            KeyguardManager km = (KeyguardManager) getSystemService(KEYGUARD_SERVICE);
+            org.json.JSONObject o = new org.json.JSONObject();
+            o.put("screenOn", pm != null && pm.isInteractive());
+            o.put("keyguardLocked", km != null && km.isKeyguardLocked());
+            o.put("keyguardSecure", km != null && km.isKeyguardSecure());
+            o.put("offMode", screenOffMode);
+            sendMsg("agent:screen_display_state", o);
+        } catch (Exception ignore) { }
+    }
+
+    private void setScreenBrightness(int value) {
+        int v = Math.max(0, Math.min(255, value));
+        screenOffMode = false;
+        hideScreenOffOverlay();
+        acquireAgentLocks();
+        acquireScreenWakeLock();
+        boolean ok = false;
+        try {
+            android.provider.Settings.System.putInt(getContentResolver(),
+                    android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE,
+                    android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL);
+            ok = android.provider.Settings.System.putInt(getContentResolver(),
+                    android.provider.Settings.System.SCREEN_BRIGHTNESS, v);
+            try { android.provider.Settings.System.putFloat(getContentResolver(),
+                    "screen_brightness_float", v / 255f); } catch (Exception ignore) { }
+        } catch (Exception ignore) { }
+        try {
+            org.json.JSONObject o = new org.json.JSONObject();
+            o.put("value", v);
+            o.put("ok", ok);
+            sendMsg("agent:screen_brightness_status", o);
+        } catch (Exception ignore) { }
+    }
+
+    private void showScreenOffOverlay() {
+        try {
+            if (screenOffOverlay != null) return;
+            screenOffWm = (android.view.WindowManager) getSystemService(WINDOW_SERVICE);
+            if (screenOffWm == null) return;
+            screenOffOverlay = new android.view.View(this);
+            screenOffOverlay.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+            int type = Build.VERSION.SDK_INT >= 26
+                    ? android.view.WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+                    : android.view.WindowManager.LayoutParams.TYPE_PHONE;
+            android.view.WindowManager.LayoutParams lp = new android.view.WindowManager.LayoutParams(
+                    android.view.WindowManager.LayoutParams.MATCH_PARENT,
+                    android.view.WindowManager.LayoutParams.MATCH_PARENT, type,
+                    android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                            | android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                            | android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+                            | android.view.WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                    android.graphics.PixelFormat.TRANSLUCENT);
+            lp.gravity = android.view.Gravity.TOP | android.view.Gravity.LEFT;
+            lp.screenBrightness = 0.0f;
+            screenOffWm.addView(screenOffOverlay, lp);
+        } catch (Exception ignore) { }
+    }
+
+    private void hideScreenOffOverlay() {
+        try {
+            if (screenOffWm != null && screenOffOverlay != null) screenOffWm.removeView(screenOffOverlay);
+        } catch (Exception ignore) { }
+        screenOffOverlay = null;
+        screenOffWm = null;
+    }
+
+    /** Toggle screen-off streaming. Keeps CPU/network locks and MediaProjection
+     *  alive; releases the panel lock and applies a zero-brightness overlay. */
+    private void setScreenOffMode(boolean off) {
+        screenOffMode = off;
+        if (off) {
+            releaseScreenWakeLock();
+            try { if (agentScreenLock != null && agentScreenLock.isHeld()) agentScreenLock.release(); } catch (Exception ignore) { }
+            try {
+                if (!brightnessSaved) {
+                    savedBrightnessMode = android.provider.Settings.System.getInt(
+                            getContentResolver(), android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE,
+                            android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC);
+                    savedBrightness = android.provider.Settings.System.getInt(
+                            getContentResolver(), android.provider.Settings.System.SCREEN_BRIGHTNESS, 255);
+                    brightnessSaved = true;
+                }
+                android.provider.Settings.System.putInt(getContentResolver(),
+                        android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE,
+                        android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE_MANUAL);
+                android.provider.Settings.System.putInt(getContentResolver(),
+                        android.provider.Settings.System.SCREEN_BRIGHTNESS, 0);
+                try { android.provider.Settings.System.putFloat(getContentResolver(),
+                        "screen_brightness_float", 0f); } catch (Exception ignore) { }
+                showScreenOffOverlay();
+            } catch (Exception ignore) { }
+        } else {
+            hideScreenOffOverlay();
+            try {
+                if (brightnessSaved) {
+                    android.provider.Settings.System.putInt(getContentResolver(),
+                            android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE, savedBrightnessMode);
+                    android.provider.Settings.System.putInt(getContentResolver(),
+                            android.provider.Settings.System.SCREEN_BRIGHTNESS, savedBrightness);
+                    if (savedBrightnessMode == android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC) {
+                        try { android.provider.Settings.System.putFloat(getContentResolver(),
+                                "screen_brightness_float", savedBrightness / 255f); } catch (Exception ignore) { }
+                    }
+                }
+            } catch (Exception ignore) { }
+            brightnessSaved = false;
+            acquireAgentLocks();
+            acquireScreenWakeLock();
+        }
+        sendDisplayState();
+        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(this::sendDisplayState, 700);
+    }
+
+    private boolean canWriteSystemSettings() {
+        try {
+            return android.os.Build.VERSION.SDK_INT < 23
+                    || android.provider.Settings.System.canWrite(this);
+        } catch (Exception ignore) { return false; }
+    }
+
+    private void setAutoRotate(boolean enabled) {
+        try {
+            if (!canWriteSystemSettings()) {
+                sendRotateStatus(false, isAutoRotateEnabled(), "write-settings-not-granted");
+                return;
+            }
+            boolean ok = android.provider.Settings.System.putInt(getContentResolver(),
+                    android.provider.Settings.System.ACCELEROMETER_ROTATION, enabled ? 1 : 0);
+            sendRotateStatus(ok, ok ? enabled : isAutoRotateEnabled(),
+                    ok ? "" : "auto-rotate failed");
+        } catch (Exception e) {
+            sendRotateStatus(false, isAutoRotateEnabled(), "write-settings-failed");
+        }
+    }
+
+    private String formatUptime() {
+        if (agentStartedAt <= 0) return "—";
+        long sec = Math.max(0, (android.os.SystemClock.elapsedRealtime() - agentStartedAt) / 1000);
+        long h = sec / 3600, m = (sec % 3600) / 60, ss = sec % 60;
+        return h > 0 ? (h + ":" + String.format("%02d:%02d", m, ss)) : (m + ":" + String.format("%02d", ss));
+    }
+
+    private void rotateScreenManual() {
+        try {
+            if (!canWriteSystemSettings()) {
+                sendRotateResult(false, "write-settings-not-granted", "");
+                return;
+            }
+            int current = android.provider.Settings.System.getInt(getContentResolver(),
+                    android.provider.Settings.System.USER_ROTATION, 0);
+            int next = (current + 1) % 4;
+            android.provider.Settings.System.putInt(getContentResolver(),
+                    android.provider.Settings.System.ACCELEROMETER_ROTATION, 0);
+            boolean ok = android.provider.Settings.System.putInt(getContentResolver(),
+                    android.provider.Settings.System.USER_ROTATION, next);
+            sendRotateResult(ok, ok ? "" : "rotate failed", ok ? ("rotated " + next) : "");
+        } catch (Exception e) {
+            sendRotateResult(false, "write-settings-failed", "");
+        }
+    }
+
+    private void sendRotateResult(boolean ok, String reason, String result) {
+        try {
+            org.json.JSONObject o = new org.json.JSONObject();
+            o.put("ok", ok);
+            o.put("reason", reason == null ? "" : reason);
+            o.put("result", result == null ? "" : result);
+            sendMsg("agent:screen_rotate_result", o);
+        } catch (Exception ignore) { }
+    }
+
+    /** Release the projection only when the service really stops. Keeping it warm
+     *  avoids asking Android for screen-capture consent on every viewer reconnect. */
+    private void releaseProjection() {
+        ImageReader r = activeReader; VirtualDisplay v = activeVd; MediaProjection p = activeProjection;
+        activeReader = null; activeVd = null; activeProjection = null;
+        activeW = activeH = activeDpi = 0;
+        try { if (v != null) v.release(); } catch (Exception ignore) { }
+        try { if (r != null) r.close(); } catch (Exception ignore) { }
+        try { if (p != null) p.stop(); } catch (Exception ignore) { }
+    }
+
+    private void startScreenStream(JSONObject payload) {
+        final String sid = payload.optString("sessionId", "");
+        // Quality changes on the same session only adjust encoder settings.
+        if (streamRunning && sid.equals(streamSessionId)) {
+            streamFps = Math.min(Math.max(payload.optInt("fps", streamFps), 1), 30);
+            streamQuality = Math.min(Math.max(payload.optInt("quality", streamQuality), 10), 95);
+            int mw = payload.optInt("maxWidth", streamMaxWidth);
+            if (mw > 0) streamMaxWidth = Math.min(Math.max(mw, 320), 1920);
+            return;
+        }
+        streamSessionId = sid;
+        streamFps = Math.min(Math.max(payload.optInt("fps", 8), 1), 30);
+        streamQuality = Math.min(Math.max(payload.optInt("quality", 60), 10), 95);
+        streamMaxWidth = Math.min(Math.max(payload.optInt("maxWidth", 1280), 320), 1920);
+        stopScreenStreamRaw();
+        saveDisplaySettings();
+        screenOffMode = false;
+        wakeScreenForRemote();
+        acquireScreenWakeLock();
+        sendScreenState(sid);
+        sendDisplayState();
+        sendRotateStatus(true, isAutoRotateEnabled(), "");
+        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> sendScreenState(sid), 900);
+        MainActivity.log("screen capture start (" + streamFps + " fps)");
+        streamRunning = true;
+        streamThread = new Thread(() -> {
+            MediaProjection projection = activeProjection;
+            VirtualDisplay vd = activeVd;
+            ImageReader reader = activeReader;
+            int fullW = activeW, fullH = activeH, dpi = activeDpi;
+            int seq = 0;
+            int lastRotation = -1;
+            boolean created = false;
+            try {
+                if (projection == null || vd == null || reader == null) {
+                    if (!CaptureHolder.ready()) {
+                        try {
+                            JSONObject e = new JSONObject();
+                            e.put("sessionId", sid);
+                            e.put("message", "screen capture permission is required - grant it from the app");
+                            sendMsg("agent:screen_error", e);
+                        } catch (Exception ignore) { }
+                        streamRunning = false;
+                        return;
+                    }
+                    DisplayMetrics dm = getResources().getDisplayMetrics();
+                    fullW = dm.widthPixels; fullH = dm.heightPixels; dpi = dm.densityDpi;
+                    capW = fullW; capH = fullH;
+                    MediaProjectionManager mgr = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
+                    ensureProjectionForeground();
+                    projection = mgr.getMediaProjection(CaptureHolder.resultCode, CaptureHolder.data);
+                    if (projection == null) throw new Exception("projection null");
+                    reader = ImageReader.newInstance(fullW, fullH, PixelFormat.RGBA_8888, 4);
+                    vd = projection.createVirtualDisplay("airemote-stream", fullW, fullH, dpi,
+                            DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, reader.getSurface(), null, null);
+                    activeProjection = projection; activeVd = vd; activeReader = reader;
+                    activeW = fullW; activeH = fullH; activeDpi = dpi;
+                    created = true;
+                } else {
+                    capW = fullW; capH = fullH;
+                    ensureProjectionForeground();
+                }
+                Bitmap scaled = null;
+                while (streamRunning && ws != null && ws.isOpen()) {
+                    // Do not queue a new JPEG while the previous one is still
+                    // waiting in the Java-WebSocket outbound buffer. Otherwise
+                    // video latency grows without bound on a slow Wi-Fi link.
+                    if (ws.hasBufferedData()) { Thread.sleep(10); continue; }
+                    long t0 = SystemClock.elapsedRealtime();
+
+                    // Android rotates the physical display, but a VirtualDisplay
+                    // keeps the size it was created with. Rebind the ImageReader
+                    // and resize the virtual display so the stream follows the
+                    // phone instead of staying in the old portrait/landscape box.
+                    int currentRotation = -1;
+                    int curW = fullW, curH = fullH, curDpi = dpi;
+                    try {
+                        DisplayManager dmgr = (DisplayManager) getSystemService(DISPLAY_SERVICE);
+                        android.view.Display display = dmgr != null
+                                ? dmgr.getDisplay(android.view.Display.DEFAULT_DISPLAY) : null;
+                        if (display != null) {
+                            DisplayMetrics metrics = new DisplayMetrics();
+                            display.getRealMetrics(metrics);
+                            curW = metrics.widthPixels;
+                            curH = metrics.heightPixels;
+                            curDpi = metrics.densityDpi;
+                            currentRotation = display.getRotation();
+                        }
+                    } catch (Exception ignore) { }
+
+                    if (curW > 0 && curH > 0 && (curW != fullW || curH != fullH ||
+                            (lastRotation >= 0 && currentRotation >= 0 && currentRotation != lastRotation))) {
+                        try {
+                            ImageReader nextReader = ImageReader.newInstance(curW, curH, PixelFormat.RGBA_8888, 4);
+                            if (vd != null) {
+                                vd.setSurface(nextReader.getSurface());
+                                vd.resize(curW, curH, curDpi);
+                            }
+                            ImageReader oldReader = reader;
+                            reader = nextReader;
+                            activeReader = nextReader;
+                            fullW = curW; fullH = curH; dpi = curDpi;
+                            activeW = fullW; activeH = fullH; activeDpi = dpi;
+                            capW = fullW; capH = fullH;
+                            if (oldReader != null) oldReader.close();
+                            if (scaled != null) { scaled.recycle(); scaled = null; }
+                            MainActivity.log("screen orientation changed: " + fullW + "x" + fullH);
+                        } catch (Exception re) {
+                            MainActivity.log("screen rotation resize failed: " + re.getMessage());
+                        }
+                    }
+                    lastRotation = currentRotation;
+
+                    Image image = reader.acquireLatestImage();
+                    if (image == null) { Thread.sleep(30); continue; }
+                    try {
+                        float fscale = Math.min(1f, streamMaxWidth / (float) fullW);
+                        int fw = Math.max(320, Math.round(fullW * fscale));
+                        int fh = Math.max(240, Math.round(fullH * fscale));
+                        if (scaled == null || scaled.getWidth() != fw || scaled.getHeight() != fh) {
+                            if (scaled != null) scaled.recycle();
+                            scaled = Bitmap.createBitmap(fw, fh, Bitmap.Config.ARGB_8888);
+                        }
+                        Image.Plane[] planes = image.getPlanes();
+                        ByteBuffer buffer = planes[0].getBuffer();
+                        int pixelStride = planes[0].getPixelStride();
+                        int rowStride = planes[0].getRowStride();
+                        int rowPadding = rowStride - pixelStride * fullW;
+                        Bitmap bmp = Bitmap.createBitmap(fullW + rowPadding / pixelStride, fullH, Bitmap.Config.ARGB_8888);
+                        bmp.copyPixelsFromBuffer(buffer);
+                        android.graphics.Canvas cv = new android.graphics.Canvas(scaled);
+                        android.graphics.Rect src = new android.graphics.Rect(0, 0, fullW, fullH);
+                        android.graphics.Rect dst = new android.graphics.Rect(0, 0, fw, fh);
+                        cv.drawBitmap(bmp, src, dst, null);
+                        bmp.recycle();
+                        ByteArrayOutputStream bos = new ByteArrayOutputStream(131072);
+                        scaled.compress(Bitmap.CompressFormat.JPEG, streamQuality, bos);
+                        String b64 = Base64.encodeToString(bos.toByteArray(), Base64.NO_WRAP);
+                        JSONObject fr = new JSONObject();
+                        fr.put("sessionId", sid);
+                        fr.put("data", b64);
+                        fr.put("width", fw);
+                        fr.put("height", fh);
+                        fr.put("seq", ++seq);
+                        fr.put("ts", System.currentTimeMillis());
+                        fr.put("keyframe", true);
+                        fr.put("quality", streamQuality);
+                        sendMsg("agent:screen_frame", fr);
+                    } finally {
+                        image.close();
+                    }
+                    long dt = SystemClock.elapsedRealtime() - t0;
+                    long target = Math.max(10, 1000L / streamFps - dt);
+                    Thread.sleep(target);
+                }
+            } catch (Exception e) {
+                MainActivity.log("screen error: " + e.getMessage());
+                activeProjection = null; activeVd = null; activeReader = null; activeW = activeH = activeDpi = 0;
+                try { if (vd != null) vd.release(); } catch (Exception ignore) { }
+                try { if (reader != null) reader.close(); } catch (Exception ignore) { }
+                try { if (projection != null) projection.stop(); } catch (Exception ignore) { }
+            } finally {
+                try {
+                    JSONObject c = new JSONObject();
+                    c.put("sessionId", sid);
+                    sendMsg("agent:screen_closed", c);
+                } catch (Exception ignore) { }
+                MainActivity.log("screen capture loop ended");
+            }
+        });
+        streamThread.setDaemon(true);
+        streamThread.start();
+    }
+
+    private void stopScreenStreamRaw() {
+        streamRunning = false;
+        stopSystemAudio();
+        restoreDisplaySettings();
+        releaseScreenWakeLock();
+        // keep projection warm: the next viewer reuses the same consent token
+        Thread th = streamThread;
+        if (th != null) {
+            try { th.join(1500); } catch (InterruptedException ignore) { }
+            streamThread = null;
+        }
+    }
+
+    // ── Android 10+ system audio (AudioPlaybackCapture) ───────────────────
+    private void saveDisplaySettings() {
+        if (displaySettingsSaved) return;
+        try {
+            preStreamBrightnessMode = android.provider.Settings.System.getInt(getContentResolver(),
+                    android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE,
+                    android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE_AUTOMATIC);
+            preStreamBrightness = android.provider.Settings.System.getInt(getContentResolver(),
+                    android.provider.Settings.System.SCREEN_BRIGHTNESS, 255);
+            preStreamAccel = android.provider.Settings.System.getInt(getContentResolver(),
+                    android.provider.Settings.System.ACCELEROMETER_ROTATION, 1);
+            preStreamUserRotation = android.provider.Settings.System.getInt(getContentResolver(),
+                    android.provider.Settings.System.USER_ROTATION, 0);
+            displaySettingsSaved = true;
+        } catch (Exception ignore) { }
+    }
+
+    private void restoreDisplaySettings() {
+        if (!displaySettingsSaved) return;
+        try {
+            android.provider.Settings.System.putInt(getContentResolver(),
+                    android.provider.Settings.System.SCREEN_BRIGHTNESS_MODE, preStreamBrightnessMode);
+            android.provider.Settings.System.putInt(getContentResolver(),
+                    android.provider.Settings.System.SCREEN_BRIGHTNESS, preStreamBrightness);
+            android.provider.Settings.System.putInt(getContentResolver(),
+                    android.provider.Settings.System.ACCELEROMETER_ROTATION, preStreamAccel);
+            android.provider.Settings.System.putInt(getContentResolver(),
+                    android.provider.Settings.System.USER_ROTATION, preStreamUserRotation);
+        } catch (Exception ignore) { }
+        displaySettingsSaved = false;
+    }
+
+    private void sendScreenState(String sid) {
+        try {
+            android.os.PowerManager pm = (android.os.PowerManager) getSystemService(POWER_SERVICE);
+            android.app.KeyguardManager km = (android.app.KeyguardManager) getSystemService(KEYGUARD_SERVICE);
+            JSONObject o = new JSONObject();
+            o.put("sessionId", sid == null ? "" : sid);
+            o.put("screenOn", pm != null && pm.isInteractive());
+            o.put("keyguardLocked", km != null && km.isKeyguardLocked());
+            o.put("keyguardSecure", km != null && km.isKeyguardSecure());
+            sendMsg("agent:screen_state", o);
+        } catch (Exception ignore) { }
+    }
+
+    private void sendRotateStatus(boolean ok, boolean enabled, String reason) {
+        try {
+            JSONObject o = new JSONObject();
+            o.put("ok", ok);
+            o.put("enabled", enabled);
+            o.put("reason", reason == null ? "" : reason);
+            sendMsg("agent:screen_rotate_status", o);
+        } catch (Exception ignore) { }
+    }
+
+    private boolean isAutoRotateEnabled() {
+        try {
+            return android.provider.Settings.System.getInt(getContentResolver(),
+                    android.provider.Settings.System.ACCELEROMETER_ROTATION, 1) == 1;
+        } catch (Exception ignore) { return true; }
+    }
+
+    private void sendAudioStatus(boolean ok, String reason) {
+        try {
+            JSONObject o = new JSONObject();
+            o.put("ok", ok);
+            o.put("enabled", audioRunning);
+            o.put("reason", reason == null ? "" : reason);
+            o.put("format", "pcm16");
+            o.put("sampleRate", 16000);
+            sendMsg("agent:audio_status", o);
+        } catch (Exception ignore) { }
+    }
+
+    private void startSystemAudio() {
+        if (audioRunning) { sendAudioStatus(true, ""); return; }
+        if (Build.VERSION.SDK_INT < 29) { sendAudioStatus(false, "صوت النظام يتطلب Android 10 أو أحدث"); return; }
+        if (!streamRunning) { sendAudioStatus(false, "stream is not running"); return; }
+        if (activeProjection == null) { sendAudioStatus(false, "بث الشاشة غير نشط"); return; }
+        if (checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            sendAudioStatus(false, "صلاحية تسجيل الصوت غير ممنوحة"); return;
+        }
+        try {
+            android.media.AudioPlaybackCaptureConfiguration cfg =
+                    new android.media.AudioPlaybackCaptureConfiguration.Builder(activeProjection)
+                            .addMatchingUsage(android.media.AudioAttributes.USAGE_MEDIA)
+                            .addMatchingUsage(android.media.AudioAttributes.USAGE_GAME)
+                            .addMatchingUsage(android.media.AudioAttributes.USAGE_UNKNOWN)
+                            .build();
+            int rate = 16000;
+            android.media.AudioFormat fmt = new android.media.AudioFormat.Builder()
+                    .setEncoding(android.media.AudioFormat.ENCODING_PCM_16BIT)
+                    .setSampleRate(rate)
+                    .setChannelMask(android.media.AudioFormat.CHANNEL_IN_MONO)
+                    .build();
+            int min = android.media.AudioRecord.getMinBufferSize(rate,
+                    android.media.AudioFormat.CHANNEL_IN_MONO,
+                    android.media.AudioFormat.ENCODING_PCM_16BIT);
+            int bufSize = Math.max(min, rate / 20 * 2);
+            audioRecord = new android.media.AudioRecord.Builder()
+                    .setAudioFormat(fmt)
+                    .setBufferSizeInBytes(bufSize)
+                    .setAudioPlaybackCaptureConfig(cfg)
+                    .build();
+            if (audioRecord.getState() != android.media.AudioRecord.STATE_INITIALIZED) {
+                stopSystemAudio(); sendAudioStatus(false, "تعذر تهيئة تسجيل الصوت"); return;
+            }
+            audioRunning = true;
+            audioRecord.startRecording();
+            sendAudioStatus(true, "");
+            MainActivity.log("🔊 بدء بث صوت النظام");
+            audioThread = new Thread(() -> {
+                byte[] buf = new byte[Math.max(1600, rate / 20 * 2)];
+                while (audioRunning && audioRecord != null) {
+                    try {
+                        int n = audioRecord.read(buf, 0, buf.length);
+                        if (n > 0) {
+                            JSONObject o = new JSONObject();
+                            o.put("sessionId", streamSessionId);
+                            o.put("format", "pcm16");
+                            o.put("sampleRate", rate);
+                            o.put("channels", 1);
+                            o.put("seq", audioSeq++);
+                            o.put("ts", System.currentTimeMillis());
+                            o.put("data", android.util.Base64.encodeToString(buf, 0, n, android.util.Base64.NO_WRAP));
+                            sendMsg("agent:audio_chunk", o);
+                        }
+                    } catch (Exception ignore) { break; }
+                }
+            });
+            audioThread.setDaemon(true);
+            audioThread.start();
+        } catch (Exception e) {
+            stopSystemAudio();
+            sendAudioStatus(false, String.valueOf(e.getMessage()));
+        }
+    }
+
+    private void stopSystemAudio() {
+        boolean was = audioRunning;
+        audioRunning = false;
+        try { if (audioRecord != null) audioRecord.stop(); } catch (Exception ignore) { }
+        try { if (audioRecord != null) audioRecord.release(); } catch (Exception ignore) { }
+        audioRecord = null;
+        Thread th = audioThread; audioThread = null;
+        if (th != null) th.interrupt();
+        if (was) { sendAudioStatus(false, "متوقف"); MainActivity.log("🔇 إيقاف بث صوت النظام"); }
+    }
+
+    private void stopScreenStream(String sid) {
+        if (sid.isEmpty() || sid.equals(streamSessionId)) stopScreenStreamRaw();
+    }
+
+    private void handleScreenMouse(JSONObject payload) {
+        try {
+            String t = payload.optString("type", "");
+            double rx = payload.optDouble("x", 0.0), ry = payload.optDouble("y", 0.0);
+            DisplayMetrics dm = getResources().getDisplayMetrics();
+            int mw = capW > 0 ? capW : dm.widthPixels, mh = capH > 0 ? capH : dm.heightPixels;
+            int px = (int) Math.round(rx * mw), py = (int) Math.round(ry * mh);
+            JSONObject act = new JSONObject();
+            if (t.equals("click")) { act.put("action", "click"); act.put("x", px); act.put("y", py); }
+            else if (t.equals("dblclick")) { act.put("action", "dclick"); act.put("x", px); act.put("y", py); }
+            else if (t.equals("wheel") || t.equals("scroll")) {
+                int dy = payload.optInt("deltaY", 0);
+                act.put("action", "scroll"); act.put("amount", dy >= 0 ? -3 : 3);
+            }
+            else if (t.equals("down")) { lastDownX = px; lastDownY = py; return; }
+            else if (t.equals("up")) {
+                if (lastDownX >= 0 && (Math.abs(px - lastDownX) > 20 || Math.abs(py - lastDownY) > 20)) {
+                    act.put("action", "drag");
+                    act.put("x", lastDownX); act.put("y", lastDownY);
+                    act.put("x2", px); act.put("y2", py);
+                } else {
+                    act.put("action", "click"); act.put("x", px); act.put("y", py);
+                }
+                lastDownX = -1; lastDownY = -1;
+            }
+            else return;
+            AiRemoteA11y.runSync(act);
+        } catch (Exception ignore) { }
+    }
+
+    private void handleScreenKey(JSONObject payload) {
+        try {
+            String type = payload.optString("type", "press");
+            if (!type.equals("press")) return;
+            String key = payload.optString("key", "");
+            if (key.isEmpty()) return;
+            JSONObject act = new JSONObject();
+            if (key.equals("Backspace")) act.put("action", "keyBackspace");
+            else if (key.equals("Escape")) { act.put("action", "key"); act.put("key", "back"); }
+            else if (key.equals("Enter")) act.put("action", "keyEnter");
+            else if (key.equals("Close")) act.put("action", "closeapp");
+            else if (key.length() == 1) { act.put("action", "append"); act.put("text", key); }
+            else { act.put("action", "key"); act.put("key", key.toLowerCase()); }
+            AiRemoteA11y.runSync(act);
+        } catch (Exception ignore) { }
+    }
+
+    // ── v1.3.0 — capabilities refresh + host chat send ───────────────────────
+    public void sendCapabilities() {
+        try {
+            JSONObject p = new JSONObject();
+            p.put("capabilities", buildCapabilities());
+            sendMsg("agent:capabilities_update", p);
+            MainActivity.log("تم تحديث قدرات الجهاز على الخادم");
+        } catch (Exception ignore) { }
+    }
+
+    public void sendScreenChat(String text) {
+        try {
+            JSONObject p = new JSONObject();
+            p.put("sessionId", streamSessionId);
+            p.put("text", String.valueOf(text));
+            p.put("sender", "host");
+            p.put("ts", System.currentTimeMillis());
+            sendMsg("agent:screen_chat", p);
+        } catch (Exception ignore) { }
+    }
+
+    @Override
+    public void onDestroy() {
+        INSTANCE = null;
+        releaseAgentLocks();
+        stopScreenStreamRaw();
+        releaseProjection();
+        stopAgent();
+        super.onDestroy();
+    }
+}

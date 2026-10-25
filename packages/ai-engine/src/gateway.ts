@@ -8,10 +8,15 @@ export interface AIProvider {
   chatStream(messages: AIMessage[], systemPrompt: string | undefined, onChunk: (text: string) => void): Promise<void>
 }
 
+export const ZAI_DEFAULT_BASE_URL = 'https://api.z.ai/api/paas/v4/'
+
 export function createAIProvider(config: AIConfig): AIProvider {
   switch (config.provider) {
     case 'openai':
       return new OpenAIProvider(config)
+    case 'zai':
+      // Z.ai is OpenAI-compatible; default to the Z.ai general API base URL.
+      return new OpenAIProvider({ ...config, baseUrl: config.baseUrl || ZAI_DEFAULT_BASE_URL })
     case 'gemini':
       return new GeminiProvider(config)
     case 'ollama':

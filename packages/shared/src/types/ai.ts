@@ -1,4 +1,4 @@
-export type AIProvider = 'openai' | 'gemini' | 'ollama'
+export type AIProvider = 'openai' | 'gemini' | 'ollama' | 'zai'
 
 export type AIMessageRole = 'user' | 'assistant' | 'system'
 

@@ -33,10 +33,22 @@ export function applyLang(lang: Lang) {
   html.lang = lang
 }
 
+const initialTheme: Theme = (() => {
+  try {
+    const s = localStorage.getItem('airemote-ui')
+    if (s) {
+      const t = JSON.parse(s)?.state?.theme
+      if (t === 'light' || t === 'dark') return t
+    }
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) return 'light'
+  } catch {}
+  return 'dark'
+})()
+
 export const useUIStore = create<UIStore>()(
   persist(
     (set, get) => ({
-      theme: 'dark',
+      theme: initialTheme,
       lang: 'ar',
       sidebarOpen: true,
       setTheme: (theme) => { set({ theme }); applyTheme(theme) },
@@ -66,6 +78,7 @@ export const useUIStore = create<UIStore>()(
       if (state?.lang) applyLang(state.lang)
     } else {
       applyLang('ar')
+      applyTheme(initialTheme)
     }
   } catch {
     applyLang('ar')

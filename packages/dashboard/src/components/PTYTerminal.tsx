@@ -89,6 +89,19 @@ export function PTYTerminal({ deviceId, deviceName, onClose }: Props) {
     term.open(termRef.current)
     fit.fit()
 
+    // Permanent key/resize handlers — attached ONCE (server may send 'pty:connected'
+    // more than once; attaching per-event duplicated every keystroke)
+    term.onData((data) => {
+      const ws = wsRef.current
+      if (ws && ws.readyState === WebSocket.OPEN)
+        ws.send(JSON.stringify({ type: 'pty:data', payload: { data: btoa(unescape(encodeURIComponent(data))) } }))
+    })
+    term.onResize(({ rows, cols }) => {
+      const ws = wsRef.current
+      if (ws && ws.readyState === WebSocket.OPEN)
+        ws.send(JSON.stringify({ type: 'pty:resize', payload: { rows, cols } }))
+    })
+
     termInstance.current = term
     fitAddon.current     = fit
 
@@ -131,10 +144,6 @@ export function PTYTerminal({ deviceId, deviceName, onClose }: Props) {
       wsRef.current = null
     }
 
-    // Detach old listeners
-    dataDisposableRef.current?.dispose();   dataDisposableRef.current   = null
-    resizeDisposableRef.current?.dispose(); resizeDisposableRef.current = null
-
     const term = termInstance.current
     setStatus('connecting')
     setErrorMsg('')
@@ -143,7 +152,7 @@ export function PTYTerminal({ deviceId, deviceName, onClose }: Props) {
     const token    = getFreshToken()
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const tokenQ   = token ? `?token=${encodeURIComponent(token)}` : ''
-    const ws       = new WebSocket(`${protocol}//${window.location.host}/pty${tokenQ}`)
+    const ws       = new WebSocket(`${protocol}//${window.location.host}/pty${tokenQ}${tokenQ ? "&" : "?"}deviceId=${encodeURIComponent(deviceId)}`)
     wsRef.current  = ws
 
     ws.onopen = () => {
@@ -167,20 +176,8 @@ export function PTYTerminal({ deviceId, deviceName, onClose }: Props) {
         if (msg.type === 'pty:connected') {
           setStatus('connected')
           term.writeln('\x1b[32m  ✓ Shell جاهز!\x1b[0m\r\n')
-
-          // Keyboard → server
-          dataDisposableRef.current = term.onData((data) => {
-            if (ws.readyState === WebSocket.OPEN)
-              ws.send(JSON.stringify({ type: 'pty:data', payload: { data: btoa(unescape(encodeURIComponent(data))) } }))
-          })
-
-          // Resize → server
-          resizeDisposableRef.current = term.onResize(({ rows, cols }) => {
-            if (ws.readyState === WebSocket.OPEN)
-              ws.send(JSON.stringify({ type: 'pty:resize', payload: { rows, cols } }))
-          })
-
           fitAddon.current?.fit()
+          try { term.focus() } catch {}
         }
 
         else if (msg.type === 'pty:data') {

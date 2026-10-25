@@ -560,6 +560,7 @@ function escHtml(str) {
 async function init() {
   const version = await api.system.version()
   document.getElementById('hdr-version').textContent = 'v' + version
+  document.querySelectorAll('.srv-ver').forEach(el => { el.textContent = version })
   await refreshStatus()
   updateDashboard(serverStatus)
 }

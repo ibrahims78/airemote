@@ -19,7 +19,7 @@
       </svg>
     </div>
     <span class="brand-name">AiRemote Agent</span>
-    <span class="brand-version">v3.2.0</span>
+    <span class="brand-version">v3.6.0</span>
   </div>
 
   <div class="title-status" id="title-status">
@@ -62,6 +62,14 @@
 <!-- ── App ────────────────────────────────────────────────────────────────── -->
 <div id="app">
 
+  <div id="tabbar">
+    <button class="tab-btn active" data-tab="status" type="button">الحالة</button>
+    <button class="tab-btn" data-tab="ai" type="button">المساعد الذكي</button>
+    <button class="tab-btn" data-tab="viewers" type="button">دردشة المشاهدين<span id="tab-chat-badge" class="chat-unread hidden">0</span></button>
+    <button class="tab-btn" data-tab="log" type="button">سجل الأحداث</button>
+  </div>
+
+  <div class="tab-pane active" id="tab-status">
   <div id="upper">
 
     <!-- ── Status Card ─────────────────────────────────────────────────── -->
@@ -265,6 +273,30 @@
             </div>
           </div>
 
+          <!-- Panel: Remote Control Auth (v3.3.2) -->
+          <div class="tab-panel active" id="panel-ctrl" style="border-top:1px solid rgba(100,116,139,.18);margin-top:12px;padding-top:12px">
+            <div class="field">
+              <label data-i18n="ctrlTitle">التحكم عن بُعد</label>
+              <div class="field-hint" data-i18n="ctrlHint">طريقة منح التحكم من هذا الجهاز للمشاهد:</div>
+              <div class="checks-group">
+                <label class="check-row"><input type="radio" name="ctrl-auth" id="ctrl-mode-consent" value="consent" /><span data-i18n="ctrlConsent">موافقة يدوية (نافذة تأكيد عند كل طلب)</span></label>
+                <label class="check-row"><input type="radio" name="ctrl-auth" id="ctrl-mode-password" value="password" /><span data-i18n="ctrlPwMode">كلمة سر (تُطلب من المتحكم)</span></label>
+              </div>
+            </div>
+            <div class="field" id="ctrl-pw-field" style="display:none">
+              <label data-i18n="ctrlPwLabel">كلمة السر</label>
+              <div class="input-wrap">
+                <input id="inp-ctrl-pw" type="password" dir="ltr" autocomplete="new-password" placeholder="••••" />
+              </div>
+              <div class="field-hint" id="ctrl-pw-state"></div>
+            </div>
+            <div class="btn-row">
+              <button id="save-ctrl-btn" type="button" class="btn-ghost">
+                <span data-i18n="saveCtrl">حفظ إعدادات التحكم</span>
+              </button>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
@@ -305,15 +337,17 @@
     </div>
 
   </div><!-- /#upper -->
+  </div><!-- /#tab-status -->
 
   <!-- ── T006: Session Chat Section ──────────────────────────────────── -->
+  <div class="tab-pane" id="tab-viewers">
   <div id="chat-section" class="chat-section hidden">
     <div class="card chat-card">
       <div class="chat-card-header">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
         </svg>
-        <span id="chat-header-lbl">دردشة الجلسة</span>
+        <span id="chat-header-lbl">دردشة المشاهدين</span>
         <span id="chat-unread-badge" class="chat-unread hidden">0</span>
         <div style="flex:1"></div>
         <button id="chat-clear-btn" class="icon-btn-sm" type="button" title="مسح المحادثة">
@@ -321,7 +355,7 @@
             <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
           </svg>
         </button>
-        <button id="chat-popout-btn" class="icon-btn-sm" type="button" title="نافذة منفصلة">
+        <button id="chat-popout-btn" class="icon-btn-sm" type="button" title="فتح نافذة دردشة المشاهدين">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="15 3 21 3 21 9"/>
             <polyline points="9 21 3 21 3 15"/>
@@ -343,10 +377,10 @@
         <span>الدردشة مفتوحة في نافذة منفصلة</span>
       </div>
       <div id="chat-messages" class="chat-messages">
-        <div class="chat-empty" id="chat-empty">لا توجد رسائل بعد...</div>
+        <div class="chat-empty" id="chat-empty">لا توجد رسائل بعد — دردشة للتواصل مع من يشاهد شاشتك (للذكاء الاصطناعي استخدم لوحة التحكم). </div>
       </div>
       <div class="chat-compose">
-        <input id="chat-input" type="text" class="chat-input" placeholder="اكتب رداً على المشاهد..." spellcheck="false" />
+        <input id="chat-input" type="text" class="chat-input" placeholder="اكتب رسالة للمشاهدين… (Enter للإرسال)" spellcheck="false" />
         <button id="chat-send-btn" class="chat-send-btn" type="button" disabled>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
@@ -357,6 +391,57 @@
   </div>
 
   <!-- ── Log Section ─────────────────────────────────────────────────── -->
+  </div><!-- /#tab-viewers -->
+
+  <!-- v3.4.0 — On-device AI Assistant -->
+  <div class="tab-pane" id="tab-ai">
+  <div id="ai-section">
+    <div class="card chat-card ai-card">
+      <div class="chat-card-header">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/>
+        </svg>
+        <span>المساعد الذكي</span>
+        <span class="ai-hint" id="ai-status"></span>
+        <div style="flex:1"></div>
+        <button id="ai-hist-btn" class="icon-btn-sm" type="button" title="سجل المحادثات">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/>
+          </svg>
+        </button>
+        <button id="ai-new-btn" class="icon-btn-sm" type="button" title="محادثة جديدة">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+        </button>
+        <button id="ai-stop-btn" class="icon-btn-sm hidden" type="button" title="إيقاف التوليد">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+        </button>
+        <button id="ai-collapse-btn" class="icon-btn-sm" type="button" title="طي / توسيع">
+          <svg id="ai-chev" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
+      </div>
+      <div id="ai-hist" class="ai-hist hidden"></div>
+      <div id="ai-messages" class="ai-messages">
+        <div class="chat-empty" id="ai-empty">اسأل المساعد الذكي مباشرة من هنا — يمكنه تنفيذ المهام على هذا الجهاز (فتح التطبيقات، الكتابة، النقر، لقطات الشاشة) عند طلبك.</div>
+      </div>
+      <div class="ai-compose chat-compose">
+        <input id="ai-input" type="text" class="chat-input" placeholder="اكتب رسالتك للمساعد الذكي… (Enter للإرسال)" spellcheck="false" />
+        <button id="ai-send-btn" class="chat-send-btn" type="button" disabled>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  </div><!-- /#tab-ai -->
+
+  <div class="tab-pane" id="tab-log">
   <div id="log-section">
     <div class="card log-card">
       <div class="card-header log-header">
@@ -417,16 +502,20 @@
   </div>
 
   <!-- ── Footer ─────────────────────────────────────────────────────────── -->
+  </div><!-- /#tab-log -->
+
   <div id="footer">
     <span id="footer-os">Windows</span>
     <span class="sep">·</span>
     <span>AiRemote Agent</span>
     <span class="sep">·</span>
-    <span id="footer-ver">v3.2.0</span>
+    <span id="footer-ver">v3.6.0</span>
   </div>
 
 </div><!-- /#app -->
 
 <script src="app.js"></script>
+<script src="ai.js"></script>
+<script src="tabs.js"></script>
 </body>
 </html>

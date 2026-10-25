@@ -1,267 +1,438 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
-  Monitor, Wifi, WifiOff, AlertCircle, Activity, Cpu,
-  HardDrive, MemoryStick, Plus, History, TrendingUp, Circle
+  Activity, AlertCircle, ArrowUpRight, ChevronDown, ChevronRight, ChevronUp, Cpu,
+  History, Monitor, MonitorPlay, Play, Plus, Send, Settings, Sparkles,
+  Wifi
 } from 'lucide-react'
 import { useDeviceStore } from '../store/deviceStore'
+import { useUIStore } from '../store/uiStore'
 import { useT } from '../lib/i18n'
 import { clsx } from 'clsx'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import type { Device } from '@airemote/shared'
+import { LivePreviewBoard } from '../components/LivePreviewBoard'
 
 interface Session {
-  id: string; deviceId: string; deviceName?: string
-  type: string; startedAt: string; endedAt?: string; durationSec?: number
+  id: string
+  deviceId: string
+  deviceName?: string
+  type: string
+  startedAt: string
+  endedAt?: string
+  durationSec?: number
 }
 
-function StatBar({ value, color }: { value: number; color: string }) {
-  return (
-    <div className="w-full bg-slate-700/50 rounded-full h-1 overflow-hidden">
-      <div className={clsx('h-full rounded-full transition-all duration-700', color)} style={{ width: `${Math.min(value, 100)}%` }} />
-    </div>
-  )
+interface ActiveScreen {
+  sessionId: string
+  viewers?: number
 }
 
-function DeviceCard({ device }: { device: Device }) {
-  const { statsMap } = useDeviceStore()
-  const T = useT()
-  const stats = statsMap[device.id]
-  const isOnline = device.status === 'online'
-
-  return (
-    <Link
-      to={`/devices/${device.id}`}
-      className={clsx(
-        'block glass glass-hover rounded-xl p-4 cursor-pointer transition-all animate-fade-in group',
-        isOnline ? 'hover:border-emerald-500/20' : ''
-      )}
-    >
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-2.5">
-          <div className={clsx('w-9 h-9 rounded-lg flex items-center justify-center', isOnline ? 'bg-brand-blue/15' : 'bg-slate-700/50')}>
-            <Monitor size={16} className={isOnline ? 'text-brand-blue' : 'text-slate-500'} />
-          </div>
-          <div>
-            <h3 className="font-medium text-sm text-slate-100 group-hover:text-white transition-colors">{device.name}</h3>
-            <p className="text-xs text-slate-500 mt-0.5 font-mono">{device.info?.hostname || device.id.slice(0, 8)}</p>
-          </div>
-        </div>
-        <span className={clsx(
-          'inline-flex items-center gap-1.5 text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0',
-          isOnline ? 'text-emerald-400 bg-emerald-400/10' : 'text-slate-500 bg-slate-500/10'
-        )}>
-          <span className={clsx('w-1.5 h-1.5 rounded-full', isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500')} />
-          {isOnline ? T('device_online') : T('device_offline')}
-        </span>
-      </div>
-
-      {isOnline && stats && (
-        <div className="grid grid-cols-3 gap-2 text-center">
-          {[
-            { label: 'CPU', value: stats.cpuPercent, color: stats.cpuPercent > 80 ? 'bg-red-400' : 'bg-brand-blue', icon: Cpu },
-            { label: 'RAM', value: stats.ramPercent, color: stats.ramPercent > 85 ? 'bg-orange-400' : 'bg-brand-teal', icon: MemoryStick },
-            { label: 'Disk', value: stats.diskPercent, color: stats.diskPercent > 90 ? 'bg-red-400' : 'bg-purple-400', icon: HardDrive },
-          ].map(item => {
-            const Icon = item.icon
-            return (
-              <div key={item.label}>
-                <div className="text-xs text-slate-500 mb-1 flex items-center justify-center gap-1">
-                  <Icon size={10} /> {item.label}
-                </div>
-                <div className="text-sm font-mono font-semibold text-slate-200">{item.value}%</div>
-                <StatBar value={item.value} color={item.color} />
-              </div>
-            )
-          })}
-        </div>
-      )}
-
-      {isOnline && !stats && (
-        <div className="flex items-center gap-1.5 text-xs text-slate-500">
-          <Activity size={11} className="animate-pulse" />
-          {T('fetching_data')}
-        </div>
-      )}
-
-      {!isOnline && device.lastSeen && (
-        <p className="text-xs text-slate-600 mt-1">
-          {T('last_seen')}: {new Date(device.lastSeen).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-        </p>
-      )}
-    </Link>
-  )
-}
-
-const SESSION_TYPE_LABELS: Record<string, { label: string; color: string }> = {
-  ssh:  { label: 'SSH',  color: 'text-brand-blue bg-brand-blue/10' },
-  sftp: { label: 'SFTP', color: 'text-brand-teal bg-brand-teal/10' },
-  ai:   { label: 'AI',   color: 'text-purple-400 bg-purple-400/10' },
-  vnc:  { label: 'VNC',  color: 'text-orange-400 bg-orange-400/10' },
-  rdp:  { label: 'RDP',  color: 'text-yellow-400 bg-yellow-400/10' },
+const SESSION_TYPE_LABELS: Record<string, string> = {
+  ssh: 'SSH',
+  sftp: 'SFTP',
+  ai: 'AI',
+  vnc: 'VNC',
+  rdp: 'RDP',
+  screen: 'SCREEN',
 }
 
 function formatDuration(sec?: number) {
   if (!sec) return '—'
-  const m = Math.floor(sec / 60), s = sec % 60
+  const m = Math.floor(sec / 60)
+  const s = sec % 60
   return m > 0 ? `${m}m ${s}s` : `${s}s`
+}
+
+function formatLastSeen(value?: Date | string) {
+  if (!value) return ''
+  try {
+    return new Date(value).toLocaleString(undefined, {
+      month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
+    })
+  } catch {
+    return ''
+  }
+}
+
+function ResourceBar({ value, tone }: { value: number; tone: 'teal' | 'amber' | 'red' }) {
+  return (
+    <div className="cr-resource-track">
+      <span className={clsx('cr-resource-fill', `is-${tone}`)} style={{ width: `${Math.min(Math.max(value, 0), 100)}%` }} />
+    </div>
+  )
+}
+
+function DeviceCard({ device, activeStream, viewLabel, streamLabel }: {
+  device: Device
+  activeStream?: ActiveScreen
+  viewLabel: string
+  streamLabel: string
+}) {
+  const { statsMap } = useDeviceStore()
+  const stats = statsMap[device.id] || device.stats
+  const isOnline = device.status === 'online'
+  const cpu = stats?.cpuPercent ?? 0
+  const ram = stats?.ramPercent ?? 0
+
+  function openStream(event: React.MouseEvent) {
+    event.preventDefault()
+    event.stopPropagation()
+    window.open(`/view/${device.id}`, `airemote-stream-${device.id}`, 'width=1400,height=900')
+  }
+
+  return (
+    <article className={clsx('cr-device', !isOnline && 'is-offline')}>
+      <div className="cr-device-head">
+        <div className="cr-device-icon"><Monitor size={15} /></div>
+        <div className="cr-device-title">
+          <strong>{device.name}</strong>
+          <span>{device.info?.hostname || device.id.slice(0, 10)}</span>
+        </div>
+        <span className={clsx('cr-status', isOnline ? 'is-online' : 'is-offline')}>
+          <i /> {isOnline ? 'ONLINE' : 'OFFLINE'}
+        </span>
+      </div>
+
+      <div className="cr-device-meta">
+        <span>{device.info?.osVersion || device.info?.platform || 'Device'}</span>
+        {device.info?.arch && <><b>·</b><span>{device.info.arch}</span></>}
+        {activeStream && <><b>·</b><span className="cr-device-live">LIVE</span></>}
+      </div>
+
+      {isOnline && stats ? (
+        <div className="cr-resources">
+          <div className="cr-resource">
+            <span><Cpu size={10} /> CPU <b>{Math.round(cpu)}%</b></span>
+            <ResourceBar value={cpu} tone={cpu > 80 ? 'red' : 'teal'} />
+          </div>
+          <div className="cr-resource">
+            <span><Activity size={10} /> RAM <b>{Math.round(ram)}%</b></span>
+            <ResourceBar value={ram} tone={ram > 85 ? 'amber' : 'teal'} />
+          </div>
+        </div>
+      ) : (
+        <div className="cr-device-empty">
+          {isOnline ? <span>بانتظار بيانات الجهاز…</span> : <span>آخر ظهور: {formatLastSeen(device.lastSeen) || '—'}</span>}
+        </div>
+      )}
+
+      <div className="cr-device-footer">
+        <Link to={`/devices/${device.id}`} className="cr-device-link">
+          {viewLabel} <ChevronRight size={12} />
+        </Link>
+        {isOnline && (
+          <button type="button" onClick={openStream} className="cr-device-stream">
+            <MonitorPlay size={12} /> {streamLabel}
+          </button>
+        )}
+      </div>
+    </article>
+  )
 }
 
 export function OverviewPage() {
   const { devices, loading, fetchDevices, statsMap } = useDeviceStore()
+  const { lang } = useUIStore()
+  const T = useT()
+  const navigate = useNavigate()
+  const [aiPrompt, setAiPrompt] = useState('')
+  const [fleetOpen, setFleetOpen] = useState(false)
+  const [sessionsOpen, setSessionsOpen] = useState(false)
   const [sessions, setSessions] = useState<Session[]>([])
   const [sessionsLoading, setSessionsLoading] = useState(true)
-  const T = useT()
+  const [activeScreens, setActiveScreens] = useState<Record<string, ActiveScreen>>({})
 
-  const online  = devices.filter(d => d.status === 'online').length
-  const offline = devices.filter(d => d.status !== 'online').length
-  const alerts  = devices.filter(d => {
-    const s = statsMap[d.id]
-    return s && (s.cpuPercent > 85 || s.ramPercent > 85 || s.diskPercent > 90)
-  }).length
+  const isRtl = lang === 'ar'
+  const tr = (ar: string, en: string) => isRtl ? ar : en
 
   const onlineDevices = devices.filter(d => d.status === 'online')
-  const avgCpu = onlineDevices.length > 0
-    ? Math.round(onlineDevices.reduce((sum, d) => sum + (statsMap[d.id]?.cpuPercent || 0), 0) / onlineDevices.length) : 0
-  const avgRam = onlineDevices.length > 0
-    ? Math.round(onlineDevices.reduce((sum, d) => sum + (statsMap[d.id]?.ramPercent || 0), 0) / onlineDevices.length) : 0
+  const online = onlineDevices.length
+  const offline = devices.length - online
+  const statsFor = (id: string) => statsMap[id] || devices.find(d => d.id === id)?.stats
+  const monitoredDevices = onlineDevices.filter(d => typeof statsFor(d.id)?.cpuPercent === 'number')
+  const attentionDevices = onlineDevices.filter(d => {
+    const s = statsFor(d.id)
+    return s && (s.cpuPercent > 85 || s.ramPercent > 85 || s.diskPercent > 90)
+  })
+  const alerts = attentionDevices.length
+  const avgCpu = monitoredDevices.length > 0
+    ? Math.round(monitoredDevices.reduce((sum, d) => sum + (statsFor(d.id)?.cpuPercent || 0), 0) / monitoredDevices.length)
+    : 0
+  const liveViewers = Object.values(activeScreens).reduce((sum, s) => sum + (s.viewers || 0), 0)
+
+  const liveEntries = useMemo(() => Object.entries(activeScreens), [activeScreens])
+  const primaryLive = liveEntries[0]
+  const primaryDevice = primaryLive ? devices.find(d => d.id === primaryLive[0]) : undefined
+  const aiContext = primaryDevice || onlineDevices[0] || devices[0]
 
   useEffect(() => {
     fetchDevices()
-    api.get('/api/sessions?limit=8')
+    const loadActive = () => {
+      api.get('/api/sessions/screen/active')
+        .then(r => {
+          const map: Record<string, ActiveScreen> = {}
+          for (const x of (r.data || [])) {
+            if (x && x.deviceId) map[x.deviceId] = { sessionId: x.sessionId, viewers: x.viewers }
+          }
+          setActiveScreens(map)
+        })
+        .catch(() => {})
+    }
+    loadActive()
+    const timer = setInterval(loadActive, 10_000)
+
+    api.get('/api/sessions?limit=6')
       .then(r => setSessions(r.data || []))
       .catch(() => {})
       .finally(() => setSessionsLoading(false))
-  }, [])
+
+    return () => clearInterval(timer)
+  }, [fetchDevices])
+
+  function openLive(deviceId: string) {
+    window.open(`/view/${deviceId}`, `airemote-stream-${deviceId}`, 'width=1400,height=900')
+  }
+
+  function submitAiPrompt(event: React.FormEvent) {
+    event.preventDefault()
+    const prompt = aiPrompt.trim()
+    if (!prompt) return
+    setAiPrompt('')
+    navigate(`/ai?prompt=${encodeURIComponent(prompt)}`)
+  }
 
   return (
-    <div className="p-6 space-y-6">
-      <div>
-        <h2 className="text-xl font-bold text-white">{T('overview_title')}</h2>
-        <p className="text-slate-400 text-sm mt-1">{T('overview_subtitle')}</p>
-      </div>
-
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="glass rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Wifi size={14} className="text-emerald-400" />
-            <span className="text-xs text-slate-400">{T('stat_connected')}</span>
-          </div>
-          <div className="text-3xl font-bold text-emerald-400">{online}</div>
-          <p className="text-xs text-slate-600 mt-1">{T('of')} {devices.length}</p>
+    <div className="cr-page">
+      <section className="cr-overview-head" aria-label={tr('غرفة العمليات', 'Operations room')}>
+        <div className="cr-overview-copy">
+          <span className="cr-eyebrow"><span /> {tr('غرفة العمليات', 'OPERATIONS ROOM')}</span>
+          <h1>{tr('شاشتك ومساعدك في مساحة واحدة.', 'Your screen and copilot in one workspace.')}</h1>
+          <p>{tr('راقب أجهزتك، ابدأ البث فوراً، واسأل المساعد الذكي عن ما تراه على الشاشة دون مغادرة السياق.', 'Monitor your devices, start streaming instantly, and ask the AI copilot about what is on screen without leaving context.')}</p>
         </div>
-        <div className="glass rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <WifiOff size={14} className="text-slate-500" />
-            <span className="text-xs text-slate-400">{T('stat_offline')}</span>
-          </div>
-          <div className="text-3xl font-bold text-slate-400">{offline}</div>
-          <p className="text-xs text-slate-600 mt-1">{T('inactive_device')}</p>
+        <div className="cr-overview-actions">
+          <Link to="/devices" className="cr-btn"><Monitor size={12} /> {tr('الأجهزة', 'Devices')}</Link>
+          <button type="button" className="cr-btn is-primary" onClick={() => {
+            const device = primaryDevice || onlineDevices[0]
+            if (device) openLive(device.id)
+            else navigate('/devices')
+          }}><Play size={12} /> {tr('بدء البث الحي', 'Start live stream')}</button>
+          <Link to="/settings" className="cr-btn"><Settings size={12} /> {tr('الإعدادات', 'Settings')}</Link>
         </div>
-        <div className="glass rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <AlertCircle size={14} className="text-orange-400" />
-            <span className="text-xs text-slate-400">{T('stat_alerts')}</span>
+      </section>
+
+      <section className="cr-metrics" aria-label={tr('مؤشرات التشغيل', 'Operations metrics')}>
+        <Link to="/devices" className="cr-metric cr-metric-ok is-clickable" title={tr('فتح قائمة الأجهزة', 'Open devices')}>
+          <div className="cr-metric-top">
+            <div className="cr-metric-label"><Wifi size={13} /> {tr('أجهزة متصلة', 'Connected')}</div>
+            <ArrowUpRight size={12} className="cr-metric-arrow" />
           </div>
-          <div className="text-3xl font-bold text-orange-400">{alerts}</div>
-          <p className="text-xs text-slate-600 mt-1">{T('high_resources')}</p>
-        </div>
-        <div className="glass rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <TrendingUp size={14} className="text-brand-blue" />
-            <span className="text-xs text-slate-400">{T('stat_avg_cpu')}</span>
+          <div className="cr-metric-value">{online}<small> / {devices.length}</small></div>
+          <div className="cr-metric-foot">
+            <i />
+            {offline > 0 ? `${offline} ${tr('غير متصل', 'offline')}` : tr('كل الأجهزة متصلة', 'All devices online')}
           </div>
-          <div className="text-3xl font-bold text-brand-blue">{avgCpu}%</div>
-          <div className="mt-2">
-            <StatBar value={avgCpu} color={avgCpu > 80 ? 'bg-red-400' : 'bg-brand-blue'} />
-            <p className="text-xs text-slate-600 mt-1">RAM: {avgRam}%</p>
+          <div className="cr-metric-bar"><span style={{ width: `${devices.length ? Math.round(online / devices.length * 100) : 0}%` }} /></div>
+        </Link>
+
+        <Link to="/settings?tab=sessions" className="cr-metric is-clickable" title={tr('فتح الجلسات', 'Open sessions')}>
+          <div className="cr-metric-top">
+            <div className="cr-metric-label"><MonitorPlay size={13} /> {tr('جلسات بث', 'Live sessions')}</div>
+            <ArrowUpRight size={12} className="cr-metric-arrow" />
           </div>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Devices */}
-        <div className="lg:col-span-2">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
-              <Monitor size={14} className="text-brand-blue" />
-              {T('devices')}
-            </h3>
-            <Link to="/devices" className="text-xs text-brand-blue hover:text-blue-400 transition-colors">{T('view_all')}</Link>
+          <div className="cr-metric-value">{liveEntries.length}</div>
+          <div className="cr-metric-foot">
+            <i className={liveEntries.length > 0 ? 'is-on' : ''} />
+            {liveEntries.length > 0
+              ? `${liveViewers} ${tr('مشاهد', 'viewer(s)')} · ${primaryDevice?.name || tr('بث نشط', 'active')}`
+              : tr('لا يوجد بث نشط', 'No active stream')}
           </div>
+          <div className="cr-metric-bar"><span style={{ width: `${Math.min(100, liveEntries.length * 25)}%` }} /></div>
+        </Link>
 
-          {loading && (
-            <div className="text-center py-12 text-slate-500">
-              <div className="w-5 h-5 border-2 border-brand-blue border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-              {T('loading')}
-            </div>
-          )}
-
-          {!loading && devices.length === 0 && (
-            <div className="glass rounded-xl text-center py-14">
-              <Monitor size={36} className="text-slate-700 mx-auto mb-3" />
-              <h3 className="text-slate-300 font-medium mb-1">{T('no_devices_yet')}</h3>
-              <p className="text-slate-500 text-sm mb-4">{T('no_devices_desc')}</p>
-              <Link
-                to="/devices"
-                className="inline-flex items-center gap-2 bg-brand-blue hover:bg-blue-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors shadow-lg shadow-brand-blue/20"
-              >
-                <Plus size={14} />
-                {T('add_device')}
-              </Link>
-            </div>
-          )}
-
-          {!loading && devices.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {devices.map(device => <DeviceCard key={device.id} device={device} />)}
-            </div>
-          )}
-        </div>
-
-        {/* Recent sessions */}
-        <div>
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-semibold text-slate-300 flex items-center gap-2">
-              <History size={14} className="text-brand-teal" />
-              {T('recent_sessions')}
-            </h3>
-            <Link to="/sessions" className="text-xs text-brand-blue hover:text-blue-400 transition-colors">{T('view_all')}</Link>
+        <Link to="/devices" className={clsx('cr-metric is-clickable', alerts > 0 && 'cr-metric-warn')} title={tr('فتح الأجهزة لمراجعة الموارد', 'Open devices to review resources')}>
+          <div className="cr-metric-top">
+            <div className="cr-metric-label"><AlertCircle size={13} /> {tr('تحتاج انتباهاً', 'Needs attention')}</div>
+            <ArrowUpRight size={12} className="cr-metric-arrow" />
           </div>
+          <div className="cr-metric-value">{alerts}</div>
+          <div className="cr-metric-foot">
+            <i className={alerts > 0 ? 'is-warn' : ''} />
+            {monitoredDevices.length === 0
+              ? tr('لا توجد بيانات موارد', 'No resource data')
+              : alerts > 0
+                ? `${alerts} ${tr('بموارد مرتفعة', 'high resource')}`
+                : tr('كل الموارد طبيعية', 'Resources normal')}
+          </div>
+          <div className="cr-metric-bar"><span style={{ width: `${online ? Math.min(100, alerts / online * 100) : 0}%` }} /></div>
+        </Link>
 
-          <div className="glass rounded-xl overflow-hidden">
-            {sessionsLoading && (
-              <div className="flex justify-center py-8">
-                <div className="w-4 h-4 border-2 border-brand-teal border-t-transparent rounded-full animate-spin" />
+        <Link to="/devices" className="cr-metric is-clickable" title={tr('مراقبة موارد الأجهزة', 'Monitor device resources')}>
+          <div className="cr-metric-top">
+            <div className="cr-metric-label"><Cpu size={13} /> {tr('متوسط CPU', 'Average CPU')}</div>
+            <ArrowUpRight size={12} className="cr-metric-arrow" />
+          </div>
+          <div className="cr-metric-value">{monitoredDevices.length ? avgCpu : '—'}<small>{monitoredDevices.length ? '%' : ''}</small></div>
+          <div className="cr-metric-foot">
+            <i />
+            {online === 0
+              ? tr('لا توجد أجهزة متصلة', 'No online devices')
+              : `${monitoredDevices.length}/${online} ${tr('يرسل بيانات', 'reporting')}`}
+          </div>
+          <div className="cr-metric-bar"><span style={{ width: `${monitoredDevices.length ? Math.min(100, avgCpu) : 0}%` }} /></div>
+        </Link>
+      </section>
+
+      <div className="cr-layout">
+        <div className="cr-main">
+          <section className="cr-card cr-live-card">
+            <div className="cr-card-head">
+              <div>
+                <span className="cr-kicker"><i className="cr-pulse" /> {tr('البث المباشر', 'Live screens')}</span>
+                <h2>{primaryDevice?.name || tr('اختر جهازاً وابدأ البث', 'Choose a device and start streaming')}</h2>
               </div>
-            )}
-            {!sessionsLoading && sessions.length === 0 && (
-              <div className="text-center py-8 text-xs text-slate-600">{T('no_sessions_yet')}</div>
-            )}
-            {!sessionsLoading && sessions.map((s, i) => {
-              const tc = SESSION_TYPE_LABELS[s.type] || { label: s.type.toUpperCase(), color: 'text-slate-400 bg-slate-700/50' }
-              const isActive = !s.endedAt
-              return (
-                <div key={s.id} className={clsx('flex items-center gap-3 px-4 py-2.5', i < sessions.length - 1 && 'border-b border-slate-700/30')}>
-                  <Circle size={7} className={clsx('fill-current flex-shrink-0', isActive ? 'text-emerald-400' : 'text-slate-600')} />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-slate-200 truncate">{s.deviceName || s.deviceId?.slice(0, 8)}</p>
-                    <p className="text-[10px] text-slate-500">
-                      {new Date(s.startedAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-end gap-1 flex-shrink-0">
-                    <span className={clsx('text-[10px] px-1.5 py-0.5 rounded font-medium', tc.color)}>{tc.label}</span>
-                    <span className="text-[10px] text-slate-600 font-mono">
-                      {isActive ? <span className="text-emerald-400">{T('session_active')}</span> : formatDuration(s.durationSec)}
-                    </span>
-                  </div>
+              <span className={clsx('cr-badge', (primaryLive || onlineDevices.length > 0) && 'is-live')}>
+                {primaryLive ? 'LIVE' : onlineDevices.length ? 'READY' : 'STANDBY'}
+              </span>
+            </div>
+
+            {devices.length === 0 ? (
+              <div className="cr-live-empty">
+                <div className="cr-live-empty-icon"><Monitor size={22} /></div>
+                <div>
+                  <strong>{tr('الشاشة جاهزة عندما تكون مستعداً.', 'Your screen is ready when you are.')}</strong>
+                  <p>{tr('اختر جهازاً متصلاً وابدأ البث من بطاقته.', 'Pick an online device and start a stream from its card.')}</p>
                 </div>
-              )
-            })}
-          </div>
+                <Link to="/devices" className="cr-btn">{tr('اختيار جهاز', 'Choose a device')} <ChevronRight size={13} /></Link>
+              </div>
+            ) : (
+              <LivePreviewBoard devices={devices} activeScreens={activeScreens} onOpen={openLive} />
+            )}
+          </section>
+
+          <section className="cr-section">
+            <div className="cr-section-head">
+              <div>
+                <span className="cr-kicker">{tr('الأسطول', 'Fleet')}</span>
+                <h2>{tr('أجهزتك', 'Your devices')}</h2>
+              </div>
+              <div className="cr-section-actions">
+                <Link to="/devices" className="cr-text-link">{T('view_all')} <ChevronRight size={12} /></Link>
+                <button type="button" className="cr-collapse-btn" onClick={() => setFleetOpen(v => !v)} aria-expanded={fleetOpen}>
+                  {fleetOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                  {fleetOpen ? tr('إخفاء', 'Hide') : tr('إظهار', 'Show')}
+                </button>
+              </div>
+            </div>
+
+            {fleetOpen && (loading ? (
+              <div className="cr-device-grid">
+                {[0, 1, 2].map(i => <div className="cr-device cr-skeleton" key={i} />)}
+              </div>
+            ) : devices.length === 0 ? (
+              <div className="cr-empty">
+                <Monitor size={28} />
+                <strong>{T('no_devices_yet')}</strong>
+                <p>{T('no_devices_desc')}</p>
+                <Link to="/devices" className="cr-btn is-primary"><Monitor size={13} /> {tr('الأجهزة', 'Devices')}</Link>
+              </div>
+            ) : (
+              <div className="cr-device-grid">
+                {devices.map(device => (
+                  <DeviceCard
+                    key={device.id}
+                    device={device}
+                    activeStream={activeScreens[device.id]}
+                    viewLabel={tr('فتح', 'Open')}
+                    streamLabel={tr('بث', 'Stream')}
+                  />
+                ))}
+              </div>
+            ))}
+          </section>
+
+          <section className="cr-card cr-recent">
+            <div className="cr-section-head">
+              <div>
+                <span className="cr-kicker">{tr('السجل', 'Activity')}</span>
+                <h2>{T('recent_sessions')}</h2>
+              </div>
+              <div className="cr-section-actions">
+                <Link to="/settings?tab=sessions" className="cr-text-link">{T('view_all')} <ChevronRight size={12} /></Link>
+                <button type="button" className="cr-collapse-btn" onClick={() => setSessionsOpen(v => !v)} aria-expanded={sessionsOpen}>
+                  {sessionsOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+                  {sessionsOpen ? tr('إخفاء', 'Hide') : tr('إظهار', 'Show')}
+                </button>
+              </div>
+            </div>
+            {sessionsOpen && (sessionsLoading ? (
+              <div className="cr-recent-loading"><span className="cr-spinner" /> {T('loading')}</div>
+            ) : sessions.length === 0 ? (
+              <div className="cr-recent-empty">{T('no_sessions_yet')}</div>
+            ) : (
+              <div className="cr-session-list">
+                {sessions.map(session => {
+                  const active = !session.endedAt
+                  return (
+                    <div className="cr-session-row" key={session.id}>
+                      <span className={clsx('cr-session-dot', active && 'is-active')} />
+                      <div className="cr-session-copy">
+                        <strong>{session.deviceName || session.deviceId?.slice(0, 10) || 'Device'}</strong>
+                        <span>{new Date(session.startedAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                      <span className="cr-session-type">{SESSION_TYPE_LABELS[session.type] || session.type.toUpperCase()}</span>
+                      <span className={clsx('cr-session-state', active && 'is-active')}>
+                        {active ? T('session_active') : formatDuration(session.durationSec)}
+                      </span>
+                    </div>
+                  )
+                })}
+              </div>
+            ))}
+          </section>
         </div>
+
+        <aside className="cr-ai">
+          <div className="cr-ai-head">
+            <div className="cr-ai-mark"><Sparkles size={15} /></div>
+            <div>
+              <strong>{T('ai_assistant')}</strong>
+              <span>{aiContext ? `${tr('السياق:', 'Context:')} ${aiContext.name}` : tr('جاهز للمساعدة', 'Ready to help')}</span>
+            </div>
+            <span className="cr-ai-ctx">CTX</span>
+          </div>
+
+          <div className="cr-ai-body">
+            <p className="cr-ai-label">{tr('ماذا تريد أن تفعل؟', 'What do you want to do?')}</p>
+            <div className="cr-ai-prompt">
+              {aiContext
+                ? tr(`افتح مساحة ${aiContext.name} وتحقق من حالة الاتصال والموارد.`, `Open ${aiContext.name} and check connectivity and resources.`)
+                : tr('أضف جهازاً أولاً ثم اسألني عن حالته.', 'Add your first device, then ask me about its health.')}
+            </div>
+
+            <div className="cr-ai-suggestions">
+              <Link to={`/ai?prompt=${encodeURIComponent(tr('تحقق من صحة الاتصال والموارد للجهاز الحالي', 'Check current device connectivity and resources'))}`} className="cr-ai-suggestion"><span>01</span> {tr('تحقق من صحة الاتصال', 'Check connection health')} <ChevronRight size={12} /></Link>
+              <Link to={`/ai?prompt=${encodeURIComponent(tr('افتح آخر تطبيق على الجهاز الحالي', 'Open the last app on the current device'))}`} className="cr-ai-suggestion"><span>02</span> {tr('افتح آخر تطبيق على الجهاز', 'Open the last app on the device')} <ChevronRight size={12} /></Link>
+              <Link to={`/ai?prompt=${encodeURIComponent(tr('لخّص أحدث الجلسات', 'Summarize recent sessions'))}`} className="cr-ai-suggestion"><span>03</span> {tr('لخّص أحدث جلسات', 'Summarize recent sessions')} <ChevronRight size={12} /></Link>
+            </div>
+
+            <form className="cr-ai-compose" onSubmit={submitAiPrompt}>
+              <input
+                value={aiPrompt}
+                onChange={event => setAiPrompt(event.target.value)}
+                placeholder={tr('اسأل عن الشاشة أو الجهاز…', 'Ask about your screen or device…')}
+                aria-label={tr('سؤال للمساعد الذكي', 'Ask the AI copilot')}
+              />
+              <button type="submit" disabled={!aiPrompt.trim()} aria-label={tr('إرسال السؤال', 'Send question')}>
+                <Send size={13} />
+              </button>
+            </form>
+          </div>
+
+          <div className="cr-ai-note">
+            <Sparkles size={11} /> {tr('كل إجراء حساس يطلب تأكيداً قبل التنفيذ.', 'Sensitive actions require confirmation.')}
+          </div>
+        </aside>
       </div>
     </div>
   )

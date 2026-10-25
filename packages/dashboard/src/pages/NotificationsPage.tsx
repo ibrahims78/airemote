@@ -114,7 +114,7 @@ function AlertRuleCard({ rule, onDelete, onToggle, T, lang }: {
   )
 }
 
-export function NotificationsPage() {
+export function NotificationsPage({ embedded = false }: { embedded?: boolean } = {}) {
   const T    = useT()
   const lang = useUIStore(s => s.lang)
 
@@ -185,7 +185,7 @@ export function NotificationsPage() {
   }
 
   return (
-    <div className="p-4 lg:p-6 space-y-4">
+    <div className={embedded ? 'space-y-4' : 'cr-page space-y-4'}>
       {/* Header */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2.5">
@@ -198,7 +198,7 @@ export function NotificationsPage() {
             )}
           </div>
           <div>
-            <h1 className="text-lg font-bold text-white">{T('notif_title')}</h1>
+            <h1 className="text-xl font-bold text-white">{T('notif_title')}</h1>
             <p className="text-xs text-slate-500">
               {unread > 0 ? `${unread} ${T('notif_unread')}` : T('notif_all_ok')}
             </p>

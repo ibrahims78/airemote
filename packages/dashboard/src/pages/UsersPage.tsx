@@ -165,7 +165,7 @@ function PasswordModal({ user, onClose }: { user: User; onClose: () => void }) {
   )
 }
 
-export function UsersPage() {
+export function UsersPage({ embedded = false }: { embedded?: boolean } = {}) {
   const t = useT()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
@@ -215,7 +215,7 @@ export function UsersPage() {
   const viewerCount = users.filter(u => u.role === 'viewer').length
 
   return (
-    <div className="p-6">
+    <div className={embedded ? '' : 'cr-page'}>
       {pwModal && <PasswordModal user={pwModal} onClose={() => setPwModal(null)} />}
 
       <div className="flex items-center justify-between mb-6">
@@ -302,7 +302,7 @@ export function UsersPage() {
           {t('loading')}
         </div>
       ) : (
-        <div className="glass rounded-xl overflow-hidden">
+        <div className="glass rounded-xl">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-700/50">
@@ -338,7 +338,7 @@ export function UsersPage() {
                     <RoleDropdown user={u} onUpdate={(updated) => setUsers(p => p.map(x => x.id === u.id ? updated : x))} />
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-500">
-                    {new Date(u.createdAt).toLocaleDateString()}
+                    {new Date(u.createdAt || (u as unknown as { created_at?: string }).created_at || Date.now()).toLocaleDateString()}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">

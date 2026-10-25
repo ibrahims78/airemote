@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useDeviceStore } from '../store/deviceStore'
 import { AiChatPanel } from '../components/AiChatPanel'
 import { Bot, Cpu, MemoryStick, Monitor, Wifi, Circle, X } from 'lucide-react'
@@ -9,60 +10,68 @@ import { useUIStore } from '../store/uiStore'
 export function AiPage() {
   const t       = useT()
   const isLight = useUIStore(s => s.theme === 'light')
-  const { devices, statsMap } = useDeviceStore()
-  const [selectedDeviceId, setSelectedDeviceId] = useState<string | undefined>(undefined)
+  const isAr    = useUIStore(s => s.lang === 'ar')
+  const { devices, statsMap, fetchDevices } = useDeviceStore()
+  const [selectedDeviceId, setSelectedDeviceId] = useState<string | undefined>(() => {
+    try { return localStorage.getItem('airemote-ai-device-v1') || undefined } catch { return undefined }
+  })
+  const [searchParams] = useSearchParams()
+  const initialPrompt = searchParams.get('prompt') || undefined
+  const autoPickedRef = useRef(false)
 
   const onlineDevices  = devices.filter(d => d.status === 'online')
+
+  useEffect(() => {
+    try {
+      if (selectedDeviceId) localStorage.setItem('airemote-ai-device-v1', selectedDeviceId)
+      else localStorage.removeItem('airemote-ai-device-v1')
+    } catch {}
+  }, [selectedDeviceId])
+
+  useEffect(() => { fetchDevices() }, [fetchDevices])
+
+  // v3.3.4 — auto-attach to the first online device so device questions get real
+  // context out of the box (the user can switch back to global manually).
+  useEffect(() => {
+    if (!autoPickedRef.current && !selectedDeviceId && onlineDevices.length > 0) {
+      autoPickedRef.current = true
+      setSelectedDeviceId(onlineDevices[0].id)
+    }
+  }, [onlineDevices, selectedDeviceId])
   const selectedDevice = selectedDeviceId ? devices.find(d => d.id === selectedDeviceId) : undefined
 
   return (
-    <div className="flex h-full">
+    <div className="ai-page-shell flex h-full">
 
       {/* ── Main chat area ───────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col min-w-0">
 
-        {/* Page header */}
-        <div className={clsx(
-          'px-6 py-4 border-b flex-shrink-0',
-          isLight ? 'border-slate-200' : 'border-slate-700/50'
-        )}>
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-teal to-brand-blue flex items-center justify-center shadow-sm shadow-brand-teal/25">
-              <Bot size={18} className="text-white" />
+        <div className="ai-page-head">
+          <div className="ai-page-head-main">
+            <span className="cr-eyebrow"><span /> AIREMOTE / COPILOT</span>
+            <div className="ai-page-title-row">
+              <span className="ai-page-title-icon"><Bot size={15} /></span>
+              <h2>{t('ai_title')}</h2>
+              <span className="ai-ready"><Circle size={5} className="fill-current" /> {isAr ? 'جاهز' : 'Ready'}</span>
             </div>
-            <div>
-              <h2 className={clsx('text-base font-bold', isLight ? 'text-slate-800' : 'text-white')}>
-                {t('ai_title')}
-              </h2>
-              <p className={clsx('text-xs', isLight ? 'text-slate-500' : 'text-slate-400')}>
-                {selectedDevice ? (
-                  <span className={isLight ? 'text-teal-600' : 'text-brand-teal'}>
-                    {t('ai_context')}: <span className="font-medium">{selectedDevice.name}</span>
-                  </span>
-                ) : (
-                  t('ai_global_desc')
-                )}
-              </p>
-            </div>
+            <p>
+              {selectedDevice ? (
+                <>{t('ai_context')}: <b>{selectedDevice.name}</b></>
+              ) : t('ai_global_desc')}
+            </p>
+          </div>
+          <div className="ai-page-head-actions">
+            <span className="ai-page-online"><Monitor size={11} /> {onlineDevices.length} {isAr ? 'متصل' : 'online'}</span>
             {selectedDeviceId && (
-              <button
-                onClick={() => setSelectedDeviceId(undefined)}
-                className={clsx(
-                  'ms-auto flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-colors',
-                  isLight
-                    ? 'text-slate-500 hover:text-slate-700 bg-slate-100 hover:bg-slate-200'
-                    : 'text-slate-500 hover:text-slate-300 bg-slate-700/40 hover:bg-slate-700/60'
-                )}
-              >
-                <X size={11} />
-                {t('ai_cancel_device')}
+              <button type="button" className="ai-page-cancel" onClick={() => setSelectedDeviceId(undefined)}>
+                <X size={11} /> {t('ai_cancel_device')}
               </button>
             )}
           </div>
         </div>
 
         <div className="flex-1 min-h-0">
-          <AiChatPanel deviceId={selectedDeviceId} key={selectedDeviceId || 'global'} />
+          <AiChatPanel deviceId={selectedDeviceId} key={selectedDeviceId || 'global'} initialPrompt={initialPrompt} />
         </div>
       </div>
 

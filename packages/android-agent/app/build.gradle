@@ -1,0 +1,34 @@
+plugins { id 'com.android.application' }
+
+android {
+    namespace 'com.airemote.agent'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId "com.airemote.agent"
+        minSdk 24
+        targetSdk 33
+        versionCode 8
+        versionName "3.6.0"
+    }
+
+    buildTypes {
+        release { minifyEnabled false }
+        debug { }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+}
+
+dependencies {
+    implementation 'org.java-websocket:Java-WebSocket:1.5.7'
+    implementation 'org.slf4j:slf4j-nop:1.7.36'
+}

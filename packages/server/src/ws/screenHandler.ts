@@ -259,6 +259,41 @@ export async function handleScreenWebSocket(socket: WebSocket, request: FastifyR
           })
           break
 
+        // ── v3.6: audio / rotation / brightness controls (Android + desktop agents) ──
+        case 'screen:audio_control':
+          deviceRegistry.sendToDevice(deviceId, {
+            type:      'server:audio_control',
+            payload:   { sessionId: agentSessionId, enabled: !!msg.payload?.enabled },
+            timestamp: Date.now()
+          })
+          break
+
+        case 'screen:rotate':
+          deviceRegistry.sendToDevice(deviceId, {
+            type:      'server:screen_rotate',
+            payload:   { sessionId: agentSessionId },
+            timestamp: Date.now()
+          })
+          break
+
+        case 'screen:rotate_auto':
+          deviceRegistry.sendToDevice(deviceId, {
+            type:      'server:screen_rotate_auto',
+            payload:   { sessionId: agentSessionId, enabled: msg.payload?.enabled !== false },
+            timestamp: Date.now()
+          })
+          break
+
+        case 'screen:brightness': {
+          const value = Math.max(0, Math.min(255, parseInt(msg.payload?.value ?? 255) || 0))
+          deviceRegistry.sendToDevice(deviceId, {
+            type:      'server:screen_brightness',
+            payload:   { sessionId: agentSessionId, value },
+            timestamp: Date.now()
+          })
+          break
+        }
+
         case 'screen:request_control': {
           const requestId = msg.payload?.requestId || uuidv4()
           deviceRegistry.sendToDevice(deviceId, {

@@ -4,7 +4,14 @@
   <meta charset="UTF-8" />
   <style>
     body { margin: 0; background: #000; overflow: hidden; }
-    video, canvas { display: none; }
+    /* v3.5 — display:none froze the MediaStream video on Windows (only the first
+       frame was ever drawn). Keep it technically visible but 2x2 and transparent. */
+    video {
+      position: fixed; left: -4px; top: -4px;
+      width: 2px; height: 2px; opacity: 0.01;
+      pointer-events: none;
+    }
+    canvas { display: none; }
   </style>
 </head>
 <body>
@@ -23,6 +30,14 @@ const video  = document.getElementById('v')
 const canvas = document.getElementById('c')
 const ctx    = canvas.getContext('2d')
 
+// v3.3.2 — delta engine state (small sampler for fast change detection)
+const regionCanvas = document.createElement('canvas')
+const regionCtx    = regionCanvas.getContext('2d')
+let   sampleCanvas = null
+let   sampleCtx    = null
+let   prevSample   = null
+let   lastFullAt   = 0
+
 let sessionId       = null
 let captureTimer    = null
 let frameSeq        = 0
@@ -30,8 +45,16 @@ let currentFps      = 20
 let currentQuality  = 80
 let stream          = null
 let cachedSources   = []   // [{id, name, index}] from main process
-let privacyMode     = false
+let currentMaxWidth = 1280
+let lastTrackRestartAt = 0
+let lastMonitorIdx = 0
 let encoding        = false  // guard: prevent concurrent JPEG blobs
+let audioCtx        = null
+let audioProc       = null
+let audioSource     = null
+let audioSilence    = null
+let audioSeq        = 0
+let audioWanted     = false
 
 // ── Get screen sources from main process (desktopCapturer) ───────────────
 async function getSources() {
@@ -45,10 +68,12 @@ async function getSources() {
 }
 
 // ── Start / restart capture ───────────────────────────────────────────────
-async function startCapture(sid, fps, quality, monitorIdx) {
+async function startCapture(sid, fps, quality, monitorIdx, maxWidth) {
   sessionId      = sid
   currentFps     = Math.max(1, Math.min(30, fps     || 5))
   currentQuality = Math.max(10, Math.min(95, quality || 65))
+  currentMaxWidth = Math.max(320, Math.min(3840, Number(maxWidth) || currentMaxWidth || 1280))
+  lastMonitorIdx = monitorIdx || 0
 
   stopCapture()
 
@@ -57,11 +82,18 @@ async function startCapture(sid, fps, quality, monitorIdx) {
   // Strategy 1: getDisplayMedia() — preferred in Electron 21+ because
   // setDisplayMediaRequestHandler bypasses the picker and grants directly.
   try {
-    stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false })
+    // v3.3.0 — try to exclude the OS cursor from captured frames (single-cursor UX)
+    stream = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: 'never' }, audio: true })
     await startFromStream(sid)
     return
-  } catch (e1) {
-    lastErr = e1
+  } catch (e0) {
+    try {
+      stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
+      await startFromStream(sid)
+      return
+    } catch (e1) {
+      lastErr = e1
+    }
   }
 
   // Strategy 2: getUserMedia() with desktopCapturer source ID (legacy).
@@ -102,8 +134,20 @@ async function startFromStream(sid) {
     video.onloadedmetadata = resolve
     setTimeout(() => reject(new Error('Video metadata timeout')), 8000)
   })
+  // v3.5 — explicitly start playback; autoplay alone left the track paused in
+  // the hidden capture window, so every captured frame was identical.
+  try { video.muted = true; await video.play() } catch (e) {}
   frameSeq     = 0
-  captureTimer = setInterval(captureFrame, Math.round(1000 / currentFps))
+  if (audioWanted) startAudioRecorder(sid)
+  captureTimer = setTimeout(captureFrame, Math.round(1000 / currentFps))
+  try {
+    const vt = stream.getVideoTracks()[0]
+    if (vt) vt.addEventListener('ended', () => ipcRenderer.send('screen-track-ended', { sessionId: sid }))
+    if (!window.__arResizeHooked) {
+      window.__arResizeHooked = true
+      video.addEventListener('resize', () => ipcRenderer.send('screen-resized', { width: video.videoWidth, height: video.videoHeight }))
+    }
+  } catch {}
 
   // Report monitor list
   const sources = cachedSources.length ? cachedSources : await getSources()
@@ -115,35 +159,174 @@ async function startFromStream(sid) {
   })
 }
 
+// ── System audio (loopback) ───────────────────────────────────────────────
+// ?? System audio (loopback, PCM16) ???????????????????????????????????????
+// v3.5.1 - send raw PCM instead of MediaRecorder/WebM chunks. The dashboard's
+// PCM path is gapless (jitter buffer) and does not depend on MediaSource,
+// autoplay of a detached <audio> element, or a valid WebM initialization
+// segment on every reconnect. It also lets the browser play the remote sound
+// with the same path used by Android.
+function stopAudioRecorder() {
+  try { if (audioProc) audioProc.onaudioprocess = null } catch {}
+  try { if (audioSource) audioSource.disconnect() } catch {}
+  try { if (audioProc) audioProc.disconnect() } catch {}
+  try { if (audioSilence) audioSilence.disconnect() } catch {}
+  try { if (audioCtx && audioCtx.state !== 'closed') audioCtx.close() } catch {}
+  audioProc = null
+  audioSource = null
+  audioSilence = null
+  audioCtx = null
+  // Do not stop the current stream's audio tracks here: startAudioRecorder()
+  // calls this before creating the new pipeline, and stopping them makes the
+  // freshly acquired loopback track "ended" before it can be read.
+}
+
+function makeAudioContext() {
+  try { return new AudioContext({ sampleRate: 16000 }) } catch (e) {
+    try { return new AudioContext() } catch (e2) { return null }
+  }
+}
+
+function startAudioRecorder(sid) {
+  stopAudioRecorder()
+  try {
+    const tracks = stream ? stream.getAudioTracks() : []
+    if (!tracks.length) {
+      ipcRenderer.send('audio-status', { sessionId: sid, ok: false, reason: 'no system audio track' })
+      return
+    }
+    audioCtx = makeAudioContext()
+    if (!audioCtx) throw new Error('AudioContext unavailable')
+    const requestedRate = audioCtx.sampleRate || 16000
+    audioSource = audioCtx.createMediaStreamSource(new MediaStream(tracks))
+    audioProc = audioCtx.createScriptProcessor(1024, 1, 1)
+    audioSilence = audioCtx.createGain()
+    audioSilence.gain.value = 0
+    audioProc.onaudioprocess = e => {
+      if (!audioWanted || !sid) return
+      const input = e.inputBuffer.getChannelData(0)
+      const pcm = new Int16Array(input.length)
+      for (let i = 0; i < input.length; i++) {
+        let v = input[i]
+        if (v > 1) v = 1; else if (v < -1) v = -1
+        pcm[i] = v < 0 ? (v * 0x8000) | 0 : (v * 0x7fff) | 0
+      }
+      ipcRenderer.send('audio-chunk', {
+        sessionId: sid,
+        seq: audioSeq++,
+        data: Buffer.from(pcm.buffer),
+        format: 'pcm16',
+        sampleRate: requestedRate,
+        channels: 1
+      })
+    }
+    audioSource.connect(audioProc)
+    audioProc.connect(audioSilence)
+    audioSilence.connect(audioCtx.destination)
+    audioCtx.resume().catch(() => {})
+    ipcRenderer.send('audio-status', {
+      sessionId: sid, ok: true, format: 'pcm16', sampleRate: requestedRate, channels: 1
+    })
+  } catch (e) {
+    stopAudioRecorder()
+    ipcRenderer.send('audio-status', { sessionId: sid, ok: false, reason: String(e && e.message || e) })
+  }
+}
+
 // ── Capture one frame (binary path — no base64 / JSON overhead) ──────────
 // Uses canvas.toBlob() → ArrayBuffer → IPC binary transfer.
 // The `encoding` flag prevents a slow JPEG encode from stacking up frames.
+// v3.3.1 — adaptive pacing: re-arm after each encode so intervals stay even
+function armTimer(delay) {
+  clearTimeout(captureTimer)
+  captureTimer = setTimeout(captureFrame, Math.max(4, Math.round(delay)))
+}
+
+// v3.3.2 — changed-region detection on a downscaled sample (fast, low memory)
+function computeDelta(cw, ch) {
+  const sw = Math.max(32, Math.min(320, cw >> 4))
+  const sh = Math.max(18, Math.round(sw * (ch / cw)))
+  if (!sampleCanvas) { sampleCanvas = document.createElement('canvas'); sampleCtx = sampleCanvas.getContext('2d', { willReadFrequently: true }) }
+  if (sampleCanvas.width !== sw || sampleCanvas.height !== sh) { sampleCanvas.width = sw; sampleCanvas.height = sh; prevSample = null }
+  sampleCtx.drawImage(canvas, 0, 0, sw, sh)
+  const cur = sampleCtx.getImageData(0, 0, sw, sh).data
+  if (!prevSample) { prevSample = cur; return null }
+  let minX = 1e9, minY = 1e9, maxX = -1, maxY = -1
+  for (let i = 0; i < cur.length; i += 4) {
+    if (cur[i] !== prevSample[i] || cur[i + 1] !== prevSample[i + 1] || cur[i + 2] !== prevSample[i + 2]) {
+      const p  = i >> 2
+      const px = p % sw
+      const py = (p / sw) | 0
+      if (px < minX) minX = px
+      if (px > maxX) maxX = px
+      if (py < minY) minY = py
+      if (py > maxY) maxY = py
+    }
+  }
+  prevSample = cur
+  if (maxX < 0) return { none: true }
+  const sx = cw / sw, sy = ch / sh
+  const x  = Math.max(0, Math.floor(minX * sx) - 12)
+  const y  = Math.max(0, Math.floor(minY * sy) - 12)
+  const x2 = Math.min(cw, Math.ceil((maxX + 1) * sx) + 12)
+  const y2 = Math.min(ch, Math.ceil((maxY + 1) * sy) + 12)
+  return { x: x, y: y, w: Math.max(8, x2 - x), h: Math.max(8, y2 - y) }
+}
+
 function captureFrame() {
-  if (privacyMode) return
   if (!video.videoWidth || !video.videoHeight || video.readyState < 2) return
   if (encoding) return   // previous encode still in progress — skip frame
 
-  canvas.width  = video.videoWidth
-  canvas.height = video.videoHeight
-  ctx.drawImage(video, 0, 0)
+  // v3.3.0 — scale to currentMaxWidth when needed (keeps JPEG encode fast and stream smooth)
+  const vw = video.videoWidth
+  const vh = video.videoHeight
+  const scale = (currentMaxWidth && vw > currentMaxWidth) ? (currentMaxWidth / vw) : 1
+  const cw = Math.max(2, Math.round(vw * scale))
+  const ch = Math.max(2, Math.round(vh * scale))
+  if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch }
+  ctx.drawImage(video, 0, 0, cw, ch)
 
   const sid = sessionId
   const w   = canvas.width
   const h   = canvas.height
   const s   = frameSeq++
 
+  // v3.3.2 — partial-frame (delta) engine: transmit only the changed region
+  let mode = 'full', rx = 0, ry = 0
+  if (sid) {
+    let d = null
+    try { d = computeDelta(cw, ch) } catch (e) {}
+    if (d && d.none && (Date.now() - lastFullAt) < 1500) {
+      if (captureTimer !== null) armTimer(1000 / currentFps)   // static screen — nothing to send
+      return
+    }
+    if (d && !d.none && (d.w * d.h) < (cw * ch * 0.55)) {
+      mode = 'delta'; rx = d.x; ry = d.y
+      if (regionCanvas.width !== d.w || regionCanvas.height !== d.h) { regionCanvas.width = d.w; regionCanvas.height = d.h }
+      regionCtx.drawImage(canvas, d.x, d.y, d.w, d.h, 0, 0, d.w, d.h)
+    }
+  }
+
   encoding = true
-  canvas.toBlob(blob => {
+  const tEnc = performance.now()
+  const encW = mode === 'delta' ? regionCanvas.width  : w
+  const encH = mode === 'delta' ? regionCanvas.height : h
+  const encCanvas = mode === 'delta' ? regionCanvas : canvas
+  encCanvas.toBlob(blob => {
     encoding = false
+    // v3.3.1: re-arm right after encode completes — even frame intervals
+    if (captureTimer !== null) armTimer((1000 / currentFps) - (performance.now() - tEnc))
     if (!blob || !sid) return
+    if (mode === 'full') lastFullAt = Date.now()
     blob.arrayBuffer().then(buf => {
-      // Send as binary buffer — main.js will prepend the binary header and
-      // forward to the server as a raw WebSocket binary frame (no JSON/base64).
       ipcRenderer.send('screen-frame-binary', {
         sessionId: sid,
-        width:     w,
-        height:    h,
+        width:     encW,
+        height:    encH,
         seq:       s,
+        flags:     mode === 'delta' ? 2 : 0,   // bit1 = partial frame (x,y follow in header)
+        x:         rx,
+        y:         ry,
         buffer:    Buffer.from(buf)
       })
     }).catch(() => { /* ignore decode errors */ })
@@ -152,32 +335,57 @@ function captureFrame() {
 
 // ── Stop capture ─────────────────────────────────────────────────────────
 function stopCapture() {
-  if (captureTimer) { clearInterval(captureTimer); captureTimer = null }
+  stopAudioRecorder()
+  if (captureTimer !== null) { clearTimeout(captureTimer); captureTimer = null }
   if (stream)       { stream.getTracks().forEach(t => t.stop()); stream = null }
   video.srcObject = null
   frameSeq = 0
   encoding = false
+  lastFullAt = 0
+  prevSample = null
 }
 
 // ── IPC from main process ─────────────────────────────────────────────────
 ipcRenderer.on('start-capture', (_, p) => {
-  startCapture(p.sessionId, p.fps, p.quality, p.monitorIndex || 0)
+  startCapture(p.sessionId, p.fps, p.quality, p.monitorIndex || 0, p.maxWidth)
 })
 
 ipcRenderer.on('stop-capture', (_, p) => {
   if (!p.sessionId || p.sessionId === sessionId) {
+    audioWanted = false
     stopCapture()
     sessionId = null
+  }
+})
+
+// Explicit audio control from the dashboard. Audio was previously started
+// automatically with every capture, adding load and making the speaker button
+// cosmetic on Windows.
+ipcRenderer.on('audio-control', (_, p) => {
+  if (p.sessionId && sessionId && p.sessionId !== sessionId) return
+  audioWanted = !!p.enabled
+  if (!audioWanted) {
+    stopAudioRecorder()
+    ipcRenderer.send('audio-status', { sessionId, ok: true, enabled: false })
+  } else if (sessionId) {
+    startAudioRecorder(sessionId)
   }
 })
 
 ipcRenderer.on('set-quality', (_, p) => {
   if (p.fps)     currentFps     = Math.max(1, Math.min(30, p.fps))
   if (p.quality) currentQuality = Math.max(10, Math.min(95, p.quality))
-  if (captureTimer) {
-    clearInterval(captureTimer)
-    captureTimer = setInterval(captureFrame, Math.round(1000 / currentFps))
-  }
+  if (p.maxWidth) currentMaxWidth = Math.max(320, Math.min(3840, p.maxWidth))
+  if (captureTimer !== null) armTimer(10)
+})
+
+ipcRenderer.on('display-changed', () => {
+  // resolution switch — restart capture against fresh sources
+  if (!sessionId) return
+  const now = Date.now()
+  if (now - lastTrackRestartAt < 2500) return
+  lastTrackRestartAt = now
+  setTimeout(() => { try { if (sessionId) startCapture(sessionId, currentFps, currentQuality, lastMonitorIdx, currentMaxWidth) } catch {} }, 700)
 })
 
 ipcRenderer.on('get-monitors', (_, p) => {
@@ -195,12 +403,9 @@ ipcRenderer.on('get-monitors', (_, p) => {
 })
 
 ipcRenderer.on('set-monitor', (_, p) => {
-  startCapture(p.sessionId || sessionId, p.fps || currentFps, p.quality || currentQuality, p.monitorId || 0)
+  startCapture(p.sessionId || sessionId, p.fps || currentFps, p.quality || currentQuality, p.monitorId || 0, p.maxWidth || currentMaxWidth)
 })
 
-ipcRenderer.on('set-privacy', (_, p) => {
-  privacyMode = !!p.enabled
-})
 </script>
 </body>
 </html>

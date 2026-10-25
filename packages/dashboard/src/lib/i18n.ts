@@ -3,7 +3,7 @@ import { useUIStore } from '../store/uiStore'
 
 const T = {
   ar: {
-    overview: 'نظرة عامة', devices: 'الأجهزة', ai_assistant: 'AI Assistant',
+    overview: 'نظرة عامة', devices: 'الأجهزة', ai_assistant: 'المساعد الذكي',
     sessions: 'الجلسات', users: 'المستخدمون', settings: 'الإعدادات', logout: 'تسجيل الخروج',
     online: 'متصل', offline: 'غير متصل', connecting: 'جاري الاتصال...',
     connected_ws: 'WebSocket متصل', disconnected_ws: 'WebSocket منقطع',
@@ -47,7 +47,7 @@ const T = {
     save: 'حفظ', cancel: 'إلغاء', delete: 'حذف', add: 'إضافة', copy: 'نسخ',
     execute: 'تنفيذ', connect: 'اتصال', disconnect: 'قطع الاتصال', refresh: 'تحديث',
     search: 'بحث', confirm: 'تأكيد', close: 'إغلاق',
-    ai_title: 'AI Assistant', ai_global: 'محادثة عامة', ai_global_desc: 'بدون سياق جهاز',
+    ai_title: 'المساعد الذكي', ai_global: 'محادثة عامة', ai_global_desc: 'بدون سياق جهاز',
     ai_context: 'سياق', ai_cancel_device: 'إلغاء تحديد الجهاز',
     ai_connected_devices: 'الأجهزة المتصلة', ai_select_device_hint: 'اختر جهازاً لتنفيذ الأوامر',
     tab_overview: 'نظرة عامة', tab_commands: 'أوامر', tab_terminal: 'SSH Terminal',
@@ -113,6 +113,7 @@ const T = {
     wol_fail: 'فشل الإرسال',
     wol_network_error: 'خطأ في الشبكة',
     wol_optional: 'اختياري',
+    wol_hint: 'يتطلب تفعيل Wake-on-LAN في BIOS وبطاقة الشبكة، وأن يكون الجهاز على نفس الشبكة المحلية أو بث موجّه. قد لا تعمل الأجهزة الافتراضية أو الشبكات المعزولة.',
     agent_install_hint: 'انسخ القيمتين أعلاه والصقهما في تطبيق AiRemote Agent على Windows ثم اضغط تشغيل.',
     download_agent: 'تنزيل الـ Agent',
     publish_github: 'نشر على GitHub Releases',
@@ -232,6 +233,7 @@ const T = {
     wol_fail: 'Send failed',
     wol_network_error: 'Network error',
     wol_optional: 'optional',
+    wol_hint: 'Requires WOL enabled in BIOS/NIC and layer-2 reachability (same LAN or directed broadcast). VMs and isolated networks may not work.',
     agent_install_hint: 'Copy both values above and paste them into the AiRemote Agent app on Windows, then click Start.',
     download_agent: 'Download Agent',
     publish_github: 'Publish to GitHub Releases',

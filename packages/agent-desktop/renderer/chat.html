@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>دردشة الجلسة — AiRemote</title>
+  <title>دردشة المشاهدين - AiRemote</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -122,7 +122,7 @@
     <div class="brand-icon">
       <svg viewBox="0 0 12 14" fill="none"><path d="M7 1L1.5 7.5H5.5L4 13L10.5 6H6.5Z" fill="white"/></svg>
     </div>
-    <span class="brand-name">دردشة الجلسة</span>
+    <span class="brand-name">دردشة المشاهدين</span>
   </div>
   <button class="icon-btn" id="btn-theme" title="Toggle Theme" style="-webkit-app-region:no-drag">
     <svg id="icon-moon" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
@@ -141,13 +141,13 @@
   </div>
 
   <div id="compose">
-    <input id="chat-input" type="text" placeholder="اكتب رداً على المشاهد..." spellcheck="false" />
+    <input id="chat-input" type="text" placeholder="اكتب رسالة للمشاهدين…" spellcheck="false" />
     <button id="send-btn" disabled>
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
     </button>
   </div>
 
-  <div id="status-bar">AiRemote Agent v3.2.0 · دردشة الجلسة النشطة</div>
+  <div id="status-bar">AiRemote Agent v3.3.5 · دردشة المشاهدين النشطة</div>
 </div>
 
 <script>
@@ -173,7 +173,12 @@ function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
 }
 
+let lastAppend = null
 function appendMsg({ text, sender, ts }) {
+  const now = ts || Date.now()
+  // v3.5 — guard against double delivery (local echo + server relay)
+  if (lastAppend && lastAppend.text === text && lastAppend.sender === sender && Math.abs(now - lastAppend.ts) < 1500) return
+  lastAppend = { text, sender, ts: now }
   const box   = document.getElementById('chat-messages')
   const empty = box.querySelector('.chat-empty')
   if (empty) empty.remove()
@@ -202,7 +207,6 @@ function doSend() {
   const text = chatInput.value.trim()
   if (!text) return
   chatWin.sendChat({ text })
-  appendMsg({ text, sender: 'host', ts: Date.now() })
   chatInput.value = ''
   sendBtn.disabled = true
 }
@@ -213,7 +217,10 @@ sendBtn.addEventListener('click', doSend)
 
 // IPC
 if (typeof chatWin !== 'undefined') {
-  chatWin.onInit(({ theme }) => { applyTheme(theme || 'dark') })
+  chatWin.onInit(({ theme, history }) => {
+  applyTheme(theme || 'dark')
+  if (Array.isArray(history)) history.forEach(m => appendMsg({ text: m.text, sender: m.sender, ts: m.ts }))
+})
   chatWin.onScreenChat(({ text, sender, ts }) => appendMsg({ text, sender: sender || 'viewer', ts }))
 }
 </script>

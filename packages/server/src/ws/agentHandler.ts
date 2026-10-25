@@ -142,6 +142,16 @@ export async function handleAgentMessage(
         return null
       }
 
+      if (device.status === 'blocked') {
+        socket.send(JSON.stringify({
+          type: 'server:error',
+          payload: { message: 'Device is blocked by administrator' },
+          timestamp: Date.now()
+        }))
+        socket.close()
+        return null
+      }
+
       const caps = {
         pty:           true,
         sshAvailable:  payload.sshInfo?.available ?? payload.capabilities?.sshAvailable ?? false,
@@ -505,6 +515,109 @@ export async function handleAgentMessage(
       deviceRegistry.sendToScreenViewers(p.sessionId, JSON.stringify({
         type:    'screen:monitors',
         payload: { monitors: p.monitors }
+      }))
+      return null
+    }
+
+    // ── v3.6: audio stream (Android PCM16 / desktop Opus) ────────────────────
+    case 'agent:audio_chunk': {
+      const p = message.payload as {
+        sessionId?: string; data: string; format?: string
+        sampleRate?: number; channels?: number; seq?: number
+      }
+      const ownerId = deviceRegistry.getDeviceIdBySocket(socket)
+      if (!ownerId) return null
+      const sid = p.sessionId || deviceRegistry.getActiveScreenSessionForDevice(ownerId)
+      if (!sid) return null
+      const sess = deviceRegistry.getScreenSession(sid)
+      if (sess && sess.deviceId !== ownerId) return null
+      deviceRegistry.sendToScreenViewers(sid, JSON.stringify({
+        type: 'screen:audio',
+        payload: {
+          data: p.data, format: p.format || 'opus',
+          sampleRate: p.sampleRate || 48000, channels: p.channels || 1, seq: p.seq
+        }
+      }))
+      return null
+    }
+
+    case 'agent:audio_status': {
+      const p = message.payload as {
+        sessionId?: string; ok?: boolean; enabled?: boolean
+        reason?: string; format?: string; sampleRate?: number
+      }
+      const ownerId = deviceRegistry.getDeviceIdBySocket(socket)
+      if (!ownerId) return null
+      const sid = p.sessionId || deviceRegistry.getActiveScreenSessionForDevice(ownerId)
+      if (!sid) return null
+      const sess = deviceRegistry.getScreenSession(sid)
+      if (sess && sess.deviceId !== ownerId) return null
+      deviceRegistry.sendToScreenViewers(sid, JSON.stringify({
+        type: 'screen:audio_status',
+        payload: {
+          ok: p.ok !== false, enabled: !!p.enabled, reason: p.reason,
+          format: p.format, sampleRate: p.sampleRate
+        }
+      }))
+      return null
+    }
+
+    // ── v3.6: rotation / brightness / display state ──────────────────────────
+    case 'agent:screen_rotate_status': {
+      const p = message.payload as { sessionId?: string; ok?: boolean; enabled?: boolean; reason?: string }
+      const ownerId = deviceRegistry.getDeviceIdBySocket(socket)
+      if (!ownerId) return null
+      const sid = p.sessionId || deviceRegistry.getActiveScreenSessionForDevice(ownerId)
+      if (!sid) return null
+      deviceRegistry.sendToScreenViewers(sid, JSON.stringify({
+        type: 'screen:rotate_status',
+        payload: { ok: p.ok !== false, enabled: !!p.enabled, reason: p.reason }
+      }))
+      return null
+    }
+
+    case 'agent:screen_rotate_result': {
+      const p = message.payload as { sessionId?: string; ok?: boolean; reason?: string; result?: string }
+      const ownerId = deviceRegistry.getDeviceIdBySocket(socket)
+      if (!ownerId) return null
+      const sid = p.sessionId || deviceRegistry.getActiveScreenSessionForDevice(ownerId)
+      if (!sid) return null
+      deviceRegistry.sendToScreenViewers(sid, JSON.stringify({
+        type: 'screen:rotate_result',
+        payload: { ok: p.ok !== false, reason: p.reason, result: p.result }
+      }))
+      return null
+    }
+
+    case 'agent:screen_brightness_status': {
+      const p = message.payload as { sessionId?: string; value?: number; ok?: boolean }
+      const ownerId = deviceRegistry.getDeviceIdBySocket(socket)
+      if (!ownerId) return null
+      const sid = p.sessionId || deviceRegistry.getActiveScreenSessionForDevice(ownerId)
+      if (!sid) return null
+      deviceRegistry.sendToScreenViewers(sid, JSON.stringify({
+        type: 'screen:brightness_status',
+        payload: { value: p.value, ok: p.ok !== false }
+      }))
+      return null
+    }
+
+    case 'agent:screen_state':
+    case 'agent:screen_display_state': {
+      const p = message.payload as {
+        sessionId?: string; screenOn?: boolean
+        keyguardLocked?: boolean; keyguardSecure?: boolean; offMode?: boolean
+      }
+      const ownerId = deviceRegistry.getDeviceIdBySocket(socket)
+      if (!ownerId) return null
+      const sid = p.sessionId || deviceRegistry.getActiveScreenSessionForDevice(ownerId)
+      if (!sid) return null
+      deviceRegistry.sendToScreenViewers(sid, JSON.stringify({
+        type: 'screen:state',
+        payload: {
+          screenOn: p.screenOn, keyguardLocked: !!p.keyguardLocked,
+          keyguardSecure: !!p.keyguardSecure, offMode: !!p.offMode
+        }
       }))
       return null
     }

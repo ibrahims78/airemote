@@ -21,10 +21,27 @@ contextBridge.exposeInMainWorld('airemote', {
   onPublicIp:    (fn)  => ipcRenderer.on('public-ip',   (_, d) => fn(d)),
 
   sendChat:           (data) => ipcRenderer.send('send-chat', data),
+  saveControlAuth:    (data) => ipcRenderer.send('save-control-auth', data),
   openChatWindow:     (opts) => ipcRenderer.send('open-chat-window', opts || {}),
 
   onScreenChat:       (fn) => ipcRenderer.on('screen-chat',     (_, d) => fn(d)),
+  onOpenChatSection:  (fn) => ipcRenderer.on('open-chat-section', (_, d) => fn(d)),
+  onControlAuthState: (fn) => ipcRenderer.on('control-auth-state', (_, d) => fn(d)),
   onScreenSessions:   (fn) => ipcRenderer.on('screen-sessions', (_, d) => fn(d)),
   onScreenPrivacy:    (fn) => ipcRenderer.on('screen-privacy',  (_, d) => fn(d)),
   onChatWindowStatus: (fn) => ipcRenderer.on('chat-win-status', (_, d) => fn(d)),
+
+  // v3.4.0 — on-device AI assistant
+  aiSend:            (text) => ipcRenderer.send('ai-send', { text }),
+  aiStop:            ()     => ipcRenderer.send('ai-stop'),
+  aiNewConversation: ()     => ipcRenderer.send('ai-new-conversation'),
+  aiRunBlock:        (lang, content) => ipcRenderer.invoke('ai-run-block', { lang, content }),
+  aiListConversations: () => ipcRenderer.invoke('ai-list-conversations'),
+  onAiReady:           (fn) => ipcRenderer.on('ai-ready', () => fn()),
+  aiLoadConversation:  (id) => ipcRenderer.invoke('ai-load-conversation', id),
+  aiDeleteConversation:(id) => ipcRenderer.invoke('ai-delete-conversation', id),
+  aiSetConversation:   (id) => ipcRenderer.invoke('ai-set-conversation', id),
+  onAiDelta:         (fn) => ipcRenderer.on('ai-delta', (_, d) => fn(d)),
+  onAiDone:          (fn) => ipcRenderer.on('ai-done',  (_, d) => fn(d)),
+  onAiError:         (fn) => ipcRenderer.on('ai-error', (_, d) => fn(d)),
 })

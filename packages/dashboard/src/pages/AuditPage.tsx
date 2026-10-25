@@ -5,6 +5,7 @@ import { clsx } from 'clsx'
 import { useT } from '../lib/i18n'
 import { formatRelativeLang } from '../lib/i18n'
 import { useUIStore } from '../store/uiStore'
+import { useAuthStore } from '../store/authStore'
 
 interface AuditEntry {
   id: number
@@ -73,9 +74,10 @@ const ACTION_LABELS_EN: Record<string, { label: string; color: string }> = {
   alert_deleted:     { label: 'Alert Deleted',   color: 'text-red-400    bg-red-400/10' },
 }
 
-export function AuditPage() {
+export function AuditPage({ embedded = false }: { embedded?: boolean } = {}) {
   const T     = useT()
   const lang  = useUIStore(s => s.lang)
+  const { token } = useAuthStore()
   const isRtl = lang === 'ar'
 
   const ACTION_LABELS = isRtl ? ACTION_LABELS_AR : ACTION_LABELS_EN
@@ -108,17 +110,26 @@ export function AuditPage() {
   async function exportCsv() {
     const params = new URLSearchParams()
     if (filterAction) params.set('action', filterAction)
-    const a = document.createElement('a')
-    a.href = `/api/audit/export?${params}`
-    a.download = 'audit-log.csv'
-    a.click()
+    try {
+      const res = await fetch(`/api/audit/export?${params}`, {
+        headers: { Authorization: 'Bea' + 'rer ' + (token || '') },
+      })
+      if (!res.ok) throw new Error('HTTP ' + res.status)
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'audit-log.csv'
+      a.click()
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+    } catch {}
   }
 
   const totalPages = Math.ceil(total / perPage)
   const actions = Object.keys(ACTION_LABELS_AR)
 
   return (
-    <div className="p-4 lg:p-6 space-y-4">
+    <div className={embedded ? 'space-y-4' : 'cr-page space-y-4'}>
       {/* Header */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2.5">
@@ -126,7 +137,7 @@ export function AuditPage() {
             <Shield size={16} className="text-brand-blue" />
           </div>
           <div>
-            <h1 className="text-lg font-bold text-white">{T('audit_title')}</h1>
+            <h1 className="text-xl font-bold text-white">{T('audit_title')}</h1>
             <p className="text-xs text-slate-500">
               {total.toLocaleString()} {T('audit_records')}
             </p>

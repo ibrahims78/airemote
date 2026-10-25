@@ -4,7 +4,8 @@ import * as dgram from 'dgram'
 import { requireAuth, requireAdmin } from '../middleware/auth'
 import {
   createDevice, getDeviceById, getDevicesByOwner,
-  getAllDevices, deleteDevice, renameDevice
+  getAllDevices, deleteDevice, renameDevice,
+  updateDeviceStatus
 } from '../db/devices'
 import { deviceRegistry } from '../ws/registry'
 import { sendCommandToAgent } from '../ws/agentHandler'
@@ -25,10 +26,11 @@ export async function deviceRoutes(fastify: FastifyInstance) {
       devices = devices.filter(d => (d.tags ?? []).includes(tag))
     }
 
-    return devices.map(d => ({
-      ...d,
-      online: deviceRegistry.isDeviceOnline(d.id),
-    }))
+    return devices.map(d => {
+      const online = deviceRegistry.isDeviceOnline(d.id)
+      const status = d.status === 'blocked' ? 'blocked' : (online ? 'online' : 'offline')
+      return { ...d, online, status }
+    })
   })
 
   // ── POST / — create device ───────────────────────────────────────────────
@@ -72,6 +74,38 @@ export async function deviceRoutes(fastify: FastifyInstance) {
     await deleteDevice(device.id)
     await logAudit({ userId: user.userId, userEmail: user.email, action: 'device_deleted', deviceId: device.id, details: { name: device.name }, ipAddress: request.ip })
     return reply.code(204).send()
+  })
+
+  // ── POST /:id/disconnect — force-close the agent connection (admin)
+  fastify.post<{ Params: { id: string } }>('/:id/disconnect', { preHandler: requireAdmin }, async (request, reply) => {
+    const user   = request.user as unknown as AuthTokenPayload
+    const device = await getDeviceById(request.params.id)
+    if (!device) return reply.code(404).send({ error: 'Device not found' })
+    deviceRegistry.disconnectDevice(device.id)
+    await updateDeviceStatus(device.id, 'offline')
+    await logAudit({ userId: user.userId, userEmail: user.email, action: 'device_disconnected', deviceId: device.id, details: { name: device.name }, ipAddress: request.ip })
+    return { ok: true }
+  })
+
+  // ── POST /:id/block — block the device from connecting (admin)
+  fastify.post<{ Params: { id: string } }>('/:id/block', { preHandler: requireAdmin }, async (request, reply) => {
+    const user   = request.user as unknown as AuthTokenPayload
+    const device = await getDeviceById(request.params.id)
+    if (!device) return reply.code(404).send({ error: 'Device not found' })
+    deviceRegistry.disconnectDevice(device.id)
+    await updateDeviceStatus(device.id, 'blocked')
+    await logAudit({ userId: user.userId, userEmail: user.email, action: 'device_blocked', deviceId: device.id, details: { name: device.name }, ipAddress: request.ip })
+    return { ok: true, status: 'blocked' }
+  })
+
+  // ── POST /:id/unblock — allow the device to connect again (admin)
+  fastify.post<{ Params: { id: string } }>('/:id/unblock', { preHandler: requireAdmin }, async (request, reply) => {
+    const user   = request.user as unknown as AuthTokenPayload
+    const device = await getDeviceById(request.params.id)
+    if (!device) return reply.code(404).send({ error: 'Device not found' })
+    await updateDeviceStatus(device.id, 'offline')
+    await logAudit({ userId: user.userId, userEmail: user.email, action: 'device_unblocked', deviceId: device.id, details: { name: device.name }, ipAddress: request.ip })
+    return { ok: true, status: 'offline' }
   })
 
   // ── POST /:id/exec — run command via agent ───────────────────────────────

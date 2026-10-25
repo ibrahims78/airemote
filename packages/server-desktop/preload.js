@@ -40,10 +40,23 @@ contextBridge.exposeInMainWorld('airemote', {
     set: (data) => ipcRenderer.invoke('settings:set', data),
   },
 
+  windowCtl: {
+    setFullscreen: (on) => ipcRenderer.send('window:fullscreen', !!on),
+    minimize:      ()   => ipcRenderer.send('window:minimize'),
+    maximize:      ()   => ipcRenderer.send('window:maximize'),
+    isMaximized:   ()   => ipcRenderer.invoke('window:isMaximized'),
+    close:         ()   => ipcRenderer.send('window:close'),
+    onMaximized:   (cb) => {
+      const sub = (_e, state) => cb(!!state)
+      ipcRenderer.on('window:maximized', sub)
+      return () => ipcRenderer.removeListener('window:maximized', sub)
+    },
+  },
+
   // ── Desktop extras (for React Dashboard detection) ───────────────────────
   desktop: {
     isDesktop:    true,
-    version:      '3.2.1',
+    version:      '3.3.4',
     status:       ()      => ipcRenderer.invoke('desktop:status'),
     startTunnel:  ()      => ipcRenderer.invoke('tunnel:start'),
     stopTunnel:   ()      => ipcRenderer.invoke('tunnel:stop'),
@@ -78,7 +91,7 @@ contextBridge.exposeInMainWorld('airemote', {
   on: (channel, cb) => {
     const ALLOWED = [
       'server:status', 'tunnel:url', 'tunnel:stopped',
-      'device:connected', 'device:disconnected', 'log:entry',
+      'device:connected', 'device:disconnected', 'log:entry', 'window:maximized',
     ]
     if (!ALLOWED.includes(channel)) return () => {}
     const sub = (_e, ...args) => cb(...args)

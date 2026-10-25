@@ -1,4 +1,4 @@
-export type DeviceStatus = 'online' | 'offline' | 'connecting' | 'error'
+﻿export type DeviceStatus = 'online' | 'offline' | 'connecting' | 'error' | 'blocked'
 
 export type TunnelLayer = 'relay' | 'cloudflare' | 'ngrok' | 'bore' | 'lan'
 

@@ -3,6 +3,17 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
+  build: {
+    chunkSizeWarningLimit: 900,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom', 'zustand', 'axios', 'clsx', 'date-fns'],
+          charts: ['recharts'],
+        },
+      },
+    },
+  },
   server: {
     port: 5000,
     host: true,

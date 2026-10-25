@@ -1,16 +1,21 @@
 import { useState, useEffect } from 'react'
-import { Monitor, Plus, Copy, Trash2, Check, X, ExternalLink, Terminal, BookOpen, Laptop, Zap, Loader2 } from 'lucide-react'
+import { Monitor, Plus, Copy, Trash2, Check, X, ExternalLink, Terminal, BookOpen, Laptop, Zap, Loader2, Ban, Power } from 'lucide-react'
 import { useDeviceStore } from '../store/deviceStore'
 import { clsx } from 'clsx'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import type { Device } from '@airemote/shared'
 import { useT } from '../lib/i18n'
 import { useAuthStore } from '../store/authStore'
 
 function WolModal({ device, token, onClose }: { device: Device; token: string; onClose: () => void }) {
   const t = useT()
-  const [mac, setMac]         = useState('')
-  const [broadcast, setBroadcast] = useState('255.255.255.255')
+  // v3.5 — prefill from the agent info (when available) and remember the last MAC
+  const [mac, setMac] = useState(() => {
+    try { return (device as unknown as { info?: { mac?: string } }).info?.mac || localStorage.getItem('wol-mac-' + device.id) || '' } catch { return '' }
+  })
+  const [broadcast, setBroadcast] = useState(() => {
+    try { return (device as unknown as { info?: { broadcast?: string } }).info?.broadcast || '255.255.255.255' } catch { return '255.255.255.255' }
+  })
   const [sending, setSending] = useState(false)
   const [result, setResult]   = useState<{ ok: boolean; msg: string } | null>(null)
 
@@ -24,7 +29,10 @@ function WolModal({ device, token, onClose }: { device: Device; token: string; o
         body: JSON.stringify({ macAddress: mac.trim(), broadcast: broadcast.trim() || '255.255.255.255' })
       })
       const data = await r.json()
-      if (r.ok) setResult({ ok: true,  msg: data.message || t('wol_success') })
+      if (r.ok) {
+        try { localStorage.setItem('wol-mac-' + device.id, mac.trim()) } catch {}
+        setResult({ ok: true, msg: data.message || t('wol_success') })
+      }
       else       setResult({ ok: false, msg: data.error  || t('wol_fail') })
     } catch {
       setResult({ ok: false, msg: t('wol_network_error') })
@@ -69,6 +77,10 @@ function WolModal({ device, token, onClose }: { device: Device; token: string; o
             />
           </div>
 
+          <div className="rounded-lg border border-slate-700/50 bg-slate-800/30 px-3 py-2 text-[11px] leading-5 text-slate-400">
+            {t('wol_hint')}
+          </div>
+
           {result && (
             <div className={clsx(
               'text-xs px-3 py-2 rounded-lg',
@@ -94,7 +106,16 @@ function WolModal({ device, token, onClose }: { device: Device; token: string; o
 function AgentInstallModal({ device, onClose }: { device: Device; onClose: () => void }) {
   const t = useT()
   const [copied, setCopied] = useState<string | null>(null)
-  const serverUrl = window.location.origin
+  const [serverUrl, setServerUrl] = useState(window.location.origin)
+  const [addresses, setAddresses] = useState<string[]>([])
+  useEffect(() => {
+    const h = window.location.hostname
+    if (h === 'localhost' || h === '127.0.0.1' || h === '::1') {
+      fetch('/api/health').then(r => r.json()).then(j => {
+        if (j && j.localIp) setServerUrl('http://' + j.localIp + (window.location.port ? ':' + window.location.port : ''))
+      }).catch(() => {})
+    }
+  }, [])
   const wsUrl = serverUrl.replace(/^https?:\/\//, m => m === 'https://' ? 'wss://' : 'ws://') + '/ws'
 
   const scripts = {
@@ -138,7 +159,10 @@ AIREMOTE_LOG_LEVEL=info`
               <BookOpen size={16} className="text-brand-blue" />
             </div>
             <div>
-              <h3 className="font-semibold text-white">Agent — {device.name}</h3>
+              <h3 className="font-semibold text-white">Agent - {device.name}</h3>
+              {addresses.length > 0 && (
+                <p className="text-[10px] text-slate-500 font-mono mt-0.5" dir="ltr">{addresses.join('  ·  ')}</p>
+              )}
               <p className="text-xs text-slate-400 mt-0.5">{t('tab_terminal')}</p>
             </div>
           </div>
@@ -265,8 +289,33 @@ AIREMOTE_LOG_LEVEL=info`
 }
 
 export function DevicesPage() {
+  const navigate = useNavigate()
   const t = useT()
-  const { token } = useAuthStore()
+  const { token, user } = useAuthStore()
+  const isAdmin = user?.role === 'admin'
+
+  const [connBusyId, setConnBusyId] = useState<string | null>(null)
+
+  async function connAction(id: string, action: 'disconnect' | 'block' | 'unblock') {
+    if (connBusyId) return
+    setConnBusyId(id)
+    try {
+      const r = await fetch('/api/devices/' + id + '/' + action, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: '{}'
+      })
+      if (!r.ok) throw new Error('HTTP ' + r.status)
+      // Refresh immediately; the agent re-registers a few seconds after unblock.
+      await fetchDevices()
+      window.setTimeout(() => { fetchDevices().catch(() => {}) }, 1500)
+      window.setTimeout(() => { fetchDevices().catch(() => {}) }, 5000)
+    } catch {
+      // Keep UI responsive; the store refresh reflects the real state.
+    } finally {
+      setConnBusyId(null)
+    }
+  }
   const { devices, loading, fetchDevices, addDevice, deleteDevice } = useDeviceStore()
   const [showAdd, setShowAdd] = useState(false)
   const [newName, setNewName] = useState('')
@@ -298,7 +347,7 @@ export function DevicesPage() {
   const online = devices.filter(d => d.status === 'online').length
 
   return (
-    <div className="p-6">
+    <div className="cr-page">
       {installDevice && (
         <AgentInstallModal device={installDevice} onClose={() => setInstallDevice(null)} />
       )}
@@ -343,9 +392,19 @@ export function DevicesPage() {
       )}
 
       {loading && (
-        <div className="text-center text-slate-500 py-12">
-          <div className="w-5 h-5 border-2 border-brand-blue border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-          {t('loading')}
+        <div className="glass rounded-xl overflow-hidden animate-fade-in">
+          <div className="p-4 space-y-3">
+            {[0, 1, 2].map(i => (
+              <div key={i} className="flex items-center gap-4 py-2">
+                <div className="w-9 h-9 rounded-lg bg-slate-700/25 animate-pulse" style={{ animationDelay: (i * 120) + 'ms' }} />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3.5 w-40 rounded bg-slate-700/25 animate-pulse" style={{ animationDelay: (i * 120) + 'ms' }} />
+                  <div className="h-2.5 w-24 rounded bg-slate-700/20 animate-pulse" style={{ animationDelay: (i * 120 + 60) + 'ms' }} />
+                </div>
+                <div className="h-6 w-16 rounded-full bg-slate-700/20 animate-pulse" style={{ animationDelay: (i * 120) + 'ms' }} />
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -379,7 +438,8 @@ export function DevicesPage() {
                 </tr>
               )}
               {devices.map(d => (
-                <tr key={d.id} className="border-b border-slate-700/30 hover:bg-slate-700/20 transition-colors group">
+                <tr key={d.id} className="border-b border-slate-700/30 hover:bg-slate-700/20 transition-colors group cursor-pointer"
+                onClick={(e) => { if ((e.target as HTMLElement).closest('button,a')) return; navigate(`/devices/${d.id}`) }}>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
                       <div className={clsx('w-7 h-7 rounded-lg flex items-center justify-center', d.status === 'online' ? 'bg-brand-blue/15' : 'bg-slate-700/50')}>
@@ -400,27 +460,41 @@ export function DevicesPage() {
                       d.status === 'online' ? 'bg-emerald-400/10 text-emerald-400' : 'bg-slate-700/50 text-slate-500'
                     )}>
                       <span className={clsx('w-1.5 h-1.5 rounded-full', d.status === 'online' ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500')} />
-                      {d.status === 'online' ? t('online') : t('offline')}
+                      {d.status === 'online' ? t('online') : d.status === 'blocked' ? 'محجوب' : t('offline')}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-xs text-slate-500 font-mono">{d.info?.hostname || '—'}</td>
+                  <td className="px-4 py-3 text-xs text-slate-500 font-mono">{d.info?.hostname || '—'}
+                    {(d as unknown as { remoteIp?: string }).remoteIp && (
+                      <div className="text-[10px] text-slate-600">{String((d as unknown as { remoteIp?: string }).remoteIp).replace('::ffff:', '')}</div>
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-xs text-slate-500">
                     {d.lastSeen ? new Date(d.lastSeen).toLocaleString() : '—'}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                       <button
                         onClick={() => setInstallDevice(d)}
                         className="p-1.5 text-slate-600 hover:text-brand-teal transition-colors rounded"
-                        title="Agent"
+                        title="Agent" aria-label="Agent install"
                       >
                         <Terminal size={13} />
                       </button>
+                      {isAdmin && (
+                      <button
+                        onClick={() => connAction(d.id, d.status === 'blocked' ? 'unblock' : 'block')}
+                        disabled={connBusyId === d.id}
+                        className={clsx('p-1.5 transition-colors rounded disabled:opacity-40 disabled:cursor-wait', d.status === 'blocked' ? 'text-emerald-400 hover:text-emerald-300' : 'text-slate-600 hover:text-red-400')}
+                        title={d.status === 'blocked' ? 'Unblock device' : 'Block device'} aria-label={d.status === 'blocked' ? 'Unblock device' : 'Block device'}
+                      >
+                        {connBusyId === d.id ? <Loader2 size={13} className="animate-spin" /> : d.status === 'blocked' ? <Check size={13} /> : <Power size={13} />}
+                      </button>
+                      )}
                       {d.status === 'offline' && (
                         <button
                           onClick={() => setWolDevice(d)}
                           className="p-1.5 text-slate-600 hover:text-amber-400 transition-colors rounded"
-                          title="Wake-on-LAN"
+                          title="Wake-on-LAN" aria-label="Wake-on-LAN"
                         >
                           <Zap size={13} />
                         </button>
@@ -428,17 +502,19 @@ export function DevicesPage() {
                       <Link
                         to={`/devices/${d.id}`}
                         className="p-1.5 text-slate-600 hover:text-brand-blue transition-colors rounded"
-                        title={t('tab_overview')}
+                        title={t('tab_overview')} aria-label={t('tab_overview')}
                       >
                         <ExternalLink size={13} />
                       </Link>
-                      <button
-                        onClick={() => handleDelete(d.id, d.name)}
-                        className="p-1.5 text-slate-600 hover:text-red-400 transition-colors rounded"
-                        title={t('delete')}
-                      >
-                        <Trash2 size={13} />
-                      </button>
+                      {isAdmin && (
+                        <button
+                          onClick={() => handleDelete(d.id, d.name)}
+                          className="p-1.5 text-slate-600 hover:text-red-400 transition-colors rounded"
+                          title={t('delete')} aria-label={t('delete')}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

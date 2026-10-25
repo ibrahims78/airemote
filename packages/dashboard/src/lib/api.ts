@@ -51,7 +51,9 @@ api.interceptors.response.use(
       isRefreshing = true
       try {
         const res = await axios.post('/api/auth/refresh', { refreshToken })
-        const { token: newToken, refreshToken: newRefresh } = res.data
+        const newToken   = res.data.token || res.data.accessToken
+        const newRefresh = res.data.refreshToken || refreshToken
+        if (!newToken) throw new Error('Token refresh failed')
 
         // Update the Zustand store — this also persists to localStorage via the
         // persist middleware, so useAuthStore().token is immediately up-to-date

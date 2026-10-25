@@ -3,11 +3,12 @@ import { useParams, Link } from 'react-router-dom'
 import {
   Monitor, Terminal, Activity, FolderOpen, ArrowLeft,
   Wifi, WifiOff, Cpu, MemoryStick, HardDrive, Clock,
-  Globe, Server, Bot, Command, Tv2
+  Globe, Server, Bot, Command, Tv2, ExternalLink
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { useDeviceStore } from '../store/deviceStore'
 import { PTYTerminal } from '../components/PTYTerminal'
+import { ExecConsole } from '../components/ExecConsole'
 import { MonitoringCharts } from '../components/MonitoringCharts'
 import { FileManager } from '../components/FileManager'
 import { AiChatPanel } from '../components/AiChatPanel'
@@ -132,7 +133,7 @@ export function DeviceWorkspacePage() {
   ]
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="flex flex-col h-full min-h-0">
       {/* Header */}
       <div className="flex-shrink-0 px-6 pt-5 pb-0 border-b border-slate-700/50 bg-navy-900">
         <div className="flex items-center gap-3 mb-4">
@@ -153,6 +154,13 @@ export function DeviceWorkspacePage() {
             {isOnline ? <Wifi size={10} /> : <WifiOff size={10} />}
             {isOnline ? t('device_online') : t('device_offline')}
           </span>
+          <button
+            onClick={() => window.open('/view/' + device.id, '_blank', 'width=1400,height=900')}
+            title="فتح البث في نافذة مستقلة (لعرض أكثر من جهاز معاً)"
+            className="p-1.5 rounded-lg text-slate-500 hover:text-brand-teal hover:bg-slate-700/40 transition-colors"
+          >
+            <ExternalLink size={14} />
+          </button>
           {stats && (
             <div className="hidden lg:flex items-center gap-3 text-xs text-slate-400 border-s border-slate-700/50 ps-4 ms-2">
               <span className="flex items-center gap-1"><Cpu size={10} className="text-brand-blue" /><span className="font-mono text-slate-200">{stats.cpuPercent}%</span></span>
@@ -162,7 +170,7 @@ export function DeviceWorkspacePage() {
           )}
         </div>
 
-        <div className="flex gap-1">
+        <div className="flex gap-1 overflow-x-auto">
           {tabs.map(tb => (
             <button
               key={tb.id}
@@ -184,7 +192,7 @@ export function DeviceWorkspacePage() {
       </div>
 
       {/* Content */}
-      <div className={clsx('flex-1 min-h-0', tab === 'ai' || tab === 'terminal' || tab === 'commands' || tab === 'files' || tab === 'screen' ? 'overflow-hidden' : 'overflow-auto p-5')}>
+      <div className={clsx('flex-1 min-h-0 min-w-0', tab === 'ai' || tab === 'terminal' || tab === 'commands' || tab === 'files' || tab === 'screen' ? 'overflow-hidden' : 'overflow-auto')}>
         <ErrorBoundary>
 
         {tab === 'overview' && (
@@ -212,7 +220,9 @@ export function DeviceWorkspacePage() {
 
         {tab === 'terminal' && deviceId && (
           <div className="h-full p-5">
-            <PTYTerminal deviceId={deviceId} deviceName={device.name} />
+            {String(device.info?.platform || '').toLowerCase() === 'android'
+              ? <ExecConsole deviceId={deviceId} />
+              : <PTYTerminal deviceId={deviceId} deviceName={device.name} />}
           </div>
         )}
 

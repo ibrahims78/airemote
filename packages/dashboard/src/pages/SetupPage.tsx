@@ -5,6 +5,8 @@ import { useAuthStore } from '../store/authStore'
 import { useUIStore } from '../store/uiStore'
 import { useNavigate } from 'react-router-dom'
 import { clsx } from 'clsx'
+import { APP_VERSION } from '../lib/version'
+import { WindowChrome } from '../components/WindowChrome'
 
 const REQUIREMENTS = [
   { label: '8 أحرف على الأقل', labelEn: 'At least 8 characters', test: (p: string) => p.length >= 8 },
@@ -54,8 +56,9 @@ export function SetupPage({ onComplete }: { onComplete: () => void }) {
 
   return (
     <div className="min-h-screen bg-navy-900 flex flex-col">
+      <WindowChrome />
       {/* Top bar */}
-      <div className="flex items-center justify-between px-6 py-4">
+      <div className="flex items-center justify-between ps-6 pe-32 py-4">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-brand-blue to-brand-teal flex items-center justify-center shadow-sm shadow-brand-blue/25">
             <Zap size={14} className="text-white" />
@@ -191,8 +194,8 @@ export function SetupPage({ onComplete }: { onComplete: () => void }) {
             </form>
           </div>
 
-          <p className="text-center text-xs text-slate-700 mt-6">
-            AiRemote v3.2.1 — Open Source Self-hosted Remote Access + AI
+          <p className="text-center text-xs text-slate-500 mt-6">
+            AiRemote v{APP_VERSION} — Open Source Self-hosted Remote Access + AI
           </p>
         </div>
       </div>

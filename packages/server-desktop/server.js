@@ -1,6 +1,6 @@
 'use strict'
 /**
- * server.js — AiRemote Server Desktop v3.2.1
+ * server.js — AiRemote Server Desktop v3.2.2
  * Full-featured Fastify server — complete parity with the web server.
  * Runs inside the Electron main process (better-sqlite3, jsonwebtoken).
  */
@@ -14,6 +14,7 @@ const fws               = require('@fastify/websocket')
 const frateLimit        = require('@fastify/rate-limit')
 const bcrypt            = require('bcryptjs')
 const jwt               = require('jsonwebtoken')
+const zlib              = require('zlib')
 const { v4: uuidv4 }    = require('uuid')
 const Database          = require('better-sqlite3')
 const path              = require('path')
@@ -49,6 +50,9 @@ const sshSessions       = new Map()   // sessionId → { conn, stream }
 const sftpSessions      = new Map()   // sessionId → { sftp, conn }
 const wsTickets         = new Map()   // ticketId  → { userId, email, role, expires }
 const pendingFsRequests = new Map()   // requestId → { resolve, reject, timer }
+const pendingFsStreams  = new Map()   // opId → { res, next, buffer, timer, resolve, reject }
+const chatHistoryByDevice = new Map() // deviceId → [{ text, sender, ts }] (v3.5)
+const pendingCommands     = new Map()   // commandId → { resolve, reject, timer }
 const publishStates     = new Map()   // publishId → { status, log, url }
 
 const events = new EventEmitter()
@@ -173,6 +177,17 @@ function initDb(dbPath) {
       size_mb     REAL,
       created_at  TEXT NOT NULL DEFAULT (datetime('now'))
     );
+    CREATE TABLE IF NOT EXISTS notifications (
+      id         TEXT PRIMARY KEY,
+      user_id    TEXT,
+      device_id  TEXT,
+      type       TEXT NOT NULL,
+      title      TEXT NOT NULL DEFAULT '',
+      message    TEXT NOT NULL DEFAULT '',
+      severity   TEXT NOT NULL DEFAULT 'info',
+      read       INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
     CREATE TABLE IF NOT EXISTS stats_history (
       id           INTEGER PRIMARY KEY AUTOINCREMENT,
       device_id    TEXT NOT NULL,
@@ -190,6 +205,25 @@ function initDb(dbPath) {
     CREATE INDEX IF NOT EXISTS idx_stats_device     ON stats_history(device_id, recorded_at DESC);
     CREATE INDEX IF NOT EXISTS idx_ai_conv_user     ON ai_conversations(user_id, updated_at DESC);
     CREATE INDEX IF NOT EXISTS idx_alerts_user      ON alert_rules(user_id);
+    CREATE INDEX IF NOT EXISTS idx_ai_conv_device   ON ai_conversations(device_id, updated_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_notif_user       ON notifications(user_id, read);
+    CREATE INDEX IF NOT EXISTS idx_rec_device       ON recordings(device_id, created_at DESC);
+    CREATE INDEX IF NOT EXISTS idx_devices_status   ON devices(status);
+    CREATE TABLE IF NOT EXISTS scheduled_tasks (
+      id           TEXT PRIMARY KEY,
+      user_id      TEXT NOT NULL,
+      name         TEXT NOT NULL,
+      kind         TEXT NOT NULL DEFAULT 'ai',
+      device_id    TEXT,
+      payload      TEXT NOT NULL DEFAULT '',
+      interval_min INTEGER NOT NULL DEFAULT 0,
+      daily_at     TEXT,
+      enabled      INTEGER NOT NULL DEFAULT 1,
+      last_run_at  TEXT,
+      last_result  TEXT,
+      created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_tasks_user       ON scheduled_tasks(user_id);
   `)
 
   // Cleanup expired tokens on start
@@ -236,6 +270,21 @@ function adminMiddleware(req, reply) {
   return user
 }
 
+// v3.4.0 — AI chat auth: user JWT OR on-device agent token (agent-window AI chat)
+function aiAuth(req, reply) {
+  const token = extractBearer(req)
+  if (token) { try { return verifyToken(token) } catch {} }
+  let dt = String(req.headers['x-device-token'] || '')
+  if (!dt && token && token.split('.').length !== 3) dt = token
+  if (dt) {
+    try {
+      const dev = db.prepare('SELECT * FROM devices WHERE token=?').get(dt)
+      if (dev) return { userId: dev.owner_id || 'device', email: (dev.name || 'device') + '@device', role: 'agent', deviceId: dev.id, isDevice: true }
+    } catch {}
+  }
+  reply.code(401).send({ error: 'Unauthorized' }); return null
+}
+
 // v3.2.1 hardening — device-scoped authorization: admins + device owner only.
 function canAccessDevice(user, deviceId) {
   if (!user) return false
@@ -277,21 +326,26 @@ function sendJson(ws, obj) {
 function broadcastToClients(msg) {
   // v3.2.1 hardening — device-scoped messages reach only the device owner / admins
   const devId = msg && msg.payload ? msg.payload.deviceId : null
+  // v3.2.2 — dashboard compat aliases (broadcast:device_update / broadcast:stats_update)
+  let alias = null
+  if (msg && msg.type === 'device:status')    alias = { type: 'broadcast:device_update', payload: { ...(msg.payload || {}) } }
+  if (msg && msg.type === 'device:heartbeat') alias = { type: 'broadcast:stats_update',  payload: { ...(msg.payload || {}) } }
   for (const [ws, meta] of clientSockets) {
     if (devId && !canAccessDevice(meta && meta.user, devId)) continue
     sendJson(ws, msg)
+    if (alias) sendJson(ws, alias)
   }
 }
 function markDeviceOnline(deviceId, info) {
   if (info) {
-    db.prepare("UPDATE devices SET status='online', info=?, last_seen=datetime('now'), updated_at=datetime('now') WHERE id=?").run(JSON.stringify(info), deviceId)
+    db.prepare("UPDATE devices SET status='online', info=?, last_seen=datetime('now'), updated_at=datetime('now') WHERE id=? AND status<>'blocked'").run(JSON.stringify(info), deviceId)
   } else {
-    db.prepare("UPDATE devices SET status='online', last_seen=datetime('now'), updated_at=datetime('now') WHERE id=?").run(deviceId)
+    db.prepare("UPDATE devices SET status='online', last_seen=datetime('now'), updated_at=datetime('now') WHERE id=? AND status<>'blocked'").run(deviceId)
   }
 }
 function markDeviceOffline(deviceId) {
   if (!db) return
-  db.prepare("UPDATE devices SET status='offline', updated_at=datetime('now') WHERE id=?").run(deviceId)
+  db.prepare("UPDATE devices SET status='offline', updated_at=datetime('now') WHERE id=? AND status<>'blocked'").run(deviceId)
   broadcastToClients({ type: 'device:status', payload: { deviceId, status: 'offline' } })
   events.emit('device:disconnected', deviceId)
 }
@@ -317,7 +371,17 @@ function dbLogAudit({ userId = '', userEmail = '', deviceId = null, action, deta
 // ─────────────────────────────────────────────────────────────────────────────
 const AI_SYSTEM_PROMPT = `أنت مساعد ذكي متخصص في إدارة الخوادم والأجهزة البعيدة، جزء من منصة AiRemote.
 ساعد المستخدم في تشخيص المشكلات وإدارة الخوادم وتحليل الأداء.
-كن دقيقاً ومفيداً ومختصراً. استخدم اللغة العربية كافتراضي.`
+كن دقيقاً ومفيداً ومختصراً. استخدم اللغة العربية كافتراضي.
+واكتب ردودك بالعربية الفصحى حصراً دون خلط كلمات من لغات أخرى.
+اكتب رداً متماسكاً بفقرات قصيرة واضحة، ولا تقطع الجملة أو تكررها، ولا تبدأ الرد بكتلة أدوات إلا إذا طلب المستخدم إجراءً فعلياً. اجعل الملخص النهائي منظماً بنقاط.
+عندما يطلب المستخدم تنفيذ إجراء على جهاز متصل، لا تعتذر عن عدم القدرة ولا تقل إنك لا تملك صلاحيات — قدّم الأمر أو الأوامر الجاهزة في كتلة كود (powershell على ويندوز أو bash على لينكس) لتُنفَّذ على الجهاز مباشرة.
+النظام يدعم تنفيذ هذه الأوامر على الجهاز وإعادة الناتج إليك تلقائياً؛ اكتب أوامر دقيقة وقابلة للتنفيذ، وتجنّب الأوامر التدميرية إلا بطلب صريح من المستخدم.
+عند طلب لقطة شاشة استخدم كتلة كود بلغة screenshot وسيعرضها النظام للمستخدم.
+لبث الشاشة مباشرة أضف كتلة كود بلغة stream (مثال: \`\`\`stream\nالشاشة\n\`\`\`) وسيعرض النظام زر بدء البث المباشر. لتسجيل فيديو لسطح المكتب أضف كتلة كود بلغة record واكتب داخلها المدة بالثواني (مثال: المدة: 10)؛ سيُسجَّل الفيديو ويُعرض داخل المحادثة مع إمكانية التنزيل. المدة القصوى 30 ثانية، و10 ثوانٍ مسموحة دائماً — لا توجد قاعدة تمنع 10 ثوانٍ. ولتسجيل جزء محدد من الشاشة أضف داخل الكتلة: region: x,y,w,h.
+للتحكم الفعلي بالفأرة ولوحة المفاتيح استخدم كتلة كود بلغة control عند الطلب فقط — تفاصيل الأوامر وأساليب العمل تجدها في سياق الجهاز حين الحاجة. لا تكتب أي تعليقات أو خطوات تفكير بالإنجليزية داخل الرد — الرد النهائي بالعربية فقط.
+مهم جداً: استخدم الأدوات (powershell / screenshot / record / control) فقط عندما يطلب المستخدم إجراءً فعلياً على الجهاز أو معلومات عنه؛ في الأسئلة والأحاديث العادية أجب نصياً مباشرة دون أي كتل أدوات، ولا تنسخ كتل الأدوات من محادثات سابقة. وطلب «اكتب كلمة كذا» يعني اكتبها في ردك نصياً — وليس كتابة على الجهاز.
+وعند إكمال مهمة تنفيذ على الجهاز، اختم بملخص نهائي احترافي منظم (ما تم تنفيذه — نقاط، النتيجة النهائية، وأي تحذيرات أو خطوات تالية) دون كتل أدوات في الملخص.
+أنت تنفّذ فعلياً على الجهاز عبر منصة AiRemote — لا تقل أبداً «لا أستطيع» أو «لا أملك صلاحيات» أو «لا يمكنني التنفيذ»؛ استخدم دائماً الأدوات المتاحة (powershell للأوامر، screenshot للقطة، record للفيديو) وقدّمها بدون اعتذار.`
 
 function getAiConfig() {
   try {
@@ -326,31 +390,137 @@ function getAiConfig() {
   } catch { return null }
 }
 
+// v3.3.5 — per-provider saved settings so switching providers never mixes keys/URLs/models
+function getAiConfigs() {
+  try {
+    const row = db.prepare("SELECT value FROM settings WHERE key='ai_configs'").get()
+    let m = row ? (parseJson(row.value, {}) || {}) : {}
+    if (!Object.keys(m).length) {
+      const cur = getAiConfig()
+      if (cur && cur.provider) {
+        m = {}
+        m[cur.provider] = { apiKey: cur.apiKey || '', model: cur.model || '', baseUrl: cur.baseUrl || '' }
+        try { db.prepare("INSERT OR REPLACE INTO settings (key,value,updated_at) VALUES ('ai_configs',?,datetime('now'))").run(JSON.stringify(m)) } catch {}
+      }
+    }
+    return m
+  } catch { return {} }
+}
+function setAiConfigs(m) {
+  try { db.prepare("INSERT OR REPLACE INTO settings (key,value,updated_at) VALUES ('ai_configs',?,datetime('now'))").run(JSON.stringify(m || {})) } catch {}
+}
+
 async function callAI(messages, cfg, stream = false, onChunk = null) {
   if (!cfg?.provider) throw new Error('AI provider not configured')
   const { provider, apiKey, model, baseUrl } = cfg
+  // v3.3.4 — tolerate trailing /openai or /v1 in custom base URLs (Pollinations docs style)
+  const normBase = (u) => String(u || '').replace(/\/+$/, '').replace(/\/openai$/i, '').replace(/\/v1$/i, '')
 
   if (provider === 'openai') {
-    const res = await fetch('https://api.openai.com/v1/chat/completions', {
-      method:  'POST',
-      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ model: model || 'gpt-4o-mini', messages, stream })
-    })
-    if (!res.ok) { const t = await res.text().catch(() => ''); throw new Error(`OpenAI ${res.status}: ${t.slice(0, 200)}`) }
-    if (stream && onChunk && res.body) {
-      const reader = res.body.getReader(); const dec = new TextDecoder(); let full = ''
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        const lines = dec.decode(value).split('\n').filter(l => l.startsWith('data: ') && !l.includes('[DONE]'))
-        for (const line of lines) {
-          try { const obj = JSON.parse(line.slice(6)); const delta = obj.choices?.[0]?.delta?.content || ''; if (delta) { full += delta; onChunk(delta) } } catch {}
+    const base = normBase(baseUrl) || 'https://api.openai.com'
+    // Pollinations anonymous tier: sending an unknown Bearer key triggers 402 — omit auth there
+    const isPollinations = /pollinations/i.test(base)
+    const headers = { 'Content-Type': 'application/json' }
+    if (apiKey && !isPollinations) headers['Authorization'] = `Bearer ${apiKey}`
+    
+    const ctl   = new AbortController()
+    const timer = setTimeout(() => ctl.abort(), 120000)
+    try {
+      let res
+      let useModel = model || 'gpt-4o-mini'
+      // v3.3.4 — the anonymous Pollinations tier only serves "fast" models; remap anything else up front
+      if (isPollinations && !/^(openai|openai-fast|gpt-oss|gpt-oss-20b|ovh-reasoning)$/i.test(useModel)) useModel = 'openai-fast'
+      for (let attempt = 1; ; attempt++) {
+        res = await fetch(`${base}/v1/chat/completions`, {
+          method:  'POST',
+          headers,
+          body:    JSON.stringify({ model: useModel, messages, stream }),
+          signal:  ctl.signal
+        })
+        if (res.ok) break
+        const terr = await res.text().catch(() => '')
+        // v3.3.4 — anonymous Pollinations rejects unknown/paid models with 402: retry with openai-fast
+        if (isPollinations && res.status === 402 && useModel !== 'openai-fast' && !/FREE_LIMIT/i.test(terr)) { console.log('[ai] pollinations 402 — retrying with openai-fast'); useModel = 'openai-fast' }
+        const retryable = (res.status === 402 || res.status === 429 || res.status >= 500)
+        // v3.3.5 — anonymous Pollinations allows ~1 reply / 30s per IP (FREE_LIMIT):
+        // wait the full window (or the Retry-After hint) instead of a short backoff
+        let waitMs = attempt * 1500
+        let maxAttempts = 3
+        if (isPollinations && res.status === 402) {
+          const rm = /retry after (\d+)\s*s/i.exec(terr || '')
+          waitMs = Math.max(rm ? (parseInt(rm[1], 10) * 1000 + 1200) : 0, 31000)
+          maxAttempts = 4
         }
+        if (retryable && attempt <= maxAttempts) { await new Promise(r => setTimeout(r, waitMs)); continue }
+        throw new Error(`OpenAI ${res.status}: ${terr.slice(0, 200)}`)
       }
-      return full
-    }
-    const data = await res.json()
-    return data.choices?.[0]?.message?.content || ''
+      if (stream && onChunk && res.body) {
+        const reader = res.body.getReader(); const dec = new TextDecoder(); let full = ''; let buf = ''
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          buf += dec.decode(value, { stream: true })
+          const lines = buf.split('\n')
+          buf = lines.pop() || ''
+          for (let line of lines) {
+            line = line.trim()
+            if (!line.startsWith('data: ')) continue
+            if (line.includes('[DONE]')) continue
+            try { const obj = JSON.parse(line.slice(6)); const delta = obj.choices?.[0]?.delta?.content || ''; if (delta) { full += delta; onChunk(delta) } } catch {}
+          }
+        }
+        return full
+      }
+      const data = await res.json()
+      return data.choices?.[0]?.message?.content || ''
+    } finally { clearTimeout(timer) }
+  }
+
+  if (provider === 'zai') {
+    // Z.ai (GLM) - OpenAI-compatible API
+    // v3.3.5 — only honor a z.ai-looking baseUrl; stored configs may still point at another provider's URL
+    const base = /z\.ai/i.test(String(baseUrl || '')) ? normBase(baseUrl) : 'https://api.z.ai/api/paas/v4'
+    const headers = { 'Content-Type': 'application/json' }
+    if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`
+
+    const ctl   = new AbortController()
+    const timer = setTimeout(() => ctl.abort(), 120000)
+    try {
+      let res
+      const useModel = model || 'glm-4.7-flash'
+      for (let attempt = 1; ; attempt++) {
+        res = await fetch(`${base}/chat/completions`, {
+          method:  'POST',
+          headers,
+          body:    JSON.stringify({ model: useModel, messages, stream }),
+          signal:  ctl.signal
+        })
+        if (res.ok) break
+        const terr = await res.text().catch(() => '')
+        const retryable = (res.status === 429 || res.status >= 500)
+        if (retryable && attempt <= 3) { await new Promise(r => setTimeout(r, attempt * 1500)); continue }
+        throw new Error(`Z.ai ${res.status}: ${terr.slice(0, 200)}`)
+      }
+      if (stream && onChunk && res.body) {
+        const reader = res.body.getReader(); const dec = new TextDecoder(); let full = ''; let buf = ''
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          buf += dec.decode(value, { stream: true })
+          const lines = buf.split('\n')
+          buf = lines.pop() || ''
+          for (let line of lines) {
+            line = line.trim()
+            if (!line.startsWith('data: ')) continue
+            if (line.includes('[DONE]')) continue
+            try { const obj = JSON.parse(line.slice(6)); const delta = obj.choices?.[0]?.delta?.content || ''; if (delta) { full += delta; onChunk(delta) } } catch {}
+          }
+        }
+        return full
+      }
+      const data = await res.json()
+      return data.choices?.[0]?.message?.content || ''
+    } finally { clearTimeout(timer) }
   }
 
   if (provider === 'gemini') {
@@ -400,6 +570,7 @@ function checkAlerts(deviceId, stats) {
       const deviceName = device?.name || deviceId
       const alertMsg   = `🚨 ${deviceName}: ${rule.type} = ${value}% (حد: ${rule.threshold}%)`
       broadcastToClients({ type: 'alert:triggered', payload: { ruleId: rule.id, deviceId, deviceName, type: rule.type, value, threshold: rule.threshold, message: alertMsg } })
+      addNotification({ userId: rule.user_id, deviceId, type: rule.type, title: deviceName + ' — ' + rule.type, message: alertMsg, severity: value >= 90 ? 'critical' : 'warning' })
       if (rule.channel === 'webhook' && rule.webhook_url) {
         fetch(rule.webhook_url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text: alertMsg, device: deviceName, type: rule.type, value, threshold: rule.threshold, timestamp: now }) }).catch(() => {})
@@ -419,7 +590,9 @@ function fireOfflineAlerts(deviceId) {
       if (rule.last_fired_at && Date.now() - new Date(rule.last_fired_at).getTime() < rule.cooldown_min * 60000) continue
       db.prepare("UPDATE alert_rules SET last_fired_at=? WHERE id=?").run(now, rule.id)
       const msg = `📴 جهاز غير متصل: ${deviceName}`
-      broadcastToClients({ type: 'alert:triggered', payload: { ruleId: rule.id, deviceId, deviceName, type: 'device_offline', message: msg } })
+            try { telegramEvent('offline', msg) } catch {}
+broadcastToClients({ type: 'alert:triggered', payload: { ruleId: rule.id, deviceId, deviceName, type: 'device_offline', message: msg } })
+      addNotification({ userId: rule.user_id, deviceId, type: 'device_offline', title: deviceName, message: msg, severity: 'warning' })
       if (rule.channel === 'webhook' && rule.webhook_url) {
         fetch(rule.webhook_url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text: msg, device: deviceName, type: 'device_offline', timestamp: now }) }).catch(() => {})
@@ -429,13 +602,119 @@ function fireOfflineAlerts(deviceId) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+function fireOnlineAlerts(deviceId) {
+  if (!db) return
+  try {
+    const rules = db.prepare("SELECT * FROM alert_rules WHERE enabled=1 AND type='device_online' AND (device_id IS NULL OR device_id=?)").all(deviceId)
+    const now = new Date().toISOString()
+    const device = db.prepare("SELECT name FROM devices WHERE id=?").get(deviceId)
+    const deviceName = (device && device.name) || deviceId
+    for (const rule of rules) {
+      if (rule.last_fired_at && Date.now() - new Date(rule.last_fired_at).getTime() < rule.cooldown_min * 60000) continue
+      db.prepare("UPDATE alert_rules SET last_fired_at=? WHERE id=?").run(now, rule.id)
+      const msg = '✅ جهاز متصل: ' + deviceName
+            try { telegramEvent('online', msg) } catch {}
+broadcastToClients({ type: 'alert:triggered', payload: { ruleId: rule.id, deviceId, deviceName, type: 'device_online', message: msg } })
+      addNotification({ userId: rule.user_id, deviceId, type: 'device_online', title: deviceName, message: msg, severity: 'info' })
+    }
+  } catch {}
+}
+
+// ── Telegram notifications (v3.3.0) ─────────────────────────────────────────
+function getTelegramConfig() {
+  try {
+    const rows = db.prepare("SELECT key, value FROM settings WHERE key IN ('telegramToken','telegramChatId','telegramEnabled','telegramEvents')").all()
+    const m = {}
+    for (const r of rows) m[r.key] = parseJson(r.value, r.value)
+    const enabled = (m.telegramEnabled === true || m.telegramEnabled === 'true' || m.telegramEnabled === 1 || m.telegramEnabled === '1')
+    return {
+      token: String(m.telegramToken || ''),
+      chatId: String(m.telegramChatId || ''),
+      enabled,
+      events: (m.telegramEvents && typeof m.telegramEvents === 'object') ? m.telegramEvents : { online: true, offline: true, chat: true }
+    }
+  } catch { return { token: '', chatId: '', enabled: false, events: {} } }
+}
+async function sendTelegramRaw(token, chatId, text) {
+  try {
+    const res = await fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text: String(text).slice(0, 3900), disable_web_page_preview: true })
+    })
+    return res.ok
+  } catch { return false }
+}
+async function telegramEvent(kind, text) {
+  try {
+    const c = getTelegramConfig()
+    if (!c.enabled || !c.token || !c.chatId) return false
+    if (c.events && c.events[kind] === false) return false
+    return sendTelegramRaw(c.token, c.chatId, text)
+  } catch { return false }
+}
+
 // 8b. Screen session management — interactive relay (v3.2 dashboard protocol)
 // ─────────────────────────────────────────────────────────────────────────────
+// Screen video is deliberately sent as "latest frame wins". Android/JPEG
+// capture can produce frames faster than a browser can decode (especially at
+// 1600x720 / 30 fps), and naively calling ws.send() for every frame makes the
+// TCP buffer grow without bound. That is what turns a short network hiccup into
+// 10+ seconds of drift. A per-viewer frame pump bounds the queue and preserves
+// current video instead of replaying stale frames.
+const SCREEN_FRAME_INTERVAL_MS = 33
+const SCREEN_FRAME_MAX_BUFFER = 512 * 1024
+
+function flushScreenFrame(vws, st) {
+  st.timer = null
+  if (!st.packet || !vws || vws.readyState !== 1) { st.packet = null; return }
+  if (vws.bufferedAmount > SCREEN_FRAME_MAX_BUFFER) {
+    st.timer = setTimeout(() => flushScreenFrame(vws, st), 50)
+    return
+  }
+  const packet = st.packet
+  st.packet = null
+  st.lastSent = Date.now()
+  try { vws.send(packet) } catch {}
+}
+
+function queueScreenFrame(vws, packet) {
+  if (!vws || vws.readyState !== 1) return
+  let st = vws._screenFrameState
+  if (!st) { st = { packet: null, timer: null, lastSent: 0 }; vws._screenFrameState = st }
+  st.packet = packet
+  if (st.timer) return
+  const wait = Math.max(0, SCREEN_FRAME_INTERVAL_MS - (Date.now() - st.lastSent))
+  st.timer = setTimeout(() => flushScreenFrame(vws, st), wait)
+}
+
+function clearScreenFrameState(vws) {
+  const st = vws && vws._screenFrameState
+  if (!st) return
+  if (st.timer) clearTimeout(st.timer)
+  st.timer = null; st.packet = null
+  try { delete vws._screenFrameState } catch {}
+}
+
 function sendToScreenViewers(deviceId, obj) {
   const viewers = screenViewers.get(deviceId)
   if (!viewers) return
   const s = JSON.stringify(obj)
-  for (const vws of viewers) { try { if (vws.readyState === 1) vws.send(s) } catch {} }
+  const isFrame = obj && obj.type === 'screen:frame'
+  for (const vws of viewers) {
+    try {
+      if (vws.readyState !== 1) continue
+      if (isFrame) queueScreenFrame(vws, s)
+      else vws.send(s)
+    } catch {}
+  }
+}
+
+function pushChatHistory(deviceId, msg) {
+  if (!deviceId || !msg || !msg.text) return
+  if (!chatHistoryByDevice.has(deviceId)) chatHistoryByDevice.set(deviceId, [])
+  const arr = chatHistoryByDevice.get(deviceId)
+  arr.push(msg)
+  if (arr.length > 300) arr.splice(0, arr.length - 300)
 }
 
 function broadcastViewerCount(session) {
@@ -467,17 +746,27 @@ function leaveScreenSession(sessionId, socket) {
 
   const set = screenViewers.get(session.deviceId)
   if (set) {
-    if (socket) set.delete(socket)
-    else set.clear()
+    if (socket) { set.delete(socket); clearScreenFrameState(socket) }
+    else { for (const vws of set) clearScreenFrameState(vws); set.clear() }
     if (!set.size) screenViewers.delete(session.deviceId)
   }
 
   if (session.viewers.size === 0) {
+    // v3.5 — grace period: opening a standalone window or reconnecting creates
+    // a short gap with zero viewers. Do not kill MediaProjection (Android's
+    // consent token is single-use) on the first gap.
     clearConnectTimer(session)
-    const rec = agentSockets.get(session.deviceId)
-    if (rec) sendJson(rec.ws, { type: 'server:screen_stop', payload: { sessionId }, timestamp: Date.now() })
-    screenSessions.delete(sessionId)
-    if (deviceScreenSess.get(session.deviceId) === sessionId) deviceScreenSess.delete(session.deviceId)
+    if (session.stopTimer) clearTimeout(session.stopTimer)
+    session.stopTimer = setTimeout(() => {
+      const s2 = screenSessions.get(sessionId)
+      if (!s2 || s2.viewers.size > 0) return
+      const rec = agentSockets.get(s2.deviceId)
+      if (rec) sendJson(rec.ws, { type: 'server:screen_stop', payload: { sessionId }, timestamp: Date.now() })
+      try { dbLogSessionEnd(s2.dbId) } catch {}
+      try { finalizeScreenRecording(s2.deviceId) } catch {}
+      screenSessions.delete(sessionId)
+      if (deviceScreenSess.get(s2.deviceId) === sessionId) deviceScreenSess.delete(s2.deviceId)
+    }, 6000)
   } else {
     broadcastViewerCount(session)
   }
@@ -487,7 +776,9 @@ function closeScreenSession(sessionId, errMsg) {
   const session = screenSessions.get(sessionId)
   if (!session) return
   clearConnectTimer(session)
+  if (session.stopTimer) { clearTimeout(session.stopTimer); session.stopTimer = null }
   for (const vws of session.viewers) {
+    clearScreenFrameState(vws)
     try {
       if (vws.readyState === 1) {
         if (errMsg) vws.send(JSON.stringify({ type: 'screen:error', payload: { message: errMsg } }))
@@ -495,6 +786,8 @@ function closeScreenSession(sessionId, errMsg) {
       }
     } catch {}
   }
+  try { dbLogSessionEnd(session.dbId) } catch {}
+  try { finalizeScreenRecording(session.deviceId) } catch {}
   screenSessions.delete(sessionId)
   if (deviceScreenSess.get(session.deviceId) === sessionId) deviceScreenSess.delete(session.deviceId)
   screenViewers.delete(session.deviceId)
@@ -541,20 +834,30 @@ function handleAgentWs(socket) {
         const height = buf.readUInt32BE(41)
         const seq    = buf.readUInt32BE(45)
         const flags  = buf[49]
-        const jpeg   = buf.slice(50)
+        // v3.3.2 — delta frames: flags bit1 set, x/y stored after the 50-byte base header
+        const isDelta = ((flags & 2) !== 0) && buf.length >= 58
+        const dx = isDelta ? buf.readUInt32BE(50) : 0
+        const dy = isDelta ? buf.readUInt32BE(54) : 0
+        const jpeg = buf.slice(isDelta ? 58 : 50)
 
         const { session } = resolveScreenSession(deviceId, embeddedId)
         if (!session) return
         clearConnectTimer(session)
 
-        const header = Buffer.allocUnsafe(13)
+        const header = Buffer.allocUnsafe(isDelta ? 21 : 13)
         header.writeUInt32BE(width,  0)
         header.writeUInt32BE(height, 4)
         header.writeUInt32BE(seq,    8)
         header[12] = flags
+        if (isDelta) { header.writeUInt32BE(dx, 13); header.writeUInt32BE(dy, 17) }
+        if (!isDelta) { try { recordScreenFrame(deviceId, jpeg) } catch {} }   // v3.3.2: record full frames only
         const packet  = Buffer.concat([header, jpeg])
         const viewers = screenViewers.get(deviceId)
-        if (viewers) { for (const vws of viewers) { try { if (vws.readyState === 1) vws.send(packet) } catch {} } }
+        if (viewers) {
+          for (const vws of viewers) {
+            try { if (vws.readyState === 1) queueScreenFrame(vws, packet) } catch {}
+          }
+        }
       } catch {}
       return
     }
@@ -568,10 +871,17 @@ function handleAgentWs(socket) {
       const { token, info, capabilities } = payload
       const device = db.prepare("SELECT * FROM devices WHERE token=?").get(token)
       if (!device) { sendJson(socket, { type: 'server:error', payload: { message: 'Invalid token' } }); socket.close(); return }
+      if (device.status === 'blocked') { sendJson(socket, { type: 'server:error', payload: { message: 'Device blocked by administrator' } }); socket.close(); return }
       deviceId = device.id; registered = true
       clearTimeout(regTimer)
+      const prevDeviceStatus = device.status
       markDeviceOnline(deviceId, info)
+      if (prevDeviceStatus !== 'online') fireOnlineAlerts(deviceId)
       if (capabilities) db.prepare("UPDATE devices SET capabilities=? WHERE id=?").run(JSON.stringify(capabilities), deviceId)
+      const prevAgent = agentSockets.get(deviceId)
+      if (prevAgent && prevAgent.ws && prevAgent.ws !== socket) {
+        try { prevAgent.ws.close(4000, 'replaced by newer agent connection') } catch {}
+      }
       agentSockets.set(deviceId, { ws: socket, info, deviceName: device.name, connectedAt: Date.now(), stats: null })
       sendJson(socket, { type: 'server:registered', payload: { deviceId, name: device.name } })
       broadcastToClients({ type: 'device:status', payload: { deviceId, status: 'online', name: device.name, info } })
@@ -582,11 +892,19 @@ function handleAgentWs(socket) {
 
     if (!registered) { socket.close(); return }
 
+    if (type === 'agent:capabilities_update') {
+      try {
+        if (payload.capabilities) db.prepare("UPDATE devices SET capabilities=? WHERE id=?").run(JSON.stringify(payload.capabilities), deviceId)
+      } catch {}
+      return
+    }
+
     if (type === 'agent:heartbeat') {
       const { stats } = payload
       markDeviceOnline(deviceId, null)
       const rec = agentSockets.get(deviceId)
-      if (rec && stats) rec.stats = stats
+      // Ignore heartbeats from a replaced connection; otherwise stale stats can overwrite live stats.
+      if (rec && rec.ws === socket && stats) rec.stats = stats
       sendJson(socket, { type: 'server:pong', payload: {} })
       broadcastToClients({ type: 'device:heartbeat', payload: { deviceId, stats } })
       if (stats) {
@@ -605,6 +923,8 @@ function handleAgentWs(socket) {
     if (type === 'agent:pong') { clearTimeout(pongTimer); pongTimer = null; schedulePing(); return }
 
     if (type === 'agent:command_result') {
+      const cp = payload && payload.commandId ? pendingCommands.get(payload.commandId) : null
+      if (cp) { clearTimeout(cp.timer); pendingCommands.delete(payload.commandId); cp.resolve(payload) }
       broadcastToClients({ type: 'agent:command_result', payload: { ...payload, deviceId } })
       return
     }
@@ -613,7 +933,37 @@ function handleAgentWs(socket) {
       const { sessionId, data } = payload
       broadcastToClients({ type: 'agent:pty_output', payload: { deviceId, sessionId, data } })
       const set = ptyClients.get(sessionId)
-      if (set) for (const vws of set) sendJson(vws, { type: 'pty_output', data })
+      if (set) for (const vws of set) { sendJson(vws, { type: 'pty_output', data }); sendJson(vws, { type: 'pty:data', payload: { data } }) }
+      return
+    }
+
+    if (type === 'agent:pty_opened') {
+      const set = ptyClients.get(payload.sessionId)
+      if (set) for (const vws of set) sendJson(vws, { type: 'pty:connected', payload: { sessionId: payload.sessionId } })
+      return
+    }
+
+    if (type === 'agent:pty_closed') {
+      const set = ptyClients.get(payload.sessionId)
+      if (set) for (const vws of set) sendJson(vws, { type: 'pty:closed', payload: { sessionId: payload.sessionId } })
+      return
+    }
+
+    if (type === 'agent:audio_chunk') {
+      const data = Buffer.from(String(payload.data || ''), 'base64')
+      if (data.length) {
+        sendToScreenViewers(deviceId, {
+          type: 'screen:audio',
+          payload: { data: payload.data, seq: payload.seq || 0, format: payload.format || 'webm', sampleRate: payload.sampleRate || 0, channels: payload.channels || 0 },
+          timestamp: Date.now()
+        })
+        recordAudioChunk(deviceId, data, payload.format || 'webm')
+      }
+      return
+    }
+
+    if (type === 'agent:audio_status') {
+      sendToScreenViewers(deviceId, { type: 'screen:audio_status', payload, timestamp: Date.now() })
       return
     }
 
@@ -621,6 +971,7 @@ function handleAgentWs(socket) {
       const { session } = resolveScreenSession(deviceId, payload.sessionId)
       if (!session) return
       clearConnectTimer(session)
+      if (!payload.deltaRegion) { try { recordScreenFrame(deviceId, Buffer.from(String(payload.data || ''), 'base64')) } catch {} }
       sendToScreenViewers(deviceId, {
         type: 'screen:frame',
         payload: {
@@ -630,7 +981,9 @@ function handleAgentWs(socket) {
           seq:         payload.seq,
           keyframe:    payload.keyframe,
           quality:     payload.quality,
-          deltaRegion: payload.deltaRegion
+          deltaRegion: payload.deltaRegion,
+          ts: payload.ts,
+          rxTs: Date.now()
         },
         timestamp: Date.now()
       })
@@ -663,9 +1016,34 @@ function handleAgentWs(socket) {
     if (type === 'agent:screen_control_granted' || type === 'agent:screen_control_denied') {
       sendToScreenViewers(deviceId, {
         type:    type === 'agent:screen_control_granted' ? 'screen:control_granted' : 'screen:control_denied',
-        payload: { requestId: payload.requestId },
+        payload: { requestId: payload.requestId, reason: payload.reason || undefined },
         timestamp: Date.now()
       })
+      return
+    }
+
+    if (type === 'agent:screen_brightness_status') {
+      sendToScreenViewers(deviceId, { type: 'screen:brightness_status', payload, timestamp: Date.now() })
+      return
+    }
+
+    if (type === 'agent:screen_display_state') {
+      sendToScreenViewers(deviceId, { type: 'screen:display_state', payload, timestamp: Date.now() })
+      return
+    }
+
+    if (type === 'agent:screen_rotate_result') {
+      sendToScreenViewers(deviceId, { type: 'screen:rotate_result', payload, timestamp: Date.now() })
+      return
+    }
+
+    if (type === 'agent:screen_rotate_status') {
+      sendToScreenViewers(deviceId, { type: 'screen:rotate_status', payload, timestamp: Date.now() })
+      return
+    }
+
+    if (type === 'agent:screen_state') {
+      sendToScreenViewers(deviceId, { type: 'screen:state', payload, timestamp: Date.now() })
       return
     }
 
@@ -680,10 +1058,40 @@ function handleAgentWs(socket) {
     }
 
     if (type === 'agent:screen_chat') {
-      sendToScreenViewers(deviceId, {
-        type: 'screen:chat',
-        payload: { text: payload.text, sender: payload.sender || 'host', ts: payload.ts || Date.now() }
-      })
+      try {
+        const agName = (agentSockets.get(deviceId) || {}).deviceName || deviceId
+        telegramEvent('chat', 'رسالة من ' + agName + ': ' + String(payload.text || '').slice(0, 300))
+      } catch {}
+      const chatMsg = { text: payload.text, sender: payload.sender || 'host', ts: payload.ts || Date.now() }
+      pushChatHistory(deviceId, chatMsg)
+      sendToScreenViewers(deviceId, { type: 'screen:chat', payload: chatMsg })
+      return
+    }
+
+    if (type === 'agent:fs_chunk') {
+      const st = pendingFsStreams.get(payload.opId)
+      if (!st) return
+      try {
+        const seq = Number(payload.seq) || 0
+        if (payload.data) st.buffer.set(seq, Buffer.from(String(payload.data), 'base64'))
+        while (st.buffer.has(st.next)) {
+          const buf = st.buffer.get(st.next)
+          st.buffer.delete(st.next)
+          st.next++
+          if (buf.length) st.res.write(buf)
+        }
+        if (payload.done) {
+          clearTimeout(st.timer)
+          pendingFsStreams.delete(payload.opId)
+          st.res.end()
+          st.resolve({ ok: true, bytes: st.bytes })
+        }
+      } catch (e) {
+        clearTimeout(st.timer)
+        pendingFsStreams.delete(payload.opId)
+        try { st.res.destroy() } catch {}
+        st.reject(e)
+      }
       return
     }
 
@@ -691,6 +1099,13 @@ function handleAgentWs(socket) {
       const { requestId, data, error } = payload
       const pending = pendingFsRequests.get(requestId)
       if (pending) { clearTimeout(pending.timer); pendingFsRequests.delete(requestId); error ? pending.reject(new Error(error)) : pending.resolve(data) }
+      const st = pendingFsStreams.get(requestId)
+      if (st) {
+        clearTimeout(st.timer)
+        pendingFsStreams.delete(requestId)
+        try { st.res.destroy() } catch {}
+        if (error) st.reject(new Error(error)); else st.resolve({ ok: true })
+      }
       return
     }
   })
@@ -768,32 +1183,78 @@ function handleClientWs(socket, user) {
 // ─────────────────────────────────────────────────────────────────────────────
 function handlePtyWs(socket, request, user) {
   const query     = request.query || {}
-  const deviceId  = query.deviceId
-  const sessionId = query.sessionId || uuidv4()
-  if (!deviceId) { socket.close(); return }
-  if (!canAccessDevice(user, deviceId)) { try { socket.close() } catch {}; return }
+  let deviceId    = query.deviceId || null
+  let sessionId   = query.sessionId || uuidv4()
+  let started     = false
+  let ptyDbId     = null
 
-  if (!ptyClients.has(sessionId)) ptyClients.set(sessionId, new Set())
-  ptyClients.get(sessionId).add(socket)
+  function begin(dId, shellHint, rows, cols) {
+    if (!dId) { try { socket.close() } catch {}; return }
+    if (!canAccessDevice(user, dId)) { try { socket.close() } catch {}; return }
+    if (started) return
+    started = true; deviceId = dId
+    if (!ptyClients.has(sessionId)) ptyClients.set(sessionId, new Set())
+    ptyClients.get(sessionId).add(socket)
+    try { ptyDbId = dbLogSessionStart((user && user.userId) || '', deviceId, 'shell') } catch {}
+    const agentRec = agentSockets.get(deviceId)
+    if (agentRec) {
+      sendJson(agentRec.ws, { type: 'server:pty_start', payload: { sessionId, cols: cols || 80, rows: rows || 24, shell: shellHint || 'auto' } })
+      if (rows || cols) sendJson(agentRec.ws, { type: 'server:pty_resize', payload: { sessionId, cols: cols || 80, rows: rows || 24 } })
+      sendJson(socket, { type: 'pty_ready', sessionId })
+      sendJson(socket, { type: 'pty:connected', payload: { sessionId } })
+    } else {
+      sendJson(socket, { type: 'pty:error', payload: { message: 'Device offline' } })
+      sendJson(socket, { type: 'pty_error', error: 'Device offline' })
+    }
+  }
 
-  const agentRec = agentSockets.get(deviceId)
-  if (agentRec) sendJson(agentRec.ws, { type: 'server:pty_start', payload: { sessionId, cols: 80, rows: 24 } })
-  sendJson(socket, { type: 'pty_ready', sessionId })
+  function cleanup() {
+    const set = ptyClients.get(sessionId)
+    let last = false
+    if (set) { set.delete(socket); if (!set.size) { ptyClients.delete(sessionId); last = true } }
+    const rec = deviceId ? agentSockets.get(deviceId) : null
+    if (rec && last) sendJson(rec.ws, { type: 'server:pty_stop', payload: { sessionId } })
+    try { dbLogSessionEnd(ptyDbId) } catch {}
+    ptyDbId = null
+  }
+
+  const connectTimeout = setTimeout(() => { if (!started) { try { socket.close() } catch {} } }, 15000)
+
+  if (deviceId) { clearTimeout(connectTimeout); begin(deviceId, query.shell || 'auto', parseInt(query.rows) || 24, parseInt(query.cols) || 80) }
 
   socket.on('message', (raw) => {
     let msg; try { msg = JSON.parse(raw) } catch { return }
+    const payload = msg.payload || {}
+
+    if (msg.type === 'pty:connect' || msg.type === 'pty_connect') {
+      clearTimeout(connectTimeout)
+      if (payload.sessionId) sessionId = payload.sessionId
+      begin(payload.deviceId || msg.deviceId || deviceId, payload.shell || msg.shell || 'auto', parseInt(payload.rows || msg.rows) || 24, parseInt(payload.cols || msg.cols) || 80)
+      return
+    }
+    if (!started || !deviceId) return
     const rec = agentSockets.get(deviceId)
-    if (!rec) { sendJson(socket, { type: 'pty_error', error: 'Device offline' }); return }
-    if (msg.type === 'pty_input')  sendJson(rec.ws, { type: 'server:command',    payload: { type: 'pty_input',   data: msg.data, sessionId } })
-    if (msg.type === 'pty_resize') sendJson(rec.ws, { type: 'server:pty_resize', payload: { sessionId, cols: msg.cols || 80, rows: msg.rows || 24 } })
+    if (!rec) {
+      sendJson(socket, { type: 'pty:error', payload: { message: 'Device offline' } })
+      sendJson(socket, { type: 'pty_error', error: 'Device offline' })
+      return
+    }
+    if (msg.type === 'pty:data' || msg.type === 'pty:input' || msg.type === 'pty_input') {
+      let data = (payload.data !== undefined ? payload.data : msg.data) || ''
+      if (msg.type === 'pty:data') { try { data = Buffer.from(String(data), 'base64').toString('utf8') } catch {} }
+      sendJson(rec.ws, { type: 'server:command', payload: { type: 'pty_input', data, sessionId } })
+      return
+    }
+    if (msg.type === 'pty:resize') {
+      const cols = parseInt(payload.cols || msg.cols) || 80
+      const rows = parseInt(payload.rows || msg.rows) || 24
+      sendJson(rec.ws, { type: 'server:pty_resize', payload: { sessionId, cols, rows } })
+      return
+    }
+    if (msg.type === 'pty:disconnect' || msg.type === 'pty:stop') { cleanup(); try { socket.close() } catch {} }
   })
 
-  socket.on('close', () => {
-    const set = ptyClients.get(sessionId)
-    if (set) { set.delete(socket); if (!set.size) ptyClients.delete(sessionId) }
-    const rec = agentSockets.get(deviceId)
-    if (rec) sendJson(rec.ws, { type: 'server:pty_stop', payload: { sessionId } })
-  })
+  socket.on('close', () => { clearTimeout(connectTimeout); cleanup() })
   socket.on('error', () => {})
 }
 
@@ -829,11 +1290,13 @@ function handleScreenWs(socket, request, user) {
   let sessionId = deviceScreenSess.get(deviceId)
   let session   = sessionId ? screenSessions.get(sessionId) : null
 
-  if (session && session.viewers.size > 0) {
+  if (session) {
+    if (session.stopTimer) { clearTimeout(session.stopTimer); session.stopTimer = null }
     session.viewers.add(socket)
   } else {
     sessionId = uuidv4()
-    session   = { deviceId, viewers: new Set([socket]), startedAt: Date.now(), connectTimer: null }
+    session   = { deviceId, viewers: new Set([socket]), startedAt: Date.now(), connectTimer: null, stopTimer: null, userId: (user && user.userId) || null, dbId: null }
+    try { session.dbId = dbLogSessionStart((user && user.userId) || '', deviceId, 'screen') } catch {}
     screenSessions.set(sessionId, session)
     deviceScreenSess.set(deviceId, sessionId)
 
@@ -848,6 +1311,12 @@ function handleScreenWs(socket, request, user) {
 
   if (!screenViewers.has(deviceId)) screenViewers.set(deviceId, new Set())
   screenViewers.get(deviceId).add(socket)
+
+  // v3.5 — replay in-session chat so reopening the panel/window shows old messages
+  try {
+    const hist = chatHistoryByDevice.get(deviceId) || []
+    if (hist.length) socket.send(JSON.stringify({ type: 'screen:chat_history', payload: { messages: hist.slice(-200) } }))
+  } catch {}
 
   if (session.viewers.size > 1) {
     try { socket.send(JSON.stringify({ type: 'screen:viewer_count', payload: { count: session.viewers.size } })) } catch {}
@@ -902,16 +1371,52 @@ function handleScreenWs(socket, request, user) {
       case 'screen:privacy':
         sendJson(rec.ws, { type: 'server:screen_privacy', payload: { enable: !!payload.enable }, timestamp: Date.now() })
         break
+      case 'screen:brightness':
+        sendJson(rec.ws, { type: 'server:screen_brightness', payload: { sessionId, value: Math.max(0, Math.min(255, Number(payload.value) || 0)) }, timestamp: Date.now() })
+        break
+      case 'screen:display':
+        sendJson(rec.ws, { type: 'server:screen_display', payload: { sessionId, off: !!payload.off }, timestamp: Date.now() })
+        break
+      case 'screen:rotate':
+        sendJson(rec.ws, { type: 'server:screen_rotate', payload: { sessionId }, timestamp: Date.now() })
+        break
+      case 'screen:rotate_auto':
+        sendJson(rec.ws, { type: 'server:screen_rotate_auto', payload: { sessionId, enabled: !!payload.enabled }, timestamp: Date.now() })
+        break
+      case 'screen:audio_control':
+        sendJson(rec.ws, { type: 'server:audio_control', payload: { sessionId, enabled: !!payload.enabled }, timestamp: Date.now() })
+        break
       case 'screen:request_control':
         sendJson(rec.ws, {
           type: 'server:screen_control_request',
-          payload: { sessionId, requestId: payload.requestId || uuidv4(), requesterName: (user && user.email) || 'viewer' },
+          payload: { sessionId, requestId: payload.requestId || uuidv4(), requesterName: (user && user.email) || 'viewer', password: typeof payload.password === 'string' ? payload.password.slice(0, 128) : undefined },
           timestamp: Date.now()
         })
         break
-      case 'screen:chat':
-        sendJson(rec.ws, { type: 'server:screen_chat', payload: { sessionId, text: String(payload.text || '').slice(0, 2000), sender: 'viewer', ts: Date.now() }, timestamp: Date.now() })
+      case 'screen:chat': {
+        const chatMsg = { text: String(payload.text || '').slice(0, 2000), sender: 'viewer', ts: Date.now() }
+        pushChatHistory(deviceId, chatMsg)
+        sendJson(rec.ws, { type: 'server:screen_chat', payload: { sessionId, ...chatMsg }, timestamp: Date.now() })
+        for (const vws of session.viewers) {
+          if (vws === socket) continue
+          try { if (vws.readyState === 1) vws.send(JSON.stringify({ type: 'screen:chat', payload: chatMsg })) } catch {}
+        }
         break
+      }
+      case 'screen:record_start': {
+        const recId = uuidv4()
+        const nowIso = new Date().toISOString()
+        const maxFrames = Math.min(Math.max(parseInt(payload.maxFrames) || 600, 30), 7200)
+        db.prepare("INSERT INTO recordings (id, device_id, user_id, name, started_at) VALUES (?,?,?,?,?)").run(recId, deviceId, user.userId, 'تسجيل شاشة ' + nowIso.slice(0, 19), nowIso)
+        screenRecorders.set(deviceId, { recId, userId: user.userId, frames: [], audio: [], bytes: 0, audioBytes: 0, maxFrames, startedAt: Date.now() })
+        sendJson(socket, { type: 'screen:record_status', payload: { recording: true, meta: { sessionId: recId, startedAt: nowIso, maxFrames } } })
+        break
+      }
+      case 'screen:record_stop': {
+        const meta = finalizeScreenRecording(deviceId)
+        sendJson(socket, { type: 'screen:record_status', payload: { recording: false, meta } })
+        break
+      }
       case 'screen:ping':
         try { if (socket.readyState === 1) socket.send(JSON.stringify({ type: 'screen:pong', payload: { clientTs: payload.ts, serverTs: Date.now() }, timestamp: Date.now() })) } catch {}
         break
@@ -943,16 +1448,30 @@ function handleScreenWs(socket, request, user) {
 // ─────────────────────────────────────────────────────────────────────────────
 // 13. WebSocket — Direct SSH
 // ─────────────────────────────────────────────────────────────────────────────
-function handleSshWs(socket) {
+function handleSshWs(socket, user) {
   let conn = null; let stream = null; const sessionId = uuidv4()
+  let sshDbId = null
   sendJson(socket, { type: 'ssh_connected', sessionId })
+
+  const sendErr = (message) => {
+    sendJson(socket, { type: 'ssh:error', payload: { message } })
+    sendJson(socket, { type: 'ssh_error', error: message })
+  }
 
   socket.on('message', (raw) => {
     let msg; try { msg = JSON.parse(raw) } catch { return }
+    const payload = msg.payload || {}
 
-    if (msg.type === 'ssh_connect') {
-      const { host, port = 22, username, password, privateKey } = msg
-      if (!host || !username) { sendJson(socket, { type: 'ssh_error', error: 'host and username required' }); return }
+    if (msg.type === 'ssh:connect' || msg.type === 'ssh_connect') {
+      const host       = payload.host || msg.host
+      const port       = parseInt(payload.port || msg.port) || 22
+      const username   = payload.username || msg.username
+      const password   = payload.password || msg.password
+      const privateKey = payload.privateKey || msg.privateKey
+      const rows       = parseInt(payload.rows || msg.rows) || 24
+      const cols       = parseInt(payload.cols || msg.cols) || 80
+      const deviceId   = payload.deviceId || msg.deviceId || null
+      if (!host || !username) { sendErr('host and username required'); return }
       try {
         const { Client } = getSsh2()
         conn = new Client()
@@ -960,26 +1479,45 @@ function handleSshWs(socket) {
         if (privateKey) authConf.privateKey = privateKey; else authConf.password = password
 
         conn.on('ready', () => {
-          conn.shell({ term: 'xterm-256color', cols: 80, rows: 24 }, (err, sh) => {
-            if (err) { sendJson(socket, { type: 'ssh_error', error: err.message }); conn.end(); return }
+          conn.shell({ term: 'xterm-256color', cols, rows }, (err, sh) => {
+            if (err) { sendErr(err.message); conn.end(); return }
             stream = sh
             sshSessions.set(sessionId, { conn, stream })
+            if (deviceId) { try { sshDbId = dbLogSessionStart((user && user.userId) || '', deviceId, 'ssh') } catch {} }
             sendJson(socket, { type: 'ssh_ready' })
-            sh.on('data', d  => sendJson(socket, { type: 'ssh_output', data: d.toString('utf8') }))
-            sh.stderr?.on('data', d => sendJson(socket, { type: 'ssh_output', data: d.toString('utf8') }))
-            sh.on('close', () => { sendJson(socket, { type: 'ssh_closed' }); socket.close() })
+            sendJson(socket, { type: 'ssh:connected', payload: { sessionId } })
+            sh.on('data', d  => { sendJson(socket, { type: 'ssh_output', data: d.toString('utf8') }); sendJson(socket, { type: 'ssh:data', payload: { data: Buffer.from(d).toString('base64') } }) })
+            sh.stderr?.on('data', d => { sendJson(socket, { type: 'ssh_output', data: d.toString('utf8') }); sendJson(socket, { type: 'ssh:data', payload: { data: Buffer.from(d).toString('base64') } }) })
+            sh.on('close', () => { sendJson(socket, { type: 'ssh_closed' }); sendJson(socket, { type: 'ssh:closed' }); try { socket.close() } catch {} })
           })
         })
-        conn.on('error', err => sendJson(socket, { type: 'ssh_error', error: err.message }))
+        conn.on('error', err => sendErr(err.message))
         conn.connect(authConf)
-      } catch (e) { sendJson(socket, { type: 'ssh_error', error: e.message }) }
+      } catch (e) { sendErr(e.message) }
       return
     }
-    if (msg.type === 'ssh_input'  && stream) { stream.write(msg.data); return }
-    if (msg.type === 'ssh_resize' && stream) { stream.setWindow(msg.rows || 24, msg.cols || 80); return }
+    if ((msg.type === 'ssh:data' || msg.type === 'ssh_input') && stream) {
+      let data = payload.data !== undefined ? payload.data : msg.data
+      if (msg.type === 'ssh:data') { try { data = Buffer.from(String(data || ''), 'base64').toString('utf8') } catch {} }
+      try { stream.write(String(data || '')) } catch {}
+      return
+    }
+    if (msg.type === 'ssh:resize' && stream) {
+      const rows = parseInt(payload.rows || msg.rows) || 24
+      const cols = parseInt(payload.cols || msg.cols) || 80
+      try { stream.setWindow(rows, cols) } catch {}
+      return
+    }
+    if (msg.type === 'ssh:disconnect') {
+      try { if (stream) stream.close() } catch {}
+      try { if (conn) conn.end() } catch {}
+      try { socket.close() } catch {}
+      return
+    }
   })
 
   socket.on('close', () => {
+    try { dbLogSessionEnd(sshDbId) } catch {}
     if (stream) try { stream.close() } catch {}
     if (conn)   try { conn.end()     } catch {}
     sshSessions.delete(sessionId)
@@ -990,6 +1528,18 @@ function handleSshWs(socket) {
 // ─────────────────────────────────────────────────────────────────────────────
 // 14. Agent FS Request Helper
 // ─────────────────────────────────────────────────────────────────────────────
+function agentFsStream(deviceId, fsPath, res, timeoutMs = 180000) {
+  return new Promise((resolve, reject) => {
+    const rec = agentSockets.get(deviceId)
+    if (!rec) return reject(new Error('Device offline'))
+    const opId = uuidv4()
+    const st = { res, next: 0, buffer: new Map(), bytes: 0, resolve, reject }
+    st.timer = setTimeout(() => { pendingFsStreams.delete(opId); try { res.destroy() } catch {} ; reject(new Error('File stream timeout')) }, timeoutMs)
+    pendingFsStreams.set(opId, st)
+    sendJson(rec.ws, { type: 'server:fs_request', payload: { requestId: opId, action: 'read_chunked', path: fsPath } })
+  })
+}
+
 function agentFsRequest(deviceId, action, params, timeoutMs = 30000) {
   return new Promise((resolve, reject) => {
     const rec = agentSockets.get(deviceId)
@@ -1002,6 +1552,214 @@ function agentFsRequest(deviceId, action, params, timeoutMs = 30000) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// 14b. v3.2.2 — Production helpers (sessions / notifications / users / recording)
+// ─────────────────────────────────────────────────────────────────────────────
+function mapSessionRow(s) {
+  return { ...s, deviceId: s.device_id, userId: s.user_id, deviceName: s.device_name || '', userEmail: s.user_email || '', startedAt: s.started_at, endedAt: s.ended_at || null, durationSec: s.duration_sec != null ? s.duration_sec : null }
+}
+function dbLogSessionStart(userId, deviceId, type, metadata) {
+  try {
+    if (!db || !deviceId) return null
+    const id = uuidv4(); const now = new Date().toISOString()
+    db.prepare("INSERT INTO sessions (id, device_id, user_id, type, started_at, metadata) VALUES (?,?,?,?,?,?)").run(id, deviceId, userId || '', type || 'shell', now, metadata ? JSON.stringify(metadata) : null)
+    return id
+  } catch { return null }
+}
+function dbLogSessionEnd(sessionRowId) {
+  try {
+    if (!db || !sessionRowId) return
+    const row = db.prepare("SELECT started_at FROM sessions WHERE id=?").get(sessionRowId)
+    const now = new Date().toISOString()
+    const dur = row ? Math.max(0, Math.floor((Date.now() - new Date(row.started_at).getTime()) / 1000)) : null
+    db.prepare("UPDATE sessions SET ended_at=?, duration_sec=? WHERE id=?").run(now, dur, sessionRowId)
+  } catch {}
+}
+function sendToUser(userId, msg) {
+  try {
+    if (!userId) { broadcastToClients(msg); return }
+    for (const [ws, meta] of clientSockets) {
+      const u = meta && meta.user
+      if (u && (u.userId === userId || u.role === 'admin')) sendJson(ws, msg)
+    }
+  } catch {}
+}
+async function execOnDevice(deviceId, command, timeoutMs) {
+  const rec = agentSockets.get(deviceId)
+  if (!rec) throw new Error('Device offline')
+  const commandId = uuidv4()
+  const tOut = Math.min(Math.max(parseInt(timeoutMs) || 60000, 1000), 300000)
+  let runCommand = command
+  try {
+    const devRow  = db.prepare('SELECT info FROM devices WHERE id=?').get(deviceId)
+    const devInfo = parseJson((devRow && devRow.info) || '', {})
+    if (String(devInfo.platform || '').toLowerCase().includes('windows') && command.length <= 1800) {
+      const psCmd = "$ProgressPreference='SilentlyContinue'; [Console]::OutputEncoding=[System.Text.Encoding]::UTF8; " + command + "; if (-not $?) { exit 1 }"
+      runCommand = 'powershell -NoProfile -NonInteractive -EncodedCommand ' + Buffer.from(psCmd, 'utf16le').toString('base64')
+    }
+  } catch {}
+  return await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => { pendingCommands.delete(commandId); reject(new Error('command timeout')) }, tOut + 5000)
+    pendingCommands.set(commandId, { resolve, reject, timer })
+    sendJson(rec.ws, { type: 'server:command', payload: { commandId, type: 'shell', command: runCommand } })
+  })
+}
+
+function addNotification(n) {
+  try {
+    const id = uuidv4(); const now = new Date().toISOString()
+    db.prepare("INSERT INTO notifications (id, user_id, device_id, type, title, message, severity, read, created_at) VALUES (?,?,?,?,?,?,?,0,?)").run(id, n.userId || '', n.deviceId || null, n.type || 'info', n.title || '', n.message || '', n.severity || 'info', now)
+    const row = { id, user_id: n.userId || '', device_id: n.deviceId || null, type: n.type || 'info', title: n.title || '', message: n.message || '', severity: n.severity || 'info', read: 0, created_at: now }
+    sendToUser(n.userId, { type: 'broadcast:notification', payload: row, timestamp: Date.now() })
+  } catch {}
+}
+function resolveAiConfig(body) {
+  try {
+    const c = body && body.config
+    if (c && c.provider) {
+      // v3.3.5 — provider-aware merge: prefer the client value, then THIS provider's saved
+      // config, then the stored active config only if it belongs to the same provider.
+      const stored = getAiConfig() || {}
+      const cfgMap = getAiConfigs()
+      const saved  = cfgMap[c.provider] || {}
+      const same   = (stored.provider || '') === c.provider ? stored : {}
+      return {
+        provider: c.provider,
+        apiKey:   c.apiKey || saved.apiKey || same.apiKey || '',
+        model:    c.model || saved.model || same.model || '',
+        baseUrl:  (c.baseUrl !== undefined && c.baseUrl !== null && c.baseUrl !== '') ? c.baseUrl : (saved.baseUrl || same.baseUrl || '')
+      }
+    }
+    return getAiConfig()
+  } catch { return getAiConfig() }
+}
+
+// v3.3.2 — device context for AI chats so the assistant can identify the target device
+function buildDeviceAiContext(deviceId) {
+  try {
+    if (!deviceId) return ''
+    const d = db.prepare('SELECT * FROM devices WHERE id=?').get(deviceId)
+    if (!d) return ''
+    const sock  = agentSockets.get(deviceId)
+    const online = !!(sock && sock.ws && sock.ws.readyState === 1)
+    const info  = parseJson(d.info, {})
+    const stats = (sock && sock.stats) || null
+    const L = []
+    L.push('سياق الجهاز الحالي (الجهاز الذي يتحدث عنه المستخدم — استخدم هذه البيانات في ردك):')
+    L.push('- الاسم: ' + (d.name || 'غير معروف'))
+    L.push('- الحالة: ' + (online ? 'متصل بالسيرفر الآن' : 'غير متصل'))
+    if (info.hostname)     L.push('- اسم المضيف: ' + info.hostname)
+    if (info.platform)     L.push('- النظام: ' + info.platform + ' ' + (info.arch || '') + (info.osVersion ? ' (' + info.osVersion + ')' : ''))
+    if (info.agentVersion) L.push('- إصدار الوكيل: ' + info.agentVersion)
+    if (info.ipLocal)      L.push('- IP المحلي: ' + info.ipLocal)
+    if (d.last_seen)       L.push('- آخر ظهور: ' + d.last_seen)
+    if (stats) {
+      L.push('- الموارد الآن: CPU ' + (stats.cpuPercent != null ? stats.cpuPercent + '%' : '?') +
+             ' | RAM ' + (stats.ramPercent != null ? stats.ramPercent + '%' : '?') +
+             ' (' + (stats.ramUsedMb || '?') + '/' + (stats.ramTotalMb || '?') + ' MB)' +
+             ' | القرص ' + (stats.diskPercent != null ? stats.diskPercent + '%' : '?'))
+    }
+    L.push('مهم: إذا طلب المستخدم شيئاً على هذا الجهاز فأنت تتحدث عنه تحديداً (لا تقل إنك لا تعرف الجهاز). وعندما يكون الحل أمراً قابلاً للتنفيذ، اعرضه في كتلة كود واحدة جاهزة.')
+    L.push('قاعدة الاتصال: إن كانت رسالة المستخدم سؤالاً أو حديثاً عادياً (بدون طلب إجراء على الجهاز) فاجب نصياً مباشرة دون أي كتل أدوات. لا تدرج أوامر أو كتل أدوات من تلقاء نفسك ولا تنسخها من محادثات سابقة.')
+    L.push('لديك ذاكرة تلقائية لأحدث المحادثات مع هذا الجهاز (حتى 10) — استفد منها للاستمرارية ولا تطلب من المستخدم إعادة ما قيل سابقاً.')
+    L.push('- أدوات الجهاز — تُستخدم فقط عند طلب المستخدم إجراءً فعلياً على الجهاز أو معلومة عنه. تنبيه مهم: طلب «اكتب كلمة/جملة كذا» يعني أن تكتبها في ردك نصياً (إجابة عادية) وليس كتابة على الجهاز؛ الكتابة على الجهاز تكون فقط عند ذكر نافذة أو تطبيق أو الجهاز صراحة (مثل: اكتب في المفكرة، اكتب داخل المتصفح). الأدوات: powershell لتنفيذ أوامر، screenshot للقطة شاشة، record لفيديو قصير (داخلها «المدة: N»)، control للتحكم بالفأرة ولوحة المفاتيح (أوامر إنجليزية مفردة: click x y، clickname النص — للنقر على عنصر باسمه مثل Play أو عنوان نتيجة، wait ثوانٍ، type النص، key مثل CTRL+S، focus عنوان-نافذة، scroll N، drag، move، info). لمهمة طويلة (مثل: افتح يوتيوب وشغّل نتيجة): استخدم powershell لفتح رابط البحث مباشرة، ثم wait، ثم focus المتصفح، ثم clickname بعنوان النتيجة، ثم لقطة تحقق، وأخيراً كتلة record إن طلب تسجيلاً. تابِع خطوة بخطوة عبر الحلقات حتى تكتمل المهمة. قاعدة صارمة: لا تخلط الأدوات — كتلة powershell تحوي أوامر PowerShell فقط (بدون أسطر تبدأ بـ control أو wait أو record)، وأوامر click/clickname/wait/focus/type/key/scroll/info توضع فقط داخل كتلة control، والمدة فقط داخل كتلة record. لا تكتب أبداً أسطر control داخل كتلة powershell. أسماء الكتل يجب أن تكون حرفياً: powershell و control و screenshot و record — لا تستخدم الاسم text أو أي اسم آخر لكتل الأوامر.')
+    L.push('لأخذ لقطة شاشة أضف كتلة كود بلغة screenshot في ردك (يمكن كتابة وصف قصير داخلها)؛ لا حاجة لأوامر التقاط يدوية.')
+    L.push('- إمكانية التنفيذ عن بُعد: متاحة — حين يطلب المستخدم إجراءً على الجهاز نفّذه فوراً بكتلة كود مناسبة، وعندها لا تقل إنك لا تستطيع.')
+    L.push('عند طلب إجراء على الجهاز (تشغيل برنامج، فتح موقع، لقطة، فيديو، نقر/كتابة) اختر الأداة المناسبة واكتبها في كتلة الكود الخاصة بها؛ سينفذها النظام ويعيد لك النتيجة للتحليل والاستمرار.')
+    return L.join('\n')
+  } catch { return '' }
+}
+// v3.3.4 — AI memory: compact recap of the last 10 conversations for this user+device
+function buildAiMemory(userId, deviceId, currentConvId) {
+  try {
+    const rows = db.prepare('SELECT id, title, messages, updated_at FROM ai_conversations WHERE user_id=? AND device_id=? AND id<>? ORDER BY updated_at DESC LIMIT 14').all(userId, deviceId || '', currentConvId || '')
+    // v3.3.5 — skip tool-execution conversations: their titles/examples mislead small models
+    const toolWords = ['المفكرة', 'لقطة', 'فيديو', 'control', 'screenshot', 'record', 'نفذ', 'شغل', 'افتح', 'انقر', 'سجّل', 'notepad']
+    const rows2 = rows.filter(r => { const s = String(r.title || '').toLowerCase(); return !toolWords.some(x => s.includes(x.toLowerCase())) }).slice(0, 10)
+    if (!rows2.length) return ''
+    const L = ['ذاكرة المحادثات السابقة (آخر ' + rows2.length + ' محادثة مع هذا الجهاز — الأحدث أولاً؛ استخدمها لفهم السياق والاستمرارية):']
+    for (const r of rows2) {
+      const msgs = parseJson(r.messages, [])
+      const tail = msgs.slice(-2)
+      const parts = tail.map(m => (m.role === 'user' ? 'المستخدم: ' : 'المساعد: ') + String(m.content || '').replace(/```[\s\S]*?```/g, '[أداة]').replace(/\s+/g, ' ').slice(0, 160))
+      L.push('- [' + String(r.updated_at || '').slice(0, 16) + '] ' + String(r.title || '').replace(/\s+/g, ' ').slice(0, 80) + ' :: ' + parts.join(' || '))
+    }
+    return L.join('\n')
+  } catch { return '' }
+}
+// — v3.2.2 server-side screen recording (JPEG frames → ZIP) —
+const screenRecorders = new Map()   // deviceId → { recId, userId, frames, bytes, maxFrames, startedAt }
+function crc32(buf) {
+  if (!crc32.table) { crc32.table = []; for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; crc32.table[n] = c >>> 0 } }
+  let crc = 0xFFFFFFFF
+  for (let i = 0; i < buf.length; i++) crc = crc32.table[(crc ^ buf[i]) & 0xFF] ^ (crc >>> 8)
+  return (crc ^ 0xFFFFFFFF) >>> 0
+}
+function buildZipStore(files) {
+  const parts = [], central = []; let offset = 0
+  for (const f of files) {
+    const nameBuf = Buffer.from(f.name, 'utf8')
+    const crc = crc32(f.data)
+    const lh = Buffer.alloc(30)
+    lh.writeUInt32LE(0x04034b50, 0); lh.writeUInt16LE(20, 4); lh.writeUInt16LE(0, 6); lh.writeUInt16LE(0, 8); lh.writeUInt16LE(0, 10); lh.writeUInt16LE(0, 12)
+    lh.writeUInt32LE(crc, 14); lh.writeUInt32LE(f.data.length, 18); lh.writeUInt32LE(f.data.length, 22); lh.writeUInt16LE(nameBuf.length, 26); lh.writeUInt16LE(0, 28)
+    parts.push(lh, nameBuf, f.data)
+    const ch = Buffer.alloc(46)
+    ch.writeUInt32LE(0x02014b50, 0); ch.writeUInt16LE(20, 4); ch.writeUInt16LE(20, 6); ch.writeUInt16LE(0, 8); ch.writeUInt16LE(0, 10); ch.writeUInt16LE(0, 12); ch.writeUInt16LE(0, 14)
+    ch.writeUInt32LE(crc, 16); ch.writeUInt32LE(f.data.length, 20); ch.writeUInt32LE(f.data.length, 24); ch.writeUInt16LE(nameBuf.length, 28); ch.writeUInt16LE(0, 30); ch.writeUInt16LE(0, 32); ch.writeUInt16LE(0, 34); ch.writeUInt16LE(0, 36); ch.writeUInt32LE(0, 38); ch.writeUInt32LE(offset, 42)
+    central.push(ch, nameBuf)
+    offset += lh.length + nameBuf.length + f.data.length
+  }
+  const centralBuf = Buffer.concat(central)
+  const eocd = Buffer.alloc(22)
+  eocd.writeUInt32LE(0x06054b50, 0); eocd.writeUInt16LE(0, 4); eocd.writeUInt16LE(0, 6)
+  eocd.writeUInt16LE(files.length, 8); eocd.writeUInt16LE(files.length, 10); eocd.writeUInt32LE(centralBuf.length, 12); eocd.writeUInt32LE(offset, 16); eocd.writeUInt16LE(0, 20)
+  return Buffer.concat([...parts, centralBuf, eocd])
+}
+function recordAudioChunk(deviceId, buf, format = 'webm') {
+  try {
+    const r = screenRecorders.get(deviceId)
+    if (!r || !buf || !buf.length) return
+    if ((r.audioBytes || 0) > 64 * 1024 * 1024) return
+    if (!r.audio) r.audio = []
+    if (!r.audioFormat) r.audioFormat = format
+    r.audio.push(Buffer.from(buf))
+    r.audioBytes = (r.audioBytes || 0) + buf.length
+  } catch {}
+}
+function recordScreenFrame(deviceId, jpegBuf) {
+  try {
+    const r = screenRecorders.get(deviceId)
+    if (!r || !jpegBuf || !jpegBuf.length) return
+    if (r.frames.length >= r.maxFrames) return
+    if (r.bytes > 250 * 1024 * 1024) return
+    r.frames.push(Buffer.from(jpegBuf))
+    r.bytes += jpegBuf.length
+  } catch {}
+}
+function finalizeScreenRecording(deviceId) {
+  const r = screenRecorders.get(deviceId)
+  if (!r) return null
+  screenRecorders.delete(deviceId)
+  try {
+    const dir = path.join(path.dirname(_config.dbPath || '.'), 'recordings')
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
+    const zipPath = path.join(dir, r.recId + '.zip')
+    const entries = r.frames.map((buf, i) => ({ name: 'frame-' + String(i).padStart(5, '0') + '.jpg', data: buf }))
+    if (r.audio && r.audio.length) entries.push({ name: r.audioFormat === 'pcm16' ? 'audio.pcm' : 'audio.webm', data: Buffer.concat(r.audio) })
+    if (!entries.length) entries.push({ name: 'README.txt', data: Buffer.from('No frames captured', 'utf8') })
+    fs.writeFileSync(zipPath, buildZipStore(entries))
+    const sizeMb = fs.statSync(zipPath).size / 1024 / 1024
+    const endedAt = new Date().toISOString()
+    const durationSec = Math.max(0, Math.floor((Date.now() - r.startedAt) / 1000))
+    db.prepare("UPDATE recordings SET ended_at=?, file_path=?, size_mb=? WHERE id=?").run(endedAt, zipPath, sizeMb, r.recId)
+    return { sessionId: r.recId, frames: r.frames.length, audioChunks: (r.audio || []).length, sizeMB: sizeMb, durationSec, endedAt }
+  } catch (e) {
+    try { db.prepare("UPDATE recordings SET ended_at=? WHERE id=?").run(new Date().toISOString(), r.recId) } catch {}
+    return { sessionId: r.recId, error: e.message }
+  }
+}
+
 // 15. WS Auth Helper
 // ─────────────────────────────────────────────────────────────────────────────
 function resolveWsUser(query) {
@@ -1022,7 +1780,7 @@ let started    = false
 let _config    = {}
 let _startedAt = null
 
-const AGENT_VERSION = '3.2.1'
+const AGENT_VERSION = '3.6.0'
 
 async function start(config) {
   if (started) return
@@ -1033,10 +1791,68 @@ async function start(config) {
 
   initDb(dbPath)
 
+  // Close sessions left open by a previous crash/restart so the Sessions
+  // page never shows days-old streams as still active.
+  try {
+    db.prepare(`UPDATE sessions
+      SET ended_at = datetime('now'),
+          duration_sec = CAST((julianday('now') - julianday(started_at)) * 86400 AS INTEGER)
+      WHERE ended_at IS NULL`).run()
+  } catch {}
+
   fastify = Fastify({ logger: false })
   await fastify.register(fcors, { origin: true, credentials: true })
   await fastify.register(frateLimit, { global: false, max: 200, timeWindow: '1 minute' })
   await fastify.register(fws)
+
+  // ── v3.4.0 harden + perf: security headers (HTML) + Brotli/Gzip + ETag + cache ──
+  fastify.addHook('onSend', async (req, reply, payload) => {
+    try {
+      const ct = String(reply.getHeader('content-type') || '')
+      if (ct.includes('text/html')) {
+        reply.header('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' ws: wss:; font-src 'self' data: https://fonts.gstatic.com; object-src 'none'; base-uri 'self'; frame-ancestors 'self'")
+        reply.header('X-Content-Type-Options', 'nosniff')
+        reply.header('Referrer-Policy', 'no-referrer')
+        reply.header('X-Frame-Options', 'SAMEORIGIN')
+      }
+    } catch {}
+    return payload
+  })
+  const perfCache = new Map()
+  fastify.addHook('onSend', async (req, reply, payload) => {
+    try {
+      const ct = String(reply.getHeader('content-type') || '')
+      if (!ct || ct.includes('event-stream') || ct.includes('octet-stream') || ct.startsWith('image/') || ct.startsWith('audio/') || ct.startsWith('video/')) return payload
+      if (!/text\/|application\/json|application\/javascript|xml|svg/.test(ct)) return payload
+      if (reply.getHeader('content-encoding')) return payload
+      let buf
+      if (Buffer.isBuffer(payload)) buf = payload
+      else if (typeof payload === 'string') buf = Buffer.from(payload)
+      else if (payload && typeof payload.pipe === 'function') { const chunks = []; for await (const c of payload) chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)); buf = Buffer.concat(chunks) }
+      else return payload
+      if (buf.length < 1024 || buf.length > 6 * 1024 * 1024) return buf
+      const urlPath = String(req.raw ? req.raw.url : req.url || '')
+      const isHashed = /\/assets\/[^/]*-[A-Za-z0-9_-]{8,}\.(js|css)$/.test(urlPath)
+      const ae = String(req.headers['accept-encoding'] || '')
+      const ck = urlPath + ':' + buf.length
+      let out = perfCache.get(ck)
+      if (!out) {
+        out = { br: zlib.brotliCompressSync(buf, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 5 } }), gz: zlib.gzipSync(buf) }
+        if (perfCache.size > 64) perfCache.clear()
+        perfCache.set(ck, out)
+      }
+      if (isHashed) {
+        const etag = 'W/"' + crypto.createHash('sha1').update(buf).digest('hex').slice(0, 24) + '"'
+        reply.header('ETag', etag)
+        reply.header('Cache-Control', 'public, max-age=31536000, immutable')
+        if (req.headers['if-none-match'] === etag) { reply.code(304); return '' }
+      }
+      reply.header('Vary', 'Accept-Encoding')
+      if (/\bbr\b/.test(ae)) { reply.header('Content-Encoding', 'br'); return out.br }
+      if (/\bgzip\b/.test(ae)) { reply.header('Content-Encoding', 'gzip'); return out.gz }
+      return buf
+    } catch { return payload }
+  })
 
   // Serve static React Dashboard if built
   const staticDir = path.join(__dirname, 'static')
@@ -1048,25 +1864,140 @@ async function start(config) {
     } catch {}
   }
 
-  // SPA fallback
+  // SPA fallback (v3.2.2 fix — reply.sendFile unavailable with decorateReply:false)
   if (hasDashboard) {
+    const indexHtml = fs.readFileSync(path.join(staticDir, 'index.html'))
     fastify.setNotFoundHandler((req, reply) => {
       if (/^\/(api|ws|pty|ssh|screen)/.test(req.url)) return reply.code(404).send({ error: 'Not found' })
-      reply.sendFile('index.html')
+      reply.type('text/html').send(indexHtml)
     })
   }
 
+  // ── v3.4.0 — Scheduled tasks (mini scheduler) ─────────────────────────────
+  function taskNextDue(t, now) {
+    if (t.daily_at && /^\d{1,2}:\d{2}$/.test(String(t.daily_at))) {
+      const parts = String(t.daily_at).split(':')
+      const today = new Date(now); today.setHours(parseInt(parts[0], 10) || 0, parseInt(parts[1], 10) || 0, 0, 0)
+      const last = t.last_run_at ? new Date(t.last_run_at) : null
+      if (now >= today && (!last || last < today)) return today.getTime()
+      return today.getTime() + 86400000
+    }
+    if (Number(t.interval_min) > 0) {
+      const last = t.last_run_at ? new Date(t.last_run_at).getTime() : 0
+      const base = last || now.getTime()
+      return base + Number(t.interval_min) * 60000
+    }
+    return null
+  }
+  async function runTask(t) {
+    const startedAt = new Date().toISOString()
+    let result = ''
+    try {
+      if (t.kind === 'ai') {
+        const cfg = resolveAiConfig({})
+        if (!cfg) throw new Error('AI غير مهيأ')
+        const devCtx = t.device_id ? buildDeviceAiContext(t.device_id) : ''
+        const sysMsg = { role: 'system', content: 'أنت منفّذ مهام مجدولة لمنصة AiRemote. نفّذ المهمة التالية واكتب ملخصاً موجزاً بالعربية لنتيجة الفحص أو التنفيذ.' + (devCtx ? '\n\n' + devCtx : '') }
+        result = await callAI([sysMsg, { role: 'user', content: t.payload }], cfg)
+      } else if (t.kind === 'exec') {
+        if (!t.device_id) throw new Error('لا يوجد جهاز محدد')
+        const r = await execOnDevice(t.device_id, t.payload, 60000)
+        result = 'exit=' + (r.exitCode != null ? r.exitCode : '?') + '\n' + String(r.stdout || '').slice(0, 1500) + (r.stderr ? '\n[stderr] ' + String(r.stderr).slice(0, 400) : '')
+      } else { result = 'نوع مهمة غير معروف' }
+    } catch (e) { result = 'فشلت المهمة: ' + ((e && e.message) || e) }
+    const txt = String(result || '').slice(0, 4000)
+    try { db.prepare('UPDATE scheduled_tasks SET last_run_at=?, last_result=? WHERE id=?').run(startedAt, txt, t.id) } catch {}
+    try { addNotification({ userId: t.user_id, deviceId: t.device_id || null, type: 'task', title: 'مهمة مجدولة — ' + t.name, message: txt.slice(0, 600), severity: 'info' }) } catch {}
+    try { dbLogAudit({ userId: t.user_id, action: 'scheduled_task_run', deviceId: t.device_id || null, details: { task: t.name, kind: t.kind } }) } catch {}
+  }
+  let taskTimer = null
+  if (!taskTimer) {
+    taskTimer = setInterval(async () => {
+      try {
+        const now = new Date()
+        const tasks = db.prepare('SELECT * FROM scheduled_tasks WHERE enabled=1').all()
+        for (const t of tasks) {
+          const nd = taskNextDue(t, now)
+          if (nd == null) continue
+          if (now.getTime() >= nd) {
+            if (t.last_run_at && (now.getTime() - new Date(t.last_run_at).getTime()) < 45000) continue
+            runTask(t).catch(() => {})
+          }
+        }
+      } catch {}
+    }, 45000)
+  }
+
+  fastify.get('/api/tasks', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    const rows = db.prepare('SELECT * FROM scheduled_tasks WHERE user_id=? ORDER BY created_at DESC').all(p.userId)
+    const now = new Date()
+    return rows.map(r => ({ ...r, next_due: taskNextDue(r, now) }))
+  })
+  fastify.post('/api/tasks', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    const { name, kind = 'ai', deviceId = null, payload = '', intervalMin = 0, dailyAt = null, enabled = 1 } = req.body || {}
+    if (!name || !payload) return reply.code(400).send({ error: 'name and payload required' })
+    if (!['ai', 'exec'].includes(kind)) return reply.code(400).send({ error: 'kind must be ai|exec' })
+    const id = uuidv4()
+    db.prepare('INSERT INTO scheduled_tasks (id, user_id, name, kind, device_id, payload, interval_min, daily_at, enabled) VALUES (?,?,?,?,?,?,?,?,?)').run(id, p.userId, String(name).slice(0, 120), kind, deviceId || null, String(payload), parseInt(intervalMin) || 0, dailyAt || null, enabled ? 1 : 0)
+    dbLogAudit({ userId: p.userId, userEmail: p.email, deviceId: deviceId || null, action: 'task_created', details: { name: String(name).slice(0, 120), kind }, ipAddress: req.ip })
+    return { id }
+  })
+  fastify.put('/api/tasks/:id', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    const t = db.prepare('SELECT * FROM scheduled_tasks WHERE id=? AND user_id=?').get(req.params.id, p.userId)
+    if (!t) return reply.code(404).send({ error: 'Not found' })
+    const { name, deviceId, payload, intervalMin, dailyAt, enabled } = req.body || {}
+    db.prepare('UPDATE scheduled_tasks SET name=?, device_id=?, payload=?, interval_min=?, daily_at=?, enabled=? WHERE id=?').run(
+      name != null ? String(name).slice(0, 120) : t.name,
+      deviceId !== undefined ? (deviceId || null) : t.device_id,
+      payload != null ? String(payload) : t.payload,
+      intervalMin != null ? (parseInt(intervalMin) || 0) : t.interval_min,
+      dailyAt !== undefined ? (dailyAt || null) : t.daily_at,
+      enabled != null ? (enabled ? 1 : 0) : t.enabled,
+      t.id)
+    return { ok: true }
+  })
+  fastify.delete('/api/tasks/:id', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    const t = db.prepare('SELECT * FROM scheduled_tasks WHERE id=? AND user_id=?').get(req.params.id, p.userId)
+    if (!t) return reply.code(404).send({ error: 'Not found' })
+    db.prepare('DELETE FROM scheduled_tasks WHERE id=?').run(t.id)
+    dbLogAudit({ userId: p.userId, userEmail: p.email, action: 'task_deleted', details: { name: t.name }, ipAddress: req.ip })
+    return { ok: true }
+  })
+  fastify.post('/api/tasks/:id/run', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    const t = db.prepare('SELECT * FROM scheduled_tasks WHERE id=? AND user_id=?').get(req.params.id, p.userId)
+    if (!t) return reply.code(404).send({ error: 'Not found' })
+    runTask(t).catch(() => {})
+    return { ok: true, started: true }
+  })
+
   // ── Health ────────────────────────────────────────────────────────────────
+  fastify.addContentTypeParser('application/octet-stream', { parseAs: 'buffer' }, (req, body, done) => done(null, body))
+
   fastify.get('/api/health', async () => ({
     status: 'ok', version: AGENT_VERSION, uptime: Math.floor(process.uptime()),
     devices: { online: agentSockets.size, total: db.prepare("SELECT COUNT(*) as c FROM devices").get().c },
     port, localIp: getLocalIp(), isDesktop: true,
+    addresses: (() => { try { const os = require('os'); const n = os.networkInterfaces(); const out = []; for (const k of Object.keys(n)) for (const a of (n[k] || [])) if (a.family === 'IPv4' && !a.internal) out.push(a.address); return out } catch { return [] } })(),
   }))
+
+  // ── GET /api/agent/allowed — lets a kicked agent poll whether it may reconnect ──
+  fastify.get('/api/agent/allowed', async (req, reply) => {
+    const token = String((req.query && req.query.token) || '')
+    if (!token) return reply.code(400).send({ error: 'token required' })
+    const d = db.prepare('SELECT status FROM devices WHERE token=?').get(token)
+    if (!d) return reply.code(404).send({ error: 'unknown device' })
+    return { allowed: d.status !== 'blocked' }
+  })
 
   // ── Setup ─────────────────────────────────────────────────────────────────
   fastify.get('/api/setup/check', async () => {
     const { c } = db.prepare("SELECT COUNT(*) as c FROM users").get()
-    return { needsSetup: c === 0 }
+    return { needsSetup: c === 0, setupRequired: c === 0 }
   })
 
   fastify.post('/api/setup/init', async (req, reply) => {
@@ -1082,10 +2013,32 @@ async function start(config) {
     const refreshHash  = crypto.createHash('sha256').update(refreshToken).digest('hex')
     db.prepare("INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at) VALUES (?,?,?,?)").run(uuidv4(), id, refreshHash, new Date(Date.now() + 30 * 24 * 3600000).toISOString())
     dbLogAudit({ userId: id, userEmail: email, action: 'setup_completed', ipAddress: req.ip })
-    return { accessToken, refreshToken, user: { id, email, name, role: 'admin' } }
+    return { accessToken, token: accessToken, refreshToken, user: { id, email, name, role: 'admin' } }
   })
 
   // ── Auth ──────────────────────────────────────────────────────────────────
+  // v3.2.2 — Dashboard aliases (auth/setup-status, auth/setup)
+  fastify.get('/api/auth/setup-status', async () => {
+    const { c } = db.prepare("SELECT COUNT(*) as c FROM users").get()
+    return { needsSetup: c === 0, setupRequired: c === 0 }
+  })
+
+  fastify.post('/api/auth/setup', async (req, reply) => {
+    const { email, password, name = 'Admin' } = req.body || {}
+    if (!email || !password) return reply.code(400).send({ error: 'email and password required' })
+    if (password.length < 8) return reply.code(400).send({ error: 'Password must be at least 8 characters' })
+    const { c } = db.prepare("SELECT COUNT(*) as c FROM users").get()
+    if (c > 0) return reply.code(400).send({ error: 'Already initialized' })
+    const hash = await bcrypt.hash(password, 12); const id = uuidv4()
+    db.prepare("INSERT INTO users (id, email, name, role, password_hash) VALUES (?,?,?,?,?)").run(id, email, name, 'admin', hash)
+    const accessToken  = signToken({ userId: id, email, role: 'admin' })
+    const refreshToken = uuidv4()
+    const refreshHash  = crypto.createHash('sha256').update(refreshToken).digest('hex')
+    db.prepare("INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at) VALUES (?,?,?,?)").run(uuidv4(), id, refreshHash, new Date(Date.now() + 30 * 24 * 3600000).toISOString())
+    dbLogAudit({ userId: id, userEmail: email, action: 'setup_completed', ipAddress: req.ip })
+    return { accessToken, token: accessToken, refreshToken, user: { id, email, name, role: 'admin' } }
+  })
+
   fastify.post('/api/auth/login', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { email, password } = req.body || {}
     if (!email || !password) return reply.code(400).send({ error: 'Email and password required' })
@@ -1101,7 +2054,7 @@ async function start(config) {
     const refreshToken = uuidv4()
     db.prepare("INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at) VALUES (?,?,?,?)").run(uuidv4(), user.id, crypto.createHash('sha256').update(refreshToken).digest('hex'), new Date(Date.now() + 30 * 24 * 3600000).toISOString())
     dbLogAudit({ userId: user.id, userEmail: user.email, action: 'login_success', ipAddress: req.ip })
-    return { accessToken, refreshToken, user: { id: user.id, email: user.email, name: user.name, role: user.role } }
+    return { accessToken, token: accessToken, refreshToken, user: { id: user.id, email: user.email, name: user.name, role: user.role } }
   })
 
   fastify.post('/api/auth/login/verify-totp', async (req, reply) => {
@@ -1117,7 +2070,7 @@ async function start(config) {
     const refreshToken = uuidv4()
     db.prepare("INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at) VALUES (?,?,?,?)").run(uuidv4(), user.id, crypto.createHash('sha256').update(refreshToken).digest('hex'), new Date(Date.now() + 30 * 24 * 3600000).toISOString())
     dbLogAudit({ userId: user.id, userEmail: user.email, action: 'login_success', details: { via: '2fa' }, ipAddress: req.ip })
-    return { accessToken, refreshToken, user: { id: user.id, email: user.email, name: user.name, role: user.role } }
+    return { accessToken, token: accessToken, refreshToken, user: { id: user.id, email: user.email, name: user.name, role: user.role } }
   })
 
   fastify.post('/api/auth/refresh', async (req, reply) => {
@@ -1128,7 +2081,12 @@ async function start(config) {
     if (!row) return reply.code(401).send({ error: 'Invalid or expired refresh token' })
     const user = db.prepare("SELECT * FROM users WHERE id=?").get(row.user_id)
     if (!user) return reply.code(401).send({ error: 'User not found' })
-    return { accessToken: signToken({ userId: user.id, email: user.email, role: user.role }), user: { id: user.id, email: user.email, name: user.name, role: user.role } }
+    // v3.2.2 — تدوير الرمز (single-use) + alias للواجهة
+    db.prepare("DELETE FROM refresh_tokens WHERE id=?").run(row.id)
+    const newRefreshToken = uuidv4()
+    db.prepare("INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at) VALUES (?,?,?,?)").run(uuidv4(), user.id, crypto.createHash('sha256').update(newRefreshToken).digest('hex'), new Date(Date.now() + 30 * 24 * 3600000).toISOString())
+    const accessToken = signToken({ userId: user.id, email: user.email, role: user.role })
+    return { accessToken, token: accessToken, refreshToken: newRefreshToken, user: { id: user.id, email: user.email, name: user.name, role: user.role } }
   })
 
   fastify.get('/api/auth/me', async (req, reply) => {
@@ -1165,6 +2123,12 @@ async function start(config) {
   })
 
   // ── 2FA ───────────────────────────────────────────────────────────────────
+  fastify.get('/api/auth/2fa/status', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    const u = db.prepare('SELECT totp_enabled FROM users WHERE id=?').get(p.userId)
+    return { enabled: !!(u && u.totp_enabled) }
+  })
+
   fastify.post('/api/auth/2fa/setup', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
     const user   = db.prepare("SELECT email FROM users WHERE id=?").get(p.userId)
@@ -1202,6 +2166,7 @@ async function start(config) {
   fastify.get('/api/users', async (req, reply) => {
     if (!adminMiddleware(req, reply)) return
     return db.prepare("SELECT id, email, name, role, totp_enabled, created_at, updated_at FROM users ORDER BY created_at").all()
+      .map(u => ({ ...u, totpEnabled: !!u.totp_enabled, createdAt: u.created_at, updatedAt: u.updated_at }))
   })
 
   fastify.post('/api/users', async (req, reply) => {
@@ -1245,8 +2210,37 @@ async function start(config) {
   // ── Sessions ──────────────────────────────────────────────────────────────
   fastify.get('/api/sessions', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
-    if (p.role === 'admin') return db.prepare("SELECT s.*, d.name as device_name, u.email as user_email FROM sessions s LEFT JOIN devices d ON s.device_id=d.id LEFT JOIN users u ON s.user_id=u.id ORDER BY s.started_at DESC LIMIT 100").all()
-    return db.prepare("SELECT s.*, d.name as device_name FROM sessions s LEFT JOIN devices d ON s.device_id=d.id WHERE s.user_id=? ORDER BY s.started_at DESC LIMIT 100").all(p.userId)
+    const limit = Math.min(parseInt(req.query?.limit || '100') || 100, 500)
+    const base  = "SELECT s.*, d.name as device_name, u.email as user_email FROM sessions s LEFT JOIN devices d ON s.device_id=d.id LEFT JOIN users u ON s.user_id=u.id"
+    const rows  = p.role === 'admin'
+      ? db.prepare(base + " ORDER BY s.started_at DESC LIMIT ?").all(limit)
+      : db.prepare(base + " WHERE s.user_id=? ORDER BY s.started_at DESC LIMIT ?").all(p.userId, limit)
+    return rows.map(mapSessionRow)
+  })
+
+  // v3.2.2 — Live screen sessions (admin)
+  fastify.get('/api/sessions/screen/active', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    if (p.role !== 'admin') return reply.code(403).send({ error: 'Admin only' })
+    const out = []
+    for (const [sid2, s] of screenSessions) {
+      const rec2 = agentSockets.get(s.deviceId)
+      out.push({ sessionId: sid2, deviceId: s.deviceId, deviceName: (rec2 && rec2.deviceName) || s.deviceId, userId: s.userId || null, viewers: s.viewers.size, startedAt: new Date(s.startedAt).toISOString() })
+    }
+    return out
+  })
+
+  fastify.delete('/api/sessions/screen/:id', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    if (p.role !== 'admin') return reply.code(403).send({ error: 'Admin only' })
+    const s = screenSessions.get(req.params.id)
+    if (!s) return reply.code(404).send({ error: 'Session not found' })
+    const rec2 = agentSockets.get(s.deviceId)
+    if (rec2) sendJson(rec2.ws, { type: 'server:screen_stop', payload: { sessionId: req.params.id }, timestamp: Date.now() })
+    try { dbLogSessionEnd(s.dbId) } catch {}
+    try { finalizeScreenRecording(s.deviceId) } catch {}
+    closeScreenSession(req.params.id, 'أوقفت الجلسة من قِبل المشرف / Stopped by admin')
+    return { ok: true }
   })
 
   fastify.delete('/api/sessions/:id', async (req, reply) => {
@@ -1263,11 +2257,55 @@ async function start(config) {
     const rows = p.role === 'admin'
       ? db.prepare("SELECT * FROM devices ORDER BY name").all()
       : db.prepare("SELECT * FROM devices WHERE owner_id=? ORDER BY name").all(p.userId)
-    return rows.map(d => ({
-      ...d, info: parseJson(d.info), tags: parseJson(d.tags, []),
-      capabilities: parseJson(d.capabilities, {}), isOnline: agentSockets.has(d.id),
-      stats: agentSockets.get(d.id)?.stats || null,
-    }))
+    return rows.map(d => {
+      const online = agentSockets.has(d.id)
+      const rm = (agentSockets.get(d.id)?.ws?._socket?.remoteAddress || null)
+      const rmClean = rm ? String(rm).replace('::ffff:', '') : null
+      const info = parseJson(d.info) || {}
+      if (!info.ipPublic && rmClean) info.ipPublic = rmClean
+      const tunnelLayer = rmClean ? (/^10\.90\./.test(rmClean) ? 'zerotier' : (/^(192\.168\.|10\.)/.test(rmClean) ? 'lan' : 'wan')) : null
+      return {
+        ...d, info, tags: parseJson(d.tags, []),
+        capabilities: parseJson(d.capabilities, {}), isOnline: online,
+        status: d.status === 'blocked' ? 'blocked' : (online ? 'online' : 'offline'),
+        remoteIp: rmClean, tunnelLayer,
+        stats: agentSockets.get(d.id)?.stats || null,
+      }
+    })
+  })
+
+  fastify.post('/api/devices/:id/disconnect', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'Forbidden' })
+    const d = db.prepare('SELECT * FROM devices WHERE id=?').get(req.params.id)
+    if (!d) return reply.code(404).send({ error: 'Not found' })
+    const rec = agentSockets.get(req.params.id)
+    if (rec && rec.ws) { try { rec.ws.close(4001, 'kicked') } catch {} }
+    db.prepare("UPDATE devices SET status='offline' WHERE id=?").run(req.params.id)
+    dbLogAudit({ userId: p.userId, userEmail: p.email, action: 'device_disconnected', deviceId: req.params.id, details: { name: d.name }, ipAddress: req.ip })
+    return { ok: true }
+  })
+
+  fastify.post('/api/devices/:id/block', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'Forbidden' })
+    const d = db.prepare('SELECT * FROM devices WHERE id=?').get(req.params.id)
+    if (!d) return reply.code(404).send({ error: 'Not found' })
+    const rec = agentSockets.get(req.params.id)
+    if (rec && rec.ws) { try { rec.ws.close(4001, 'kicked') } catch {} }
+    db.prepare("UPDATE devices SET status='blocked' WHERE id=?").run(req.params.id)
+    dbLogAudit({ userId: p.userId, userEmail: p.email, action: 'device_blocked', deviceId: req.params.id, details: { name: d.name }, ipAddress: req.ip })
+    return { ok: true, status: 'blocked' }
+  })
+
+  fastify.post('/api/devices/:id/unblock', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'Forbidden' })
+    const d = db.prepare('SELECT * FROM devices WHERE id=?').get(req.params.id)
+    if (!d) return reply.code(404).send({ error: 'Not found' })
+    db.prepare("UPDATE devices SET status='offline' WHERE id=?").run(req.params.id)
+    dbLogAudit({ userId: p.userId, userEmail: p.email, action: 'device_unblocked', deviceId: req.params.id, details: { name: d.name }, ipAddress: req.ip })
+    return { ok: true, status: 'offline' }
   })
 
   fastify.post('/api/devices', async (req, reply) => {
@@ -1285,7 +2323,13 @@ async function start(config) {
     if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
     const d = db.prepare("SELECT * FROM devices WHERE id=?").get(req.params.id)
     if (!d) return reply.code(404).send({ error: 'Not found' })
-    return { ...d, info: parseJson(d.info), tags: parseJson(d.tags, []), capabilities: parseJson(d.capabilities, {}), isOnline: agentSockets.has(d.id), stats: agentSockets.get(d.id)?.stats || null }
+    const online = agentSockets.has(d.id)
+    const rm = (agentSockets.get(d.id)?.ws?._socket?.remoteAddress || null)
+    const rmClean = rm ? String(rm).replace('::ffff:', '') : null
+    const info = parseJson(d.info) || {}
+    if (!info.ipPublic && rmClean) info.ipPublic = rmClean
+    const tunnelLayer = rmClean ? (/^10\.90\./.test(rmClean) ? 'zerotier' : (/^(192\.168\.|10\.)/.test(rmClean) ? 'lan' : 'wan')) : null
+    return { ...d, info, tags: parseJson(d.tags, []), capabilities: parseJson(d.capabilities, {}), isOnline: online, remoteIp: rmClean, tunnelLayer, status: d.status === 'blocked' ? 'blocked' : (online ? 'online' : 'offline'), stats: agentSockets.get(d.id)?.stats || null }
   })
 
   fastify.put('/api/devices/:id', async (req, reply) => {
@@ -1317,17 +2361,64 @@ async function start(config) {
     const d = db.prepare("SELECT info FROM devices WHERE id=?").get(req.params.id)
     if (!d) return reply.code(404).send({ error: 'Device not found' })
     const info = parseJson(d.info) || {}
-    const mac  = info?.mac || req.body?.mac
-    if (!mac) return reply.code(400).send({ error: 'No MAC address' })
-    const mac_hex = mac.replace(/[:-]/g, '')
-    if (mac_hex.length !== 12) return reply.code(400).send({ error: 'Invalid MAC' })
-    const buf = Buffer.alloc(102); buf.fill(0xff, 0, 6)
-    for (let i = 1; i <= 16; i++) for (let j = 0; j < 6; j++) buf[i * 6 + j] = parseInt(mac_hex.substr(j * 2, 2), 16)
-    const dgram = require('dgram'); const sock = dgram.createSocket('udp4')
-    sock.once('listening', () => sock.setBroadcast(true))
-    sock.send(buf, 0, buf.length, 9, '255.255.255.255', () => sock.close())
-    dbLogAudit({ userId: p.userId, userEmail: p.email, action: 'device_wol', deviceId: req.params.id, details: { mac }, ipAddress: req.ip })
-    return { ok: true, mac }
+    const rawMac = req.body?.macAddress || req.body?.mac || info?.mac
+    if (!rawMac) return reply.code(400).send({ error: 'No MAC address' })
+    // v3.5 — strict MAC validation (12 hex digits after removing separators)
+    const macHex = String(rawMac).replace(/[^0-9a-fA-F]/g, '').toLowerCase()
+    if (macHex.length !== 12) return reply.code(400).send({ error: 'Invalid MAC address' })
+    const mac = macHex.match(/.{2}/g).join(':')
+    const buf = Buffer.alloc(102)
+    buf.fill(0xff, 0, 6)
+    const macBuf = Buffer.from(macHex, 'hex')
+    for (let i = 1; i <= 16; i++) macBuf.copy(buf, i * 6)
+    // v3.5 — default to the subnet-directed broadcast of the active interface;
+    // 255.255.255.255 is often dropped by switches/routers.
+    function subnetBroadcast() {
+      try {
+        const os = require('os')
+        for (const list of Object.values(os.networkInterfaces())) {
+          for (const ni of list || []) {
+            if (ni.family !== 'IPv4' || ni.internal) continue
+            if (/^169\.254\./.test(ni.address)) continue
+            const ip = ni.address.split('.').map(Number)
+            const mask = (ni.netmask || '255.255.255.0').split('.').map(Number)
+            if (ip.length !== 4 || mask.length !== 4) continue
+            return ip.map((n, i2) => (n | (~mask[i2] & 255))).join('.')
+          }
+        }
+      } catch {}
+      return null
+    }
+    const bcast = (typeof req.body?.broadcast === 'string' && req.body.broadcast.trim())
+      || subnetBroadcast() || '255.255.255.255'
+    const dgram = require('dgram')
+    const ports = [9, 7]
+    const sendResults = []
+    for (const port of ports) {
+      sendResults.push(await new Promise((resolve) => {
+        const sock = dgram.createSocket('udp4')
+        let settled = false
+        const done = (ok, err) => {
+          if (settled) return
+          settled = true
+          try { sock.close() } catch {}
+          resolve({ port, ok, error: err ? String(err.message || err) : undefined })
+        }
+        sock.once('error', (err) => done(false, err))
+        sock.bind(() => {
+          try {
+            sock.setBroadcast(true)
+            sock.send(buf, 0, buf.length, port, bcast, (err) => done(!err, err))
+          } catch (err) { done(false, err) }
+        })
+      }))
+    }
+    const okCount = sendResults.filter(r => r.ok).length
+    dbLogAudit({ userId: p.userId, userEmail: p.email, action: 'device_wol', deviceId: req.params.id, details: { mac, broadcast: bcast, ports, okCount }, ipAddress: req.ip })
+    if (!okCount) {
+      return reply.code(502).send({ error: 'تعذّر إرسال حزمة WOL: ' + (sendResults.find(r => r.error)?.error || 'unknown'), mac, broadcast: bcast, results: sendResults })
+    }
+    return { ok: true, mac, broadcast: bcast, ports, results: sendResults, message: 'تم إرسال حزمة التنبيه (WOL) إلى ' + mac }
   })
 
   fastify.get('/api/devices/:id/stats/history', async (req, reply) => {
@@ -1351,12 +2442,22 @@ async function start(config) {
     if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
     const { path: fsPath } = req.query || {}
     if (!fsPath) return reply.code(400).send({ error: 'path required' })
+    const name = String(fsPath).split('/').pop() || 'file'
+    // v3.5 — HTTP headers must be ASCII; support Arabic filenames via RFC 5987.
+    const asciiName = name.replace(/[^\x20-\x7E]/g, '_').replace(/["\\]/g, '')
+    const utf8Name = encodeURIComponent(name).replace(/'/g, '%27')
+    reply.hijack()
+    reply.raw.writeHead(200, {
+      'Content-Type': 'application/octet-stream',
+      'Content-Disposition': 'attachment; filename="' + asciiName + '"; filename*=UTF-8\'\'' + utf8Name,
+      'Cache-Control': 'no-store',
+      'X-Accel-Buffering': 'no'
+    })
     try {
-      const data = await agentFsRequest(req.params.id, 'read', { path: fsPath })
-      reply.header('Content-Disposition', `attachment; filename="${fsPath.split('/').pop() || 'file'}"`)
-      reply.header('Content-Type', 'application/octet-stream')
-      return Buffer.from(data?.base64 || '', 'base64')
-    } catch (e) { return reply.code(502).send({ error: e.message }) }
+      await agentFsStream(req.params.id, fsPath, reply.raw)
+    } catch (e) {
+      try { reply.raw.destroy() } catch {}
+    }
   })
 
   fastify.post('/api/devices/:id/fs/mkdir', async (req, reply) => {
@@ -1365,6 +2466,32 @@ async function start(config) {
     const { path: fsPath } = req.body || {}
     if (!fsPath) return reply.code(400).send({ error: 'path required' })
     try { return await agentFsRequest(req.params.id, 'mkdir', { path: fsPath }) }
+    catch (e) { return reply.code(502).send({ error: e.message }) }
+  })
+
+  // v3.2.2 — Dashboard FS aliases (list / delete / rename)
+  fastify.get('/api/devices/:id/fs/list', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
+    try { return await agentFsRequest(req.params.id, 'list', { path: req.query?.path || '/' }) }
+    catch (e) { return reply.code(502).send({ error: e.message }) }
+  })
+
+  fastify.post('/api/devices/:id/fs/delete', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
+    const { path: fsPath } = req.body || {}
+    if (!fsPath) return reply.code(400).send({ error: 'path required' })
+    try { return await agentFsRequest(req.params.id, 'delete', { path: fsPath }) }
+    catch (e) { return reply.code(502).send({ error: e.message }) }
+  })
+
+  fastify.post('/api/devices/:id/fs/rename', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
+    const { oldPath, newPath } = req.body || {}
+    if (!oldPath || !newPath) return reply.code(400).send({ error: 'oldPath and newPath required' })
+    try { return await agentFsRequest(req.params.id, 'rename', { path: oldPath, newPath }) }
     catch (e) { return reply.code(502).send({ error: e.message }) }
   })
 
@@ -1377,13 +2504,340 @@ async function start(config) {
     catch (e) { return reply.code(502).send({ error: e.message }) }
   })
 
+  // fs upload (streaming chunks to agent)
+  fastify.post('/api/devices/:id/fs/upload', { bodyLimit: 268435456 }, async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'Forbidden' })
+    const destPath = req.query?.path
+    if (!destPath) return reply.code(400).send({ error: 'path required' })
+    const rec = agentSockets.get(req.params.id)
+    if (!rec) return reply.code(502).send({ error: 'Device offline' })
+    const buf = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body || '')
+    if (buf.length > 268435456) return reply.code(413).send({ error: 'too large' })
+    const CHUNK = 512 * 1024
+    const total = Math.max(1, Math.ceil(buf.length / CHUNK))
+    const opId = uuidv4()
+    const waitResp = new Promise((resolve, reject) => {
+      const timer = setTimeout(() => { pendingFsRequests.delete(opId); reject(new Error('upload timeout')) }, 60000)
+      pendingFsRequests.set(opId, { resolve, reject, timer })
+    })
+    for (let i = 0; i < total; i++) {
+      sendJson(rec.ws, { type: 'server:fs_write_chunk', payload: { opId, path: destPath, seq: i, total, data: buf.slice(i * CHUNK, (i + 1) * CHUNK).toString('base64'), isLast: i === total - 1 } })
+      await new Promise(r => setImmediate(r))
+    }
+    try { const data = await waitResp; return { ok: true, ...(data || {}) } }
+    catch (e) { return reply.code(502).send({ error: e.message }) }
+  })
+
+  // v3.2.2 — Remote command execution (Dashboard /api/devices/:id/exec)
+  fastify.post('/api/devices/:id/exec', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
+    const { command, timeoutMs } = req.body || {}
+    if (!command || typeof command !== 'string') return reply.code(400).send({ error: 'command required' })
+    if (command.length > 4000) return reply.code(400).send({ error: 'command too long (max 4000)' })
+    // v3.3.4 — agents execute via cmd.exe; for Windows devices wrap the command to run in
+    // PowerShell. -EncodedCommand sidelines all quoting/encoding pitfalls (Arabic, quotes).
+    // (kept raw for very long commands to stay under the cmd.exe line-length limit)
+    let runCommand = command
+    try {
+      const devRow  = db.prepare('SELECT info FROM devices WHERE id=?').get(req.params.id)
+      const devInfo = parseJson((devRow && devRow.info) || '', {})
+      if (String(devInfo.platform || '').toLowerCase().includes('windows') && command.length <= 1800) {
+        const psCmd = "$ProgressPreference='SilentlyContinue'; [Console]::OutputEncoding=[System.Text.Encoding]::UTF8; " + command + "; if (-not $?) { exit 1 }"
+        runCommand = 'powershell -NoProfile -NonInteractive -EncodedCommand ' + Buffer.from(psCmd, 'utf16le').toString('base64')
+      }
+    } catch {}
+    const rec = agentSockets.get(req.params.id)
+    if (!rec) return reply.code(502).send({ error: 'Device offline' })
+    const commandId = uuidv4()
+    const tOut = Math.min(Math.max(parseInt(timeoutMs) || 60000, 1000), 300000)
+    const sessId = dbLogSessionStart(p.userId, req.params.id, 'shell', { command: command.slice(0, 200) })
+    const started = Date.now()
+    try {
+      const result = await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => { pendingCommands.delete(commandId); reject(new Error('command timeout')) }, tOut + 5000)
+        pendingCommands.set(commandId, { resolve, reject, timer })
+        sendJson(rec.ws, { type: 'server:command', payload: { commandId, type: 'shell', command: runCommand } })
+      })
+      dbLogSessionEnd(sessId)
+      dbLogAudit({ userId: p.userId, userEmail: p.email, deviceId: req.params.id, action: 'device_exec', details: { command: command.slice(0, 200) }, ipAddress: req.ip })
+      return { ok: true, stdout: (result && result.stdout) || '', stderr: (result && result.stderr) || '', exitCode: (result && result.exitCode) != null ? result.exitCode : -1, duration: Date.now() - started }
+    } catch (e) { dbLogSessionEnd(sessId); return reply.code(502).send({ error: e.message }) }
+  })
+
+
+  // v3.3.4 — one-shot screenshot (dashboard chat): capture on the device, return JPEG
+  fastify.get('/api/devices/:id/screenshot', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
+    const rec = agentSockets.get(req.params.id)
+    if (!rec) return reply.code(502).send({ error: 'Device offline' })
+    // v3.4.2 — Android: capture on device via AISHOT command, then read the JPEG back
+    try {
+      const devRowS  = db.prepare('SELECT info FROM devices WHERE id=?').get(req.params.id)
+      const devInfoS = parseJson((devRowS && devRowS.info) || '', {})
+      if (String(devInfoS.platform || '').toLowerCase().includes('android')) {
+        const shotPathA  = '/data/data/com.airemote.agent/files/shot.jpg'
+        const commandIdS = uuidv4()
+        try {
+          await new Promise((resolve, reject) => {
+            const timer = setTimeout(() => { pendingCommands.delete(commandIdS); reject(new Error('command timeout')) }, 25000)
+            pendingCommands.set(commandIdS, { resolve, reject, timer })
+            sendJson(rec.ws, { type: 'server:command', payload: { commandId: commandIdS, type: 'shell', command: 'AISHOT:' + shotPathA } })
+          })
+          const dataA = await agentFsRequest(req.params.id, 'read', { path: shotPathA })
+          const b64A  = (dataA && (dataA.base64 || (dataA.data && dataA.data.base64))) || ''
+          const bufA  = Buffer.from(b64A, 'base64')
+          if (!bufA.length || bufA[0] !== 0xFF || bufA[1] !== 0xD8) return reply.code(502).send({ error: 'capture failed' })
+          reply.header('Content-Type', 'image/jpeg')
+          reply.header('Cache-Control', 'no-store')
+          return reply.send(bufA)
+        } catch (e) { return reply.code(502).send({ error: 'capture failed: ' + e.message }) }
+      }
+    } catch {}
+
+    const shotPath = 'C:\\Users\\Public\\airemote-shot.jpg'
+    // v3.3.4 — make the capture process DPI-aware first, otherwise on scaled displays it only
+    // grabs the top-left logical region instead of the entire physical screen.
+    const ps = "try { $cs = 'using System;using System.Runtime.InteropServices;public class DpiAw { [DllImport(' + [char]34 + 'user32.dll' + [char]34 + ')] public static extern bool SetProcessDPIAware(); }'; Add-Type -TypeDefinition $cs -ErrorAction SilentlyContinue; [DpiAw]::SetProcessDPIAware() | Out-Null } catch {}; Add-Type -AssemblyName System.Windows.Forms,System.Drawing; $vb=[System.Windows.Forms.SystemInformation]::VirtualScreen; $bmp=New-Object System.Drawing.Bitmap($vb.Width,$vb.Height); $g=[System.Drawing.Graphics]::FromImage($bmp); $g.CopyFromScreen($vb.Location,[System.Drawing.Point]::Empty,$vb.Size); $bmp.Save('" + shotPath + "',[System.Drawing.Imaging.ImageFormat]::Jpeg); $g.Dispose(); $bmp.Dispose(); 'shot-ok'"
+    const commandId = uuidv4()
+    try {
+      await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => { pendingCommands.delete(commandId); reject(new Error('command timeout')) }, 25000)
+        pendingCommands.set(commandId, { resolve, reject, timer })
+        const wrapped = "$ProgressPreference='SilentlyContinue'; " + ps
+        const enc = Buffer.from(wrapped, 'utf16le').toString('base64')
+        sendJson(rec.ws, { type: 'server:command', payload: { commandId, type: 'shell', command: 'powershell -NoProfile -NonInteractive -EncodedCommand ' + enc } })
+      })
+      const data = await agentFsRequest(req.params.id, 'read', { path: shotPath })
+      const buf = Buffer.from((data && data.base64) || '', 'base64')
+      if (!buf.length || buf[0] !== 0xFF || buf[1] !== 0xD8) return reply.code(502).send({ error: 'capture failed' })
+      reply.header('Content-Type', 'image/jpeg')
+      reply.header('Cache-Control', 'no-store')
+      return buf
+    } catch (e) { return reply.code(502).send({ error: e.message }) }
+  })
+
+// v3.3.5 — clickname helper script (written to the device on demand; avoids cmd line length limits)
+const CLICKNAME_PS = `param([string]$nameB64)
+$ProgressPreference = 'SilentlyContinue'
+$n = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String($nameB64)).ToLower()
+Add-Type -AssemblyName UIAutomationClient
+Add-Type -AssemblyName UIAutomationTypes
+$AE = [System.Windows.Automation.AutomationElement]
+$TS = [System.Windows.Automation.TreeScope]
+$CT = [System.Windows.Automation.ControlType]
+$root = $AE::RootElement
+function ScanWin($win, $n) {
+  $types = @($CT::Hyperlink, $CT::Button, $CT::ListItem, $CT::TabItem)
+  foreach ($ct in $types) {
+    try {
+      $cond = New-Object System.Windows.Automation.PropertyCondition($AE::ControlTypeProperty, $ct)
+      $els = $win.FindAll($TS::Descendants, $cond)
+      $i = 0
+      foreach ($x in $els) { $i++; if ($i -gt 6000) { break }; try { $nm = $x.Current.Name; if ($nm -and $nm.ToLower().Contains($n) -and $x.Current.IsEnabled -and -not $x.Current.IsOffscreen) { return $x } } catch {} }
+    } catch {}
+  }
+  try {
+    $els = $win.FindAll($TS::Descendants, [System.Windows.Automation.Condition]::TrueCondition)
+    $i = 0
+    foreach ($x in $els) { $i++; if ($i -gt 4000) { break }; try { $nm = $x.Current.Name; if ($nm -and $nm.ToLower().Contains($n) -and $x.Current.IsEnabled -and -not $x.Current.IsOffscreen) { return $x } } catch {} }
+  } catch {}
+  return $null
+}
+$target = $null
+try {
+  $cs = 'using System;using System.Runtime.InteropServices;public class Fg { [DllImport(' + [char]34 + 'user32.dll' + [char]34 + ')] public static extern IntPtr GetForegroundWindow(); }'
+  Add-Type -TypeDefinition $cs -ErrorAction SilentlyContinue
+  $fg = [Fg]::GetForegroundWindow()
+  if ($fg -ne [IntPtr]::Zero) { $fw = $AE::FromHandle($fg); if ($fw -ne $null) { $target = ScanWin $fw $n } }
+} catch {}
+if ($target -eq $null) {
+  $wins = $root.FindAll($TS::Children, [System.Windows.Automation.Condition]::TrueCondition)
+  foreach ($win in $wins) { try { if ($win.Current.ClassName -match 'Shell_TrayWnd|Progman|WorkerW') { continue } } catch { continue }; $target = ScanWin $win $n; if ($target -ne $null) { break } }
+}
+if ($target -eq $null) { 'name-not-found' } else {
+  try { $target.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke(); 'invoked' }
+  catch {
+    $r = $target.Current.BoundingRectangle
+    $cx = [int]($r.X + $r.Width / 2)
+    $cy = [int]($r.Y + $r.Height / 2)
+    $cc = 'using System;using System.Runtime.InteropServices;public class Mu2 { [DllImport(' + [char]34 + 'user32.dll' + [char]34 + ')] public static extern bool SetCursorPos(int x,int y); [DllImport(' + [char]34 + 'user32.dll' + [char]34 + ')] public static extern void mouse_event(uint f,uint dx,uint dy,uint d,IntPtr e); }'
+    Add-Type -TypeDefinition $cc -ErrorAction SilentlyContinue
+    [Mu2]::SetCursorPos($cx, $cy)
+    Start-Sleep -Milliseconds 150
+    [Mu2]::mouse_event(2,0,0,0,[IntPtr]::Zero)
+    [Mu2]::mouse_event(4,0,0,0,[IntPtr]::Zero)
+    'clicked-center'
+  }
+}`
+
+  // v3.3.4 — remote control for the AI: real mouse/keyboard actions via the agent
+  fastify.post('/api/devices/:id/control', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
+    const rec = agentSockets.get(req.params.id)
+    if (!rec) return reply.code(502).send({ error: 'Device offline' })
+    const b = req.body || {}
+    const action = String(b.action || '').toLowerCase()
+    const xi = (v) => { const n = parseInt(v); return Number.isFinite(n) ? Math.max(0, Math.min(10000, n)) : 0 }
+    const x = xi(b.x), y = xi(b.y), x2 = xi(b.x2), y2 = xi(b.y2)
+    const amount = Math.max(-20, Math.min(20, parseInt(b.amount) || -3))
+    const text = String(b.text || '').slice(0, 500)
+    const key  = String(b.key  || '').replace(/[^A-Za-z0-9 +^%~()]/g, '').slice(0, 30)
+    // v3.4.2 — Android devices: forward the action as a structured AICTL command
+    try {
+      const devRowC  = db.prepare('SELECT info FROM devices WHERE id=?').get(req.params.id)
+      const devInfoC = parseJson((devRowC && devRowC.info) || '', {})
+      if (String(devInfoC.platform || '').toLowerCase().includes('android')) {
+        const commandIdA = uuidv4()
+        const payloadObj = {
+          action, x, y, x2, y2, amount, text, key,
+          seconds: Math.min(Math.max(parseInt(b.seconds != null ? b.seconds : b.amount) || 2, 1), 20)
+        }
+        const cmdA = 'AICTL:' + Buffer.from(JSON.stringify(payloadObj), 'utf8').toString('base64')
+        try {
+          const result = await new Promise((resolve, reject) => {
+            const timer = setTimeout(() => { pendingCommands.delete(commandIdA); reject(new Error('command timeout')) }, 20000)
+            pendingCommands.set(commandIdA, { resolve, reject, timer })
+            sendJson(rec.ws, { type: 'server:command', payload: { commandId: commandIdA, type: 'shell', command: cmdA } })
+          })
+          dbLogAudit({ userId: p.userId, userEmail: p.email, deviceId: req.params.id, action: 'device_control', details: { action, platform: 'android' }, ipAddress: req.ip })
+          return { ok: true, stdout: (result && result.stdout) || '', stderr: (result && result.stderr) || '', exitCode: (result && result.exitCode) != null ? result.exitCode : 0 }
+        } catch (e) { return reply.code(502).send({ error: e.message }) }
+      }
+    } catch {}
+
+    const dpiSnippet = "try { $cs0 = 'using System;using System.Runtime.InteropServices;public class DpiAw { [DllImport(' + [char]34 + 'user32.dll' + [char]34 + ')] public static extern bool SetProcessDPIAware(); }'; Add-Type -TypeDefinition $cs0 -ErrorAction SilentlyContinue; [DpiAw]::SetProcessDPIAware() | Out-Null } catch {}"
+    const mu = "$cs = 'using System;using System.Runtime.InteropServices;public class Mu { [DllImport(' + [char]34 + 'user32.dll' + [char]34 + ')] public static extern bool SetCursorPos(int x,int y); [DllImport(' + [char]34 + 'user32.dll' + [char]34 + ')] public static extern void mouse_event(uint f,uint dx,uint dy,uint d,IntPtr e); [DllImport(' + [char]34 + 'user32.dll' + [char]34 + ')] public static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo); public const uint LD=2; public const uint LU=4; public const uint RD=8; public const uint RU=16; public const uint WH=2048; }'; Add-Type -TypeDefinition $cs -ErrorAction SilentlyContinue"
+    const sk = (s) => s.replace(/([+^%~(){}\[\]])/g, '{$1}').replace(/'/g, "''")
+    let body = ''
+    if (action === 'move') body = "[Mu]::SetCursorPos(" + x + "," + y + "); 'moved " + x + "," + y + "'"
+    else if (action === 'click' || action === 'rclick' || action === 'dclick') {
+      const dn = action === 'rclick' ? '[Mu]::RD' : '[Mu]::LD'
+      const up = action === 'rclick' ? '[Mu]::RU' : '[Mu]::LU'
+      body = "[Mu]::SetCursorPos(" + x + "," + y + "); Start-Sleep -Milliseconds 120; [Mu]::mouse_event(" + dn + ",0,0,0,[IntPtr]::Zero); [Mu]::mouse_event(" + up + ",0,0,0,[IntPtr]::Zero)"
+      if (action === 'dclick') body += "; Start-Sleep -Milliseconds 80; [Mu]::mouse_event([Mu]::LD,0,0,0,[IntPtr]::Zero); [Mu]::mouse_event([Mu]::LU,0,0,0,[IntPtr]::Zero)"
+      body += "; 'ok'"
+    }
+    else if (action === 'drag') body = "[Mu]::SetCursorPos(" + x + "," + y + "); Start-Sleep -Milliseconds 120; [Mu]::mouse_event([Mu]::LD,0,0,0,[IntPtr]::Zero); Start-Sleep -Milliseconds 90; [Mu]::SetCursorPos(" + x2 + "," + y2 + "); Start-Sleep -Milliseconds 90; [Mu]::mouse_event([Mu]::LU,0,0,0,[IntPtr]::Zero); 'ok'"
+    else if (action === 'focus') {
+      const title = String(b.text || b.title || '').slice(0, 80)
+      if (!title) return reply.code(400).send({ error: 'focus يحتاج عنوان النافذة في text' })
+      const tEsc = title.replace(/'/g, "''")
+      body = "$wsh = New-Object -ComObject WScript.Shell; $ok = $wsh.AppActivate('" + tEsc + "'); if ($ok) { 'focused' } else { " +
+        "Add-Type -AssemblyName UIAutomationClient; Add-Type -AssemblyName UIAutomationTypes; $root=[System.Windows.Automation.AutomationElement]::RootElement; " +
+        "$wins=$root.FindAll([System.Windows.Automation.TreeScope]::Children,[System.Windows.Automation.Condition]::TrueCondition); $hit=$null; " +
+        "$needle='" + tEsc + "'.ToLower(); foreach($wn in $wins){ try{ $nm=$wn.Current.Name; if($nm -and $nm.ToLower().Contains($needle)){ $hit=$nm; break } }catch{} }; " +
+        "if($hit){ $ok2=$wsh.AppActivate($hit); if($ok2){ 'focused-full' } else { 'focus-not-found' } } else { 'focus-not-found' } }"
+    }
+    else if (action === 'type') {
+      const isAscii = /^[\x20-\x7E\r\n\t]*$/.test(text)
+      if (isAscii) body = "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('" + sk(text) + "'); 'typed'"
+      else body = "Set-Clipboard -Value '" + text.replace(/'/g, "''") + "'; Start-Sleep -Milliseconds 200; [Mu]::keybd_event(0x11,0,0,[UIntPtr]::Zero); [Mu]::keybd_event(0x56,0,0,[UIntPtr]::Zero); Start-Sleep -Milliseconds 60; [Mu]::keybd_event(0x56,0,2,[UIntPtr]::Zero); [Mu]::keybd_event(0x11,0,2,[UIntPtr]::Zero); 'typed-via-paste'"
+    }
+    else if (action === 'key') {
+      const skey = (k) => {
+        const raw = String(k || '').trim()
+        if (!raw) return '{ENTER}'
+        if (raw.includes('+')) {
+          const parts = raw.split('+').map(x => x.trim()).filter(Boolean)
+          let mods = ''
+          for (const p of parts.slice(0, -1)) mods += /^ctrl$/i.test(p) ? '^' : /^alt$/i.test(p) ? '%' : /^shift$/i.test(p) ? '+' : ''
+          const base = parts[parts.length - 1] || ''
+          return mods + (base.length > 1 ? '{' + base.toUpperCase() + '}' : base)
+        }
+        if (/^[A-Za-z0-9]$/.test(raw)) return raw
+        return '{' + raw.toUpperCase() + '}'
+      }
+      body = "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.SendKeys]::SendWait('" + skey(key) + "'); 'key-sent'"
+    }
+    else if (action === 'wait') {
+      const secs = Math.min(Math.max(parseInt(b.seconds != null ? b.seconds : b.amount) || 2, 1), 20)
+      body = "Start-Sleep -Seconds " + secs + "; 'waited " + secs + "s'"
+    }
+    else if (action === 'clickname') {
+      const name = String(b.text || b.name || '').slice(0, 80)
+      if (!name) return reply.code(400).send({ error: 'clickname يحتاج نصاً في text' })
+      const scriptPath = 'C:\\Users\\Public\\ai-ctl.ps1'
+      const sbuf = Buffer.from(CLICKNAME_PS, 'utf8')
+      const sop = uuidv4()
+      const waitFs = new Promise((resolve, reject) => {
+        const timer = setTimeout(() => { pendingFsRequests.delete(sop); reject(new Error('script write timeout')) }, 30000)
+        pendingFsRequests.set(sop, { resolve, reject, timer })
+      })
+      sendJson(rec.ws, { type: 'server:fs_write_chunk', payload: { opId: sop, path: scriptPath, seq: 0, total: 1, data: sbuf.toString('base64'), isLast: true } })
+      await waitFs
+      const nameB64 = Buffer.from(name, 'utf8').toString('base64')
+      body = "$out = & powershell -NoProfile -ExecutionPolicy Bypass -File '" + scriptPath + "' '" + nameB64 + "'; $out"
+    }
+    else if (action === 'scroll') body = "[Mu]::mouse_event([Mu]::WH,0,0," + (amount * 120) + ",[IntPtr]::Zero); 'scrolled'"
+    else if (action === 'scroll-legacy') body = ''
+    else if (action === 'info') body = "Add-Type -AssemblyName System.Windows.Forms; $pos=[System.Windows.Forms.Cursor]::Position; $vs=[System.Windows.Forms.SystemInformation]::VirtualScreen; 'cursor=' + $pos.X + ',' + $pos.Y + ' screen=' + $vs.Width + 'x' + $vs.Height; Get-Process | Where-Object { $_.MainWindowTitle -ne '' } | Select-Object -First 10 | ForEach-Object { 'win: ' + $_.MainWindowTitle }"
+    else return reply.code(400).send({ error: 'action غير مدعوم: ' + action })
+    const wrapped = "$ProgressPreference='SilentlyContinue'; [Console]::OutputEncoding=[System.Text.Encoding]::UTF8; " + dpiSnippet + '; ' + mu + '; ' + body + '; if (-not $?) { exit 1 }'
+    const commandId = uuidv4()
+    try {
+      const result = await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => { pendingCommands.delete(commandId); reject(new Error('command timeout')) }, 20000)
+        pendingCommands.set(commandId, { resolve, reject, timer })
+        const enc = Buffer.from(wrapped, 'utf16le').toString('base64')
+        sendJson(rec.ws, { type: 'server:command', payload: { commandId, type: 'shell', command: 'powershell -NoProfile -NonInteractive -EncodedCommand ' + enc } })
+      })
+      dbLogAudit({ userId: p.userId, userEmail: p.email, deviceId: req.params.id, action: 'device_control', details: { action, x, y, x2, y2 }, ipAddress: req.ip })
+      return { ok: true, stdout: (result && result.stdout) || '', stderr: (result && result.stderr) || '', exitCode: (result && result.exitCode) != null ? result.exitCode : 0 }
+    } catch (e) { return reply.code(502).send({ error: e.message }) }
+  })
+
   // ── Settings ──────────────────────────────────────────────────────────────
   fastify.get('/api/settings', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
     const rows = db.prepare("SELECT key, value FROM settings").all()
     const result = {}
     for (const r of rows) result[r.key] = parseJson(r.value, r.value)
+    // v3.2.2 — expose AI config fields expected by the dashboard
+    const aiCfg = getAiConfig() || {}
+    result.aiProvider = aiCfg.provider || result.aiProvider || ''
+    result.aiModel    = aiCfg.model    || result.aiModel    || ''
+    result.aiApiKey   = (p.role === 'admin') ? (aiCfg.apiKey || '') : ''
+    result.ollamaUrl  = aiCfg.baseUrl  || result.ollamaUrl  || ''
+    // v3.3.5 — per-provider saved configs (keys only for admins)
+    const cfgsAll = getAiConfigs()
+    if (p.role === 'admin') { result.aiConfigs = cfgsAll }
+    else {
+      const out = {}
+      for (const k of Object.keys(cfgsAll)) out[k] = { model: cfgsAll[k].model || '', baseUrl: cfgsAll[k].baseUrl || '' }
+      result.aiConfigs = out
+    }
     return result
+  })
+
+  // v3.2.2 — dashboard PUT /api/settings (maps dashboard keys → storage + ai_config sync)
+  fastify.put('/api/settings', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    const body = req.body || {}
+    const upsert = db.prepare("INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?,?,datetime('now'))")
+    for (const k of Object.keys(body)) {
+      if (body[k] === undefined) continue
+      upsert.run(k, JSON.stringify(body[k]))
+    }
+    const aiKeys = ['aiProvider', 'aiModel', 'aiApiKey', 'ollamaUrl']
+    if (aiKeys.some(k => k in body)) {
+      const cur = getAiConfig() || {}
+      const next = {
+        provider: body.aiProvider !== undefined ? body.aiProvider : (cur.provider || ''),
+        model:    body.aiModel    !== undefined ? body.aiModel    : (cur.model    || ''),
+        apiKey:   body.aiApiKey   !== undefined ? body.aiApiKey   : (cur.apiKey   || ''),
+        baseUrl:  body.ollamaUrl  !== undefined ? body.ollamaUrl  : (cur.baseUrl  || '')
+      }
+      upsert.run('ai_config', JSON.stringify(next))
+      const cfgMap = getAiConfigs()
+      cfgMap[next.provider || 'openai'] = { apiKey: next.apiKey || '', model: next.model || '', baseUrl: next.baseUrl || '' }
+      setAiConfigs(cfgMap)
+    }
+    dbLogAudit({ userId: p.userId, userEmail: p.email, action: 'settings_updated', details: { keys: Object.keys(body).slice(0, 12) }, ipAddress: req.ip })
+    return { ok: true }
   })
 
   fastify.put('/api/settings/:key', async (req, reply) => {
@@ -1391,6 +2845,25 @@ async function start(config) {
     db.prepare("INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?,?,datetime('now'))").run(req.params.key, JSON.stringify(req.body))
     dbLogAudit({ userId: p.userId, userEmail: p.email, action: 'settings_updated', details: { key: req.params.key }, ipAddress: req.ip })
     return { ok: true }
+  })
+
+  // v3.3.0 — Telegram test (validates token then sends a test message)
+  fastify.post('/api/settings/telegram/test', async (req, reply) => {
+    const p = adminMiddleware(req, reply); if (!p) return
+    const { token, chatId } = req.body || {}
+    if (!token || !chatId) return reply.code(400).send({ error: 'التوكن و Chat ID مطلوبان' })
+    try {
+      const meR = await fetch('https://api.telegram.org/bot' + token + '/getMe')
+      const me = await meR.json().catch(() => null)
+      if (!me || !me.ok) return reply.code(400).send({ error: 'التوكن غير صالح — تحقق من Bot Token' })
+      const msgR = await fetch('https://api.telegram.org/bot' + token + '/sendMessage', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: chatId, text: 'اختبار إشعارات AiRemote — تم الاتصال بنجاح' })
+      })
+      const msg = await msgR.json().catch(() => null)
+      if (!msg || !msg.ok) return reply.code(400).send({ error: (msg && msg.description) || 'فشل إرسال الرسالة — تحقق من Chat ID' })
+      return { ok: true, bot: (me.result && me.result.username) || '' }
+    } catch (e) { return reply.code(500).send({ error: e.message }) }
   })
 
   // ── AI ────────────────────────────────────────────────────────────────────
@@ -1412,36 +2885,47 @@ async function start(config) {
   })
 
   fastify.post('/api/ai/chat', async (req, reply) => {
-    const p = authMiddleware(req, reply); if (!p) return
+    const p = aiAuth(req, reply); if (!p) return
     const { deviceId, message, conversationId, context } = req.body || {}
     if (!message) return reply.code(400).send({ error: 'message required' })
-    const cfg = getAiConfig()
+    const cfg = resolveAiConfig(req.body)
     if (!cfg) return reply.code(400).send({ error: 'AI not configured' })
-    const convId   = conversationId || uuidv4()
-    const existing = db.prepare("SELECT messages FROM ai_conversations WHERE id=?").get(convId)
+    let convId     = conversationId || uuidv4()
+    let existing   = db.prepare("SELECT messages, device_id FROM ai_conversations WHERE id=?").get(convId)
+    if (existing && p.isDevice && existing.device_id !== p.deviceId) { existing = null; convId = uuidv4() }
     const history  = existing ? parseJson(existing.messages, []) : []
-    const sysMsg   = { role: 'system', content: AI_SYSTEM_PROMPT + (context ? `\n\n${context}` : '') }
+    const devCtx   = buildDeviceAiContext(deviceId)
+    const memCtx   = buildAiMemory(p.userId, deviceId, convId)
+    const sysMsg   = { role: 'system', content: AI_SYSTEM_PROMPT + (context ? `\n\n${context}` : '') + (devCtx ? `\n\n${devCtx}` : '') + (memCtx ? `\n\n${memCtx}` : '') }
     const userMsg  = { role: 'user', content: message }
     try {
-      const responseText = await callAI([sysMsg, ...history, userMsg], cfg)
+      let responseText = await callAI([sysMsg, ...history, userMsg], cfg)
+      // v3.3.5 — never return or save an empty answer (up to 2 extra tries)
+      for (let rtry = 0; rtry < 2 && (!responseText || !String(responseText).trim()); rtry++) {
+        try { await new Promise(r => setTimeout(r, 1500)); responseText = await callAI([sysMsg, ...history, userMsg], cfg) } catch {}
+      }
+      if (!responseText || !String(responseText).trim()) responseText = 'لم يصل رد — يبدو أنك أرسلت بسرعة: المزود المجاني يسمح برد واحد كل ~30 ثانية. انتظر نصف دقيقة ثم أعد الإرسال.'
       const newHistory   = [...history, userMsg, { role: 'assistant', content: responseText }]
       const now = new Date().toISOString()
       if (existing) { db.prepare("UPDATE ai_conversations SET messages=?, updated_at=? WHERE id=?").run(JSON.stringify(newHistory), now, convId) }
       else { db.prepare("INSERT INTO ai_conversations (id, device_id, user_id, title, messages, created_at, updated_at) VALUES (?,?,?,?,?,?,?)").run(convId, deviceId || '', p.userId, message.slice(0, 60), JSON.stringify(newHistory), now, now) }
-      return { conversationId: convId, response: responseText, model: cfg.model || 'default' }
+      return { conversationId: convId, response: responseText, model: cfg.model || 'default', stats: (deviceId ? (agentSockets.get(deviceId) || {}).stats || null : null) }
     } catch (e) { return reply.code(500).send({ error: e.message }) }
   })
 
   fastify.post('/api/ai/chat/stream', async (req, reply) => {
-    const p = authMiddleware(req, reply); if (!p) return
+    const p = aiAuth(req, reply); if (!p) return
     const { deviceId, message, conversationId, context } = req.body || {}
     if (!message) return reply.code(400).send({ error: 'message required' })
-    const cfg = getAiConfig()
+    const cfg = resolveAiConfig(req.body)
     if (!cfg) return reply.code(400).send({ error: 'AI not configured' })
-    const convId   = conversationId || uuidv4()
-    const existing = db.prepare("SELECT messages FROM ai_conversations WHERE id=?").get(convId)
+    let convId     = conversationId || uuidv4()
+    let existing   = db.prepare("SELECT messages, device_id FROM ai_conversations WHERE id=?").get(convId)
+    if (existing && p.isDevice && existing.device_id !== p.deviceId) { existing = null; convId = uuidv4() }
     const history  = existing ? parseJson(existing.messages, []) : []
-    const sysMsg   = { role: 'system', content: AI_SYSTEM_PROMPT + (context ? `\n\n${context}` : '') }
+    const devCtx   = buildDeviceAiContext(deviceId)
+    const memCtx   = buildAiMemory(p.userId, deviceId, convId)
+    const sysMsg   = { role: 'system', content: AI_SYSTEM_PROMPT + (context ? `\n\n${context}` : '') + (devCtx ? `\n\n${devCtx}` : '') + (memCtx ? `\n\n${memCtx}` : '') }
     const userMsg  = { role: 'user', content: message }
 
     reply.raw.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive', 'X-Accel-Buffering': 'no' })
@@ -1450,13 +2934,32 @@ async function start(config) {
     let fullResponse = ''
     try {
       fullResponse = await callAI([sysMsg, ...history, userMsg], cfg, true, (chunk) => {
-        reply.raw.write(`data: ${JSON.stringify({ delta: chunk })}\n\n`)
+        reply.raw.write(`data: ${JSON.stringify({ delta: chunk, chunk: chunk })}\n\n`)
       })
       if (!fullResponse) {
         fullResponse = await callAI([sysMsg, ...history, userMsg], cfg, false)
-        reply.raw.write(`data: ${JSON.stringify({ delta: fullResponse })}\n\n`)
+        reply.raw.write(`data: ${JSON.stringify({ delta: fullResponse, chunk: fullResponse })}\n\n`)
       }
-    } catch (e) { reply.raw.write(`data: ${JSON.stringify({ error: e.message })}\n\n`) }
+    } catch (e) {
+      // v3.3.2 — fallback: some OpenAI-compatible providers reject streaming (e.g. HTTP 402).
+      // Retry without streaming and deliver the full text as one chunk.
+      try {
+        fullResponse = await callAI([sysMsg, ...history, userMsg], cfg, false)
+        if (fullResponse) reply.raw.write(`data: ${JSON.stringify({ delta: fullResponse, chunk: fullResponse })}\n\n`)
+        else reply.raw.write(`data: ${JSON.stringify({ error: e.message })}\n\n`)
+      } catch (e2) {
+        reply.raw.write(`data: ${JSON.stringify({ error: (e2 && e2.message) || e.message })}\n\n`)
+      }
+    }
+    // v3.3.5 — never end with an empty answer: one more retry, then a clear message
+    if (!fullResponse || !String(fullResponse).trim()) {
+      for (let rtry = 0; rtry < 2 && (!fullResponse || !String(fullResponse).trim()); rtry++) {
+        try { await new Promise(r => setTimeout(r, 1500)); fullResponse = await callAI([sysMsg, ...history, userMsg], cfg, false) } catch {}
+      }
+      if (!fullResponse || !String(fullResponse).trim()) fullResponse = 'لم يصل رد — يبدو أنك أرسلت بسرعة: المزود المجاني يسمح برد واحد كل ~30 ثانية. انتظر نصف دقيقة ثم أعد الإرسال.'
+      reply.raw.write("data: " + JSON.stringify({ delta: fullResponse, chunk: fullResponse }) + "\n\n")
+    }
+    reply.raw.write('data: ' + JSON.stringify({ done: true, stats: (deviceId ? (agentSockets.get(deviceId) || {}).stats || null : null) }) + '\n\n')
     reply.raw.write('data: [DONE]\n\n'); reply.raw.end()
 
     try {
@@ -1480,25 +2983,116 @@ async function start(config) {
   })
 
   fastify.get('/api/ai/conversations', async (req, reply) => {
-    const p = authMiddleware(req, reply); if (!p) return
+    const p = aiAuth(req, reply); if (!p) return
     const { deviceId } = req.query || {}
     if (deviceId) return db.prepare("SELECT id, device_id, title, created_at, updated_at FROM ai_conversations WHERE user_id=? AND device_id=? ORDER BY updated_at DESC LIMIT 50").all(p.userId, deviceId)
     return db.prepare("SELECT id, device_id, title, created_at, updated_at FROM ai_conversations WHERE user_id=? ORDER BY updated_at DESC LIMIT 50").all(p.userId)
   })
 
   fastify.get('/api/ai/conversations/:id', async (req, reply) => {
-    const p = authMiddleware(req, reply); if (!p) return
+    const p = aiAuth(req, reply); if (!p) return
     const conv = db.prepare("SELECT * FROM ai_conversations WHERE id=? AND user_id=?").get(req.params.id, p.userId)
     if (!conv) return reply.code(404).send({ error: 'Not found' })
     return { ...conv, messages: parseJson(conv.messages, []) }
   })
 
   fastify.delete('/api/ai/conversations/:id', async (req, reply) => {
-    const p = authMiddleware(req, reply); if (!p) return
+    const p = aiAuth(req, reply); if (!p) return
     db.prepare("DELETE FROM ai_conversations WHERE id=? AND user_id=?").run(req.params.id, p.userId)
     return reply.code(204).send()
   })
 
+  // v3.2.2 — Dashboard AI aliases (history / validate)
+  fastify.get('/api/ai/history', async (req, reply) => {
+    const p = aiAuth(req, reply); if (!p) return
+    const { conversationId, deviceId } = req.query || {}
+    let conv = null
+    if (conversationId) conv = db.prepare("SELECT * FROM ai_conversations WHERE id=? AND user_id=?").get(conversationId, p.userId)
+    else if (deviceId)  conv = db.prepare("SELECT * FROM ai_conversations WHERE user_id=? AND device_id=? ORDER BY updated_at DESC LIMIT 1").get(p.userId, deviceId)
+    if (conv && p.isDevice && conv.device_id !== p.deviceId) conv = null
+    if (conv && deviceId && conv.device_id !== deviceId) conv = null
+    if (!conv) return { messages: [], conversationId: null }
+    const msgs = parseJson(conv.messages, [])
+    return { conversationId: conv.id, messages: msgs.map(m => ({ role: m.role, content: m.content, timestamp: m.timestamp || conv.updated_at })) }
+  })
+
+  fastify.delete('/api/ai/history', async (req, reply) => {
+    const p = aiAuth(req, reply); if (!p) return
+    const q = req.query || {}
+    if (q.conversationId) { db.prepare("DELETE FROM ai_conversations WHERE id=? AND user_id=?").run(q.conversationId, p.userId); return { ok: true } }
+    if (q.deviceId) { db.prepare("DELETE FROM ai_conversations WHERE user_id=? AND device_id=?").run(p.userId, q.deviceId); return { ok: true } }
+    db.prepare("DELETE FROM ai_conversations WHERE user_id=?").run(p.userId)
+    return { ok: true }
+  })
+
+  fastify.post('/api/ai/validate', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    const cfg = (req.body && req.body.config) || {}
+    const provider = String(cfg.provider || '').trim()
+    if (!provider) return reply.code(400).send({ error: 'provider required' })
+    const stored = getAiConfig() || {}
+    const apiKey  = cfg.apiKey || stored.apiKey || ''
+    const model   = cfg.model || stored.model || ''
+    const baseUrl = String(cfg.baseUrl || '').replace(/\/$/, '')
+    const ctrl = new AbortController()
+    const timer = setTimeout(() => ctrl.abort(), 30000)
+    try {
+      if (provider === 'ollama') {
+        const base = baseUrl || 'http://localhost:11434'
+        const r = await fetch(`${base}/api/tags`, { signal: ctrl.signal })
+        if (!r.ok) throw new Error('Ollama HTTP ' + r.status)
+        const d = await r.json().catch(() => ({}))
+        const n = Array.isArray(d.models) ? d.models.length : 0
+        return { ok: true, valid: true, provider, detail: 'Ollama متاح — ' + n + ' موديل' }
+      }
+      if (provider === 'openai') {
+        // v3.3.4 — free Pollinations provider works without an API key
+        if (/pollinations/i.test(baseUrl)) {
+          const rp = await fetch(baseUrl.replace(/\/openai$/i, '').replace(/\/v1$/i, '') + '/models', { signal: ctrl.signal })
+          if (!rp.ok) throw new Error('HTTP ' + rp.status)
+          return { ok: true, valid: true, provider, detail: 'مزود مجاني (Pollinations) — متاح بدون مفتاح API' }
+        }
+        if (!apiKey) return reply.code(400).send({ error: 'يتطلب مفتاح OpenAI — أو استخدم المزود المجاني: الرابط https://text.pollinations.ai بدون مفتاح' })
+        const base = baseUrl || 'https://api.openai.com'
+        const r = await fetch(`${base}/v1/models`, { headers: { 'Authorization': 'Bearer ' + apiKey }, signal: ctrl.signal })
+        if (r.status === 401) return reply.code(400).send({ error: 'مفتاح API غير صالح (401)' })
+        if (r.status === 403) return reply.code(400).send({ error: 'خدمة OpenAI غير متاحة من منطقتك (403) — استخدم المزود المجاني: الرابط https://text.pollinations.ai بدون مفتاح' })
+        if (!r.ok) throw new Error('HTTP ' + r.status)
+        const d = await r.json().catch(() => ({}))
+        const list = Array.isArray(d.data) ? d.data : []
+        const hasModel = model ? list.some(m => (m.id || '') === model) : true
+        return { ok: true, valid: true, provider, detail: hasModel ? 'الاتصال ناجح' + (model ? ' والموديل متاح' : '') : 'الاتصال ناجح لكن الموديل "' + model + '" غير مدرج في القائمة' }
+      }
+      if (provider === 'zai') {
+        // Z.ai (GLM) - OpenAI-compatible
+        if (!apiKey) return reply.code(400).send({ error: 'مفتاح Z.ai API مطلوب' })
+        const base = /z\.ai/i.test(baseUrl) ? baseUrl : 'https://api.z.ai/api/paas/v4'
+        const r = await fetch(`${base}/chat/completions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+          body: JSON.stringify({ model: model || 'glm-4.7-flash', messages: [{ role: 'user', content: 'Say OK' }], max_tokens: 8 }),
+          signal: ctrl.signal
+        })
+        if (r.status === 401 || r.status === 403) return reply.code(400).send({ error: 'مفتاح Z.ai غير صحيح (' + r.status + ')' })
+        if (r.status === 429) return reply.code(400).send({ error: 'مزود Z.ai مزدحم مؤقتاً (429) — الطبقة المجانية مضغوطة، أعد المحاولة بعد دقيقة' })
+        if (!r.ok) { const t = await r.text().catch(() => ''); throw new Error('Z.ai HTTP ' + r.status + ': ' + t.slice(0, 120)) }
+        return { ok: true, valid: true, provider, detail: 'Z.ai متصل - الموديل: ' + (model || 'glm-4.7-flash') }
+      }
+      if (provider === 'gemini') {
+        if (!apiKey) return reply.code(400).send({ error: 'مفتاح API مطلوب' })
+        const r = await fetch('https://generativelanguage.googleapis.com/v1beta/models?key=' + apiKey, { signal: ctrl.signal })
+        if (r.status === 400 || r.status === 403) return reply.code(400).send({ error: 'مفتاح Google غير صالح' })
+        if (!r.ok) throw new Error('HTTP ' + r.status)
+        const d = await r.json().catch(() => ({}))
+        const n = Array.isArray(d.models) ? d.models.length : 0
+        return { ok: true, valid: true, provider, detail: 'Gemini متاح — ' + n + ' موديل' }
+      }
+      return reply.code(400).send({ error: 'مزود غير معروف: ' + provider })
+    } catch (e) {
+      const msg = (e && e.name === 'AbortError') ? 'انتهت المهلة (9 ثوانٍ) — تحقق من العنوان والاتصال' : (e.message || String(e))
+      return reply.code(400).send({ error: msg })
+    } finally { clearTimeout(timer) }
+  })
   // ── Alerts ────────────────────────────────────────────────────────────────
   fastify.get('/api/alerts', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
@@ -1703,22 +3297,82 @@ async function start(config) {
   // ── Audit Log ─────────────────────────────────────────────────────────────
   fastify.get('/api/audit', async (req, reply) => {
     if (!adminMiddleware(req, reply)) return
-    const limit = Math.min(parseInt(req.query?.limit || '100'), 500)
-    const offset = parseInt(req.query?.offset || '0')
-    const { action, userId } = req.query || {}
-    let sql = "SELECT * FROM audit_log WHERE 1=1"; const args = []
-    if (action) { sql += " AND action=?"; args.push(action) }
-    if (userId) { sql += " AND user_id=?"; args.push(userId) }
-    sql += " ORDER BY created_at DESC LIMIT ? OFFSET ?"; args.push(limit, offset)
-    return db.prepare(sql).all(...args)
+    const q = req.query || {}
+    const pageSize = Math.min(parseInt(q.pageSize || q.limit || '50') || 50, 500)
+    const page     = Math.max(parseInt(q.page || '1') || 1, 1)
+    let where = ' WHERE 1=1'; const args = []
+    if (q.action)   { where += ' AND action=?';   args.push(q.action) }
+    if (q.userId)   { where += ' AND user_id=?';  args.push(q.userId) }
+    if (q.deviceId) { where += ' AND device_id=?'; args.push(q.deviceId) }
+    const total   = db.prepare('SELECT COUNT(*) as c FROM audit_log' + where).get(...args).c
+    const entries = db.prepare('SELECT * FROM audit_log' + where + ' ORDER BY created_at DESC LIMIT ? OFFSET ?').all(...args, pageSize, (page - 1) * pageSize)
+    return { entries, total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)) }
   })
+
+  fastify.get('/api/audit/export', async (req, reply) => {
+    if (!adminMiddleware(req, reply)) return
+    const q = req.query || {}
+    let where = ' WHERE 1=1'; const args = []
+    if (q.action) { where += ' AND action=?'; args.push(q.action) }
+    if (q.userId) { where += ' AND user_id=?'; args.push(q.userId) }
+    const rows = db.prepare('SELECT created_at, user_email, action, device_id, ip_address, details FROM audit_log' + where + ' ORDER BY created_at DESC LIMIT 10000').all(...args)
+    const esc  = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'
+    const csv  = ['"created_at","user_email","action","device_id","ip_address","details"']
+      .concat(rows.map(r => [r.created_at, r.user_email, r.action, r.device_id, r.ip_address, r.details].map(esc).join(',')))
+      .join('\r\n')
+    reply.header('Content-Type', 'text/csv; charset=utf-8')
+    reply.header('Content-Disposition', 'attachment; filename="airemote-audit.csv"')
+    return '\uFEFF' + csv
+  })
+
 
   // ── Notifications ─────────────────────────────────────────────────────────
-  fastify.get('/api/notifications', async (req, reply) => {
+  function notificationsPayload(userId, opts) {
+    opts = opts || {}
+    const limit = Math.min(parseInt(opts.limit || '50') || 50, 200)
+    const rows = opts.unread
+      ? db.prepare("SELECT * FROM notifications WHERE user_id=? AND read=0 ORDER BY created_at DESC LIMIT ?").all(userId, limit)
+      : db.prepare("SELECT * FROM notifications WHERE user_id=? ORDER BY created_at DESC LIMIT ?").all(userId, limit)
+    const unread = db.prepare("SELECT COUNT(*) as c FROM notifications WHERE user_id=? AND read=0").get(userId).c
+    return { notifications: rows, unread }
+  }
+  const notifListHandler = async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
-    return []
-  })
+    return notificationsPayload(p.userId, { unread: req.query?.unread === '1', limit: req.query?.limit })
+  }
+  fastify.get('/api/notifications', notifListHandler)
+  fastify.get('/api/alerts/notifications', notifListHandler)
+  const notifReadHandler = async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    const { all, ids } = req.body || {}
+    if (all) { db.prepare("UPDATE notifications SET read=1 WHERE user_id=?").run(p.userId); return { ok: true } }
+    if (Array.isArray(ids) && ids.length) {
+      const stmt = db.prepare("UPDATE notifications SET read=1 WHERE user_id=? AND id=?")
+      for (const id of ids.slice(0, 500)) stmt.run(p.userId, String(id))
+      return { ok: true, count: ids.length }
+    }
+    return reply.code(400).send({ error: 'all=true or ids[] required' })
+  }
+  fastify.post('/api/alerts/notifications/read', notifReadHandler)
+  const notifClearHandler = async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    db.prepare("DELETE FROM notifications WHERE user_id=? AND read=1").run(p.userId)
+    return { ok: true }
+  }
+  fastify.delete('/api/alerts/notifications', notifClearHandler)
 
+
+  // v3.2.2 — Recording download
+  fastify.get('/api/recordings/:id/download', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    const rec = db.prepare("SELECT * FROM recordings WHERE id=?").get(req.params.id)
+    if (!rec) return reply.code(404).send({ error: 'Not found' })
+    if (p.role !== 'admin' && rec.user_id !== p.userId) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا التسجيل' })
+    if (!rec.file_path || !fs.existsSync(rec.file_path)) return reply.code(404).send({ error: 'Recording file not found' })
+    reply.header('Content-Type', 'application/zip')
+    reply.header('Content-Disposition', 'attachment; filename="recording-' + String(rec.id).slice(0, 8) + '.zip"')
+    return fs.createReadStream(rec.file_path)
+  })
   // ── GitHub Releases ───────────────────────────────────────────────────────
   const REPO_ROOT    = path.resolve(__dirname, '../..')
   const RELEASES_DIR = path.join(REPO_ROOT, 'releases')
@@ -1850,6 +3504,86 @@ async function start(config) {
 
   fastify.get('/api/downloads/version', async () => ({ version: AGENT_VERSION, isDesktop: true }))
 
+  // v3.2.2 — Local artifact manager (Dashboard /api/downloads/list)
+  const DOWNLOAD_META = {
+    'win-gui':    { label_ar: 'وكيل ويندوز (واجهة رسومية)', label_en: 'Windows Agent (GUI)',  desc_ar: 'حزمة كاملة مع الواجهة الرسومية — التثبيت الموصى به', desc_en: 'Full package with GUI — recommended', platform: 'windows' },
+    'win-exe':    { label_ar: 'وكيل ويندوز (سطر أوامر)',    label_en: 'Windows Agent (CLI)',  desc_ar: 'ملف تنفيذي مستقل بدون واجهة', desc_en: 'Standalone headless executable', platform: 'windows' },
+    'linux-bin':  { label_ar: 'وكيل لينكس (ثنائي)',         label_en: 'Linux Agent (Binary)', desc_ar: 'ثنائي لينكس x64', desc_en: 'Linux x64 binary', platform: 'linux' },
+    'script-js':  { label_ar: 'سكربت Node.js',              label_en: 'Node.js Script',       desc_ar: 'تشغيل مباشر عبر Node.js', desc_en: 'Run directly with Node.js', platform: 'any' },
+    'script-pkg': { label_ar: 'حزمة السكربت (ZIP)',         label_en: 'Script Package (ZIP)', desc_ar: 'حزمة سكربت كاملة', desc_en: 'Complete script package', platform: 'any' }
+  }
+  const dlBuildStates = new Map()   // releaseId → { status, log, available, startedAt, finishedAt }
+
+  fastify.get('/api/downloads/list', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    const releases = GH_RELEASES.map(r => {
+      const meta = DOWNLOAD_META[r.id] || { label_ar: r.label, label_en: r.label, desc_ar: '', desc_en: '', platform: 'any' }
+      let exists = false; let sizeBytes = 0
+      try { exists = fs.existsSync(r.filePath); if (exists) sizeBytes = fs.statSync(r.filePath).size } catch {}
+      const bs = dlBuildStates.get(r.id)
+      return {
+        id: r.id, label_ar: meta.label_ar, label_en: meta.label_en, desc_ar: meta.desc_ar, desc_en: meta.desc_en,
+        badge_ar: null, badge_en: null, filename: r.assetName, platform: meta.platform,
+        size_hint: exists ? (sizeBytes / 1024 / 1024).toFixed(1) + ' MB' : '', size_bytes: sizeBytes,
+        available: exists, buildable: r.id === 'win-gui', build_status: bs ? bs.status : 'idle',
+        version: AGENT_VERSION, download_url: '/api/downloads/file/' + r.id,
+        build_url: r.id === 'win-gui' ? '/api/downloads/build/' + r.id : null,
+        status_url: r.id === 'win-gui' ? '/api/downloads/build-status/' + r.id : null
+      }
+    })
+    return { version: AGENT_VERSION, releases }
+  })
+
+  fastify.get('/api/downloads/file/:id', async (req, reply) => {
+    const q = req.query || {}
+    let user = null
+    try { if (req.headers.authorization && String(req.headers.authorization).startsWith('Bearer ')) user = verifyToken(String(req.headers.authorization).slice(7)) } catch {}
+    if (!user && q.token) { try { user = verifyToken(String(q.token)) } catch {} }
+    if (!user) return reply.code(401).send({ error: 'Unauthorized' })
+    const def = GH_RELEASES.find(r => r.id === req.params.id)
+    if (!def || !fs.existsSync(def.filePath)) return reply.code(404).send({ error: 'Artifact not found' })
+    reply.header('Content-Type', 'application/octet-stream')
+    reply.header('Content-Disposition', 'attachment; filename="' + def.assetName + '"')
+    return fs.createReadStream(def.filePath)
+  })
+
+  fastify.post('/api/downloads/build/:id', async (req, reply) => {
+    const p = adminMiddleware(req, reply); if (!p) return
+    if (req.params.id !== 'win-gui') return reply.code(400).send({ error: 'Only win-gui is buildable' })
+    if (!fs.existsSync(path.join(REPO_ROOT, 'package.json'))) return reply.code(400).send({ error: 'Build requires the development workspace (not available on this installation)' })
+    const cur = dlBuildStates.get('win-gui')
+    if (cur && cur.status === 'building') return reply.code(409).send({ error: 'Build already running' })
+    const state = { status: 'building', log: [], available: false, startedAt: new Date().toISOString() }
+    dlBuildStates.set('win-gui', state)
+    const { spawn: spawnProc } = require('child_process')
+    ;(async () => {
+      try {
+        state.log.push('▶ بدء بناء وكيل ويندوز...')
+        const isWin = process.platform === 'win32'
+        const cmd = isWin ? 'pnpm.cmd' : 'pnpm'
+        const buildProc = spawnProc(cmd, ['--filter', '@airemote/agent-desktop', 'run', 'build'], { cwd: REPO_ROOT, shell: true })
+        buildProc.stdout.on('data', d => { state.log.push(String(d).trim().slice(0, 400)); if (state.log.length > 300) state.log = state.log.slice(-300) })
+        buildProc.stderr.on('data', d => { state.log.push(String(d).trim().slice(0, 400)); if (state.log.length > 300) state.log = state.log.slice(-300) })
+        buildProc.on('close', (code) => {
+          state.status = code === 0 ? 'done' : 'error'
+          state.finishedAt = new Date().toISOString()
+          try { state.available = fs.existsSync(GH_RELEASES[0].filePath) } catch {}
+          state.log.push(code === 0 ? '✅ اكتمل البناء' : '❌ فشل البناء (code ' + code + ')')
+        })
+      } catch (e) { state.status = 'error'; state.finishedAt = new Date().toISOString(); state.log.push('❌ ' + e.message) }
+    })()
+    return { ok: true, id: 'win-gui' }
+  })
+
+  fastify.get('/api/downloads/build-status/:id', async (req, reply) => {
+    if (!adminMiddleware(req, reply)) return
+    let fallback = false
+    try { fallback = fs.existsSync(GH_RELEASES[0].filePath) } catch {}
+    const state = dlBuildStates.get(req.params.id) || { status: 'idle', log: [], available: fallback }
+    return state
+  })
+
+
   // ── Desktop API ───────────────────────────────────────────────────────────
   fastify.get('/api/desktop/status', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
@@ -1926,8 +3660,9 @@ async function start(config) {
 
     app.get('/ssh', { websocket: true }, (socket, request) => {
       const q = request.query || {}
-      if (!resolveWsUser(q)) { socket.close(); return }
-      handleSshWs(socket)
+      const user = resolveWsUser(q)
+      if (!user) { socket.close(); return }
+      handleSshWs(socket, user)
     })
   })
 

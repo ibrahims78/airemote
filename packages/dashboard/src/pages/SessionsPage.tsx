@@ -39,7 +39,7 @@ function ElapsedTimer({ since }: { since: string }) {
   return <span className="font-mono text-xs text-slate-400">{formatDuration(elapsed)}</span>
 }
 
-export function SessionsPage() {
+export function SessionsPage({ embedded = false }: { embedded?: boolean } = {}) {
   const [sessions, setSessions]         = useState<SessionWithDevice[]>([])
   const [liveStreams, setLiveStreams]    = useState<LiveScreenSession[]>([])
   const [loading, setLoading]           = useState(true)
@@ -100,7 +100,7 @@ export function SessionsPage() {
   ]
 
   return (
-    <div className="p-6 space-y-6">
+    <div className={embedded ? 'space-y-6' : 'cr-page space-y-6'}>
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>

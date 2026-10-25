@@ -101,6 +101,18 @@ export function SSHTerminal({ config, deviceId, onClose }: Props) {
     term.open(termRef.current)
     fit.fit()
 
+    // Permanent key/resize handlers — attached ONCE (prevents duplicated keystrokes)
+    term.onData((data) => {
+      const ws = wsRef.current
+      if (ws && ws.readyState === WebSocket.OPEN)
+        ws.send(JSON.stringify({ type: 'ssh:data', payload: { data: btoa(unescape(encodeURIComponent(data))) } }))
+    })
+    term.onResize(({ rows, cols }) => {
+      const ws = wsRef.current
+      if (ws && ws.readyState === WebSocket.OPEN)
+        ws.send(JSON.stringify({ type: 'ssh:resize', payload: { rows, cols } }))
+    })
+
     termInstance.current = term
     fitAddon.current     = fit
 
@@ -132,9 +144,6 @@ export function SSHTerminal({ config, deviceId, onClose }: Props) {
     if (!termInstance.current) return
     if (connectingRef.current) return
     connectingRef.current = true
-
-    dataDisposableRef.current?.dispose();   dataDisposableRef.current   = null
-    resizeDisposableRef.current?.dispose(); resizeDisposableRef.current = null
 
     if (wsRef.current) {
       wsRef.current.onclose = null
@@ -170,18 +179,8 @@ export function SSHTerminal({ config, deviceId, onClose }: Props) {
         if (msg.type === 'ssh:connected') {
           setStatus('connected')
           term.writeln('\x1b[32m  ✓ Connected successfully!\x1b[0m\r\n')
-
-          dataDisposableRef.current = term.onData((data) => {
-            if (ws.readyState === WebSocket.OPEN)
-              ws.send(JSON.stringify({ type: 'ssh:data', payload: { data: btoa(unescape(encodeURIComponent(data))) } }))
-          })
-
-          resizeDisposableRef.current = term.onResize(({ rows, cols }) => {
-            if (ws.readyState === WebSocket.OPEN)
-              ws.send(JSON.stringify({ type: 'ssh:resize', payload: { rows, cols } }))
-          })
-
           fitAddon.current?.fit()
+          try { term.focus() } catch {}
         }
 
         else if (msg.type === 'ssh:data') {

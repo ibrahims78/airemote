@@ -22,19 +22,22 @@ import {
   MouseEvent as ReactMouseEvent, KeyboardEvent as ReactKeyboardEvent
 } from 'react'
 import {
-  Monitor, Maximize2, Minimize2, RefreshCw, Wifi, WifiOff,
+  Monitor, Maximize2, Minimize2, RefreshCw, Wifi, WifiOff, ExternalLink,
   AlertTriangle, Loader2, Settings2,
   Clipboard, ClipboardPaste, EyeOff, Eye,
-  Video, Tv2, Mouse, Keyboard, ChevronDown, Circle,
-  Upload, Shield, Zap, CheckCircle2,
-  MessageSquare, Send, Download, Activity, X, PlayCircle, Square
+  Video, Tv2, Mouse, Keyboard, ChevronDown, Undo2, Home, Layers, Circle,
+  Upload, Shield, Zap, CheckCircle2, Pin, PinOff,
+  MessageSquare, Send, Download, Activity, X, PlayCircle, Square, Volume2, VolumeX, RotateCw, Sun
 } from 'lucide-react'
 import { clsx } from 'clsx'
+import { createPortal } from 'react-dom'
+import { api } from '../lib/api'
 import { useAuthStore } from '../store/authStore'
 
 interface Props {
   deviceId:   string
   deviceName: string
+  popout?:    boolean
 }
 
 type Status          = 'connecting' | 'streaming' | 'error' | 'unavailable' | 'disconnected'
@@ -66,11 +69,11 @@ interface RecordingMeta {
 
 // maxWidth controls the agent-side resize — smaller = less bandwidth + faster encode
 const QUALITY_PRESETS: QualityPreset[] = [
-  { label: 'توفير',       fps: 1,  quality: 40, maxWidth: 640  },
-  { label: 'متوسط',       fps: 3,  quality: 60, maxWidth: 800  },
-  { label: 'جودة عالية',  fps: 5,  quality: 75, maxWidth: 1024 },
-  { label: 'ممتاز',       fps: 10, quality: 85, maxWidth: 1280 },
-  { label: 'عالي الأداء', fps: 30, quality: 85, maxWidth: 1280 },
+  { label: 'توفير',        fps: 12, quality: 50, maxWidth: 1280 },
+  { label: 'متوازن',       fps: 18, quality: 60, maxWidth: 1600 },
+  { label: 'دقة عالية',    fps: 24, quality: 68, maxWidth: 1920 },
+  { label: 'ممتاز',        fps: 30, quality: 66, maxWidth: 1920 },
+  { label: 'سلاسة قصوى',   fps: 30, quality: 55, maxWidth: 1600 }
 ]
 
 const IDLE_TIMEOUT_MS = 5 * 60 * 1000
@@ -81,7 +84,7 @@ function fmtBytes(bytes: number): string {
   return `${(bytes/1024/1024).toFixed(2)}MB/s`
 }
 
-export function ScreenViewer({ deviceId, deviceName }: Props) {
+export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
   const { token, user } = useAuthStore()
   const canvasRef     = useRef<HTMLCanvasElement>(null)
   const wsRef         = useRef<WebSocket | null>(null)
@@ -100,19 +103,34 @@ export function ScreenViewer({ deviceId, deviceName }: Props) {
   const [viewerCount,    setViewerCount]    = useState(1)
 
   // ── UI ────────────────────────────────────────────────────────────────────
-  const [fullscreen,     setFullscreen]     = useState(false)
+  const [fullscreen,     setFullscreen]     = useState(!!popout)
+  const [pinned,         setPinned]         = useState(false)
+  const [controlsVisible, setControlsVisible] = useState(true)
   const [showSettings,   setShowSettings]   = useState(false)
   const [showMonitors,   setShowMonitors]   = useState(false)
   const [showClipboard,  setShowClipboard]  = useState(false)
   const [showHint,       setShowHint]       = useState(false)
   const [idleWarning,    setIdleWarning]    = useState(false)
+  const [buffering,      setBuffering]      = useState(false)
+  const bufferTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const bufferShownRef = useRef(false)
 
   // ── Control ───────────────────────────────────────────────────────────────
-  const [preset,          setPreset]          = useState<QualityPreset>(QUALITY_PRESETS[4])
+  const [preset,          setPreset]          = useState<QualityPreset>(QUALITY_PRESETS[1])
   const [controlEnabled,  setControlEnabled]  = useState(false)
+  const [pwModal,         setPwModal]         = useState(false)
+  const [pwInput,         setPwInput]         = useState('')
+  const [pwBusy,          setPwBusy]          = useState(false)
+  const [pwError,         setPwError]         = useState('')
   const [keyboardMode,    setKeyboardMode]    = useState(false)
   const [privacyOn,       setPrivacyOn]       = useState(false)
   const [recording,       setRecording]       = useState(false)
+  const [audioEnabled,    setAudioEnabled]    = useState(false)
+  const [audioNotice,     setAudioNotice]     = useState<string | null>(null)
+  const [autoRotate,      setAutoRotate]      = useState(true)
+  const [rotateNotice,    setRotateNotice]    = useState<string | null>(null)
+  const [brightness,      setBrightness]      = useState(255)
+  const [showBrightness,  setShowBrightness]  = useState(false)
   const [recDuration,     setRecDuration]     = useState(0)
   const [monitors,        setMonitors]        = useState<MonitorInfo[]>([])
   const [selectedMonitor, setSelectedMonitor] = useState(0)
@@ -138,6 +156,18 @@ export function ScreenViewer({ deviceId, deviceName }: Props) {
   // ── Cursor overlay ────────────────────────────────────────────────────────
   const [cursorPos,     setCursorPos]     = useState({ x: -100, y: -100 })
   const [cursorVisible, setCursorVisible] = useState(false)
+  const [screenLocked,  setScreenLocked]  = useState(false)
+  const [screenLockSecure, setScreenLockSecure] = useState(false)
+
+  // v3.4.3 — Android devices: the stream has no built-in cursor → show the overlay
+  const [remoteIsAndroid, setRemoteIsAndroid] = useState(false)
+  useEffect(() => {
+    let live = true
+    api.get('/api/devices/' + deviceId)
+      .then(r => { if (live) setRemoteIsAndroid(String((r.data && r.data.info && r.data.info.platform) || '').toLowerCase().includes('android')) })
+      .catch(() => {})
+    return () => { live = false }
+  }, [deviceId])
 
   // ── T001: Bandwidth meter ─────────────────────────────────────────────────
   const [bwDisplay,   setBwDisplay]   = useState(0)   // bytes/sec
@@ -146,7 +176,7 @@ export function ScreenViewer({ deviceId, deviceName }: Props) {
   // ── Start gate — user must press "Start" before any WS connection opens ───
   // Persist per-device: auto-restart if the user was streaming before leaving
   const sessionKey = `screen:active:${deviceId}`
-  const [started, setStarted] = useState(() => sessionStorage.getItem(sessionKey) === '1')
+  const [started, setStarted] = useState(() => popout || sessionStorage.getItem(sessionKey) === '1')
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const fpsCountRef        = useRef(0)
@@ -154,15 +184,26 @@ export function ScreenViewer({ deviceId, deviceName }: Props) {
   const pingTimerRef       = useRef<ReturnType<typeof setInterval> | null>(null)
   const lastSeqRef         = useRef(-1)
   const mediaRecRef        = useRef<MediaRecorder | null>(null)
+  const audioElRef         = useRef<HTMLAudioElement | null>(null)
+  const audioMsRef         = useRef<MediaSource | null>(null)
+  const audioSbRef         = useRef<SourceBuffer | null>(null)
+  const audioQueueRef      = useRef<ArrayBuffer[]>([])
+  const pcmCtxRef          = useRef<AudioContext | null>(null)
+  const pcmDestRef         = useRef<MediaStreamAudioDestinationNode | null>(null)
+  const pcmGainRef         = useRef<GainNode | null>(null)
+  const pcmNextRef         = useRef(0)
   const recChunksRef       = useRef<Blob[]>([])
   const recTimerRef        = useRef<ReturnType<typeof setInterval> | null>(null)
   const recStartRef        = useRef(0)
   const idleTimerRef       = useRef<ReturnType<typeof setTimeout> | null>(null)
   const moveThrottleRef    = useRef(0)
   const permissionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const pwActiveRef        = useRef(false)
   const presetRef          = useRef(preset)
+  const popoutFitOrientationRef = useRef('')
   const selectedMonRef     = useRef(selectedMonitor)
   const connectIdRef       = useRef(0)
+  const controlsHideRef    = useRef<ReturnType<typeof setTimeout> | null>(null)
   const chatEndRef         = useRef<HTMLDivElement>(null)
   const bwBytesRef         = useRef(0)
   const bwTimerRef         = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -186,6 +227,40 @@ export function ScreenViewer({ deviceId, deviceName }: Props) {
     if (started) sessionStorage.setItem(sessionKey, '1')
     else         sessionStorage.removeItem(sessionKey)
   }, [started, sessionKey])
+
+  // The standalone window must follow the remote screen through portrait and
+  // landscape. Resizing only for the first frame leaves the old window shape
+  // in place after a phone rotation and makes the stream look tiny.
+  useEffect(() => {
+    if (!popout || !resolution.w || !resolution.h) return
+    const orientation = resolution.w > resolution.h ? 'landscape' : 'portrait'
+    if (popoutFitOrientationRef.current === orientation) return
+    popoutFitOrientationRef.current = orientation
+    if (!window.opener) return
+
+    const timer = window.setTimeout(() => {
+      try {
+        const chromeW = Math.max(0, window.outerWidth - window.innerWidth)
+        const chromeH = Math.max(0, window.outerHeight - window.innerHeight)
+        const availW  = Math.max(640, (window.screen.availWidth || 1440) - 40)
+        const availH  = Math.max(480, (window.screen.availHeight || 900) - 80)
+        const ratio   = resolution.w / resolution.h
+        let innerH    = Math.min(availH, orientation === 'portrait' ? 980 : 820)
+        let innerW    = innerH * ratio
+        if (innerW > availW) {
+          innerW = availW
+          innerH = innerW / ratio
+        }
+        const targetW = Math.max(360, Math.round(innerW + chromeW))
+        const targetH = Math.max(320, Math.round(innerH + chromeH))
+        window.resizeTo(targetW, targetH)
+        const left = Math.max(0, Math.round(((window.screen.availWidth || targetW) - targetW) / 2))
+        const top  = Math.max(0, Math.round(((window.screen.availHeight || targetH) - targetH) / 2))
+        window.moveTo(left, top)
+      } catch {}
+    }, 120)
+    return () => window.clearTimeout(timer)
+  }, [popout, resolution.w, resolution.h])
 
   useEffect(() => { presetRef.current     = preset        }, [preset])
   useEffect(() => { selectedMonRef.current = selectedMonitor }, [selectedMonitor])
@@ -223,7 +298,7 @@ export function ScreenViewer({ deviceId, deviceName }: Props) {
       if (intentionalCloseRef.current) return
       if (connectIdRef.current !== myId) return
       const elapsed = Date.now() - lastFrameAtRef.current
-      if (elapsed > 8_000) {
+      if (elapsed > 20_000) {
         console.warn(`[screen] stale: no frame for ${Math.round(elapsed / 1000)}s — reconnecting`)
         if (staleTimerRef.current) { clearInterval(staleTimerRef.current); staleTimerRef.current = null }
         wsRef.current?.close()
@@ -292,10 +367,31 @@ export function ScreenViewer({ deviceId, deviceName }: Props) {
   }, [])
 
   // ── Idle reset ────────────────────────────────────────────────────────────
+  // Idle overlay is intentionally disabled: an operator watching a remote
+  // screen must never be covered by a 5-minute inactivity message.
   const resetIdle = useCallback(() => {
     setIdleWarning(false)
-    if (idleTimerRef.current) clearTimeout(idleTimerRef.current)
-    idleTimerRef.current = setTimeout(() => setIdleWarning(true), IDLE_TIMEOUT_MS)
+    if (idleTimerRef.current) { clearTimeout(idleTimerRef.current); idleTimerRef.current = null }
+  }, [])
+
+
+  // 7-second pre-roll buffering light (YouTube-like). Frames continue in the
+  // background; the operator sees a clear buffer state before the live badge.
+  useEffect(() => {
+    if (status === 'streaming' && !bufferShownRef.current) {
+      bufferShownRef.current = true
+      setBuffering(true)
+      if (bufferTimerRef.current) clearTimeout(bufferTimerRef.current)
+      bufferTimerRef.current = setTimeout(() => setBuffering(false), 7000)
+    }
+    if (status !== 'streaming') {
+      setBuffering(false)
+      if (bufferTimerRef.current) { clearTimeout(bufferTimerRef.current); bufferTimerRef.current = null }
+    }
+  }, [status])
+
+  useEffect(() => () => {
+    if (bufferTimerRef.current) clearTimeout(bufferTimerRef.current)
   }, [])
 
   // ── WebSocket connect ─────────────────────────────────────────────────────
@@ -303,8 +399,11 @@ export function ScreenViewer({ deviceId, deviceName }: Props) {
     const myId = ++connectIdRef.current
     if (wsRef.current) { wsRef.current.onclose = null; wsRef.current.close(); wsRef.current = null }
     setStatus('connecting'); setErrorMsg(''); lastSeqRef.current = -1
+    bufferShownRef.current = false
+    setBuffering(false)
     setViewerCount(1)
     setControlEnabled(false); setPermissionState('idle')
+    setAudioEnabled(false)
     if (permissionTimerRef.current) { clearTimeout(permissionTimerRef.current); permissionTimerRef.current = null }
 
     let authParam: Record<string, string> = {}
@@ -364,17 +463,29 @@ export function ScreenViewer({ deviceId, deviceName }: Props) {
           keyframes: flags & 1 ? prev.keyframes + 1 : prev.keyframes
         }))
         if (decodingRef.current) return   // skip — previous frame still decoding
-        const jpeg = new Blob([buf.slice(13)], { type: 'image/jpeg' })
+        // v3.3.2 — delta frames (flags bit1): [x:4][y:4] then the JPEG of just the changed region
+        const isDelta = (flags & 2) !== 0
+        const dx = isDelta ? view.getUint32(13) : 0
+        const dy = isDelta ? view.getUint32(17) : 0
+        const jpeg = new Blob([buf.slice(isDelta ? 21 : 13)], { type: 'image/jpeg' })
         decodingRef.current = true
         createImageBitmap(jpeg).then(bmp => {
           decodingRef.current = false
           const canvas = canvasRef.current; if (!canvas) { bmp.close(); return }
           const ctx    = canvas.getContext('2d'); if (!ctx) { bmp.close(); return }
-          if (canvas.width !== width || canvas.height !== height) {
-            canvas.width = width; canvas.height = height
-            setResolution({ w: width, h: height })
+          // IMPORTANT: for a delta frame width/height are the size of the
+          // changed rectangle, not the full screen. Resizing the canvas from
+          // that header makes the rest of the screen black (the cursor-only
+          // symptom on Windows). Only full frames may resize the backing store.
+          if (!isDelta) {
+            if (canvas.width !== width || canvas.height !== height) {
+              canvas.width = width; canvas.height = height
+              setResolution({ w: width, h: height })
+            }
+            ctx.drawImage(bmp, 0, 0)
+          } else if (canvas.width > 0 && canvas.height > 0) {
+            ctx.drawImage(bmp, dx, dy)
           }
-          ctx.drawImage(bmp, 0, 0)
           bmp.close()
           fpsCountRef.current++
           setFrameCount(c => c + 1)
@@ -407,6 +518,41 @@ export function ScreenViewer({ deviceId, deviceName }: Props) {
             }))
             break
           }
+          case 'screen:audio':
+            feedAudio(msg.payload?.data || '', msg.payload?.format, msg.payload?.sampleRate)
+            break
+          case 'screen:audio_status':
+            setAudioEnabled(!!msg.payload?.enabled)
+            if (msg.payload && msg.payload.ok === false && msg.payload.reason) {
+              setAudioNotice(String(msg.payload.reason))
+              setTimeout(() => setAudioNotice(null), 4000)
+            }
+            break
+          case 'screen:rotate_status': {
+            setAutoRotate(!!msg.payload?.enabled)
+            if (msg.payload?.ok === false && msg.payload?.reason) {
+              const reason = String(msg.payload.reason)
+              setRotateNotice(reason === 'write-settings-not-granted'
+                ? 'لتفعيل التدوير: امنح التطبيق «تعديل إعدادات النظام» من إعدادات الجهاز.'
+                : reason)
+              setTimeout(() => setRotateNotice(null), 6000)
+            }
+            break
+          }
+          case 'screen:brightness_status':
+            setBrightness(Math.max(0, Math.min(255, Number(msg.payload?.value ?? 255))))
+            break
+          case 'screen:rotate_result':
+            if (msg.payload?.ok === false) {
+              const reason = String(msg.payload?.reason || '')
+              setRotateNotice(reason === 'write-settings-not-granted'
+                ? 'لتدوير الشاشة: امنح التطبيق «تعديل إعدادات النظام» من إعدادات الجهاز.'
+                : reason || 'تعذر تدوير الشاشة')
+              setTimeout(() => setRotateNotice(null), 6000)
+            } else {
+              setRotateNotice(null)
+            }
+            break
           case 'screen:error':
             setStatus('error'); setErrorMsg(msg.payload?.message || 'خطأ غير معروف'); break
           case 'screen:unavailable':
@@ -423,9 +569,16 @@ export function ScreenViewer({ deviceId, deviceName }: Props) {
             break
           case 'screen:monitors':
             setMonitors(msg.payload?.monitors || []); break
+          case 'screen:state':
+            setScreenLocked(!!msg.payload?.keyguardLocked)
+            setScreenLockSecure(!!msg.payload?.keyguardSecure)
+            break
           case 'screen:clipboard':
             setClipboardText(msg.payload?.text || ''); setShowClipboard(true); break
           case 'screen:pong':
+            // Pong proves the relay is alive even when the remote screen is
+            // static and no video frames are produced for a while.
+            lastFrameAtRef.current = Date.now()
             setLatency(Date.now() - (msg.payload?.clientTs ?? Date.now())); break
           case 'screen:viewer_count':
             setViewerCount(msg.payload?.count ?? 1); break
@@ -434,15 +587,27 @@ export function ScreenViewer({ deviceId, deviceName }: Props) {
           case 'screen:control_granted':
             if (permissionTimerRef.current) { clearTimeout(permissionTimerRef.current); permissionTimerRef.current = null }
             setPermissionState('granted')
-            setControlEnabled(true); setKeyboardMode(false); setShowHint(true)
-            setTimeout(() => { setPermissionState('idle'); setShowHint(false) }, 2500)
+            setControlEnabled(true); setKeyboardMode(true); setShowHint(true)
+            if (pwActiveRef.current) { pwActiveRef.current = false; setPwModal(false); setPwBusy(false) }
+            setTimeout(() => { setPermissionState('idle'); setShowHint(false) }, 3000)
             break
           case 'screen:control_denied':
             if (permissionTimerRef.current) { clearTimeout(permissionTimerRef.current); permissionTimerRef.current = null }
             setPermissionState('idle')
+            setControlEnabled(false); setKeyboardMode(false)
+            if (pwActiveRef.current) {
+              setPwBusy(false)
+              setPwError(msg.payload?.reason === 'bad_password' ? 'كلمة السر غير صحيحة — حاول مجدداً' : msg.payload?.reason === 'rate_limited' ? 'محاولات كثيرة — انتظر دقيقة' : 'تم رفض الطلب')
+            }
             break
 
           // ── T006: In-session chat ─────────────────────────────────────────
+          case 'screen:chat_history': {
+            const hist = (msg.payload?.messages || []) as ChatMessage[]
+            if (Array.isArray(hist) && hist.length) setChatMessages(hist.slice(-200))
+            break
+          }
+
           case 'screen:chat': {
             const { text, sender, ts } = msg.payload as ChatMessage
             if (!text) break
@@ -540,15 +705,71 @@ export function ScreenViewer({ deviceId, deviceName }: Props) {
 
   // ── Fullscreen ────────────────────────────────────────────────────────────
   useEffect(() => {
+    const wc = (window as any).airemote?.windowCtl
+    if (popout && wc && typeof wc.setFullscreen === 'function') {
+      wc.setFullscreen(fullscreen)
+      return
+    }
     const el = containerRef.current; if (!el) return
     if (fullscreen) el.requestFullscreen?.()
     else if (document.fullscreenElement) document.exitFullscreen?.()
-  }, [fullscreen])
+  }, [fullscreen, popout])
+
+  // v3.5 — immersive mode. In the standalone window the toolbar must NOT
+  // reappear when the pointer moves over the remote screen; it only opens
+  // when the pointer is over the small handle or the toolbar itself.
+  const scheduleControlsHide = useCallback((ms = 2500) => {
+    if (controlsHideRef.current) clearTimeout(controlsHideRef.current)
+    controlsHideRef.current = setTimeout(() => {
+      controlsHideRef.current = null
+      setControlsVisible(false)
+    }, ms)
+  }, [])
+  const revealControls = useCallback(() => {
+    setControlsVisible(true)
+    if (!pinned) scheduleControlsHide()
+  }, [pinned, scheduleControlsHide])
   useEffect(() => {
-    const h = () => setFullscreen(!!document.fullscreenElement)
+    if (!fullscreen && !popout) { setControlsVisible(true); return }
+    if (popout) {
+      revealControls()
+      return () => { if (controlsHideRef.current) { clearTimeout(controlsHideRef.current); controlsHideRef.current = null } }
+    }
+    let t: ReturnType<typeof setTimeout> | null = null
+    const show = () => {
+      setControlsVisible(true)
+      if (t) clearTimeout(t)
+      t = setTimeout(() => setControlsVisible(false), 2500)
+    }
+    show()
+    window.addEventListener('mousemove', show)
+    window.addEventListener('keydown', show)
+    return () => {
+      if (t) clearTimeout(t)
+      window.removeEventListener('mousemove', show)
+      window.removeEventListener('keydown', show)
+    }
+  }, [fullscreen, popout, revealControls])
+  useEffect(() => {
+    if (!pinned) return
+    if (controlsHideRef.current) { clearTimeout(controlsHideRef.current); controlsHideRef.current = null }
+    setControlsVisible(true)
+  }, [pinned])
+  useEffect(() => {
+    // Only promote to true when the browser actually entered fullscreen;
+    // never reset on a null event (Electron may reject the request when the
+    // click is not trusted, and we still want the CSS immersive mode).
+    const h = () => { if (document.fullscreenElement) setFullscreen(true) }
     document.addEventListener('fullscreenchange', h)
     return () => document.removeEventListener('fullscreenchange', h)
   }, [])
+
+  useEffect(() => {
+    if (!fullscreen) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setFullscreen(false) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [fullscreen])
 
   // ── Keyboard capture ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -564,7 +785,9 @@ export function ScreenViewer({ deviceId, deviceName }: Props) {
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      e.preventDefault(); e.stopPropagation(); resetIdle()
+      // v3.5 — do not block local input: the server keyboard and the remote
+      // keyboard work simultaneously (the user can keep typing locally).
+      resetIdle()
       const mods = getMods(e)
       const hasAccel = !!(mods && mods.some(m => m === 'ctrl' || m === 'alt' || m === 'meta'))
       if (e.key.length === 1 && !hasAccel) {
@@ -578,7 +801,6 @@ export function ScreenViewer({ deviceId, deviceName }: Props) {
     }
 
     const handleKeyUp = (e: KeyboardEvent) => {
-      e.preventDefault(); e.stopPropagation()
       const mods = getMods(e)
       const hasAccel = !!(mods && mods.some(m => m === 'ctrl' || m === 'alt' || m === 'meta'))
       if (e.key.length === 1 && !hasAccel) return // completed by the single 'press'
@@ -597,10 +819,13 @@ export function ScreenViewer({ deviceId, deviceName }: Props) {
   useEffect(() => {
     if (!adaptiveMode || status !== 'streaming' || latency < 0) return
     const p = presetRef.current
-    let newFps = p.fps
-    if      (latency > 350 && p.fps > 3)  newFps = Math.max(3,  p.fps - 3)
-    else if (latency > 180 && p.fps > 5)  newFps = Math.max(5,  p.fps - 2)
-    else if (latency <  60 && p.fps < 15) newFps = Math.min(15, p.fps + 2)
+    // v3.5 — adapt against the preset target (up to 30 fps) instead of ratcheting
+    // the preset itself down to 15 fps.
+    const target = Math.max(3, Math.min(30, p.fps))
+    let newFps = target
+    if      (latency > 350) newFps = Math.max(3,  Math.min(target, p.fps - 4))
+    else if (latency > 180) newFps = Math.max(5,  Math.min(target, p.fps - 2))
+    else if (latency <  70) newFps = Math.min(target, p.fps + 2)
     if (newFps !== p.fps) {
       const adj = { ...p, label: `تكيفي (${newFps}fps)`, fps: newFps }
       setPreset(adj)
@@ -611,8 +836,15 @@ export function ScreenViewer({ deviceId, deviceName }: Props) {
   }, [latency]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Mouse handlers ────────────────────────────────────────────────────────
+  const getContentRect = (c: HTMLCanvasElement) => {
+    const r = c.getBoundingClientRect()
+    const iw = c.width || 1, ih = c.height || 1
+    const scale = Math.min(r.width / iw, r.height / ih)
+    const w = iw * scale, h = ih * scale
+    return { left: r.left + (r.width - w) / 2, top: r.top + (r.height - h) / 2, width: w, height: h }
+  }
   const getPos = (e: ReactMouseEvent<HTMLCanvasElement>) => {
-    const r = canvasRef.current!.getBoundingClientRect()
+    const r = getContentRect(canvasRef.current!)
     return { x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height }
   }
   const sendMouse = useCallback((type: string, e: ReactMouseEvent<HTMLCanvasElement>, extra?: object) => {
@@ -663,12 +895,110 @@ export function ScreenViewer({ deviceId, deviceName }: Props) {
   // ── Privacy ───────────────────────────────────────────────────────────────
   const togglePrivacy = () => { const next = !privacyOn; setPrivacyOn(next); sendWs({ type: 'screen:privacy', payload: { enable: next } }) }
 
-  // ── Client-side recording ─────────────────────────────────────────────────
+  // ── Remote system audio (v3.5) ────────────────────────────────────────────
+  const flushAudio = () => {
+    const sb = audioSbRef.current
+    if (!sb || sb.updating) return
+    const next = audioQueueRef.current.shift()
+    if (!next) return
+    try { sb.appendBuffer(next) } catch { audioQueueRef.current = [] }
+  }
+  const ensurePcmContext = (rate = 16000) => {
+    let ctx = pcmCtxRef.current
+    if (!ctx) {
+      ctx = new AudioContext({ sampleRate: rate || 16000 })
+      pcmCtxRef.current = ctx
+      const dest = ctx.createMediaStreamDestination()
+      pcmDestRef.current = dest
+      const gain = ctx.createGain()
+      gain.gain.value = 1
+      // dest is only a MediaStreamAudioDestinationNode used for recording.
+      // Without the connection to ctx.destination the PCM is decoded but
+      // never reaches the speakers (the remote-audio silent bug).
+      gain.connect(dest)
+      gain.connect(ctx.destination)
+      pcmGainRef.current = gain
+    }
+    ctx.resume().catch(() => {})
+    return ctx
+  }
+  const feedPcm = (b64: string, rate = 16000) => {
+    try {
+      const bin = atob(b64)
+      const n = Math.floor(bin.length / 2)
+      if (!n) return
+      const ctx = ensurePcmContext(rate)
+      if (!ctx) return
+      const pcm = new Int16Array(n)
+      for (let i = 0; i < n; i++) pcm[i] = (bin.charCodeAt(i * 2) | (bin.charCodeAt(i * 2 + 1) << 8)) << 16 >> 16
+      const f32 = new Float32Array(n)
+      for (let i = 0; i < n; i++) f32[i] = pcm[i] / 32768
+      const buf = ctx.createBuffer(1, n, rate || 16000)
+      buf.copyToChannel(f32, 0)
+      const src = ctx.createBufferSource()
+      src.buffer = buf
+      // Route exactly once: source -> gain -> destination. Connecting the
+      // source directly to destination as well doubles the signal and clips.
+      src.connect(pcmGainRef.current || ctx.destination)
+      // A small jitter buffer absorbs network/WebSocket delivery variance.
+      if (!pcmNextRef.current) pcmNextRef.current = ctx.currentTime + 0.28
+      let start = Math.max(ctx.currentTime + 0.02, pcmNextRef.current)
+      if (start > ctx.currentTime + 1.0) start = ctx.currentTime + 0.28
+      src.start(start)
+      pcmNextRef.current = start + buf.duration
+      // Do NOT call setState for every audio packet: Android sends ~10-50
+      // PCM chunks/second, and re-rendering this large viewer on each chunk
+      // starves canvas decoding and makes the screen look frozen. The audio
+      // status event already updates the toolbar state.
+    } catch {}
+  }
+  const feedAudio = (b64: string, format?: string, rate?: number) => {
+    if (format === 'pcm16') { feedPcm(b64, rate || 16000); return }
+    try {
+      const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0))
+      if (!bytes.length) return
+      let el = audioElRef.current
+      if (!el) {
+        el = document.createElement('audio')
+        el.autoplay = true
+        el.muted = false
+        el.style.display = 'none'
+        document.body.appendChild(el)
+        audioElRef.current = el
+        const ms = new MediaSource()
+        audioMsRef.current = ms
+        el.src = URL.createObjectURL(ms)
+        ms.addEventListener('sourceopen', () => {
+          try {
+            const sb = ms.addSourceBuffer('audio/webm; codecs=opus')
+            audioSbRef.current = sb
+            sb.addEventListener('updateend', flushAudio)
+            flushAudio()
+          } catch {}
+        })
+        el.play().catch(() => {})
+      }
+      audioQueueRef.current.push(bytes.buffer)
+      flushAudio()
+    } catch {}
+  }
   const startRecording = () => {
     const canvas = canvasRef.current; if (!canvas) return
     try {
-      const stream = canvas.captureStream(preset.fps)
-      const rec    = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9' })
+      const videoStream = canvas.captureStream(preset.fps)
+      const tracks = [...videoStream.getVideoTracks()]
+      try {
+        const el = audioElRef.current as any
+        if (el && typeof el.captureStream === 'function') {
+          const as = el.captureStream()
+          tracks.push(...as.getAudioTracks())
+        } else if (pcmDestRef.current) {
+          tracks.push(...pcmDestRef.current.stream.getAudioTracks())
+        }
+      } catch {}
+      const stream = new MediaStream(tracks)
+      const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus' : 'video/webm'
+      const rec    = new MediaRecorder(stream, { mimeType: mime })
       recChunksRef.current = []
       rec.ondataavailable = e => { if (e.data.size > 0) recChunksRef.current.push(e.data) }
       rec.onstop = () => {
@@ -731,23 +1061,46 @@ export function ScreenViewer({ deviceId, deviceName }: Props) {
     setUnreadChat(0)
   }
 
-  // ── Permission request — v3.0.0 ───────────────────────────────────────────
-  const requestControl = useCallback(() => {
+  // ── Permission request — v3.2.2 (real consent on the remote machine) ──────
+  const doRequestControl = useCallback((password?: string) => {
+    setPermissionState('requesting')
+    const requestId = Math.random().toString(36).slice(2, 10)
+    sendWs({ type: 'screen:request_control', payload: { requestId, password } })
+    if (permissionTimerRef.current) clearTimeout(permissionTimerRef.current)
+    permissionTimerRef.current = setTimeout(() => {
+      setPermissionState(p => (p === 'requesting' ? 'idle' : p))
+      if (pwActiveRef.current) { setPwBusy(false); setPwError('انتهت المهلة — حاول مجدداً') }
+    }, 60000)
+  }, [sendWs])
+
+  const requestControl = useCallback(async () => {
     if (controlEnabled) {
       setControlEnabled(false); setKeyboardMode(false); setPermissionState('idle')
       if (permissionTimerRef.current) { clearTimeout(permissionTimerRef.current); permissionTimerRef.current = null }
       return
     }
     if (permissionState === 'requesting') return
-    setPermissionState('requesting')
-    const requestId = Math.random().toString(36).slice(2, 10)
-    sendWs({ type: 'screen:request_control', payload: { requestId } })
-    permissionTimerRef.current = setTimeout(() => {
-      setPermissionState('granted')
-      setControlEnabled(true); setShowHint(true)
-      setTimeout(() => { setPermissionState('idle'); setShowHint(false) }, 2500)
-    }, 3000)
-  }, [controlEnabled, permissionState, sendWs])
+    // v3.3.0 — password-based control mode support
+    let mode: 'consent' | 'password' = 'consent'
+    try {
+      const res = await api.get(`/api/devices/${deviceId}`)
+      if (res.data?.capabilities?.controlAuth === 'password') mode = 'password'
+    } catch { /* fall back to consent */ }
+    if (mode === 'password') {
+      pwActiveRef.current = true
+      setPwModal(true); setPwInput(''); setPwError(''); setPwBusy(false)
+      return
+    }
+    doRequestControl()
+  }, [controlEnabled, permissionState, sendWs, deviceId, doRequestControl])
+
+  const submitPw = useCallback(() => {
+    if (pwBusy) return
+    const pw = pwInput.trim()
+    if (!pw) return
+    setPwBusy(true); setPwError('')
+    doRequestControl(pw)
+  }, [pwInput, pwBusy, doRequestControl])
 
   // ── Drag & drop file upload — v3.0.0 ─────────────────────────────────────
   const handleFileDrop = useCallback(async (e: React.DragEvent<HTMLCanvasElement>) => {
@@ -757,12 +1110,10 @@ export function ScreenViewer({ deviceId, deviceName }: Props) {
     if (!files.length) return
     for (const file of files.slice(0, 5)) {
       setUploadFileName(file.name); setUploadProgress(0)
-      const formData = new FormData()
-      formData.append('file', file)
-      formData.append('path', '/Desktop')
+      const destPath = '/Desktop/' + file.name
       try {
-        const resp = await fetch(`/api/devices/${deviceId}/fs/upload`, {
-          method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: formData
+        const resp = await fetch(`/api/devices/${deviceId}/fs/upload?path=${encodeURIComponent(destPath)}`, {
+          method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/octet-stream' }, body: file
         })
         if (resp.ok) { setUploadProgress(100); setTimeout(() => setUploadProgress(null), 1800) }
         else           setTimeout(() => setUploadProgress(null), 2000)
@@ -771,11 +1122,12 @@ export function ScreenViewer({ deviceId, deviceName }: Props) {
   }, [controlEnabled, deviceId, token])
 
   // ── Stop streaming — clean shutdown ──────────────────────────────────────
-  const stopStream = useCallback(() => {
+  const stopStream = useCallback((keepAgent = false) => {
     intentionalCloseRef.current = true
     if (reconnectTimerRef.current) { clearTimeout(reconnectTimerRef.current); reconnectTimerRef.current = null }
-    // Tell server to cleanly stop capturing on the agent side
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
+    // Tell server to cleanly stop capturing on the agent side — unless the
+    // standalone window is taking over the same capture session.
+    if (!keepAgent && wsRef.current?.readyState === WebSocket.OPEN) {
       try { wsRef.current.send(JSON.stringify({ type: 'screen:stop', payload: {} })) } catch {}
     }
     if (wsRef.current) { wsRef.current.onclose = null; wsRef.current.close(); wsRef.current = null }
@@ -787,6 +1139,16 @@ export function ScreenViewer({ deviceId, deviceName }: Props) {
     setControlEnabled(false); setKeyboardMode(false)
     setStarted(false)   // return to the start splash
   }, [])
+
+  // v3.5 — opening the standalone window must stop the main-tab stream.
+  useEffect(() => {
+    if (popout || typeof BroadcastChannel === 'undefined') return
+    const bc = new BroadcastChannel('airemote-screen')
+    bc.onmessage = (e) => {
+      if (e.data && e.data.type === 'popout' && e.data.deviceId === deviceId) stopStream(true)
+    }
+    return () => { try { bc.close() } catch {} }
+  }, [deviceId, popout, stopStream])
 
   // ── Refresh — stop current session cleanly then reconnect ────────────────
   const refreshStream = useCallback(() => {
@@ -818,7 +1180,10 @@ export function ScreenViewer({ deviceId, deviceName }: Props) {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div ref={containerRef} className="flex flex-col h-full bg-black rounded-xl overflow-hidden relative">
+    <div ref={containerRef} className={clsx(
+      'flex flex-col bg-black overflow-hidden',
+      (fullscreen || popout) ? 'fixed inset-0 z-[100] rounded-none' : 'relative h-full rounded-xl'
+    )}>
 
       {/* ── Start splash — shown before user initiates screen sharing ── */}
       {!started && (
@@ -847,25 +1212,54 @@ export function ScreenViewer({ deviceId, deviceName }: Props) {
         </div>
       )}
 
+      {/* v3.5 — always-visible compact handle for the popout toolbar */}
+      {popout && started && !controlsVisible && !pinned && (
+        <button
+          onClick={revealControls}
+          onMouseEnter={revealControls}
+          onMouseLeave={() => { if (!pinned) scheduleControlsHide(700) }}
+          className="absolute top-0 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-1.5 px-3 py-1 rounded-b-lg bg-navy-900/90 border border-t-0 border-slate-600/60 text-[11px] text-slate-200 shadow-lg hover:bg-navy-800 transition-colors"
+          title="إظهار أدوات التحكم">
+          <Monitor size={11} className="text-brand-teal" />
+          <span className="max-w-[180px] truncate">{deviceName}</span>
+          <ChevronDown size={11} />
+        </button>
+      )}
+
+      {popout && !controlsVisible && status === 'streaming' && !controlEnabled && (
+        <button
+          onClick={() => requestControl()}
+          className="absolute top-0 right-2 z-[60] flex items-center gap-1 px-2.5 py-1 rounded-b-lg bg-brand-blue/90 border border-t-0 border-brand-blue text-[11px] text-white shadow-lg hover:bg-brand-blue transition-colors"
+          title="تفعيل التحكم عن بُعد">
+          <Shield size={11} /> تحكم
+        </button>
+      )}
+
       {/* ── Toolbar ── */}
-      {started && <div className="flex items-center gap-2 px-3 py-2 bg-navy-900/95 backdrop-blur border-b border-slate-700/50 z-10 flex-wrap">
+      {started && <div onMouseEnter={revealControls} onMouseLeave={() => { if (!pinned) scheduleControlsHide(1000) }} className={clsx(
+        'flex items-center gap-2 px-3 py-2 bg-navy-900/95 backdrop-blur border border-slate-700/50 z-10 flex-wrap transition-all duration-200',
+        popout ? 'absolute top-2 left-1/2 -translate-x-1/2 w-auto max-w-[96%] rounded-xl shadow-2xl overflow-x-auto flex-nowrap whitespace-nowrap' : 'border-b',
+        fullscreen && !controlsVisible && !pinned && !showSettings && 'opacity-0 -translate-y-2 pointer-events-none'
+      )}>
         <Monitor size={14} className="text-brand-blue shrink-0"/>
         <span className="text-sm font-medium text-slate-200 truncate max-w-[100px]">{deviceName}</span>
 
-        <span className={clsx(
-          'inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full shrink-0',
-          status === 'streaming'    && 'bg-emerald-400/15 text-emerald-400',
-          status === 'connecting'   && 'bg-amber-400/15 text-amber-400',
-          status === 'error'        && 'bg-red-400/15 text-red-400',
-          status === 'unavailable'  && 'bg-orange-400/15 text-orange-400',
-          status === 'disconnected' && 'bg-slate-600/50 text-slate-400',
-        )}>
-          {status === 'streaming'    && <><Wifi size={9}/> بث مباشر</>}
-          {status === 'connecting'   && <><Loader2 size={9} className="animate-spin"/> جارٍ الاتصال</>}
-          {status === 'error'        && <><WifiOff size={9}/> خطأ</>}
-          {status === 'unavailable'  && <><AlertTriangle size={9}/> غير متاح</>}
-          {status === 'disconnected' && <><WifiOff size={9}/> منقطع</>}
-        </span>
+        <button
+          type="button"
+          onClick={() => {
+            if (popout) setFullscreen(true)
+            else window.open(`/view/${deviceId}`, `airemote-stream-${deviceId}`, 'width=1400,height=900')
+          }}
+          className={clsx(
+            'cr-live-signal shrink-0',
+            status === 'streaming' && !buffering && 'is-live',
+            (buffering || status === 'connecting') && 'is-buffering'
+          )}
+          title={buffering ? 'جارٍ التخزين المؤقت' : status === 'streaming' ? 'البث مباشر — افتح البث المستقل' : 'غير متصل'}
+        >
+          <i className="cr-live-signal-dot" />
+          <span>{buffering ? 'تخزين مؤقت' : status === 'streaming' ? 'مباشر' : status === 'connecting' ? 'جارٍ الاتصال' : 'غير متصل'}</span>
+        </button>
 
         {/* T001: Bandwidth meter + FPS + latency */}
         {status === 'streaming' && (
@@ -886,8 +1280,96 @@ export function ScreenViewer({ deviceId, deviceName }: Props) {
           </span>
         )}
 
+        {remoteIsAndroid && status === 'streaming' && (
+          <div className="flex items-center gap-1 shrink-0">
+            <button onClick={() => sendWs({ type: 'screen:key_event', payload: { type: 'press', key: 'Escape' } })}
+              disabled={!controlEnabled} title="رجوع"
+              className="flex items-center gap-1 px-1.5 py-1 rounded text-slate-300 hover:text-white hover:bg-slate-700/60 disabled:opacity-40 transition-colors">
+              <Undo2 size={11} /><span className="hidden 2xl:inline text-[10px]">رجوع</span>
+            </button>
+            <button onClick={() => sendWs({ type: 'screen:key_event', payload: { type: 'press', key: 'Home' } })}
+              disabled={!controlEnabled} title="الرئيسية"
+              className="flex items-center gap-1 px-1.5 py-1 rounded text-slate-300 hover:text-white hover:bg-slate-700/60 disabled:opacity-40 transition-colors">
+              <Home size={11} /><span className="hidden 2xl:inline text-[10px]">الرئيسية</span>
+            </button>
+            <button onClick={() => sendWs({ type: 'screen:key_event', payload: { type: 'press', key: 'Meta' } })}
+              disabled={!controlEnabled} title="التطبيقات المفتوحة"
+              className="flex items-center gap-1 px-1.5 py-1 rounded text-slate-300 hover:text-white hover:bg-slate-700/60 disabled:opacity-40 transition-colors">
+              <Layers size={11} /><span className="hidden 2xl:inline text-[10px]">التطبيقات</span>
+            </button>
+            <button
+              onClick={() => sendWs({ type: 'screen:rotate', payload: {} })}
+              title="تدوير شاشة الجهاز 90 درجة"
+              className="flex items-center gap-1 px-1.5 py-1 rounded text-slate-300 hover:text-white hover:bg-slate-700/60 disabled:opacity-40 transition-colors">
+              <RotateCw size={11} /><span className="hidden 2xl:inline text-[10px]">تدوير</span>
+            </button>
+            <button
+              onClick={() => {
+                const next = !autoRotate
+                setAutoRotate(next)
+                sendWs({ type: 'screen:rotate_auto', payload: { enabled: next } })
+              }}
+              title={autoRotate ? 'التدوير التلقائي مفعّل — اضغط للتعطيل' : 'التدوير التلقائي متوقف — اضغط للتفعيل'}
+              className={clsx('flex items-center gap-1 px-1.5 py-1 rounded transition-colors disabled:opacity-40',
+                autoRotate ? 'text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20' : 'text-slate-300 hover:text-white hover:bg-slate-700/60')}>
+              <RefreshCw size={11} />
+              <span className="hidden 2xl:inline text-[10px]">تلقائي</span>
+            </button>
+            <button
+              onClick={() => setShowBrightness(v => !v)}
+              title="التحكم في سطوع شاشة الجهاز (0–255)"
+              className={clsx('flex items-center gap-1 px-1.5 py-1 rounded transition-colors',
+                showBrightness ? 'text-amber-300 bg-amber-500/15' : 'text-slate-300 hover:text-white hover:bg-slate-700/60')}>
+              <Sun size={11} /><span className="hidden xl:inline text-[10px]">السطوع</span>
+            </button>
+            {showBrightness && createPortal(
+              <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/55 p-4" onClick={() => setShowBrightness(false)}>
+                <div className="w-full max-w-sm rounded-2xl border border-slate-600/60 bg-navy-900 p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <div className="text-sm font-bold text-white">سطوع شاشة Android</div>
+                      <div className="text-[11px] text-slate-400 mt-1">تحكم يدوي من 0 إلى 255 دون إطفاء الشاشة</div>
+                    </div>
+                    <div className="text-2xl font-bold text-amber-300">{brightness}</div>
+                  </div>
+                  <input
+                    type="range" min={0} max={255} step={1} value={brightness}
+                    onChange={e => {
+                      const value = Number(e.target.value)
+                      setBrightness(value)
+                      sendWs({ type: 'screen:brightness', payload: { value } })
+                    }}
+                    className="w-full accent-amber-400"
+                    autoFocus
+                  />
+                  <div className="flex justify-between text-[10px] text-slate-500 mt-2"><span>0</span><span>255</span></div>
+                  <div className="flex justify-end mt-4">
+                    <button onClick={() => setShowBrightness(false)}
+                      className="px-4 py-2 rounded-lg bg-slate-700/60 text-slate-200 text-xs hover:bg-slate-600">
+                      إغلاق
+                    </button>
+                  </div>
+                </div>
+              </div>,
+              document.body
+            )}
+            {rotateNotice && (
+              <span className="text-[10px] text-amber-400 max-w-[180px] truncate" title={rotateNotice}>{rotateNotice}</span>
+            )}
+          </div>
+        )}
+
         <div className="flex-1"/>
-        <div className="flex items-center gap-1 flex-wrap">
+        <div className={clsx('flex items-center gap-1', popout ? 'flex-nowrap' : 'flex-wrap')}>
+
+          {/* v3.5 — standalone viewer window */}
+          {!popout && status === 'streaming' && (
+            <button onClick={() => window.open('/view/' + deviceId, '_blank', 'width=1400,height=900')}
+              title="فتح البث في نافذة مستقلة — لعرض عدة أجهزة معاً"
+              className="flex items-center gap-1 px-2 py-1 rounded text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 transition-colors">
+              <ExternalLink size={12}/> نافذة مستقلة
+            </button>
+          )}
 
           {/* T006: Chat button */}
           {status === 'streaming' && (
@@ -907,6 +1389,25 @@ export function ScreenViewer({ deviceId, deviceName }: Props) {
 
           {/* Client recording */}
           {status === 'streaming' && (
+            <>
+                    {status === 'streaming' && (
+                      <button
+                        onClick={() => {
+                          const next = !audioEnabled
+                          setAudioEnabled(next)
+                          if (next) ensurePcmContext(16000)
+                          sendWs({ type: 'screen:audio_control', payload: { enabled: next } })
+                        }}
+                        title={audioEnabled ? 'إيقاف صوت الجهاز' : 'تشغيل صوت الجهاز'}
+                        className={clsx('flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors',
+                          audioEnabled ? 'bg-teal-500/20 text-teal-300' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50')}>
+                        {audioEnabled ? <Volume2 size={12}/> : <VolumeX size={12}/>}
+                        <span className="hidden xl:inline">{audioEnabled ? 'صوت الجهاز' : 'تشغيل الصوت'}</span>
+                      </button>
+                    )}
+                    {audioNotice && (
+                      <span className="text-[10px] text-amber-400 max-w-[220px] truncate" title={audioNotice}>{audioNotice}</span>
+                    )}
             <button onClick={recording ? stopRecording : startRecording}
               title={recording ? `إيقاف التسجيل (${fmt(recDuration)})` : 'تسجيل الجلسة كفيديو WebM'}
               className={clsx('flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors',
@@ -914,6 +1415,7 @@ export function ScreenViewer({ deviceId, deviceName }: Props) {
               )}>
               {recording ? <><Circle size={8} className="fill-red-400 animate-pulse"/> {fmt(recDuration)}</> : <Video size={12}/>}
             </button>
+            </>
           )}
 
           {/* T008: Server recording */}
@@ -935,9 +1437,9 @@ export function ScreenViewer({ deviceId, deviceName }: Props) {
             )
           )}
 
-          {/* Privacy */}
-          {status === 'streaming' && (
-            <button onClick={togglePrivacy} title={privacyOn ? 'إلغاء وضع الخصوصية' : 'تفعيل وضع الخصوصية'}
+          {/* Privacy (Windows agent only; Android has its own screen-off control) */}
+          {status === 'streaming' && !remoteIsAndroid && (
+            <button onClick={togglePrivacy} title={privacyOn ? 'إلغاء وضع الخصوصية (إعادة شاشة الجهاز البعيد)' : 'تفعيل وضع الخصوصية (تعتم شاشة الجهاز البعيد)'}
               className={clsx('p-1.5 rounded transition-colors', privacyOn ? 'bg-purple-500/20 text-purple-400' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50')}>
               {privacyOn ? <Eye size={13}/> : <EyeOff size={13}/>}
             </button>
@@ -1069,11 +1571,14 @@ export function ScreenViewer({ deviceId, deviceName }: Props) {
             </div>
           )}
           <button onClick={refreshStream} className="p-1.5 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 transition-colors" title="إعادة الاتصال"><RefreshCw size={13}/></button>
-          <button onClick={stopStream}
+          <button onClick={() => stopStream()}
             title="إيقاف البث"
             className="flex items-center gap-1.5 px-2 py-1 rounded text-red-400 hover:text-red-300 hover:bg-red-500/15 transition-colors text-[11px] font-medium">
             <Square size={12} className="fill-current"/>
             <span>إيقاف</span>
+          </button>
+          <button onClick={() => setPinned(v => !v)} className={clsx('p-1.5 rounded transition-colors', pinned ? 'bg-amber-500/20 text-amber-400' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50')} title={pinned ? 'إلغاء تثبيت الأدوات' : 'تثبيت الأدوات'}>
+            {pinned ? <Pin size={13}/> : <PinOff size={13}/>}
           </button>
           <button onClick={() => setFullscreen(f => !f)} className="p-1.5 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 transition-colors" title={fullscreen ? 'إنهاء ملء الشاشة' : 'ملء الشاشة'}>
             {fullscreen ? <Minimize2 size={13}/> : <Maximize2 size={13}/>}
@@ -1081,33 +1586,55 @@ export function ScreenViewer({ deviceId, deviceName }: Props) {
         </div>
       </div>}
 
+      {started && popout && (
+        <button
+          type="button"
+          onClick={() => setFullscreen(true)}
+          className={clsx(
+            'cr-live-signal cr-live-signal-floating',
+            status === 'streaming' && !buffering && 'is-live',
+            (buffering || status === 'connecting') && 'is-buffering'
+          )}
+          title={buffering ? 'جارٍ التخزين المؤقت' : status === 'streaming' ? 'البث مباشر — ملء الشاشة' : 'غير متصل'}
+        >
+          <i className="cr-live-signal-dot" />
+          <span>{buffering ? 'تخزين مؤقت' : status === 'streaming' ? 'مباشر' : status === 'connecting' ? 'جارٍ الاتصال' : 'غير متصل'}</span>
+        </button>
+      )}
+
       {/* ── Canvas area ── */}
-      {started && <div ref={canvasAreaRef} className="flex-1 relative flex items-center justify-center overflow-hidden bg-slate-950"
+      {started && <div ref={canvasAreaRef} className="flex-1 min-h-0 relative flex items-center justify-center overflow-hidden bg-slate-950"
         onClick={() => { setShowSettings(false); setShowMonitors(false); setShowClipboard(false) }}>
 
         <canvas ref={canvasRef}
           className={clsx(
-            'max-w-full max-h-full object-contain transition-opacity duration-300',
+            'block max-w-full max-h-full shrink-0 object-contain transition-opacity duration-300',
             status === 'streaming' ? 'opacity-100' : 'opacity-20',
             dragOver && 'ring-2 ring-sky-500/60 ring-dashed',
             'cursor-none'
           )}
-          style={{ imageRendering: 'auto' }}
+          style={{ imageRendering: 'auto', width: 'auto', height: 'auto' }}
           onMouseMove={handleMouseMove}
-          onMouseEnter={() => setCursorVisible(true)}
+          onMouseEnter={e => { setCursorVisible(true); if (controlEnabled) sendMouse('move', e) }}
           onMouseLeave={() => setCursorVisible(false)}
           onMouseDown={e => sendMouse('down', e)}
           onMouseUp={e => sendMouse('up', e)}
-          onClick={e => sendMouse('click', e)}
-          onDoubleClick={e => sendMouse('dblclick', e)}
-          onContextMenu={e => { e.preventDefault(); sendMouse('click', e) }}
+          onContextMenu={e => e.preventDefault()}
           onDragOver={e => { e.preventDefault(); if (controlEnabled) setDragOver(true) }}
           onDragLeave={() => setDragOver(false)}
           onDrop={handleFileDrop}
         />
 
         {/* ── Windows-style cursor overlay ── */}
-        {cursorVisible && status === 'streaming' && (
+        {/* v3.3.0: custom cursor overlay disabled - the remote frames already include the real cursor (single-cursor UX) */}
+        {screenLocked && status === 'streaming' && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 max-w-[92%] bg-amber-500/20 border border-amber-400/50 text-amber-100 text-xs px-4 py-2 rounded-xl shadow-lg pointer-events-none text-center leading-6">
+            شاشة الجهاز مقفلة — البث قد يظهر أسود حتى يُفتح القفل من الجهاز.
+            {screenLockSecure ? ' القفل الآمن لا يمكن تجاوزه من التطبيق.' : ''}
+          </div>
+        )}
+
+      {cursorVisible && status === 'streaming' && remoteIsAndroid && (
           <div
             className="absolute pointer-events-none z-50"
             style={{
@@ -1116,16 +1643,7 @@ export function ScreenViewer({ deviceId, deviceName }: Props) {
               willChange: 'left, top',
             }}
           >
-            {controlEnabled ? (
-              /* Crosshair when in control mode */
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ filter: 'drop-shadow(1px 1px 1px rgba(0,0,0,0.8))' }}>
-                <line x1="10" y1="2" x2="10" y2="8"  stroke="white" strokeWidth="1.5"/>
-                <line x1="10" y1="12" x2="10" y2="18" stroke="white" strokeWidth="1.5"/>
-                <line x1="2" y1="10" x2="8"  y2="10" stroke="white" strokeWidth="1.5"/>
-                <line x1="12" y1="10" x2="18" y2="10" stroke="white" strokeWidth="1.5"/>
-                <circle cx="10" cy="10" r="2" stroke="white" strokeWidth="1.5"/>
-              </svg>
-            ) : (
+            {(
               /* Windows arrow cursor when viewing only */
               <svg width="16" height="20" viewBox="0 0 16 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ filter: 'drop-shadow(1px 1px 1px rgba(0,0,0,0.8))' }}>
                 <path d="M0 0 L0 16 L4 12 L7 19 L9 18 L6 11 L11 11 Z" fill="white" stroke="black" strokeWidth="1" strokeLinejoin="round"/>
@@ -1135,14 +1653,14 @@ export function ScreenViewer({ deviceId, deviceName }: Props) {
         )}
 
         {/* Control watermark */}
-        {status === 'streaming' && controlEnabled && (
+        {!popout && status === 'streaming' && controlEnabled && (
           <div className="absolute top-2 right-2 flex items-center gap-1 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[10px] px-2 py-1 rounded-full pointer-events-none">
             <Mouse size={9}/> {user?.name || 'User'} يتحكم
           </div>
         )}
 
         {/* Adaptive mode badge */}
-        {adaptiveMode && status === 'streaming' && (
+        {!popout && adaptiveMode && status === 'streaming' && (
           <div className="absolute top-2 left-2 flex items-center gap-1 bg-sky-500/20 border border-sky-500/30 text-sky-400 text-[10px] px-2 py-1 rounded-full pointer-events-none">
             <Zap size={8} className="fill-sky-400"/> تكيفي · {preset.fps}fps
           </div>
@@ -1166,10 +1684,8 @@ export function ScreenViewer({ deviceId, deviceName }: Props) {
 
         {/* Privacy overlay */}
         {privacyOn && status === 'streaming' && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-purple-950/80 pointer-events-none z-10">
-            <EyeOff size={32} className="text-purple-400 mb-2"/>
-            <p className="text-purple-300 text-sm font-medium">وضع الخصوصية مفعّل</p>
-            <p className="text-purple-500 text-xs mt-1">شاشة الجهاز البعيد معتمة</p>
+          <div className="absolute bottom-2 left-3 flex items-center gap-1.5 bg-purple-500/20 border border-purple-500/40 text-purple-300 text-[10px] px-2.5 py-1 rounded-full pointer-events-none z-10">
+            <EyeOff size={10}/> الخصوصية مفعّلة — شاشة الجهاز البعيد معتمة
           </div>
         )}
 
@@ -1193,26 +1709,33 @@ export function ScreenViewer({ deviceId, deviceName }: Props) {
         )}
 
         {/* Control hint toast */}
-        {showHint && (
+        {!popout && showHint && (
           <div className={clsx('absolute bottom-10 left-1/2 -translate-x-1/2 text-xs px-3 py-1.5 rounded-full pointer-events-none transition-all',
             controlEnabled ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-700/80 text-slate-300')}>
             {controlEnabled ? '✅ التحكم مفعّل — حرّك الماوس على الشاشة' : '⏸ التحكم موقوف'}
           </div>
         )}
 
+        {/* Awaiting remote approval */}
+        {permissionState === 'requesting' && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-amber-500/25 border border-amber-500/50 text-amber-200 text-xs px-4 py-2 rounded-xl pointer-events-none z-50 shadow-lg">
+            بانتظار موافقة الجهاز البعيد… اضغط «سماح» على نافذة الوكيل هناك
+          </div>
+        )}
+
         {/* Keyboard banner */}
-        {keyboardMode && controlEnabled && status === 'streaming' && (
+        {!popout && keyboardMode && controlEnabled && status === 'streaming' && (
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-amber-500/20 border border-amber-500/30 text-amber-400 text-xs px-3 py-1.5 rounded-full pointer-events-none">
             <Keyboard size={11}/> وضع الكيبورد — جميع المفاتيح تُرسل للجهاز البعيد
           </div>
         )}
 
-        {/* Idle warning */}
-        {idleWarning && controlEnabled && (
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-navy-900/95 border border-amber-500/40 rounded-xl p-5 text-center shadow-xl z-20">
-            <AlertTriangle size={24} className="text-amber-400 mx-auto mb-2"/>
-            <p className="text-slate-200 text-sm font-medium">لا توجد حركة منذ 5 دقائق</p>
-            <button onClick={resetIdle} className="mt-3 text-xs bg-brand-blue/20 hover:bg-brand-blue/30 text-brand-blue px-3 py-1.5 rounded-lg transition-colors">استمرار</button>
+        {buffering && status === 'streaming' && (
+          <div className="cr-buffer-overlay">
+            <Loader2 size={26} className="animate-spin" />
+            <strong>جارٍ التخزين المؤقت…</strong>
+            <div className="cr-buffer-bar"><span /></div>
+            <small>7 ثوانٍ</small>
           </div>
         )}
 
@@ -1227,6 +1750,41 @@ export function ScreenViewer({ deviceId, deviceName }: Props) {
         )}
 
         {/* ── T006: In-session chat panel ── */}
+        {/* Password prompt — password-based control (v3.3.0) */}
+        {pwModal && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-40" onClick={e => e.stopPropagation()}>
+            <div className="bg-navy-900 border border-slate-700/60 rounded-2xl shadow-2xl w-[330px] p-5">
+              <div className="flex items-center gap-2 mb-3">
+                <Shield size={15} className="text-emerald-400"/>
+                <span className="text-sm font-semibold text-slate-200">التحكم بكلمة سر</span>
+              </div>
+              <p className="text-xs text-slate-500 mb-3">هذا الجهاز يتطلب كلمة سر للتحكم — أدخلها للمتابعة.</p>
+              <input
+                type="password"
+                autoFocus
+                value={pwInput}
+                onChange={e => setPwInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') submitPw(); if (e.key === 'Escape') { pwActiveRef.current = false; setPwModal(false) } }}
+                placeholder="كلمة السر..."
+                className="w-full bg-navy-950 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/60"
+                dir="ltr"
+              />
+              {pwError && <p className="text-xs text-red-400 mt-2">{pwError}</p>}
+              <div className="flex gap-2 mt-4">
+                <button onClick={submitPw} disabled={pwBusy || !pwInput.trim()}
+                  className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium py-2 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25 disabled:opacity-40 transition-colors">
+                  {pwBusy ? <Loader2 size={12} className="animate-spin"/> : <Shield size={12}/>}
+                  {pwBusy ? 'جارٍ التحقق...' : 'إرسال الطلب'}
+                </button>
+                <button onClick={() => { pwActiveRef.current = false; setPwModal(false) }}
+                  className="px-3 py-2 text-xs rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-700/40 transition-colors">
+                  إلغاء
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {chatOpen && (
           <div
             className="absolute bottom-3 right-3 z-40 flex flex-col w-80 rounded-2xl shadow-2xl overflow-hidden"

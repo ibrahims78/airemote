@@ -114,7 +114,7 @@ export async function aiRoutes(fastify: FastifyInstance) {
     if (!message?.trim()) return reply.code(400).send({ error: 'Message required' })
     if (!config?.provider) return reply.code(400).send({ error: 'AI config required' })
     if (config.provider !== 'ollama' && !config.apiKey?.trim()) {
-      const name = config.provider === 'gemini' ? 'Gemini' : 'OpenAI'
+      const name = config.provider === 'gemini' ? 'Gemini' : config.provider === 'zai' ? 'Z.ai' : 'OpenAI'
       return reply.code(400).send({ error: `${name} API key is required. Please configure it in Settings.` })
     }
 
@@ -163,7 +163,7 @@ export async function aiRoutes(fastify: FastifyInstance) {
     if (!message?.trim()) return reply.code(400).send({ error: 'Message required' })
     if (!config?.provider) return reply.code(400).send({ error: 'AI config required' })
     if (config.provider !== 'ollama' && !config.apiKey?.trim()) {
-      const name = config.provider === 'gemini' ? 'Gemini' : 'OpenAI'
+      const name = config.provider === 'gemini' ? 'Gemini' : config.provider === 'zai' ? 'Z.ai' : 'OpenAI'
       return reply.code(400).send({ error: `${name} API key is required. Please configure it in Settings.` })
     }
 
