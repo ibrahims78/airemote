@@ -1,9 +1,9 @@
 'use strict'
 /**
  * main.js — AiRemote Server Desktop (Electron Main Process)
- * Version: v3.6.0
+ * Version: v3.7.0
  */
-const { app, BrowserWindow, Tray, Menu, ipcMain, shell, dialog, Notification, nativeImage } = require('electron')
+const { app, BrowserWindow, Tray, Menu, ipcMain, shell, dialog, Notification, nativeImage, session } = require('electron')
 const path  = require('path')
 const fs    = require('fs')
 const os    = require('os')
@@ -11,6 +11,58 @@ const http  = require('http')
 const crypto = require('crypto')
 
 const server  = require('./server.bundle')
+
+// v3.7.0 — the desktop server terminates TLS with a self-signed certificate.
+// Trust exactly that one certificate (compared by SHA-256 fingerprint) and
+// nothing else; every other certificate error is still rejected.
+let OWN_CERT_FP = null
+function ownCertFingerprint() {
+  if (OWN_CERT_FP !== null) return OWN_CERT_FP
+  try {
+    const certPath = server.getTlsCertPath && server.getTlsCertPath()
+    if (!certPath || !fs.existsSync(certPath)) return (OWN_CERT_FP = '')
+    const pem = fs.readFileSync(certPath, 'utf8')
+    const der = Buffer.from(pem.replace(/-----[^-]+-----/g, '').replace(/\s+/g, ''), 'base64')
+    const b64 = crypto.createHash('sha256').update(der).digest('base64')
+    return (OWN_CERT_FP = 'sha256/' + b64)
+  } catch {
+    return (OWN_CERT_FP = '')
+  }
+}
+
+function installCertificateTrust() {
+  // v3.7.1 — certificate-error only covers page/subresource loads. WebSocket
+  // handshakes go through the network service and are rejected before that
+  // handler runs, which made the dashboard unable to open /screen or /ws on a
+  // self-signed deployment. The session-level hook covers every request.
+  try {
+    session.defaultSession.setCertificateVerifyProc((request, callback) => {
+      try {
+        const expected = ownCertFingerprint()
+        const host = String(request.hostname || '').toLowerCase()
+        const isLoopback = host === '127.0.0.1' || host === 'localhost'
+        const fp = request.certificate && request.certificate.fingerprint
+        if (expected && isLoopback && fp === expected) { callback(0); return }
+      } catch {}
+      callback(-3) // fall back to Chromium's own verification
+    })
+  } catch (e) {
+    logger.warn('main', 'setCertificateVerifyProc unavailable: ' + e.message)
+  }
+
+  app.on('certificate-error', (event, webContents, url, error, certificate, callback) => {
+    try {
+      const expected = ownCertFingerprint()
+      const isLoopback = url.startsWith('https://127.0.0.1:') || url.startsWith('https://localhost:')
+      if (expected && isLoopback && certificate && certificate.fingerprint === expected) {
+        event.preventDefault()
+        callback(true)
+        return
+      }
+    } catch {}
+    callback(false)
+  })
+}
 const tunnel  = require('./tunnel.bundle')
 const logger  = require('./logger.bundle')
 const backup  = require('./backup.bundle')
@@ -125,7 +177,8 @@ async function startServer() {
     // Load React Dashboard in the main window once server is ready
     if (mainWindow && !mainWindow.isDestroyed()) {
       setTimeout(() => {
-        const dashUrl = `http://127.0.0.1:${config.port}`
+        const scheme  = (server.isTls && server.isTls()) ? 'https' : 'http'
+        const dashUrl = `${scheme}://127.0.0.1:${config.port}`
         mainWindow.loadURL(dashUrl).catch(() => {
           // fallback: stay on splash screen
         })
@@ -208,7 +261,12 @@ function stopWatchdog() {
 
 function checkHealth() {
   return new Promise((resolve, reject) => {
-    const req = http.get(`http://127.0.0.1:${config.port}/api/health`, { timeout: 5000 }, (res) => {
+    // v3.7.0 — the server may terminate TLS; probe the matching scheme.
+    const tlsOn = !!(server.isTls && server.isTls())
+    const mod = tlsOn ? require('https') : http
+    const url = `${tlsOn ? 'https' : 'http'}://127.0.0.1:${config.port}/api/health`
+    const opts = { timeout: 5000, ...(tlsOn ? { rejectUnauthorized: false } : {}) }
+    const req = mod.get(url, opts, (res) => {
       res.resume()
       if (res.statusCode === 200) resolve()
       else reject(new Error('Status ' + res.statusCode))
@@ -526,6 +584,14 @@ function createWindow() {
         overrideBrowserWindowOptions: {
           width: 1400, height: 900, minWidth: 900, minHeight: 600,
           autoHideMenuBar: true, backgroundColor: '#000000',
+          show: false, fullscreenable: true,
+          // v3.8.1 — the window must be BORN fullscreen. The renderer requests
+          // fullscreen on mount, but the window is still hidden at that moment
+          // and Windows ignores setFullScreen on a hidden window: the standalone
+          // window then appeared with a title bar and borders, 37px short of the
+          // screen. Creating it fullscreen fixes the OS state from the first
+          // paint; the renderer IPC still toggles it afterwards (Esc / F11).
+          fullscreen: true,
           webPreferences: {
             preload: path.join(__dirname, 'preload.js'),
             nodeIntegration: false,
@@ -538,6 +604,20 @@ function createWindow() {
   })
   mainWindow.webContents.on('did-create-window', (child) => {
     try { child.setMenu(null); child.setMenuBarVisibility(false); child.setAutoHideMenuBar(true) } catch {}
+
+    // v3.8.0 — the standalone screen window must be an edge-free fullscreen
+    // surface: no white flash while loading, and Esc/F11 must work even when
+    // the canvas (not the toolbar) owns the keyboard focus.
+    try { child.once('ready-to-show', () => { try { child.show(); child.focus() } catch {} }) } catch {}
+    try {
+      child.webContents.on('before-input-event', (ev, input) => {
+        if (!input || input.type !== 'keyDown') return
+        try {
+          if (input.key === 'Escape' && child.isFullScreen()) { child.setFullScreen(false); ev.preventDefault() }
+          else if (input.key === 'F11') { child.setFullScreen(!child.isFullScreen()); ev.preventDefault() }
+        } catch {}
+      })
+    } catch {}
   })
 
   mainWindow.once('ready-to-show', () => mainWindow.show())
@@ -560,6 +640,7 @@ function createWindow() {
 // App Lifecycle
 // ─────────────────────────────────────────────────────────────────────────────
 app.on('ready', async () => {
+  installCertificateTrust()
   // Init data directory
   fs.mkdirSync(DATA_DIR, { recursive: true })
   fs.mkdirSync(path.join(DATA_DIR, 'logs'),    { recursive: true })

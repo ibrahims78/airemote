@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+
+jobs:
+  verify:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - name: Install
+        run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Typecheck
+        run: |
+          pnpm --filter @airemote/shared build
+          pnpm --filter @airemote/ai-engine build
+          pnpm --filter @airemote/server typecheck
+          pnpm --filter @airemote/agent typecheck
+          pnpm --filter @airemote/dashboard typecheck
+      - name: Tests
+        run: |
+          node packages/server/test/registry-race.test.cjs
+          node packages/server/test/e2e-connection.test.cjs
+          node packages/server/test/e2e-authz.test.cjs
+      - name: Build dashboard
+        run: pnpm --filter @airemote/dashboard build

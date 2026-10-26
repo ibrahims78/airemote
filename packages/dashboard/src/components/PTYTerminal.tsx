@@ -6,6 +6,7 @@ import { clsx } from 'clsx'
 import { Wifi, WifiOff, X, Maximize2, Minimize2, RotateCcw, ChevronDown, AlertTriangle } from 'lucide-react'
 import { useUIStore } from '../store/uiStore'
 import '@xterm/xterm/css/xterm.css'
+import { fetchWsTicket } from '../lib/wsTicket'
 
 const DARK_THEME = {
   background: '#0d1117', foreground: '#e6edf3', cursor: '#58a6ff',
@@ -131,7 +132,7 @@ export function PTYTerminal({ deviceId, deviceName, onClose }: Props) {
   }, [theme])
 
   // ── Connect ───────────────────────────────────────────────────────────
-  const connect = useCallback((shellHint: ShellHint = 'auto') => {
+  const connect = useCallback(async (shellHint: ShellHint = 'auto') => {
     if (!termInstance.current) return
     if (connectingRef.current) return
     connectingRef.current = true
@@ -149,11 +150,16 @@ export function PTYTerminal({ deviceId, deviceName, onClose }: Props) {
     setErrorMsg('')
     term.writeln(`\x1b[33m  يتصل بـ ${deviceName || deviceId}...\x1b[0m`)
 
-    const token    = getFreshToken()
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const tokenQ   = token ? `?token=${encodeURIComponent(token)}` : ''
-    const ws       = new WebSocket(`${protocol}//${window.location.host}/pty${tokenQ}${tokenQ ? "&" : "?"}deviceId=${encodeURIComponent(deviceId)}`)
-    wsRef.current  = ws
+    const ticket   = await fetchWsTicket(getFreshToken())
+    if (!ticket) {
+      connectingRef.current = false
+      setStatus('error')
+      setErrorMsg('تعذر إنشاء تذكرة اتصال — أعد تسجيل الدخول')
+      return
+    }
+    const ws = new WebSocket(`${protocol}//${window.location.host}/pty?ticket=${encodeURIComponent(ticket)}&deviceId=${encodeURIComponent(deviceId)}`)
+    wsRef.current = ws
 
     ws.onopen = () => {
       connectingRef.current = false

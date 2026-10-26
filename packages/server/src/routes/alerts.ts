@@ -4,6 +4,7 @@ import { requireAuth } from '../middleware/auth'
 import { getDb } from '../db/database'
 import { logAudit } from '../db/audit'
 import type { AuthTokenPayload } from '@airemote/shared'
+import { assertSafeOutboundUrl, UnsafeUrlError } from '../lib/security'
 
 export async function alertRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', requireAuth)
@@ -32,6 +33,15 @@ export async function alertRoutes(fastify: FastifyInstance) {
     const validTypes = ['device_offline', 'device_online', 'cpu_high', 'ram_high', 'disk_high']
     if (!validTypes.includes(type)) {
       return reply.code(400).send({ error: `Invalid type. Must be one of: ${validTypes.join(', ')}` })
+    }
+
+    // v3.7.0 — the server performs this request, so reject private targets (SSRF)
+    if (webhookUrl) {
+      try {
+        assertSafeOutboundUrl(webhookUrl)
+      } catch (e) {
+        return reply.code(400).send({ error: (e as UnsafeUrlError).message })
+      }
     }
 
     const db = getDb()

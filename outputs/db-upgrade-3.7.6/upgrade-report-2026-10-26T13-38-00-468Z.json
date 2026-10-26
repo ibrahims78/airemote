@@ -1,0 +1,567 @@
+{
+  "generatedAt": "2026-10-26T13:38:04.832Z",
+  "baseRef": "32a9d6a",
+  "runtime": {
+    "node": "18.18.2",
+    "electron": "28.3.3"
+  },
+  "dbFile": "C:\\Users\\admin\\AppData\\Local\\Temp\\airemote-dbup-9KW6Kp\\airemote.db",
+  "totals": {
+    "pass": 34,
+    "fail": 2
+  },
+  "checks": [
+    {
+      "name": "extracted 3.6.0 server.js from 32a9d6a",
+      "ok": true,
+      "detail": "206599 bytes"
+    },
+    {
+      "name": "3.6.0 server booted on a fresh database",
+      "ok": true,
+      "detail": "port 51623"
+    },
+    {
+      "name": "3.6.0 reports its own version",
+      "ok": false,
+      "detail": "version=undefined"
+    },
+    {
+      "name": "3.6.0 created the admin account",
+      "ok": true,
+      "detail": "status 200 {\"accessToken\":\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiJlNjVlZDg1MS1lNTE2LTQ1ODYtOTQzMS1iNzgxNzQ0MDAxNjciLCJ"
+    },
+    {
+      "name": "3.6.0 admin can log in",
+      "ok": true,
+      "detail": "status 200"
+    },
+    {
+      "name": "3.6.0 exposes the admin user id",
+      "ok": true,
+      "detail": "e65ed851-e516-4586-9431-b78174400167"
+    },
+    {
+      "name": "3.6.0 admin role is admin (no post-upgrade lockout)",
+      "ok": true,
+      "detail": "admin"
+    },
+    {
+      "name": "seeded device / conversation / audit / stats / sessions in the 3.6.0 schema",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "3.6.0 stored AI settings",
+      "ok": true,
+      "detail": "status 200"
+    },
+    {
+      "name": "3.6.0 encrypted an SSH credential",
+      "ok": true,
+      "detail": "status 201 id=b6a911f4-7f22-4b4a-a362-93134c9d1a38"
+    },
+    {
+      "name": "3.6.0 database contains 13 tables",
+      "ok": true,
+      "detail": "ai_conversations,alert_rules,audit_log,device_credentials,devices,notifications,recordings,refresh_tokens,scheduled_tasks,sessions,settings,stats_history,users"
+    },
+    {
+      "name": "3.6.0 settings row is plain text (no enc1: sealing)",
+      "ok": false,
+      "detail": "provider key readable in 3.6.0 format"
+    },
+    {
+      "name": "3.6.0 server stopped cleanly",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "3.7.6 boots on the 3.6.0 database",
+      "ok": true,
+      "detail": "no throw"
+    },
+    {
+      "name": "/health responds 200",
+      "ok": true,
+      "detail": "status 200"
+    },
+    {
+      "name": "/health reports version 3.7.6",
+      "ok": true,
+      "detail": "{\"status\":\"ok\",\"version\":\"3.7.6\",\"tls\":false,\"uptime\":3,\"port\":51630,\"isDesktop\":true}"
+    },
+    {
+      "name": "legacy 3.6.0 password still authenticates",
+      "ok": true,
+      "detail": "status 200"
+    },
+    {
+      "name": "table count unchanged after upgrade",
+      "ok": true,
+      "detail": "13 -> 13"
+    },
+    {
+      "name": "no column lost or missing after upgrade",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "no unexpected schema drift introduced",
+      "ok": true,
+      "detail": "none"
+    },
+    {
+      "name": "devices survive",
+      "ok": true,
+      "detail": "1 -> 1"
+    },
+    {
+      "name": "AI conversations survive",
+      "ok": true,
+      "detail": "1 -> 1"
+    },
+    {
+      "name": "settings row survives",
+      "ok": true,
+      "detail": "6 -> 6"
+    },
+    {
+      "name": "legacy conversation payload readable",
+      "ok": true,
+      "detail": "[{\"role\":\"user\",\"content\":\"hello from 3.6.0\"},{\"role\":\"assistant\",\"content\":\"rep"
+    },
+    {
+      "name": "3.6.0 AI provider key readable after upgrade",
+      "ok": true,
+      "detail": "status 200 {\"aiProvider\":\"openai\",\"aiModel\":\"gpt-4o\",\"aiApiKey\":\"sk-legacy-3.6.0-key\",\"ollamaUrl\":\"\",\"ai_config\":{\"provider\":\"opena"
+    },
+    {
+      "name": "credential listed after upgrade",
+      "ok": true,
+      "detail": "status 200"
+    },
+    {
+      "name": "3.6.0 SSH secret still decrypts (fails on network, not on crypto)",
+      "ok": true,
+      "detail": "status 502 {\"error\":\"connect ECONNREFUSED 127.0.0.1:1\"}"
+    },
+    {
+      "name": "old audit rows are NOT deleted by the desktop upgrade",
+      "ok": true,
+      "detail": "120-day row count 1"
+    },
+    {
+      "name": "7-day stats pruning behaves as in 3.6.0 (pre-existing rule)",
+      "ok": true,
+      "detail": "10-day rows left: 0"
+    },
+    {
+      "name": "session left open by 3.6.0 is closed on upgrade",
+      "ok": true,
+      "detail": "2026-10-26 13:38:03"
+    },
+    {
+      "name": "database integrity_check passes",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "name": "refresh token issued by 3.7.6 works",
+      "ok": true,
+      "detail": "status 200"
+    },
+    {
+      "name": "3.7.6 stopped cleanly",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "3.7.6 still boots with a rotated jwtSecret",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "login still works after secret rotation (bcrypt is secret-independent)",
+      "ok": true,
+      "detail": "status 200"
+    },
+    {
+      "name": "storage: stored SSH secret becomes UNDECRYPTABLE when jwtSecret changes (documented risk)",
+      "ok": true,
+      "detail": "status 500 {\"statusCode\":500,\"code\":\"ERR_OSSL_BAD_DECRYPT\",\"error\":\"Internal Server Error\",\"message\":\"error:1e000065:Cipher functions:OPENSSL_internal:"
+    }
+  ],
+  "snapshotBefore": {
+    "tables": [
+      "ai_conversations",
+      "alert_rules",
+      "audit_log",
+      "device_credentials",
+      "devices",
+      "notifications",
+      "recordings",
+      "refresh_tokens",
+      "scheduled_tasks",
+      "sessions",
+      "settings",
+      "stats_history",
+      "users"
+    ],
+    "schema": {
+      "ai_conversations": [
+        "id:TEXT",
+        "device_id:TEXT!=''",
+        "user_id:TEXT!",
+        "title:TEXT",
+        "messages:TEXT!='[]'",
+        "created_at:TEXT!=datetime('now')",
+        "updated_at:TEXT!=datetime('now')"
+      ],
+      "alert_rules": [
+        "id:TEXT",
+        "user_id:TEXT!",
+        "device_id:TEXT",
+        "type:TEXT!",
+        "threshold:REAL",
+        "cooldown_min:INTEGER!=30",
+        "channel:TEXT!='in_app'",
+        "webhook_url:TEXT",
+        "enabled:INTEGER!=1",
+        "last_fired_at:TEXT",
+        "created_at:TEXT!=datetime('now')"
+      ],
+      "audit_log": [
+        "id:INTEGER",
+        "user_id:TEXT!=''",
+        "user_email:TEXT!=''",
+        "device_id:TEXT",
+        "action:TEXT!",
+        "details:TEXT",
+        "ip_address:TEXT",
+        "status_code:INTEGER",
+        "created_at:TEXT!=datetime('now')"
+      ],
+      "device_credentials": [
+        "id:TEXT",
+        "user_id:TEXT!",
+        "device_id:TEXT!",
+        "label:TEXT!",
+        "ssh_host:TEXT!",
+        "ssh_port:INTEGER!=22",
+        "ssh_username:TEXT!",
+        "secret_type:TEXT!='password'",
+        "secret_enc:TEXT!",
+        "last_used:TEXT",
+        "created_at:TEXT!=datetime('now')"
+      ],
+      "devices": [
+        "id:TEXT",
+        "name:TEXT!",
+        "token:TEXT!",
+        "owner_id:TEXT!",
+        "info:TEXT",
+        "status:TEXT!='offline'",
+        "tags:TEXT!='[]'",
+        "capabilities:TEXT!='{}'",
+        "last_seen:TEXT",
+        "created_at:TEXT!=datetime('now')",
+        "updated_at:TEXT!=datetime('now')"
+      ],
+      "notifications": [
+        "id:TEXT",
+        "user_id:TEXT",
+        "device_id:TEXT",
+        "type:TEXT!",
+        "title:TEXT!=''",
+        "message:TEXT!=''",
+        "severity:TEXT!='info'",
+        "read:INTEGER!=0",
+        "created_at:TEXT!=datetime('now')"
+      ],
+      "recordings": [
+        "id:TEXT",
+        "device_id:TEXT!",
+        "user_id:TEXT!",
+        "name:TEXT",
+        "started_at:TEXT!",
+        "ended_at:TEXT",
+        "file_path:TEXT",
+        "size_mb:REAL",
+        "created_at:TEXT!=datetime('now')"
+      ],
+      "refresh_tokens": [
+        "id:TEXT",
+        "user_id:TEXT!",
+        "token_hash:TEXT!",
+        "expires_at:TEXT!",
+        "created_at:TEXT!=datetime('now')"
+      ],
+      "scheduled_tasks": [
+        "id:TEXT",
+        "user_id:TEXT!",
+        "name:TEXT!",
+        "kind:TEXT!='ai'",
+        "device_id:TEXT",
+        "payload:TEXT!=''",
+        "interval_min:INTEGER!=0",
+        "daily_at:TEXT",
+        "enabled:INTEGER!=1",
+        "last_run_at:TEXT",
+        "last_result:TEXT",
+        "created_at:TEXT!=datetime('now')"
+      ],
+      "sessions": [
+        "id:TEXT",
+        "device_id:TEXT!",
+        "user_id:TEXT!",
+        "type:TEXT!='shell'",
+        "started_at:TEXT!=datetime('now')",
+        "ended_at:TEXT",
+        "duration_sec:INTEGER",
+        "metadata:TEXT"
+      ],
+      "settings": [
+        "key:TEXT",
+        "value:TEXT!='{}'",
+        "updated_at:TEXT!=datetime('now')"
+      ],
+      "stats_history": [
+        "id:INTEGER",
+        "device_id:TEXT!",
+        "cpu_percent:REAL",
+        "ram_percent:REAL",
+        "disk_percent:REAL",
+        "net_in_kb:REAL",
+        "net_out_kb:REAL",
+        "recorded_at:TEXT!=datetime('now')"
+      ],
+      "users": [
+        "id:TEXT",
+        "email:TEXT!",
+        "name:TEXT!",
+        "role:TEXT!='viewer'",
+        "password_hash:TEXT!",
+        "totp_enabled:INTEGER!=0",
+        "totp_secret:TEXT",
+        "created_at:TEXT!=datetime('now')",
+        "updated_at:TEXT!=datetime('now')"
+      ]
+    },
+    "counts": {
+      "ai_conversations": 1,
+      "alert_rules": 0,
+      "audit_log": 6,
+      "device_credentials": 1,
+      "devices": 1,
+      "notifications": 0,
+      "recordings": 0,
+      "refresh_tokens": 2,
+      "scheduled_tasks": 0,
+      "sessions": 2,
+      "settings": 6,
+      "stats_history": 3,
+      "users": 1
+    },
+    "indexes": [
+      "idx_ai_conv_device",
+      "idx_ai_conv_user",
+      "idx_alerts_user",
+      "idx_audit_created",
+      "idx_devices_owner",
+      "idx_devices_status",
+      "idx_devices_token",
+      "idx_notif_user",
+      "idx_rec_device",
+      "idx_sessions_device",
+      "idx_stats_device",
+      "idx_tasks_user"
+    ]
+  },
+  "snapshotAfter": {
+    "tables": [
+      "ai_conversations",
+      "alert_rules",
+      "audit_log",
+      "device_credentials",
+      "devices",
+      "notifications",
+      "recordings",
+      "refresh_tokens",
+      "scheduled_tasks",
+      "sessions",
+      "settings",
+      "stats_history",
+      "users"
+    ],
+    "schema": {
+      "ai_conversations": [
+        "id:TEXT",
+        "device_id:TEXT!=''",
+        "user_id:TEXT!",
+        "title:TEXT",
+        "messages:TEXT!='[]'",
+        "created_at:TEXT!=datetime('now')",
+        "updated_at:TEXT!=datetime('now')"
+      ],
+      "alert_rules": [
+        "id:TEXT",
+        "user_id:TEXT!",
+        "device_id:TEXT",
+        "type:TEXT!",
+        "threshold:REAL",
+        "cooldown_min:INTEGER!=30",
+        "channel:TEXT!='in_app'",
+        "webhook_url:TEXT",
+        "enabled:INTEGER!=1",
+        "last_fired_at:TEXT",
+        "created_at:TEXT!=datetime('now')"
+      ],
+      "audit_log": [
+        "id:INTEGER",
+        "user_id:TEXT!=''",
+        "user_email:TEXT!=''",
+        "device_id:TEXT",
+        "action:TEXT!",
+        "details:TEXT",
+        "ip_address:TEXT",
+        "status_code:INTEGER",
+        "created_at:TEXT!=datetime('now')"
+      ],
+      "device_credentials": [
+        "id:TEXT",
+        "user_id:TEXT!",
+        "device_id:TEXT!",
+        "label:TEXT!",
+        "ssh_host:TEXT!",
+        "ssh_port:INTEGER!=22",
+        "ssh_username:TEXT!",
+        "secret_type:TEXT!='password'",
+        "secret_enc:TEXT!",
+        "last_used:TEXT",
+        "created_at:TEXT!=datetime('now')"
+      ],
+      "devices": [
+        "id:TEXT",
+        "name:TEXT!",
+        "token:TEXT!",
+        "owner_id:TEXT!",
+        "info:TEXT",
+        "status:TEXT!='offline'",
+        "tags:TEXT!='[]'",
+        "capabilities:TEXT!='{}'",
+        "last_seen:TEXT",
+        "created_at:TEXT!=datetime('now')",
+        "updated_at:TEXT!=datetime('now')"
+      ],
+      "notifications": [
+        "id:TEXT",
+        "user_id:TEXT",
+        "device_id:TEXT",
+        "type:TEXT!",
+        "title:TEXT!=''",
+        "message:TEXT!=''",
+        "severity:TEXT!='info'",
+        "read:INTEGER!=0",
+        "created_at:TEXT!=datetime('now')"
+      ],
+      "recordings": [
+        "id:TEXT",
+        "device_id:TEXT!",
+        "user_id:TEXT!",
+        "name:TEXT",
+        "started_at:TEXT!",
+        "ended_at:TEXT",
+        "file_path:TEXT",
+        "size_mb:REAL",
+        "created_at:TEXT!=datetime('now')"
+      ],
+      "refresh_tokens": [
+        "id:TEXT",
+        "user_id:TEXT!",
+        "token_hash:TEXT!",
+        "expires_at:TEXT!",
+        "created_at:TEXT!=datetime('now')"
+      ],
+      "scheduled_tasks": [
+        "id:TEXT",
+        "user_id:TEXT!",
+        "name:TEXT!",
+        "kind:TEXT!='ai'",
+        "device_id:TEXT",
+        "payload:TEXT!=''",
+        "interval_min:INTEGER!=0",
+        "daily_at:TEXT",
+        "enabled:INTEGER!=1",
+        "last_run_at:TEXT",
+        "last_result:TEXT",
+        "created_at:TEXT!=datetime('now')"
+      ],
+      "sessions": [
+        "id:TEXT",
+        "device_id:TEXT!",
+        "user_id:TEXT!",
+        "type:TEXT!='shell'",
+        "started_at:TEXT!=datetime('now')",
+        "ended_at:TEXT",
+        "duration_sec:INTEGER",
+        "metadata:TEXT"
+      ],
+      "settings": [
+        "key:TEXT",
+        "value:TEXT!='{}'",
+        "updated_at:TEXT!=datetime('now')"
+      ],
+      "stats_history": [
+        "id:INTEGER",
+        "device_id:TEXT!",
+        "cpu_percent:REAL",
+        "ram_percent:REAL",
+        "disk_percent:REAL",
+        "net_in_kb:REAL",
+        "net_out_kb:REAL",
+        "recorded_at:TEXT!=datetime('now')"
+      ],
+      "users": [
+        "id:TEXT",
+        "email:TEXT!",
+        "name:TEXT!",
+        "role:TEXT!='viewer'",
+        "password_hash:TEXT!",
+        "totp_enabled:INTEGER!=0",
+        "totp_secret:TEXT",
+        "created_at:TEXT!=datetime('now')",
+        "updated_at:TEXT!=datetime('now')"
+      ]
+    },
+    "counts": {
+      "ai_conversations": 1,
+      "alert_rules": 0,
+      "audit_log": 7,
+      "device_credentials": 1,
+      "devices": 1,
+      "notifications": 0,
+      "recordings": 0,
+      "refresh_tokens": 3,
+      "scheduled_tasks": 0,
+      "sessions": 2,
+      "settings": 6,
+      "stats_history": 2,
+      "users": 1
+    },
+    "indexes": [
+      "idx_ai_conv_device",
+      "idx_ai_conv_user",
+      "idx_alerts_user",
+      "idx_audit_created",
+      "idx_devices_owner",
+      "idx_devices_status",
+      "idx_devices_token",
+      "idx_notif_user",
+      "idx_rec_device",
+      "idx_sessions_device",
+      "idx_stats_device",
+      "idx_tasks_user"
+    ]
+  }
+}

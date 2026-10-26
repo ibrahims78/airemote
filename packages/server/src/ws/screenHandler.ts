@@ -5,6 +5,8 @@ import { deviceRegistry } from './registry'
 import type { AuthTokenPayload } from '@airemote/shared'
 import { consumeWsTicket } from '../lib/wsTickets'
 import { canAccessDevice } from '../lib/deviceAccess'
+import { atLeast } from '../lib/security'
+import { getKeyframe, forgetKeyframe } from './screenKeyframeCache'
 import { getDb } from '../db/database'
 import {
   startRecording, stopRecording, isRecording,
@@ -34,16 +36,9 @@ export async function handleScreenWebSocket(socket: WebSocket, request: FastifyR
     userEmail = data.email
     userRole  = data.role
   } else if (query.token) {
-    try {
-      const payload = request.server.jwt.verify<AuthTokenPayload>(query.token)
-      userId    = payload.userId
-      userEmail = payload.email
-      userRole  = payload.role
-    } catch {
-      socket.send(JSON.stringify({ type: 'screen:error', payload: { message: 'Unauthorized' } }))
-      socket.close()
-      return
-    }
+    socket.send(JSON.stringify({ type: 'screen:error', payload: { message: 'Query token auth removed in 3.7.0 — use /api/auth/ws-ticket' } }))
+    socket.close()
+    return
   } else {
     socket.send(JSON.stringify({ type: 'screen:error', payload: { message: 'No auth provided' } }))
     socket.close()
@@ -153,6 +148,17 @@ export async function handleScreenWebSocket(socket: WebSocket, request: FastifyR
     console.log(`🖥️  Screen session started: ${agentSessionId} (device=${deviceId}, fps=${fps}, quality=${quality})`)
   } else {
     console.log(`🖥️  Viewer joined screen session: ${agentSessionId} (device=${deviceId}, viewers=${viewerCount})`)
+
+    // The agent is already capturing and only emits deltas, so a viewer that
+    // joins now would never learn the screen size (blank canvas / black window).
+    // Replay the last full frame; it is byte-identical to a normal first frame.
+    const cached = getKeyframe(agentSessionId)
+    if (cached && socket.readyState === 1) {
+      try {
+        socket.send(cached.binary ? (cached.data as Buffer) : (cached.data as string))
+        console.log(`🖥️  Replayed full frame to late viewer session=${agentSessionId.slice(0, 8)} ${cached.width}×${cached.height} seq=${cached.seq}`)
+      } catch {}
+    }
   }
 
   // ── Keep-alive ────────────────────────────────────────────────────────────
@@ -170,9 +176,34 @@ export async function handleScreenWebSocket(socket: WebSocket, request: FastifyR
   // ── Handle dashboard → server messages ───────────────────────────────────
   const chatHistory: Array<{ text: string; sender: string; ts: number }> = []
 
+  // v3.7.0 — watching is allowed for viewer, acting requires manager
+  const CONTROL_MESSAGES = new Set([
+    'screen:mouse_event',
+    'screen:key_event',
+    'screen:clipboard_write',
+    'screen:privacy',
+    'screen:control_request',
+    'screen:rotate',
+    'screen:rotate_auto',
+    'screen:brightness',
+    'screen:audio_control',
+    'screen:set_quality',
+    'screen:set_monitor'
+  ])
+
   socket.on('message', (raw: Buffer) => {
     try {
       const msg = JSON.parse(raw.toString())
+
+      if (CONTROL_MESSAGES.has(msg.type) && !atLeast(userRole, 'manager')) {
+        if (socket.readyState === 1) {
+          socket.send(JSON.stringify({
+            type: 'screen:error',
+            payload: { message: 'صلاحية تحكم مطلوبة (manager) لهذا الإجراء' }
+          }))
+        }
+        return
+      }
 
       switch (msg.type) {
         case 'screen:stop':
@@ -436,6 +467,7 @@ function leaveSession(
 // ── cleanup ───────────────────────────────────────────────────────────────────
 function cleanup(agentSessionId: string, deviceId: string): void {
   const session = deviceRegistry.removeScreenSession(agentSessionId)
+  forgetKeyframe(agentSessionId)
   if (!session) return
 
   if (isRecording(agentSessionId)) stopRecording(agentSessionId)

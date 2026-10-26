@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify'
 import { requireAuth } from '../middleware/auth'
 import { getDb } from '../db/database'
 import type { AuthTokenPayload } from '@airemote/shared'
+import { sealSecret, unsealSecret } from '../services/crypto'
 
 export async function settingsRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', requireAuth)
@@ -16,7 +17,11 @@ export async function settingsRoutes(fastify: FastifyInstance) {
     })
     const row = result.rows[0] as unknown as { value: string } | undefined
     if (!row) return { aiProvider: 'openai', aiModel: 'gpt-4o', aiApiKey: '', ollamaUrl: '' }
-    try { return JSON.parse(row.value) } catch { return {} }
+    try {
+      const parsed = JSON.parse(row.value) as Record<string, unknown>
+      if (typeof parsed.aiApiKey === 'string') parsed.aiApiKey = unsealSecret(parsed.aiApiKey)
+      return parsed
+    } catch { return {} }
   })
 
   // Save settings for current user
@@ -24,7 +29,10 @@ export async function settingsRoutes(fastify: FastifyInstance) {
     const user = request.user as unknown as AuthTokenPayload
     const db = getDb()
     const now = new Date().toISOString()
-    const valueJson = JSON.stringify(request.body)
+    // v3.7.0 — provider keys are encrypted at rest with CREDENTIALS_KEY
+    const payload = { ...(request.body as Record<string, unknown>) }
+    if (typeof payload.aiApiKey === 'string') payload.aiApiKey = sealSecret(payload.aiApiKey)
+    const valueJson = JSON.stringify(payload)
 
     await db.execute({
       sql: `INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)

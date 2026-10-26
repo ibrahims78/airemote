@@ -1,0 +1,491 @@
+{
+  "generatedAt": "2026-10-26T13:46:11.874Z",
+  "layer": "web (@airemote/server, libsql)",
+  "baseRef": "32a9d6a",
+  "runtime": {
+    "node": "24.20.0"
+  },
+  "totals": {
+    "pass": 19,
+    "fail": 1
+  },
+  "checks": [
+    {
+      "name": "extracted 3.6.0 schema from database.ts",
+      "ok": true,
+      "detail": "7923 bytes of source"
+    },
+    {
+      "name": "3.6.0 schema creates 11 tables",
+      "ok": true,
+      "detail": "ai_conversations,alert_rules,audit_log,device_credentials,device_stats_history,devices,notifications,refresh_tokens,sessions,settings,users"
+    },
+    {
+      "name": "seeded 3.6.0 data",
+      "ok": true,
+      "detail": "{\"rt\":3,\"audit\":3,\"stats\":3}"
+    },
+    {
+      "name": "3.6.0 refresh_tokens has no token_id column",
+      "ok": true,
+      "detail": "cols=5"
+    },
+    {
+      "name": "3.7.6 initDatabase() runs on the 3.6.0 database",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "table count unchanged",
+      "ok": true,
+      "detail": "11 -> 11"
+    },
+    {
+      "name": "no 3.6.0 column lost",
+      "ok": true,
+      "detail": "none"
+    },
+    {
+      "name": "refresh_tokens.token_id added by migration",
+      "ok": true,
+      "detail": "id:TEXT,user_id:TEXT,token_hash:TEXT,expires_at:TEXT,created_at:TEXT,token_id:TEXT"
+    },
+    {
+      "name": "unique index idx_refresh_token_id actually created (not silently swallowed)",
+      "ok": true,
+      "detail": "CREATE UNIQUE INDEX idx_refresh_token_id ON refresh_tokens(token_id)"
+    },
+    {
+      "name": "legacy (pre-3.7.0) refresh tokens dropped -> one forced re-login",
+      "ok": true,
+      "detail": "rows 3 -> 0"
+    },
+    {
+      "name": "users survive",
+      "ok": true,
+      "detail": "2 -> 2"
+    },
+    {
+      "name": "devices survive with tags intact",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "sessions survive",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "AI conversations survive",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "3.6.0 plaintext provider key still readable (unsealSecret passes legacy values through)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "audit_log 90-day retention applied (120d row removed)",
+      "ok": true,
+      "detail": "3 -> 2"
+    },
+    {
+      "name": "device_stats_history 30-day retention applied (40d row removed, 10d kept)",
+      "ok": true,
+      "detail": "3 -> 2"
+    },
+    {
+      "name": "integrity_check passes",
+      "ok": true,
+      "detail": "{\"integrity_check\":\"ok\"}"
+    },
+    {
+      "name": "token_id uniqueness is enforced by the DB",
+      "ok": false,
+      "detail": "duplicate token_id rows: 0 | rejected with: SQLITE_CONSTRAINT: FOREIGN KEY constraint failed"
+    },
+    {
+      "name": "second startup is idempotent (no error, no data loss)",
+      "ok": true,
+      "detail": "users 2 -> 2"
+    }
+  ],
+  "snapshotBefore": {
+    "tables": [
+      "ai_conversations",
+      "alert_rules",
+      "audit_log",
+      "device_credentials",
+      "device_stats_history",
+      "devices",
+      "notifications",
+      "refresh_tokens",
+      "sessions",
+      "settings",
+      "users"
+    ],
+    "schema": {
+      "ai_conversations": [
+        "id:TEXT",
+        "device_id:TEXT",
+        "user_id:TEXT",
+        "messages:TEXT",
+        "created_at:TEXT",
+        "updated_at:TEXT"
+      ],
+      "alert_rules": [
+        "id:TEXT",
+        "user_id:TEXT",
+        "device_id:TEXT",
+        "type:TEXT",
+        "threshold:INTEGER",
+        "cooldown_min:INTEGER",
+        "channel:TEXT",
+        "webhook_url:TEXT",
+        "enabled:INTEGER",
+        "created_at:TEXT"
+      ],
+      "audit_log": [
+        "id:INTEGER",
+        "user_id:TEXT",
+        "user_email:TEXT",
+        "device_id:TEXT",
+        "action:TEXT",
+        "details:TEXT",
+        "ip_address:TEXT",
+        "status_code:INTEGER",
+        "created_at:TEXT"
+      ],
+      "device_credentials": [
+        "id:TEXT",
+        "device_id:TEXT",
+        "user_id:TEXT",
+        "label:TEXT",
+        "ssh_host:TEXT",
+        "ssh_port:INTEGER",
+        "ssh_username:TEXT",
+        "secret_type:TEXT",
+        "secret_enc:TEXT",
+        "last_used:TEXT",
+        "created_at:TEXT"
+      ],
+      "device_stats_history": [
+        "id:INTEGER",
+        "device_id:TEXT",
+        "cpu_percent:INTEGER",
+        "ram_percent:INTEGER",
+        "disk_percent:INTEGER",
+        "net_up_kbps:INTEGER",
+        "net_down_kbps:INTEGER",
+        "uptime_sec:INTEGER",
+        "recorded_at:TEXT"
+      ],
+      "devices": [
+        "id:TEXT",
+        "name:TEXT",
+        "token:TEXT",
+        "owner_id:TEXT",
+        "info:TEXT",
+        "status:TEXT",
+        "tunnel_layer:TEXT",
+        "tunnel_address:TEXT",
+        "tags:TEXT",
+        "last_seen:TEXT",
+        "created_at:TEXT",
+        "updated_at:TEXT"
+      ],
+      "notifications": [
+        "id:TEXT",
+        "user_id:TEXT",
+        "rule_id:TEXT",
+        "device_id:TEXT",
+        "type:TEXT",
+        "title:TEXT",
+        "message:TEXT",
+        "severity:TEXT",
+        "read:INTEGER",
+        "created_at:TEXT"
+      ],
+      "refresh_tokens": [
+        "id:TEXT",
+        "user_id:TEXT",
+        "token_hash:TEXT",
+        "expires_at:TEXT",
+        "created_at:TEXT"
+      ],
+      "sessions": [
+        "id:TEXT",
+        "device_id:TEXT",
+        "user_id:TEXT",
+        "type:TEXT",
+        "started_at:TEXT",
+        "ended_at:TEXT",
+        "duration_sec:INTEGER",
+        "ip_address:TEXT"
+      ],
+      "settings": [
+        "key:TEXT",
+        "value:TEXT",
+        "updated_at:TEXT"
+      ],
+      "users": [
+        "id:TEXT",
+        "email:TEXT",
+        "name:TEXT",
+        "role:TEXT",
+        "password_hash:TEXT",
+        "totp_secret:TEXT",
+        "totp_enabled:INTEGER",
+        "created_at:TEXT",
+        "updated_at:TEXT"
+      ]
+    },
+    "counts": {
+      "ai_conversations": 1,
+      "alert_rules": 0,
+      "audit_log": 3,
+      "device_credentials": 0,
+      "device_stats_history": 3,
+      "devices": 1,
+      "notifications": 0,
+      "refresh_tokens": 3,
+      "sessions": 1,
+      "settings": 1,
+      "users": 2
+    },
+    "indexes": [
+      {
+        "name": "idx_ai_conv_user",
+        "sql": "CREATE INDEX idx_ai_conv_user        ON ai_conversations(user_id)"
+      },
+      {
+        "name": "idx_audit_device_time",
+        "sql": "CREATE INDEX idx_audit_device_time   ON audit_log(device_id, created_at DESC)"
+      },
+      {
+        "name": "idx_audit_user_time",
+        "sql": "CREATE INDEX idx_audit_user_time     ON audit_log(user_id, created_at DESC)"
+      },
+      {
+        "name": "idx_devices_owner",
+        "sql": "CREATE INDEX idx_devices_owner       ON devices(owner_id)"
+      },
+      {
+        "name": "idx_devices_token",
+        "sql": "CREATE INDEX idx_devices_token       ON devices(token)"
+      },
+      {
+        "name": "idx_notif_user_unread",
+        "sql": "CREATE INDEX idx_notif_user_unread   ON notifications(user_id, read, created_at DESC)"
+      },
+      {
+        "name": "idx_refresh_tokens_user",
+        "sql": "CREATE INDEX idx_refresh_tokens_user ON refresh_tokens(user_id)"
+      },
+      {
+        "name": "idx_sessions_device",
+        "sql": "CREATE INDEX idx_sessions_device     ON sessions(device_id)"
+      },
+      {
+        "name": "idx_sessions_user",
+        "sql": "CREATE INDEX idx_sessions_user       ON sessions(user_id)"
+      },
+      {
+        "name": "idx_stats_device_time",
+        "sql": "CREATE INDEX idx_stats_device_time   ON device_stats_history(device_id, recorded_at DESC)"
+      }
+    ]
+  },
+  "snapshotAfter": {
+    "tables": [
+      "ai_conversations",
+      "alert_rules",
+      "audit_log",
+      "device_credentials",
+      "device_stats_history",
+      "devices",
+      "notifications",
+      "refresh_tokens",
+      "sessions",
+      "settings",
+      "users"
+    ],
+    "schema": {
+      "ai_conversations": [
+        "id:TEXT",
+        "device_id:TEXT",
+        "user_id:TEXT",
+        "messages:TEXT",
+        "created_at:TEXT",
+        "updated_at:TEXT"
+      ],
+      "alert_rules": [
+        "id:TEXT",
+        "user_id:TEXT",
+        "device_id:TEXT",
+        "type:TEXT",
+        "threshold:INTEGER",
+        "cooldown_min:INTEGER",
+        "channel:TEXT",
+        "webhook_url:TEXT",
+        "enabled:INTEGER",
+        "created_at:TEXT"
+      ],
+      "audit_log": [
+        "id:INTEGER",
+        "user_id:TEXT",
+        "user_email:TEXT",
+        "device_id:TEXT",
+        "action:TEXT",
+        "details:TEXT",
+        "ip_address:TEXT",
+        "status_code:INTEGER",
+        "created_at:TEXT"
+      ],
+      "device_credentials": [
+        "id:TEXT",
+        "device_id:TEXT",
+        "user_id:TEXT",
+        "label:TEXT",
+        "ssh_host:TEXT",
+        "ssh_port:INTEGER",
+        "ssh_username:TEXT",
+        "secret_type:TEXT",
+        "secret_enc:TEXT",
+        "last_used:TEXT",
+        "created_at:TEXT"
+      ],
+      "device_stats_history": [
+        "id:INTEGER",
+        "device_id:TEXT",
+        "cpu_percent:INTEGER",
+        "ram_percent:INTEGER",
+        "disk_percent:INTEGER",
+        "net_up_kbps:INTEGER",
+        "net_down_kbps:INTEGER",
+        "uptime_sec:INTEGER",
+        "recorded_at:TEXT"
+      ],
+      "devices": [
+        "id:TEXT",
+        "name:TEXT",
+        "token:TEXT",
+        "owner_id:TEXT",
+        "info:TEXT",
+        "status:TEXT",
+        "tunnel_layer:TEXT",
+        "tunnel_address:TEXT",
+        "tags:TEXT",
+        "last_seen:TEXT",
+        "created_at:TEXT",
+        "updated_at:TEXT"
+      ],
+      "notifications": [
+        "id:TEXT",
+        "user_id:TEXT",
+        "rule_id:TEXT",
+        "device_id:TEXT",
+        "type:TEXT",
+        "title:TEXT",
+        "message:TEXT",
+        "severity:TEXT",
+        "read:INTEGER",
+        "created_at:TEXT"
+      ],
+      "refresh_tokens": [
+        "id:TEXT",
+        "user_id:TEXT",
+        "token_hash:TEXT",
+        "expires_at:TEXT",
+        "created_at:TEXT",
+        "token_id:TEXT"
+      ],
+      "sessions": [
+        "id:TEXT",
+        "device_id:TEXT",
+        "user_id:TEXT",
+        "type:TEXT",
+        "started_at:TEXT",
+        "ended_at:TEXT",
+        "duration_sec:INTEGER",
+        "ip_address:TEXT"
+      ],
+      "settings": [
+        "key:TEXT",
+        "value:TEXT",
+        "updated_at:TEXT"
+      ],
+      "users": [
+        "id:TEXT",
+        "email:TEXT",
+        "name:TEXT",
+        "role:TEXT",
+        "password_hash:TEXT",
+        "totp_secret:TEXT",
+        "totp_enabled:INTEGER",
+        "created_at:TEXT",
+        "updated_at:TEXT"
+      ]
+    },
+    "counts": {
+      "ai_conversations": 1,
+      "alert_rules": 0,
+      "audit_log": 2,
+      "device_credentials": 0,
+      "device_stats_history": 2,
+      "devices": 1,
+      "notifications": 0,
+      "refresh_tokens": 0,
+      "sessions": 1,
+      "settings": 1,
+      "users": 2
+    },
+    "indexes": [
+      {
+        "name": "idx_ai_conv_user",
+        "sql": "CREATE INDEX idx_ai_conv_user        ON ai_conversations(user_id)"
+      },
+      {
+        "name": "idx_audit_device_time",
+        "sql": "CREATE INDEX idx_audit_device_time   ON audit_log(device_id, created_at DESC)"
+      },
+      {
+        "name": "idx_audit_user_time",
+        "sql": "CREATE INDEX idx_audit_user_time     ON audit_log(user_id, created_at DESC)"
+      },
+      {
+        "name": "idx_devices_owner",
+        "sql": "CREATE INDEX idx_devices_owner       ON devices(owner_id)"
+      },
+      {
+        "name": "idx_devices_token",
+        "sql": "CREATE INDEX idx_devices_token       ON devices(token)"
+      },
+      {
+        "name": "idx_notif_user_unread",
+        "sql": "CREATE INDEX idx_notif_user_unread   ON notifications(user_id, read, created_at DESC)"
+      },
+      {
+        "name": "idx_refresh_token_id",
+        "sql": "CREATE UNIQUE INDEX idx_refresh_token_id ON refresh_tokens(token_id)"
+      },
+      {
+        "name": "idx_refresh_tokens_user",
+        "sql": "CREATE INDEX idx_refresh_tokens_user ON refresh_tokens(user_id)"
+      },
+      {
+        "name": "idx_sessions_device",
+        "sql": "CREATE INDEX idx_sessions_device     ON sessions(device_id)"
+      },
+      {
+        "name": "idx_sessions_user",
+        "sql": "CREATE INDEX idx_sessions_user       ON sessions(user_id)"
+      },
+      {
+        "name": "idx_stats_device_time",
+        "sql": "CREATE INDEX idx_stats_device_time   ON device_stats_history(device_id, recorded_at DESC)"
+      }
+    ]
+  }
+}

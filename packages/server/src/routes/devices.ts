@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import { v4 as uuidv4 } from 'uuid'
 import * as dgram from 'dgram'
-import { requireAuth, requireAdmin } from '../middleware/auth'
+import { requireAuth, requireAdmin, requireManager } from '../middleware/auth'
 import {
   createDevice, getDeviceById, getDevicesByOwner,
   getAllDevices, deleteDevice, renameDevice,
@@ -112,7 +112,7 @@ export async function deviceRoutes(fastify: FastifyInstance) {
   fastify.post<{
     Params: { id: string }
     Body: { command: string; timeoutMs?: number }
-  }>('/:id/exec', async (request, reply) => {
+  }>('/:id/exec', { preHandler: requireManager }, async (request, reply) => {
     const user = request.user as unknown as AuthTokenPayload
     const { id } = request.params
     const { command, timeoutMs = 30000 } = request.body
@@ -140,7 +140,7 @@ export async function deviceRoutes(fastify: FastifyInstance) {
   // ── POST /bulk-exec — run command on multiple devices ───────────────────
   fastify.post<{
     Body: { deviceIds: string[]; command: string; timeoutMs?: number }
-  }>('/bulk-exec', async (request, reply) => {
+  }>('/bulk-exec', { preHandler: requireManager }, async (request, reply) => {
     const user = request.user as unknown as AuthTokenPayload
     const { deviceIds, command, timeoutMs = 30000 } = request.body
 
@@ -283,7 +283,7 @@ export async function deviceRoutes(fastify: FastifyInstance) {
 
   // ── POST /:id/docker/:containerId/:action — start/stop/restart container ──
   fastify.post<{ Params: { id: string; containerId: string; action: string } }>(
-    '/:id/docker/:containerId/:action', async (request, reply) => {
+    '/:id/docker/:containerId/:action', { preHandler: requireManager }, async (request, reply) => {
       const user   = request.user as unknown as AuthTokenPayload
       const { id, containerId, action } = request.params
       if (!['start', 'stop', 'restart'].includes(action)) return reply.code(400).send({ error: 'action must be start | stop | restart' })
@@ -313,7 +313,7 @@ export async function deviceRoutes(fastify: FastifyInstance) {
   fastify.post<{
     Params: { id: string }
     Body: { macAddress: string; broadcast?: string; port?: number }
-  }>('/:id/wol', async (request, reply) => {
+  }>('/:id/wol', { preHandler: requireManager }, async (request, reply) => {
     const user = request.user as unknown as AuthTokenPayload
     const { id } = request.params
     const { macAddress, broadcast = '255.255.255.255', port = 9 } = request.body

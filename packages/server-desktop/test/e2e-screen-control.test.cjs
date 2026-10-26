@@ -71,10 +71,15 @@ const dbPath = path.join(tmpDir, 'sd.db')
 
 let srv = null
 
+async function wsTicketFor(token) {
+  const r = await fetch(BASE + '/api/auth/ws-ticket', { method: 'POST', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' }, body: '{}' }).then((x) => x.json())
+  return r.ticket
+}
+
 async function main() {
   srv = require(path.resolve(SERVER_DIR, 'server.js'))
   const logger = { info() {}, warn() {}, error() {}, debug() {} }
-  await srv.start({ port: PORT, jwtSecret: SECRET, dbPath, logger, desktopCallbacks: {} })
+  await srv.start({ port: PORT, jwtSecret: SECRET, dbPath, logger, desktopCallbacks: {}, tls: false })
 
   const health = await fetch(BASE + '/api/health').then((r) => r.json())
   check('desktop server boots (/api/health ok)', health.status === 'ok')
@@ -192,7 +197,8 @@ async function main() {
   const stopsAfterV1 = agentMsgs.filter((m) => m.type === 'server:screen_stop').length
   check('no capture stop while another viewer remains', stopsAfterV1 === 0)
   viewer2.close()
-  const stop = await waitFor(agentMsgs, (m) => m.type === 'server:screen_stop' && m.payload.sessionId === sid, 6000)
+  // server keeps a 6s grace period before stopping capture (Android consent reuse) — wait longer
+  const stop = await waitFor(agentMsgs, (m) => m.type === 'server:screen_stop' && m.payload.sessionId === sid, 12000)
   check('last viewer leaving stops the agent capture (sessionId match)', !!stop)
 
   agent.close()
@@ -247,7 +253,7 @@ async function main() {
   check('stranger desktop /pty closed by gate', sPtyClosed)
 
   // WS — client snapshot filter + command gate
-  const sCl = new WebSocket('ws://127.0.0.1:' + PORT + '/ws?token=' + strangerJwt)
+  const sCl = new WebSocket('ws://127.0.0.1:' + PORT + '/ws?ticket=' + (await wsTicketFor(strangerJwt)))
   const sClMsgs = []
   sCl.on('message', (data) => { try { sClMsgs.push(JSON.parse(data.toString())) } catch {} })
   const sSnap = await waitFor(sClMsgs, (m) => m.type === 'server:snapshot', 6000)
@@ -259,7 +265,7 @@ async function main() {
   sCl.close()
 
   // WS — admin snapshot still includes the device
-  const aCl = new WebSocket('ws://127.0.0.1:' + PORT + '/ws?token=' + jwtToken)
+  const aCl = new WebSocket('ws://127.0.0.1:' + PORT + '/ws?ticket=' + (await wsTicketFor(jwtToken)))
   const aClMsgs = []
   aCl.on('message', (data) => { try { aClMsgs.push(JSON.parse(data.toString())) } catch {} })
   const aSnap = await waitFor(aClMsgs, (m) => m.type === 'server:snapshot', 6000)

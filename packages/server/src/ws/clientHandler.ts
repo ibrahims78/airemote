@@ -3,6 +3,7 @@ import type { FastifyRequest } from 'fastify'
 import { deviceRegistry } from './registry'
 import { getDeviceById, getDevicesByOwner } from '../db/devices'
 import { canAccessDevice } from '../lib/deviceAccess'
+import { atLeast } from '../lib/security'
 import type { AuthTokenPayload } from '@airemote/shared'
 
 export function handleClientMessage(
@@ -70,6 +71,16 @@ export function handleClientMessage(
     }
 
     case 'client:command': {
+      const denied = message.payload as { commandId?: string }
+      if (!atLeast(authUser?.role, 'manager')) {
+        socket.send(JSON.stringify({
+          type: 'server:error',
+          payload: { commandId: denied.commandId, message: 'Forbidden — manager role required to run commands' },
+          timestamp: Date.now()
+        }))
+        break
+      }
+
       const { deviceId, commandId, command } = message.payload as {
         deviceId: string
         commandId: string

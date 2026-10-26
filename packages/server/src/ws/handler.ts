@@ -5,6 +5,7 @@ import { deviceRegistry } from './registry'
 import { handleAgentMessage, handleAgentBinaryFrame, cleanupDevice } from './agentHandler'
 import { handleClientMessage } from './clientHandler'
 import { updateDeviceStatus } from '../db/devices'
+import { consumeWsTicket } from '../lib/wsTickets'
 
 // Ping interval for dead-connection detection.
 // Uses BOTH protocol-level WebSocket pings AND application-level JSON pings
@@ -125,21 +126,26 @@ export function wsHandler(socket: WebSocket, request: FastifyRequest) {
         if (connectionType === 'unknown') {
           connectionType = 'client'
 
-          const query = request.query as { token?: string }
-          const token = query.token
-          if (!token) {
-            socket.send(JSON.stringify({ type: 'server:error', payload: { message: 'Unauthorized' } }))
+          // v3.7.0 — ticket only; the raw JWT is never accepted from the URL
+          const query = request.query as { ticket?: string; token?: string }
+          if (query.token) {
+            socket.send(JSON.stringify({ type: 'server:error', payload: { message: 'Query token auth removed in 3.7.0 — use /api/auth/ws-ticket' } }))
             socket.close()
             return
           }
-          try {
-            authenticatedUser = request.server.jwt.verify<AuthTokenPayload>(token)
-            ;(request as unknown as Record<string, unknown>).user = authenticatedUser
-          } catch {
-            socket.send(JSON.stringify({ type: 'server:error', payload: { message: 'Invalid token' } }))
+          if (!query.ticket) {
+            socket.send(JSON.stringify({ type: 'server:error', payload: { message: 'WS ticket required' } }))
             socket.close()
             return
           }
+          const ticket = consumeWsTicket(query.ticket)
+          if (!ticket) {
+            socket.send(JSON.stringify({ type: 'server:error', payload: { message: 'Invalid or expired WS ticket' } }))
+            socket.close()
+            return
+          }
+          authenticatedUser = { userId: ticket.userId, email: ticket.email, role: ticket.role } as AuthTokenPayload
+          ;(request as unknown as Record<string, unknown>).user = authenticatedUser
         }
 
         handleClientMessage(socket, message, request)

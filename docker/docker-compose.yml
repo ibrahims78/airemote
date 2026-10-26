@@ -1,4 +1,11 @@
-version: '3.9'
+version: "3.9"
+
+# v3.7.0 — no insecure defaults.
+#   export JWT_SECRET=$(openssl rand -hex 32)
+#   export CREDENTIALS_KEY=$(openssl rand -hex 32)
+#   export DASHBOARD_URL=https://your-host
+# TLS: terminate at a reverse proxy (Caddy/Traefik) in front of :8080 and set
+# TRUST_PROXY=true, or mount certs and set TLS_CERT_PATH/TLS_KEY_PATH.
 
 services:
   server:
@@ -6,19 +13,24 @@ services:
       context: ..
       dockerfile: docker/Dockerfile.server
     restart: unless-stopped
-    ports:
-      - "3001:3001"
-    volumes:
-      - airemote_data:/app/data
     environment:
       - NODE_ENV=production
       - PORT=3001
       - HOST=0.0.0.0
-      - JWT_SECRET=${JWT_SECRET:-change-this-secret}
+      - JWT_SECRET=${JWT_SECRET:?JWT_SECRET is required}
+      - CREDENTIALS_KEY=${CREDENTIALS_KEY:?CREDENTIALS_KEY is required}
       - DB_PATH=/app/data/airemote.db
-      - DASHBOARD_URL=${DASHBOARD_URL:-http://localhost:5173}
+      - DASHBOARD_URL=${DASHBOARD_URL:-http://localhost:8080}
+      - TRUST_PROXY=${TRUST_PROXY:-false}
+    volumes:
+      - airemote_data:/app/data
     networks:
       - airemote_net
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3001/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 
   dashboard:
     build:
@@ -26,9 +38,10 @@ services:
       dockerfile: docker/Dockerfile.dashboard
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "8080:80"
     depends_on:
-      - server
+      server:
+        condition: service_healthy
     networks:
       - airemote_net
 

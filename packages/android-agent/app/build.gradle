@@ -8,8 +8,8 @@ android {
         applicationId "com.airemote.agent"
         minSdk 24
         targetSdk 33
-        versionCode 8
-        versionName "3.6.0"
+        versionCode 11
+        versionName "3.8.1"
     }
 
     buildTypes {
@@ -21,6 +21,8 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
+
+    buildFeatures { buildConfig true }
 
     lint {
         abortOnError false

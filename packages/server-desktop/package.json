@@ -1,105 +1,106 @@
 {
-    "name":  "airemote-server-desktop",
-    "version": "3.6.0",
-    "description":  "AiRemote Server â€” Windows Desktop Application",
-    "main":  "main.js",
-    "author":  "AiRemote",
-    "license":  "MIT",
-    "scripts":  {
-                    "start":  "electron .",
-                    "bundle":  "node scripts/bundle.js",
-                    "build:dashboard":  "cd ../.. \u0026\u0026 pnpm --filter @airemote/shared build \u0026\u0026 pnpm --filter @airemote/ai-engine build \u0026\u0026 pnpm --filter @airemote/dashboard build \u0026\u0026 node packages/server-desktop/scripts/copy-dashboard.js",
-                    "build:win":  "npm run bundle \u0026\u0026 npm run build:dashboard \u0026\u0026 node ../../scripts/download-cloudflared.js \u0026\u0026 electron-builder --win --x64",
-                    "build:win:nodownload":  "node scripts/bundle.js \u0026\u0026 node scripts/copy-dashboard.js \u0026\u0026 electron-builder --win --x64",
-                    "postinstall":  "node scripts/postinstall.js"
-                },
-    "dependencies":  {
-                         "@fastify/cors":  "^9.0.1",
-                         "@fastify/rate-limit":  "^8.1.1",
-                         "@fastify/static":  "^7.0.4",
-                         "@fastify/websocket":  "^10.0.1",
-                         "archiver":  "^7.0.1",
-                         "bcryptjs":  "^2.4.3",
-                         "better-sqlite3":  "^9.6.0",
-                         "fastify":  "^4.28.0",
-                         "jsonwebtoken":  "^9.0.3",
-                         "otplib":  "^12.0.1",
-                         "qrcode":  "^1.5.4",
-                         "ssh2":  "^1.16.0",
-                         "uuid":  "^10.0.0"
-                     },
-    "devDependencies":  {
-                            "electron":  "^28.3.3",
-                            "electron-builder":  "^24.13.3"
-                        },
-    "build":  {
-                  "appId":  "io.airemote.server",
-                  "productName":  "AiRemote Server",
-                  "copyright":  "Copyright Â© 2025 AiRemote",
-                  "npmRebuild":  false,
-                  "directories":  {
-                                      "output":  "../../releases/server-windows"
-                                  },
-                  "files":  [
-                                "main.js",
-                                "server.bundle.js",
-                                "backup.bundle.js",
-                                "tunnel.bundle.js",
-                                "logger.bundle.js",
-                                "preload.js",
-                                "scripts/copy-dashboard.js",
-                                "renderer/**/*",
-                                "static/**/*",
-                                "build/icon.ico",
-                                "node_modules/better-sqlite3/**/*",
-                                "node_modules/bindings/**/*",
-                                "node_modules/file-uri-to-path/**/*"
-                            ],
-                  "asarUnpack":  [
-                                     "**/*.node"
-                                 ],
-                  "extraResources":  [
-                                         {
-                                             "from":  "bin/cloudflared.exe",
-                                             "to":  "cloudflared.exe",
-                                             "filter":  [
-                                                            "**/*"
-                                                        ]
-                                         }
-                                     ],
-                  "win":  {
-                              "target":  [
-                                             {
-                                                 "target":  "nsis",
-                                                 "arch":  [
-                                                              "x64"
-                                                          ]
-                                             },
-                                             {
-                                                 "target":  "zip",
-                                                 "arch":  [
-                                                              "x64"
-                                                          ]
-                                             }
-                                         ],
-                              "icon":  "build/icon.ico",
-                              "artifactName":  "AiRemote-Server-v${version}-Windows-x64.zip",
-                              "requestedExecutionLevel":  "asInvoker",
-                              "signAndEditExecutable":  false,
-                              "signingHashAlgorithms":  null
-                          },
-                  "publish":  null,
-                  "nsis":  {
-                               "oneClick":  false,
-                               "perMachine":  false,
-                               "allowToChangeInstallationDirectory":  true,
-                               "createDesktopShortcut":  true,
-                               "createStartMenuShortcut":  true,
-                               "shortcutName":  "AiRemote Server",
-                               "artifactName":  "AiRemote-Server-Setup-v${version}-x64.exe",
-                               "installerIcon":  "build/icon.ico",
-                               "uninstallerIcon":  "build/icon.ico",
-                               "deleteAppDataOnUninstall":  false
-                           }
-              }
+  "name": "airemote-server-desktop",
+  "version": "3.8.1",
+  "description": "AiRemote Server â€” Windows Desktop Application",
+  "main": "main.js",
+  "author": "AiRemote",
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "bundle": "node scripts/bundle.js",
+    "build:dashboard": "cd ../.. && pnpm --filter @airemote/shared build && pnpm --filter @airemote/ai-engine build && pnpm --filter @airemote/dashboard build && node packages/server-desktop/scripts/copy-dashboard.js",
+    "build:win": "npm run bundle && npm run build:dashboard && node ../../scripts/download-cloudflared.js && electron-builder --win --x64",
+    "build:win:nodownload": "node scripts/bundle.js && node scripts/copy-dashboard.js && electron-builder --win --x64",
+    "postinstall": "node scripts/postinstall.js"
+  },
+  "dependencies": {
+    "@fastify/cors": "^9.0.1",
+    "@fastify/rate-limit": "^8.1.1",
+    "@fastify/static": "^7.0.4",
+    "@fastify/websocket": "^10.0.1",
+    "archiver": "^7.0.1",
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^9.6.0",
+    "fastify": "^4.28.0",
+    "jsonwebtoken": "^9.0.3",
+    "otplib": "^12.0.1",
+    "qrcode": "^1.5.4",
+    "ssh2": "^1.16.0",
+    "uuid": "^10.0.0",
+    "selfsigned": "^2.4.1"
+  },
+  "devDependencies": {
+    "electron": "^28.3.3",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "io.airemote.server",
+    "productName": "AiRemote Server",
+    "copyright": "Copyright Â© 2025 AiRemote",
+    "npmRebuild": false,
+    "directories": {
+      "output": "../../releases/server-windows"
+    },
+    "files": [
+      "main.js",
+      "server.bundle.js",
+      "backup.bundle.js",
+      "tunnel.bundle.js",
+      "logger.bundle.js",
+      "preload.js",
+      "scripts/copy-dashboard.js",
+      "renderer/**/*",
+      "static/**/*",
+      "build/icon.ico",
+      "node_modules/better-sqlite3/**/*",
+      "node_modules/bindings/**/*",
+      "node_modules/file-uri-to-path/**/*"
+    ],
+    "asarUnpack": [
+      "**/*.node"
+    ],
+    "extraResources": [
+      {
+        "from": "bin/cloudflared.exe",
+        "to": "cloudflared.exe",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "artifactName": "AiRemote-Server-v${version}-Windows-x64.zip",
+      "requestedExecutionLevel": "asInvoker",
+      "signAndEditExecutable": false,
+      "signingHashAlgorithms": null
+    },
+    "publish": null,
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "AiRemote Server",
+      "artifactName": "AiRemote-Server-Setup-v${version}-x64.exe",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "deleteAppDataOnUninstall": false
+    }
+  }
 }

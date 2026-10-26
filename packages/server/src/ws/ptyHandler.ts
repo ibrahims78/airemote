@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from 'uuid'
 import { deviceRegistry } from './registry'
 import { getDb } from '../db/database'
 import { canAccessDevice } from '../lib/deviceAccess'
+import { atLeast } from '../lib/security'
 import type { AuthTokenPayload } from '@airemote/shared'
 
 export function handlePtyWebSocket(socket: WebSocket, request: FastifyRequest) {
@@ -23,8 +24,9 @@ export function handlePtyWebSocket(socket: WebSocket, request: FastifyRequest) {
         }
 
         // v3.2.1 hardening — admin or device owner only (fail closed)
-        if (!jwtUser || (jwtUser.role !== 'admin' &&
-            !(await canAccessDevice({ userId: jwtUser.userId, role: jwtUser.role }, deviceId)))) {
+        if (!jwtUser || !atLeast(jwtUser.role, 'manager') ||
+            (jwtUser.role !== 'admin' &&
+              !(await canAccessDevice({ userId: jwtUser.userId, role: jwtUser.role }, deviceId)))) {
           socket.send(JSON.stringify({ type: 'pty:error', payload: { message: 'غير مصرح بالوصول لهذا الجهاز' } }))
           return
         }

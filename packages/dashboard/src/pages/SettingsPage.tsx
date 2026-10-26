@@ -11,6 +11,7 @@ import { useT } from '../lib/i18n'
 import { toast } from '../store/toastStore'
 import { clsx } from 'clsx'
 import { useAuthStore } from '../store/authStore'
+import { APP_VERSION } from '../lib/version'
 import { SessionsPage } from './SessionsPage'
 import { NotificationsPage } from './NotificationsPage'
 import { AuditPage } from './AuditPage'
@@ -549,7 +550,7 @@ export function SettingsPage() {
 
           {/* Version info */}
           <div className="text-center text-xs text-slate-700 py-2">
-            AiRemote v{appVersion || '3.3.4'} — Open Source | <span className="text-slate-600">MIT License</span>
+            AiRemote v{appVersion || APP_VERSION} — Open Source | <span className="text-slate-600">MIT License</span>
           </div>
         </div>
 

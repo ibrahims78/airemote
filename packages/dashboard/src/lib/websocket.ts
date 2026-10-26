@@ -1,4 +1,5 @@
 import { useDeviceStore } from '../store/deviceStore'
+import { fetchWsTicket } from './wsTicket'
 import type { DeviceStatus, TunnelLayer } from '@airemote/shared'
 
 type WsMessage = { type: string; payload: unknown; timestamp?: number }
@@ -11,7 +12,7 @@ let currentUserId:  string | null = null
 let currentToken:   string | null = null
 let extraCallback:  MessageCallback | null = null
 
-export function connectWebSocket(userId: string, token: string, onMessage?: MessageCallback) {
+export async function connectWebSocket(userId: string, token: string, onMessage?: MessageCallback) {
   if (ws?.readyState === WebSocket.OPEN) {
     // Still update the callback in case it changed
     extraCallback = onMessage ?? null
@@ -22,8 +23,14 @@ export function connectWebSocket(userId: string, token: string, onMessage?: Mess
   currentToken  = token
   extraCallback = onMessage ?? null
 
+  const ticket = await fetchWsTicket(token)
+  if (!ticket) {
+    scheduleReconnect()
+    return
+  }
+
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-  const wsUrl    = `${protocol}//${window.location.host}/ws?token=${encodeURIComponent(token)}`
+  const wsUrl    = `${protocol}//${window.location.host}/ws?ticket=${encodeURIComponent(ticket)}`
 
   ws = new WebSocket(wsUrl)
 
@@ -71,7 +78,7 @@ function scheduleReconnect() {
   if (reconnectTimer) clearTimeout(reconnectTimer)
   reconnectTimer = setTimeout(() => {
     reconnectDelay = Math.min(reconnectDelay * 1.5, 30000)
-    if (currentUserId && currentToken) connectWebSocket(currentUserId, currentToken, extraCallback ?? undefined)
+    if (currentUserId && currentToken) void connectWebSocket(currentUserId, currentToken, extraCallback ?? undefined)
   }, reconnectDelay)
 }
 

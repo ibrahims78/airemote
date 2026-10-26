@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { useUIStore } from '../store/uiStore'
 import '@xterm/xterm/css/xterm.css'
+import { fetchWsTicket } from '../lib/wsTicket'
 
 interface SSHConfig {
   host: string
@@ -140,7 +141,7 @@ export function SSHTerminal({ config, deviceId, onClose }: Props) {
   }, [theme])
 
   // ── Connect ───────────────────────────────────────────────────────────────
-  const connect = useCallback((cfg: SSHConfig) => {
+  const connect = useCallback(async (cfg: SSHConfig) => {
     if (!termInstance.current) return
     if (connectingRef.current) return
     connectingRef.current = true
@@ -157,11 +158,17 @@ export function SSHTerminal({ config, deviceId, onClose }: Props) {
     setErrorMsg('')
     term.writeln('\x1b[33m  → Connecting to ' + cfg.host + ':' + cfg.port + '...\x1b[0m')
 
-    const token    = getFreshToken()
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const wsUrl    = `${protocol}//${window.location.host}/ssh${token ? `?token=${encodeURIComponent(token)}` : ''}`
-    const ws       = new WebSocket(wsUrl)
-    wsRef.current  = ws
+    const ticket   = await fetchWsTicket(getFreshToken())
+    if (!ticket) {
+      connectingRef.current = false
+      setStatus('error')
+      setErrorMsg('تعذر إنشاء تذكرة اتصال — أعد تسجيل الدخول')
+      return
+    }
+    const wsUrl   = `${protocol}//${window.location.host}/ssh?ticket=${encodeURIComponent(ticket)}`
+    const ws      = new WebSocket(wsUrl)
+    wsRef.current = ws
 
     ws.onopen = () => {
       connectingRef.current = false

@@ -107,6 +107,12 @@ function wsConnect(url) {
 
 const J = (t) => ({ 'Content-Type': 'application/json', Authorization: 'Bearer ' + t })
 
+async function wsTicket(token) {
+  const r = await fetchJson(BASE + '/api/auth/ws-ticket', { method: 'POST', headers: J(token), body: '{}' })
+  return (r.body && r.body.ticket) || ''
+}
+
+
 async function main() {
   console.log('--- starting server (port ' + PORT + ', db=' + dbPath + ') ---')
   await startServer()
@@ -115,30 +121,30 @@ async function main() {
   // ── bootstrap: admin, owner, stranger ─────────────────────────────────────
   const setup = await fetchJson(BASE + '/api/auth/setup', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'admin@authz.local', name: 'Admin', password: 'password123' }),
+    body: JSON.stringify({ email: 'admin@authz.local', name: 'Admin', password: 'Test-Password-2026' }),
   })
   const adminToken = setup.body && setup.body.token
   check('admin setup returns token', !!adminToken)
 
-  for (const [email, name] of [['owner@authz.local', 'Owner'], ['stranger@authz.local', 'Stranger']]) {
+  for (const [email, name, role] of [['owner@authz.local', 'Owner', 'manager'], ['stranger@authz.local', 'Stranger', 'viewer']]) {
     const u = await fetchJson(BASE + '/api/users', {
       method: 'POST', headers: J(adminToken),
-      body: JSON.stringify({ email, name, password: 'password123', role: 'viewer' }),
+      body: JSON.stringify({ email, name, password: 'Test-Password-2026', role }),
     })
     check('user created: ' + email, u.status === 201 && !!u.body.id)
   }
 
   const ownerLogin = await fetchJson(BASE + '/api/auth/login', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'owner@authz.local', password: 'password123' }),
+    body: JSON.stringify({ email: 'owner@authz.local', password: 'Test-Password-2026' }),
   })
   const ownerToken = ownerLogin.body && ownerLogin.body.token
   const strangerLogin = await fetchJson(BASE + '/api/auth/login', {
     method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'stranger@authz.local', password: 'password123' }),
+    body: JSON.stringify({ email: 'stranger@authz.local', password: 'Test-Password-2026' }),
   })
   const strangerToken = strangerLogin.body && strangerLogin.body.token
-  check('owner login ok (role viewer)', !!ownerToken)
+  check('owner login ok (role manager)', !!ownerToken)
   check('stranger login ok (role viewer)', !!strangerToken)
 
   const devRes = await fetchJson(BASE + '/api/devices', { method: 'POST', headers: J(ownerToken), body: JSON.stringify({ name: 'authz-device-1' }) })
@@ -191,18 +197,18 @@ async function main() {
   check('stranger /screen produced NO capture start for the agent',
     agentMsgs.filter((m) => m.type === 'server:screen_start').length === 0)
 
-  const sPty = await wsConnect(WSB + '/pty?token=' + encodeURIComponent(strangerToken))
+  const sPty = await wsConnect(WSB + '/pty?ticket=' + (await wsTicket(strangerToken)))
   sPty.send(JSON.stringify({ type: 'pty:connect', payload: { deviceId: devId, rows: 24, cols: 80 } }))
   const pErr = await waitFor(sPty, (m) => m.type === 'pty:error', 6000).catch(() => null)
   check('stranger /pty rejected with forbidden', !!pErr && String(pErr.payload.message).includes('مصرح'))
 
-  const sSsh = await wsConnect(WSB + '/ssh?token=' + encodeURIComponent(strangerToken))
+  const sSsh = await wsConnect(WSB + '/ssh?ticket=' + (await wsTicket(strangerToken)))
   sSsh.send(JSON.stringify({ type: 'ssh:connect', payload: { deviceId: devId, host: '10.0.0.1', username: 'root' } }))
   const sshErr = await waitFor(sSsh, (m) => m.type === 'ssh:error', 6000).catch(() => null)
   check('stranger /ssh rejected with forbidden', !!sshErr && String(sshErr.payload.message).includes('مصرح'))
 
   // ── C) client registry + command gates ────────────────────────────────────
-  const sCl = await wsConnect(WSB + '/ws?token=' + encodeURIComponent(strangerToken))
+  const sCl = await wsConnect(WSB + '/ws?ticket=' + (await wsTicket(strangerToken)))
   const sClMsgs = []
   sCl.on('message', (data, isBinary) => { if (!isBinary) { try { sClMsgs.push(JSON.parse(data.toString())) } catch {} } })
   sCl.send(JSON.stringify({ type: 'client:subscribe', payload: { userId: 'ignored', deviceIds: [devId] }, timestamp: Date.now() }))
@@ -214,7 +220,7 @@ async function main() {
   check('stranger command never reached the agent', agentMsgs.filter((m) => m.type === 'server:command').length === 0)
   sCl.close()
 
-  const aCl = await wsConnect(WSB + '/ws?token=' + encodeURIComponent(adminToken))
+  const aCl = await wsConnect(WSB + '/ws?ticket=' + (await wsTicket(adminToken)))
   const aClMsgs = []
   aCl.on('message', (data, isBinary) => { if (!isBinary) { try { aClMsgs.push(JSON.parse(data.toString())) } catch {} } })
   aCl.send(JSON.stringify({ type: 'client:subscribe', payload: {}, timestamp: Date.now() }))
@@ -223,15 +229,31 @@ async function main() {
   aCl.close()
 
   // Owner command passes the gate and reaches the agent
-  const oCl = await wsConnect(WSB + '/ws?token=' + encodeURIComponent(ownerToken))
+  console.log('DEBUG ownerRole=' + JSON.parse(Buffer.from(ownerToken.split('.')[1], 'base64').toString()).role)
+  const oTicket = await wsTicket(ownerToken)
+  const oCl = await wsConnect(WSB + '/ws?ticket=' + oTicket)
   const oClMsgs = []
   oCl.on('message', (data, isBinary) => { if (!isBinary) { try { oClMsgs.push(JSON.parse(data.toString())) } catch {} } })
   oCl.send(JSON.stringify({ type: 'client:subscribe', payload: {}, timestamp: Date.now() }))
   await waitForArr(oClMsgs, (m) => m.type === 'server:registered', 6000)
   oCl.send(JSON.stringify({ type: 'client:command', payload: { deviceId: devId, commandId: 'own-1', command: 'whoami' }, timestamp: Date.now() }))
   const relayed = await waitFor(agent, (m) => m.type === 'server:command' && m.payload.commandId === 'own-1', 6000).catch(() => null)
+  if (!relayed) {
+    console.log('DEBUG owner ticketLen=' + oTicket.length + ' msgs=' + JSON.stringify(oClMsgs).slice(0, 400))
+    console.log('DEBUG agentMsgs=' + JSON.stringify(agentMsgs.map(m => m.type)).slice(0, 300))
+  }
   check('owner client:command reaches the agent (gate passed)', !!relayed)
   oCl.close()
+
+  // ── C3) legacy ?token= on a WebSocket must be rejected ────────────────────
+  const legacyMsgs = []
+  const legacyWs = new WebSocket(WSB + '/ws?token=' + ownerToken)
+  legacyWs.on('message', (d) => { try { legacyMsgs.push(JSON.parse(d.toString())) } catch {} })
+  await new Promise((res) => { legacyWs.on('open', res); legacyWs.on('error', res); setTimeout(res, 4000) })
+  try { legacyWs.send(JSON.stringify({ type: 'client:subscribe', payload: {}, timestamp: Date.now() })) } catch {}
+  const legacyErr = await waitForArr(legacyMsgs, (m) => m.type === 'server:error', 4000)
+  check('legacy ?token= WS is rejected on first message', !!legacyErr && /3\.7\.0|ticket/i.test(String(legacyErr.payload.message)))
+  try { legacyWs.close() } catch {}
 
   // ── D) owner /screen passes the gate and starts capture ───────────────────
   const ot = await fetchJson(BASE + '/api/auth/ws-ticket', { method: 'POST', headers: J(ownerToken), body: '{}' })

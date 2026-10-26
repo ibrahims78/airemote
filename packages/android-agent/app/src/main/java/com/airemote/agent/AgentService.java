@@ -123,6 +123,7 @@ public class AgentService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        Prefs.bootstrap(this);
         ensureChannel();
         startForeground(11, buildNotification("AiRemote Agent — يعمل"));
 
@@ -312,7 +313,7 @@ public class AgentService extends Service {
                         info.put("arch", Build.SUPPORTED_ABIS.length > 0 ? Build.SUPPORTED_ABIS[0] : "?");
                         info.put("ipLocal", localIp());
                         info.put("ipPublic", "");
-                        info.put("agentVersion", "3.6.0-android");
+                        info.put("agentVersion", com.airemote.agent.BuildConfig.VERSION_NAME + "-android");
                         payload.put("info", info);
                         payload.put("stats", buildStats());
                         payload.put("tunnelLayer", "relay");

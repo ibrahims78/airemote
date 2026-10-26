@@ -32,6 +32,18 @@ function pnpmCmd() {
 const PNPM = pnpmCmd()
 const NODE = '"' + process.execPath + '"'
 
+// better-sqlite3 is built for Electron's ABI, so the desktop e2e must run under
+// the Electron binary (ELECTRON_RUN_AS_NODE) instead of plain Node.
+function electronStep(file) {
+  const script = file || 'packages/server-desktop/test/e2e-screen-control.test.cjs'
+  const exe = path.join(ROOT, 'packages', 'server-desktop', 'node_modules', 'electron', 'dist',
+    process.platform === 'win32' ? 'electron.exe' : 'electron')
+  if (!fs.existsSync(exe)) {
+    return NODE + ' -e "console.error(\'electron binary missing — run: node node_modules/electron/install.js\'); process.exit(1)"'
+  }
+  return '"' + exe + '" ' + script
+}
+
 const steps = [
   { name: 'static import check',         cmd: NODE + ' scripts/check-imports.js' },
   { name: 'build shared',                cmd: PNPM + ' --filter @airemote/shared build' },
@@ -42,15 +54,22 @@ const steps = [
   { name: 'unit: registry race',         cmd: NODE + ' packages/server/test/registry-race.test.cjs' },
   { name: 'e2e: web-server connection',  cmd: NODE + ' packages/server/test/e2e-connection.test.cjs' },
   { name: 'e2e: device authorization',   cmd: NODE + ' packages/server/test/e2e-authz.test.cjs' },
-  { name: 'e2e: desktop-server control', cmd: NODE + ' packages/server-desktop/test/e2e-screen-control.test.cjs' },
+  { name: 'e2e: desktop-server control', cmd: electronStep() },
+  { name: 'e2e: desktop late viewer',     cmd: electronStep('packages/server-desktop/test/e2e-screen-join.test.cjs') },
 ]
 
 let failures = 0
 console.log('AiRemote verification battery — ' + steps.length + ' steps\n')
 for (const s of steps) {
   process.stdout.write('  ▶ ' + s.name.padEnd(30, ' ') + '  ')
-  const r = spawnSync(s.cmd, { cwd: ROOT, shell: true, encoding: 'utf8' })
-  if (r.status === 0) {
+  const r = spawnSync(s.cmd, { cwd: ROOT, shell: true, encoding: 'utf8', env: { ...process.env, ELECTRON_RUN_AS_NODE: '1' } })
+  const out = ((r.stdout || '') + '\n' + (r.stderr || ''))
+  if (r.status === 0 && /\bSKIP\b/.test(out)) {
+    failures++
+    console.log('SKIPPED (counted as failure)')
+    const skipped = out.split('\n').filter(l => /\bSKIP\b/.test(l)).slice(-3)
+    for (const line of skipped) console.log('      ' + line.trim())
+  } else if (r.status === 0) {
     console.log('ok')
   } else {
     failures++

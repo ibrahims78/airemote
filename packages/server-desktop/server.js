@@ -46,6 +46,11 @@ const ptyClients        = new Map()   // sessionId → Set<WebSocket>
 const screenViewers     = new Map()   // deviceId  → Set<WebSocket>
 const screenSessions    = new Map()   // sessionId → { deviceId, viewers, startedAt, connectTimer }
 const deviceScreenSess  = new Map()   // deviceId  → sessionId
+// Late joiner support: a capture that is already running only emits delta
+// frames, so a viewer that joins later never learns the screen size and the
+// canvas stays blank (black standalone window). Keep the last FULL frame per
+// device and replay it to whoever joins mid-stream.
+const lastFullFrameByDevice = new Map()   // deviceId → { packet?: Buffer, json?: string }
 const sshSessions       = new Map()   // sessionId → { conn, stream }
 const sftpSessions      = new Map()   // sessionId → { sftp, conn }
 const wsTickets         = new Map()   // ticketId  → { userId, email, role, expires }
@@ -255,7 +260,6 @@ function verifyToken(token) {
 function extractBearer(req) {
   const auth = req.headers?.authorization || ''
   if (auth.startsWith('Bearer ')) return auth.slice(7)
-  if (req.query?.token) return req.query.token
   return null
 }
 function authMiddleware(req, reply) {
@@ -294,6 +298,10 @@ function canAccessDevice(user, deviceId) {
     return !!(row && row.owner_id && row.owner_id === user.userId)
   } catch { return false }
 }
+
+// v3.7.0 — roles: viewer is read-only, manager may operate devices, admin manages
+function roleRank(role) { return ({ viewer: 1, user: 1, manager: 2, admin: 3 })[role] || 0 }
+function atLeast(role, minimum) { return roleRank(role) >= roleRank(minimum) }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 5. Crypto — AES-256-CBC for SSH credential encryption
@@ -791,6 +799,7 @@ function closeScreenSession(sessionId, errMsg) {
   screenSessions.delete(sessionId)
   if (deviceScreenSess.get(session.deviceId) === sessionId) deviceScreenSess.delete(session.deviceId)
   screenViewers.delete(session.deviceId)
+  lastFullFrameByDevice.delete(session.deviceId)
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -851,6 +860,7 @@ function handleAgentWs(socket) {
         header[12] = flags
         if (isDelta) { header.writeUInt32BE(dx, 13); header.writeUInt32BE(dy, 17) }
         if (!isDelta) { try { recordScreenFrame(deviceId, jpeg) } catch {} }   // v3.3.2: record full frames only
+        if (!isDelta) lastFullFrameByDevice.set(deviceId, { packet: Buffer.concat([header, jpeg]) })
         const packet  = Buffer.concat([header, jpeg])
         const viewers = screenViewers.get(deviceId)
         if (viewers) {
@@ -883,6 +893,12 @@ function handleAgentWs(socket) {
         try { prevAgent.ws.close(4000, 'replaced by newer agent connection') } catch {}
       }
       agentSockets.set(deviceId, { ws: socket, info, deviceName: device.name, connectedAt: Date.now(), stats: null })
+      try {
+        const plat = (info && info.platform) || 'unknown'
+        const addr = (socket._socket && socket._socket.remoteAddress) || '?'
+        console.log(`🟢 [agent] connected name="${device.name}" platform=${plat} ip=${addr} id=${String(deviceId).slice(0, 8)}`)
+        serverLogger?.info('agent', `connected name="${device.name}" platform=${plat} ip=${addr} id=${String(deviceId).slice(0, 8)}`)
+      } catch {}
       sendJson(socket, { type: 'server:registered', payload: { deviceId, name: device.name } })
       broadcastToClients({ type: 'device:status', payload: { deviceId, status: 'online', name: device.name, info } })
       events.emit('device:connected', deviceId, device.name)
@@ -972,7 +988,7 @@ function handleAgentWs(socket) {
       if (!session) return
       clearConnectTimer(session)
       if (!payload.deltaRegion) { try { recordScreenFrame(deviceId, Buffer.from(String(payload.data || ''), 'base64')) } catch {} }
-      sendToScreenViewers(deviceId, {
+      const frameObj = {
         type: 'screen:frame',
         payload: {
           data:        payload.data,
@@ -986,7 +1002,9 @@ function handleAgentWs(socket) {
           rxTs: Date.now()
         },
         timestamp: Date.now()
-      })
+      }
+      if (!payload.deltaRegion) lastFullFrameByDevice.set(deviceId, { json: JSON.stringify(frameObj) })
+      sendToScreenViewers(deviceId, frameObj)
       return
     }
 
@@ -997,6 +1015,7 @@ function handleAgentWs(socket) {
         clearConnectTimer(session)
         screenSessions.delete(sid)
         if (deviceScreenSess.get(deviceId) === sid) deviceScreenSess.delete(deviceId)
+        lastFullFrameByDevice.delete(deviceId)
       }
       return
     }
@@ -1115,6 +1134,12 @@ function handleAgentWs(socket) {
     if (deviceId) {
       const sid = deviceScreenSess.get(deviceId)
       if (sid) closeScreenSession(sid, 'الجهاز انقطع اتصاله / Device disconnected')
+      try {
+        const rec = agentSockets.get(deviceId)
+        const up = rec ? Math.round((Date.now() - rec.connectedAt) / 1000) : -1
+        console.log(`🔴 [agent] disconnected name="${rec ? rec.deviceName : String(deviceId).slice(0, 8)}" after=${up}s`)
+        serverLogger?.warn('agent', `disconnected name="${rec ? rec.deviceName : String(deviceId).slice(0, 8)}" after=${up}s`)
+      } catch {}
       agentSockets.delete(deviceId); markDeviceOffline(deviceId); fireOfflineAlerts(deviceId)
     }
   })
@@ -1293,6 +1318,18 @@ function handleScreenWs(socket, request, user) {
   if (session) {
     if (session.stopTimer) { clearTimeout(session.stopTimer); session.stopTimer = null }
     session.viewers.add(socket)
+
+    // The agent is already streaming and only sends deltas, so send this viewer
+    // the last full frame now — otherwise it renders nothing (300x150 default
+    // canvas) behind the buffering overlay.
+    const cachedFrame = lastFullFrameByDevice.get(deviceId)
+    if (cachedFrame && socket.readyState === 1) {
+      try {
+        if (cachedFrame.packet) socket.send(cachedFrame.packet)
+        else if (cachedFrame.json) socket.send(cachedFrame.json)
+        console.log('🖥️  [screen] replayed full frame to late viewer device=' + String(deviceId).slice(0, 8))
+      } catch {}
+    }
   } else {
     sessionId = uuidv4()
     session   = { deviceId, viewers: new Set([socket]), startedAt: Date.now(), connectTimer: null, stopTimer: null, userId: (user && user.userId) || null, dbId: null }
@@ -1334,6 +1371,15 @@ function handleScreenWs(socket, request, user) {
     const payload = msg.payload || {}
     const rec = agentSockets.get(deviceId)
     if (!rec) return
+
+    // v3.7.0 — viewer may watch, only manager/admin may act on the device
+    const CONTROL = new Set(['screen:mouse_event', 'screen:key_event', 'screen:clipboard_write',
+      'screen:clipboard_read', 'screen:privacy', 'screen:control_request', 'screen:rotate',
+      'screen:rotate_auto', 'screen:brightness', 'screen:audio_control', 'screen:set_quality', 'screen:set_monitor'])
+    if (CONTROL.has(msg.type) && !atLeast(user && user.role, 'manager')) {
+      try { socket.send(JSON.stringify({ type: 'screen:error', payload: { message: 'صلاحية تحكم مطلوبة (manager) لهذا الإجراء' } })) } catch {}
+      return
+    }
 
     switch (msg.type) {
       case 'screen:mouse_event':
@@ -1768,7 +1814,7 @@ function resolveWsUser(query) {
     if (t && t.expires > Date.now()) { wsTickets.delete(query.ticket); return t }
     return null
   }
-  if (query.token) { try { return verifyToken(query.token) } catch { return null } }
+  // v3.7.0 — raw JWT in the WS URL is rejected; clients must present a ticket
   return null
 }
 
@@ -1779,17 +1825,57 @@ let fastify    = null
 let started    = false
 let _config    = {}
 let _startedAt = null
+let TLS_ACTIVE   = false
+let TLS_CERT_PATH = null
 
-const AGENT_VERSION = '3.6.0'
+const AGENT_VERSION = '3.8.1'   // agent artifact version (downloads)
+let serverLogger = null   // set in start(); lets WS handlers write to the app log
+const SERVER_VERSION = '3.8.1'  // server build version (/health)
 
 async function start(config) {
   if (started) return
   _config = config
   const { port = 3001, jwtSecret, dbPath, logger: log, desktopCallbacks = {} } = config
+  serverLogger = log || null
   JWT = jwtSecret
   _desktopCallbacks = desktopCallbacks
 
   initDb(dbPath)
+
+  // ── v3.7.0 — TLS by default (self-signed for LAN/localhost) ───────────────
+  let tlsOptions = null
+  if (_config.tls !== false) {
+    try {
+      const selfsigned = require('selfsigned')
+      const tlsDir = path.join(path.dirname(dbPath), 'tls')
+      fs.mkdirSync(tlsDir, { recursive: true })
+      TLS_CERT_PATH = path.join(tlsDir, 'server.crt')
+      const keyPath = path.join(tlsDir, 'server.key')
+
+      if (!fs.existsSync(TLS_CERT_PATH) || !fs.existsSync(keyPath)) {
+        const ips = ['127.0.0.1']
+        try {
+          const os = require('os')
+          const n = os.networkInterfaces()
+          for (const k of Object.keys(n)) for (const a of (n[k] || [])) if (a.family === 'IPv4' && !a.internal) ips.push(a.address)
+        } catch {}
+        const altNames = [{ type: 2, value: 'localhost' }].concat(ips.map(ip => ({ type: 7, ip })))
+        const pems = selfsigned.generate([{ name: 'commonName', value: 'AiRemote Server' }], {
+          days: 3650, keySize: 2048, algorithm: 'sha256',
+          extensions: [{ name: 'subjectAltName', altNames }]
+        })
+        fs.writeFileSync(TLS_CERT_PATH, pems.cert, 'utf8')
+        fs.writeFileSync(keyPath, pems.private, 'utf8')
+        log && log.info && log.info('server', 'Generated self-signed TLS certificate for ' + ips.join(', '))
+      }
+      tlsOptions = { key: fs.readFileSync(keyPath), cert: fs.readFileSync(TLS_CERT_PATH) }
+      TLS_ACTIVE = true
+    } catch (e) {
+      log && log.warn && log.warn('server', 'TLS unavailable, falling back to HTTP: ' + e.message)
+      TLS_ACTIVE = false
+      TLS_CERT_PATH = null
+    }
+  }
 
   // Close sessions left open by a previous crash/restart so the Sessions
   // page never shows days-old streams as still active.
@@ -1800,14 +1886,19 @@ async function start(config) {
       WHERE ended_at IS NULL`).run()
   } catch {}
 
-  fastify = Fastify({ logger: false })
-  await fastify.register(fcors, { origin: true, credentials: true })
+  // Fastify v4 does not accept TLS material in listen(); supply an HTTPS server.
+  fastify = Fastify({
+    logger: false,
+    ...(tlsOptions ? { serverFactory: (handler) => require('https').createServer(tlsOptions, handler) } : {})
+  })
+  await fastify.register(fcors, { origin: false, credentials: true })
   await fastify.register(frateLimit, { global: false, max: 200, timeWindow: '1 minute' })
   await fastify.register(fws)
 
   // ── v3.4.0 harden + perf: security headers (HTML) + Brotli/Gzip + ETag + cache ──
   fastify.addHook('onSend', async (req, reply, payload) => {
     try {
+      if (TLS_ACTIVE) reply.header('Strict-Transport-Security', 'max-age=15552000; includeSubDomains')
       const ct = String(reply.getHeader('content-type') || '')
       if (ct.includes('text/html')) {
         reply.header('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' ws: wss:; font-src 'self' data: https://fonts.gstatic.com; object-src 'none'; base-uri 'self'; frame-ancestors 'self'")
@@ -1979,10 +2070,16 @@ async function start(config) {
   fastify.addContentTypeParser('application/octet-stream', { parseAs: 'buffer' }, (req, body, done) => done(null, body))
 
   fastify.get('/api/health', async () => ({
-    status: 'ok', version: AGENT_VERSION, uptime: Math.floor(process.uptime()),
+    status: 'ok', version: SERVER_VERSION, uptime: Math.floor(process.uptime()),
     devices: { online: agentSockets.size, total: db.prepare("SELECT COUNT(*) as c FROM devices").get().c },
     port, localIp: getLocalIp(), isDesktop: true,
     addresses: (() => { try { const os = require('os'); const n = os.networkInterfaces(); const out = []; for (const k of Object.keys(n)) for (const a of (n[k] || [])) if (a.family === 'IPv4' && !a.internal) out.push(a.address); return out } catch { return [] } })(),
+  }))
+
+  // v3.7.0 — /health must answer JSON on the desktop build too
+  fastify.get('/health', async () => ({
+    status: 'ok', version: SERVER_VERSION, tls: TLS_ACTIVE,
+    uptime: Math.floor(process.uptime()), port, isDesktop: true
   }))
 
   // ── GET /api/agent/allowed — lets a kicked agent poll whether it may reconnect ──
@@ -2003,7 +2100,7 @@ async function start(config) {
   fastify.post('/api/setup/init', async (req, reply) => {
     const { email, password, name = 'Admin' } = req.body || {}
     if (!email || !password) return reply.code(400).send({ error: 'email and password required' })
-    if (password.length < 8) return reply.code(400).send({ error: 'Password must be at least 8 characters' })
+    if (password.length < 12) return reply.code(400).send({ error: 'Password must be at least 12 characters' })
     const { c } = db.prepare("SELECT COUNT(*) as c FROM users").get()
     if (c > 0) return reply.code(400).send({ error: 'Already initialized' })
     const hash = await bcrypt.hash(password, 12); const id = uuidv4()
@@ -2026,7 +2123,7 @@ async function start(config) {
   fastify.post('/api/auth/setup', async (req, reply) => {
     const { email, password, name = 'Admin' } = req.body || {}
     if (!email || !password) return reply.code(400).send({ error: 'email and password required' })
-    if (password.length < 8) return reply.code(400).send({ error: 'Password must be at least 8 characters' })
+    if (password.length < 12) return reply.code(400).send({ error: 'Password must be at least 12 characters' })
     const { c } = db.prepare("SELECT COUNT(*) as c FROM users").get()
     if (c > 0) return reply.code(400).send({ error: 'Already initialized' })
     const hash = await bcrypt.hash(password, 12); const id = uuidv4()
@@ -2114,7 +2211,7 @@ async function start(config) {
     const p = authMiddleware(req, reply); if (!p) return
     const { currentPassword, newPassword } = req.body || {}
     if (!currentPassword || !newPassword) return reply.code(400).send({ error: 'Both passwords required' })
-    if (newPassword.length < 8) return reply.code(400).send({ error: 'Min 8 characters' })
+    if (newPassword.length < 12) return reply.code(400).send({ error: 'Min 12 characters' })
     const user = db.prepare("SELECT * FROM users WHERE id=?").get(p.userId)
     if (!await bcrypt.compare(currentPassword, user.password_hash)) return reply.code(401).send({ error: 'Incorrect current password' })
     db.prepare("UPDATE users SET password_hash=?, updated_at=datetime('now') WHERE id=?").run(await bcrypt.hash(newPassword, 12), p.userId)
@@ -2173,7 +2270,7 @@ async function start(config) {
     const p = adminMiddleware(req, reply); if (!p) return
     const { email, name, password, role = 'viewer' } = req.body || {}
     if (!email || !name || !password) return reply.code(400).send({ error: 'email, name, password required' })
-    if (password.length < 8) return reply.code(400).send({ error: 'Min 8 characters' })
+    if (password.length < 12) return reply.code(400).send({ error: 'Min 12 characters' })
     if (!['admin','viewer','user'].includes(role)) return reply.code(400).send({ error: 'Invalid role' })
     if (db.prepare("SELECT id FROM users WHERE email=?").get(email)) return reply.code(409).send({ error: 'Email already exists' })
     const id = uuidv4()
@@ -2187,7 +2284,7 @@ async function start(config) {
     const { name, role, password } = req.body || {}
     const existing = db.prepare("SELECT * FROM users WHERE id=?").get(req.params.id)
     if (!existing) return reply.code(404).send({ error: 'User not found' })
-    if (password) { if (password.length < 8) return reply.code(400).send({ error: 'Min 8 characters' }); db.prepare("UPDATE users SET password_hash=?, updated_at=datetime('now') WHERE id=?").run(await bcrypt.hash(password, 12), req.params.id) }
+    if (password) { if (password.length < 12) return reply.code(400).send({ error: 'Min 12 characters' }); db.prepare("UPDATE users SET password_hash=?, updated_at=datetime('now') WHERE id=?").run(await bcrypt.hash(password, 12), req.params.id) }
     const updates = []; const vals = []
     if (name) { updates.push('name=?'); vals.push(name) }
     if (role) { updates.push('role=?'); vals.push(role) }
@@ -2532,6 +2629,7 @@ async function start(config) {
   // v3.2.2 — Remote command execution (Dashboard /api/devices/:id/exec)
   fastify.post('/api/devices/:id/exec', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
+    if (!atLeast(p.role, 'manager')) return reply.code(403).send({ error: 'Manager role required to run commands' })
     if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
     const { command, timeoutMs } = req.body || {}
     if (!command || typeof command !== 'string') return reply.code(400).send({ error: 'command required' })
@@ -3669,7 +3767,7 @@ if ($target -eq $null) { 'name-not-found' } else {
   await fastify.listen({ port, host: '0.0.0.0' })
   started    = true
   _startedAt = Date.now()
-  log?.info('server', `✅ AiRemote Server v${AGENT_VERSION} listening on port ${port}`)
+  log?.info('server', `✅ AiRemote Server v${SERVER_VERSION} listening on port ${port}`)
   log?.info('server', `📡 Local IP: ${getLocalIp()}`)
   log?.info('server', hasDashboard ? '🖥️  Dashboard: embedded (static)' : '⚠️  Dashboard: not built yet')
 }
@@ -3699,4 +3797,4 @@ function getAllDevices() {
     .map(d => ({ ...d, info: parseJson(d.info), tags: parseJson(d.tags, []), isOnline: agentSockets.has(d.id) }))
 }
 
-module.exports = { start, stop, getStatus, getAllDevices, events }
+module.exports = { start, stop, getStatus, getAllDevices, events, getTlsCertPath: () => TLS_CERT_PATH, isTls: () => TLS_ACTIVE }

@@ -23,6 +23,39 @@ public class Prefs {
         return sp(c).getString("token", "");
     }
 
+    private static boolean bootstrapped = false;
+
+    /**
+     * v3.7.0 — provisioning: if nothing is configured yet, read
+     * &lt;external files dir&gt;/airemote-config.json ({"server":"wss://...","token":"..."}).
+     * Allows fleet/lab deployment without typing on the device.
+     */
+    public static void bootstrap(Context c) {
+        if (bootstrapped) return;
+        bootstrapped = true;
+        try {
+            SharedPreferences p = sp(c);
+            if (!p.getString("token", "").isEmpty() && !p.getString("server", "").isEmpty()) return;
+            java.io.File dir = c.getExternalFilesDir(null);
+            if (dir == null) return;
+            java.io.File f = new java.io.File(dir, "airemote-config.json");
+            if (!f.exists()) return;
+            java.io.FileInputStream in = new java.io.FileInputStream(f);
+            java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
+            byte[] buf = new byte[4096];
+            int n;
+            while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+            in.close();
+            org.json.JSONObject o = new org.json.JSONObject(new String(out.toByteArray(), "UTF-8"));
+            String server = o.optString("server", "");
+            String token = o.optString("token", "");
+            if (!server.isEmpty() && !token.isEmpty()) {
+                save(c, server, token);
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
     public static void save(Context c, String server, String token) {
         sp(c).edit().putString("server", server).putString("token", token).apply();
     }

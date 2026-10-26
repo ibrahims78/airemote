@@ -6,6 +6,21 @@
 
 const api = window.airemote
 
+// ─── Version (single source of truth: package.json via preload) ─────────────
+// The splash screen used to hardcode 3.3.4 and only refreshed after /api/system
+// answered, so the first paint showed an ancient number. Fill it immediately.
+function applyLocalVersion () {
+  try {
+    const v = (api && api.desktop && api.desktop.version) || ''
+    if (!v) return
+    document.querySelectorAll('.srv-ver').forEach((el) => { el.textContent = v })
+    const h = document.getElementById('hdr-version')
+    if (h) h.textContent = 'v' + v
+  } catch {}
+}
+applyLocalVersion()
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', applyLocalVersion)
+
 // ─────────────────────────────────────────────────────────────────────────────
 // State
 // ─────────────────────────────────────────────────────────────────────────────

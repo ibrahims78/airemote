@@ -1,7 +1,7 @@
 'use strict'
 
 /**
- * AiRemote Agent — Headless / CLI  v3.6.0
+ * AiRemote Agent — Headless / CLI  v3.8.1
  * No UI, no Electron. Runs as a background process or service.
  * Config: SERVER_URL and DEVICE_TOKEN env vars, or config file, or --server/--token CLI args
  *
@@ -34,7 +34,7 @@ const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json')
 const HEARTBEAT_MS          = 10_000
 const RECONNECT_BASE        = 2_000
 const RECONNECT_MAX         = 30_000
-const VERSION               = '3.6.0'
+const VERSION               = '3.8.1'
 const CONSENT_TIMEOUT_SEC   = parseInt(process.env.AGENT_CONSENT_TIMEOUT || '30', 10)
 
 // ─── State ────────────────────────────────────────────────────────────────

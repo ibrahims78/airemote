@@ -108,7 +108,7 @@ async function main() {
   const setup = await fetchJson(BASE + '/api/auth/setup', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: 'e2e@test.local', name: 'E2E', password: 'password123' }),
+    body: JSON.stringify({ email: 'e2e@test.local', name: 'E2E', password: 'Test-Password-2026' }),
   })
   const adminToken = setup.body && setup.body.token
   check('admin setup returns token', !!adminToken)
@@ -206,8 +206,28 @@ async function main() {
   })
   check('production without JWT_SECRET refuses to start (FATAL)', badEnv.code !== 0 && badEnv.out.includes('FATAL'))
 
-  await startServer({ NODE_ENV: 'production', JWT_SECRET: 'e2e-prod-secret-123' })
-  check('production with a real JWT_SECRET boots (health OK)', true)
+  // v3.7.0 — strong secrets but no TLS must still refuse to boot
+  const strongJwt = 'a'.repeat(48)
+  const strongCreds = 'b'.repeat(48)
+  const noTls = await new Promise((resolve) => {
+    const p = spawn(process.execPath, ['dist/index.js'], {
+      cwd: SERVER_DIR,
+      env: {
+        ...process.env, PORT: String(PORT), DB_PATH: dbPath, NODE_ENV: 'production',
+        JWT_SECRET: strongJwt, CREDENTIALS_KEY: strongCreds, ALLOW_INSECURE_HTTP: ''
+      },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    let out = ''
+    p.stdout.on('data', (d) => { out += d.toString() })
+    p.stderr.on('data', (d) => { out += d.toString() })
+    const timer = setTimeout(() => { try { p.kill() } catch {} ; resolve({ code: 0, out }) }, 5000)
+    p.on('exit', (code) => { clearTimeout(timer); resolve({ code, out }) })
+  })
+  check('production without TLS refuses to start (FATAL)', noTls.code !== 0 && noTls.out.includes('TLS'))
+
+  await startServer({ NODE_ENV: 'production', JWT_SECRET: strongJwt, CREDENTIALS_KEY: strongCreds, ALLOW_INSECURE_HTTP: '1' })
+  check('production with strong secrets + explicit HTTP override boots (health OK)', true)
   stopServer()
 
   // ── cleanup + summary ─────────────────────────────────────────────────────

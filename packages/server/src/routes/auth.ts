@@ -11,29 +11,14 @@ import {
 import { logAudit } from '../db/audit'
 import { createWsTicket } from '../lib/wsTickets'
 import { requireAuth } from '../middleware/auth'
+import { createRefreshToken, verifyRefreshToken, revokeRefreshToken } from '../lib/refreshTokens'
 import type { LoginRequest, AuthTokenPayload } from '@airemote/shared'
 
-const BCRYPT_ROUNDS       = 12
-const REFRESH_TOKEN_TTL_MS = 30 * 24 * 60 * 60 * 1000   // 30 days
 const TOTP_TOKEN_TTL_MS    =  5 * 60 * 1000              //  5 minutes
 
 interface UserRow {
   id: string; email: string; name: string; role: string
   totp_enabled: number; totp_secret: string | null
-}
-
-// ── helpers ─────────────────────────────────────────────────────────────────
-
-async function createRefreshToken(userId: string): Promise<string> {
-  const db = getDb()
-  const token    = uuidv4()
-  const hash     = await bcrypt.hash(token, BCRYPT_ROUNDS)
-  const expiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS).toISOString()
-  await db.execute({
-    sql: `INSERT INTO refresh_tokens (id, user_id, token_hash, expires_at) VALUES (?, ?, ?, ?)`,
-    args: [uuidv4(), userId, hash, expiresAt]
-  })
-  return token
 }
 
 // ── routes ───────────────────────────────────────────────────────────────────
@@ -126,40 +111,30 @@ export async function authRoutes(fastify: FastifyInstance) {
   })
 
   // ── POST /refresh ────────────────────────────────────────────────────────
+  // v3.7.0 — O(1) indexed lookup. The old code ran up to 50 bcrypt compares
+  // per unauthenticated request (measured 3.3 s), which was a DoS vector.
   fastify.post<{ Body: { refreshToken: string } }>('/refresh', {
     config: { rateLimit: { max: 30, timeWindow: '1 minute' } }
   }, async (request, reply) => {
-    const { refreshToken } = request.body
-    if (!refreshToken) return reply.code(400).send({ error: 'Refresh token required' })
-
-    const db     = getDb()
-    const result = await db.execute({
-      sql: `SELECT id, user_id, token_hash FROM refresh_tokens WHERE expires_at > ? ORDER BY created_at DESC LIMIT 50`,
-      args: [new Date().toISOString()]
-    })
-
-    let matchedRow: { id: string; user_id: string } | null = null
-    for (const row of result.rows as unknown as { id: string; user_id: string; token_hash: string }[]) {
-      if (await bcrypt.compare(refreshToken, row.token_hash)) { matchedRow = row; break }
+    const { refreshToken } = request.body || {}
+    if (!refreshToken || typeof refreshToken !== 'string') {
+      return reply.code(400).send({ error: 'Refresh token required' })
     }
 
-    if (!matchedRow) return reply.code(401).send({ error: 'Invalid or expired refresh token' })
+    const record = await verifyRefreshToken(refreshToken)
+    if (!record) return reply.code(401).send({ error: 'Invalid or expired refresh token' })
 
-    const user = await findUserById(matchedRow.user_id)
+    const user = await findUserById(record.user_id)
     if (!user) {
-      await db.execute({ sql: 'DELETE FROM refresh_tokens WHERE id = ?', args: [matchedRow.id] })
+      await revokeRefreshToken(record.id)
       return reply.code(404).send({ error: 'User not found' })
     }
 
-    try {
-      await db.execute({ sql: 'DELETE FROM refresh_tokens WHERE id = ?', args: [matchedRow.id] })
-      const newToken        = fastify.jwt.sign({ userId: user.id, email: user.email, role: user.role })
-      const newRefreshToken = await createRefreshToken(user.id)
-      return reply.send({ token: newToken, refreshToken: newRefreshToken, user })
-    } catch (err) {
-      console.error('Refresh token rotation failed:', err)
-      return reply.code(500).send({ error: 'Token refresh failed' })
-    }
+    // rotation: the presented token is single-use
+    await revokeRefreshToken(record.id)
+    const token        = fastify.jwt.sign({ userId: user.id, email: user.email, role: user.role })
+    const newRefreshToken = await createRefreshToken(user.id)
+    return reply.send({ token, refreshToken: newRefreshToken, user })
   })
 
   // ── POST /setup ──────────────────────────────────────────────────────────
@@ -204,18 +179,9 @@ export async function authRoutes(fastify: FastifyInstance) {
     const { refreshToken } = request.body || {}
     if (refreshToken) {
       try {
-        const db     = getDb()
-        const result = await db.execute({
-          sql: `SELECT id, token_hash FROM refresh_tokens WHERE expires_at > ? LIMIT 50`,
-          args: [new Date().toISOString()]
-        })
-        for (const row of result.rows as unknown as { id: string; token_hash: string }[]) {
-          if (await bcrypt.compare(refreshToken, row.token_hash)) {
-            await db.execute({ sql: 'DELETE FROM refresh_tokens WHERE id = ?', args: [row.id] })
-            break
-          }
-        }
-      } catch {}
+        const record = await verifyRefreshToken(refreshToken)
+        if (record) await revokeRefreshToken(record.id)
+      } catch { /* logout must never fail loudly */ }
     }
     return { ok: true }
   })

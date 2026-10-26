@@ -1,6 +1,6 @@
 {
   "name": "@airemote/agent",
-  "version": "3.6.0",
+  "version": "3.8.1",
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",

@@ -89,14 +89,6 @@ export function LoginPage() {
             <small>CONTROL ROOM · v{version}</small>
           </div>
         </div>
-        <div className="login-top-actions">
-          <button type="button" onClick={toggleTheme} title={theme === 'dark' ? T('theme_light') : T('theme_dark')} aria-label={theme === 'dark' ? T('theme_light') : T('theme_dark')}>
-            {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
-          </button>
-          <button type="button" className="login-lang" onClick={toggleLang} aria-label={lang === 'ar' ? 'Switch to English' : 'التبديل إلى العربية'}>
-            {lang === 'ar' ? 'EN' : 'ع'}
-          </button>
-        </div>
       </header>
 
       <main className="login-main">

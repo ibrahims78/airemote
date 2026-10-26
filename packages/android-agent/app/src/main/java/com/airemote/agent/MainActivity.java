@@ -67,6 +67,7 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Prefs.bootstrap(this);
         instance = this;
         setContentView(R.layout.activity_main);
         hideSystemUi();
@@ -139,7 +140,7 @@ public class MainActivity extends Activity {
         chatInput.setOnEditorActionListener((v, actionId, event) -> { sendViewerMessage(); return true; });
         findViewById(R.id.chat_send).setOnClickListener(v -> sendViewerMessage());
 
-        log("وكيل الأندرويد جاهز — الإصدار 3.6.0");
+        log("وكيل الأندرويد جاهز — الإصدار " + com.airemote.agent.BuildConfig.VERSION_NAME);
         if (!AgentService.isRunning() && !Prefs.token(this).isEmpty()) UI.postDelayed(this::startAgent, 900);
 
         Intent it = getIntent();

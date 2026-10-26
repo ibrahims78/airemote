@@ -9,7 +9,7 @@
 [![Node.js](https://img.shields.io/badge/Node.js-22+-5FA04E?logo=node.js&logoColor=white)](https://nodejs.org)
 [![Fastify](https://img.shields.io/badge/Fastify-4.x-000000?logo=fastify)](https://fastify.dev)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://react.dev)
-[![Version](https://img.shields.io/badge/version-3.0.0-blueviolet)]()
+[![Version](https://img.shields.io/badge/version-3.7.0-blueviolet)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Self-hosted](https://img.shields.io/badge/Self--hosted-✓-brightgreen)]()
 
@@ -198,5 +198,5 @@ Pull requests are welcome. For major changes, please open an issue first.
 ---
 
 <div align="center">
-  Built with ❤️ · TypeScript · Fastify · React · WebSocket · v3.0.0
+  Built with ❤️ · TypeScript · Fastify · React · WebSocket · v3.7.0
 </div>

@@ -1,0 +1,16 @@
+﻿[ctl] token present in environment (not printed)
+node : (node:75708) Warning: Setting the NODE_TLS_REJECT_UNAUTHORIZED environment variable to '0' makes TLS 
+connections and HTTPS requests insecure by disabling certificate verification.
+At line:11 char:1
++ node scripts\probe-android-control.cjs 2>&1 | Out-File -FilePath "$ou ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ((node:75708) Wa...e verification.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+(Use `node --trace-warnings ...` to show where the warning was created)
+[ctl] device Android-Emulator id=a9b5b7b7-e546-47ab-9e08-0574540508e5 status=online
+[ctl] screen socket open wss://192.168.0.175:3001/screen?ticket=<redacted>&deviceId=a9b5b7b7-e546-47ab-9e08-0574540508e5&fps=5&quality=50&maxWidth=640
+[ctl] CONTROL_REQUESTED — waiting for the device-side consent dialog
+[ctl] CONTROL DENIED: bad_password
+[ctl] screen socket closed
+RESULT {"device":"Android-Emulator","deviceId":"a9b5b7b7-e546-47ab-9e08-0574540508e5","opened":true,"frames":6,"frameBytes":144678,"firstFrame":{"w":1280,"h":720,"keyframe":true},"control":"denied","controlReason":"bad_password","tapSent":false,"tapTarget":{"x":0.871,"y":0.088},"seenTypes":["screen:frame","screen:viewer_count","screen:control_denied"],"errors":[],"ms":1402}

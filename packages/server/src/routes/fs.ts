@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify'
-import { requireAuth } from '../middleware/auth'
+import { requireAuth, requireManager } from '../middleware/auth'
 import { canAccessDevice } from '../lib/deviceAccess'
 import { deviceRegistry } from '../ws/registry'
 import { sendFsRequest, sendFsDownload, sendFsWriteChunked } from '../ws/agentHandler'
@@ -95,6 +95,7 @@ export async function fsRoutes(fastify: FastifyInstance) {
 
   fastify.post<{ Params: { deviceId: string }; Body: { path: string } }>(
     '/:deviceId/fs/delete',
+    { preHandler: requireManager },
     async (req, reply) => {
       const { deviceId } = req.params
       const rawPath = req.body.path
@@ -119,6 +120,7 @@ export async function fsRoutes(fastify: FastifyInstance) {
 
   fastify.post<{ Params: { deviceId: string }; Body: { oldPath: string; newPath: string } }>(
     '/:deviceId/fs/rename',
+    { preHandler: requireManager },
     async (req, reply) => {
       const { deviceId } = req.params
       if (!(await assertDeviceAccess(req, deviceId, reply))) return
@@ -144,6 +146,7 @@ export async function fsRoutes(fastify: FastifyInstance) {
 
   fastify.post<{ Params: { deviceId: string }; Body: { path: string } }>(
     '/:deviceId/fs/mkdir',
+    { preHandler: requireManager },
     async (req, reply) => {
       const { deviceId } = req.params
       const rawPath = req.body.path
@@ -169,6 +172,7 @@ export async function fsRoutes(fastify: FastifyInstance) {
   // ── T002: Upload — auto-selects chunked protocol for large files ──────────
   fastify.post(
     '/:deviceId/fs/upload',
+    { preHandler: requireManager },
     async (req, reply) => {
       const { deviceId } = (req.params as { deviceId: string })
       if (!(await assertDeviceAccess(req, deviceId, reply))) return

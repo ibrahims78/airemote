@@ -38,7 +38,36 @@ const RECONNECT_BASE = 2_000
 const RECONNECT_MAX  = 30_000
 const CONFIG_FILE    = path.join(app.getPath('userData'), 'airemote-config.json')
 const LOG_MAX        = 300
-const AGENT_VERSION  = '3.6.0'
+const AGENT_VERSION  = '3.8.1'
+
+// v3.7.0 — TLS policy for the relay connection.
+//   AGENT_CA_CERT       path to a PEM certificate to trust (self-signed servers)
+//   AGENT_PIN_SHA256    pin the server certificate (sha256 fingerprint, hex)
+//   AGENT_INSECURE_TLS  1 = skip verification — lab only, off by default
+function buildWsOptions(url) {
+  const opts = { rejectUnauthorized: true }
+  try {
+    if (process.env.AGENT_CA_CERT) {
+      opts.ca = require('fs').readFileSync(process.env.AGENT_CA_CERT)
+    }
+    if (process.env.AGENT_INSECURE_TLS === '1') {
+      opts.rejectUnauthorized = false
+    }
+    if (process.env.AGENT_PIN_SHA256) {
+      const pin = String(process.env.AGENT_PIN_SHA256).replace(/:/g, '').toLowerCase()
+      opts.checkServerIdentity = (_host, cert) => {
+        const fp = String((cert && cert.fingerprint256) || '').replace(/:/g, '').toLowerCase()
+        return fp === pin ? undefined : new Error('server certificate pin mismatch')
+      }
+    }
+  } catch (e) {
+    addLog('error', 'TLS configuration error: ' + e.message)
+  }
+  if (String(url).startsWith('ws://') && process.env.AGENT_ALLOW_INSECURE_WS !== '1') {
+    addLog('warn', 'اتصال غير مشفّر (ws://) — الإنتاج يتطلب wss://')
+  }
+  return opts
+}
 
 // ─── State ────────────────────────────────────────────────────────────────
 let win            = null
@@ -434,7 +463,7 @@ function doConnect() {
   fetchPublicIp().catch(() => {})
 
   try {
-    ws = new WebSocket(url, { rejectUnauthorized: false })
+    ws = new WebSocket(url, buildWsOptions(url))
   } catch (e) {
     addLog('error', `❌ فشل إنشاء الاتصال: ${e.message}`)
     scheduleReconnect()
@@ -633,6 +662,31 @@ function handleMsg(msg) {
       })
       break
     }
+    case 'server:screen_brightness': {
+      const value = Math.max(0, Math.min(255, Number(msg.payload && msg.payload.value) || 0))
+      const percent = Math.round((value / 255) * 100)
+      try {
+        const { execFile } = require('child_process')
+        execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command',
+          `(Get-CimInstance -Namespace root/WMI -ClassName WmiMonitorBrightnessMethods).WmiSetBrightness(1,${percent})`],
+          { windowsHide: true, timeout: 8000 },
+          (err) => {
+            send({ type: 'agent:screen_brightness_status', payload: { value, ok: !err }, timestamp: Date.now() })
+          })
+      } catch {
+        send({ type: 'agent:screen_brightness_status', payload: { value, ok: false }, timestamp: Date.now() })
+      }
+      break
+    }
+
+    case 'server:screen_rotate':
+    case 'server:screen_rotate_auto': {
+      // Windows does not expose per-application display rotation to a normal
+      // process. Answer explicitly so the dashboard can grey the control out.
+      send({ type: 'agent:screen_rotate_result', payload: { ok: false, reason: 'rotation is not supported by the Windows desktop agent' }, timestamp: Date.now() })
+      break
+    }
+
     case 'server:screen_privacy': {
       const privEnabled = !!(msg.payload?.enable ?? msg.payload?.enabled)
       setPrivacyOverlays(privEnabled)

@@ -8,6 +8,7 @@ import type {
 import { getDb } from '../db/database'
 import { evaluateAlerts, fireDeviceOfflineAlert, fireDeviceOnlineAlert } from '../services/alertEngine'
 import { isRecording, addFrame } from '../services/recording'
+import { rememberKeyframe, forgetKeyframe } from './screenKeyframeCache'
 
 const pendingCommands = new Map<string, {
   resolve: (result: AgentCommandResultPayload) => void
@@ -118,7 +119,14 @@ export async function handleAgentBinaryFrame(socket: WebSocket, buf: Buffer, dev
   hdr.writeUInt32BE(height, 4)
   hdr.writeUInt32BE(seq,    8)
   hdr[12] = flags
-  deviceRegistry.sendToScreenViewers(sessionId, Buffer.concat([hdr, jpegData]))
+  const frameBuf = Buffer.concat([hdr, jpegData])
+  // A late joiner only ever sees delta frames, so keep the last full frame.
+  if (!(flags & 2)) {
+    rememberKeyframe(sessionId, {
+      data: frameBuf, binary: true, width, height, seq, at: Date.now()
+    })
+  }
+  deviceRegistry.sendToScreenViewers(sessionId, frameBuf)
 }
 
 export async function handleAgentMessage(
@@ -443,6 +451,18 @@ export async function handleAgentMessage(
         } catch {}
 
         // No server-side throttle (agent already limits FPS via setInterval guard)
+        if (!p.deltaRegion) {
+          rememberKeyframe(p.sessionId, {
+            data: JSON.stringify({
+              type: 'screen:frame',
+              payload: {
+                data: p.data, width: p.width, height: p.height, seq: p.seq,
+                keyframe: p.keyframe, quality: p.quality, deltaRegion: p.deltaRegion
+              }
+            }),
+            binary: false, width: p.width, height: p.height, seq: p.seq, at: Date.now()
+          })
+        }
         {
           deviceRegistry.sendToScreenViewers(p.sessionId, JSON.stringify({
             type:    'screen:frame',
@@ -470,6 +490,7 @@ export async function handleAgentMessage(
       deviceRegistry.clearScreenConnectTimeout(sessionId)
       deviceRegistry.sendToScreenViewers(sessionId, JSON.stringify({ type: 'screen:closed', payload: {} }))
       deviceRegistry.removeScreenSession(sessionId)
+      forgetKeyframe(sessionId)
       sessionFrameTimes.delete(sessionId)
       console.log(`[${ts()}] 🖥️ [screen] ⏹ stream ENDED session=${sessionId.slice(0,8)}`)
       return null

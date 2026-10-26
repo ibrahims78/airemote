@@ -179,13 +179,21 @@ async function runMigrations(db: Client): Promise<void> {
     'ALTER TABLE users   ADD COLUMN totp_secret  TEXT',
     'ALTER TABLE users   ADD COLUMN totp_enabled INTEGER NOT NULL DEFAULT 0',
     'ALTER TABLE devices ADD COLUMN tags         TEXT NOT NULL DEFAULT \'[]\'',
+    'ALTER TABLE refresh_tokens ADD COLUMN token_id TEXT',
   ]
   for (const sql of colMigrations) {
     try { await db.execute({ sql, args: [] }) } catch { /* column already exists */ }
   }
 
+  // v3.7.0 — refresh tokens are addressed by an indexed token_id
+  try { await db.execute({ sql: 'CREATE UNIQUE INDEX IF NOT EXISTS idx_refresh_token_id ON refresh_tokens(token_id)', args: [] }) } catch {}
+
   // Cleanup expired refresh tokens on each startup
   await db.execute({ sql: 'DELETE FROM refresh_tokens WHERE expires_at < ?', args: [new Date().toISOString()] })
+
+  // Pre-3.7.0 bcrypt rows cannot be verified by the new O(1) path — drop them so
+  // every session is re-authenticated once after the upgrade.
+  await db.execute({ sql: `DELETE FROM refresh_tokens WHERE token_id IS NULL OR token_id = ''`, args: [] })
 
   // Keep stats history for 30 days only (housekeeping on startup)
   await db.execute({ sql: `DELETE FROM device_stats_history WHERE recorded_at < datetime('now', '-30 days')`, args: [] })

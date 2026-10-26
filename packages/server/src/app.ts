@@ -28,9 +28,13 @@ import { handleScreenWebSocket } from './ws/screenHandler'
 import { requireAuthWs } from './middleware/auth'
 import { deviceRegistry } from './ws/registry'
 import { cleanupDevice } from './ws/agentHandler'
+import { loadTlsConfig, assertSecureTransport } from './lib/tls'
+import { registerSecurityHeaders } from './plugins/securityHeaders'
 
 export async function buildServer() {
   const app = Fastify({
+    bodyLimit: 6 * 1024 * 1024,
+    trustProxy: process.env.TRUST_PROXY === 'true' || process.env.TRUST_PROXY === '1',
     logger: {
       level: process.env.LOG_LEVEL || 'info',
       transport: process.env.NODE_ENV !== 'production'
@@ -67,15 +71,26 @@ export async function buildServer() {
 
   const isProduction = process.env.NODE_ENV === 'production'
 
+  // v3.7.0 — TLS is mandatory in production (directly or behind an HTTPS proxy)
+  const tlsConfig = loadTlsConfig()
+  assertSecureTransport(tlsConfig)
+  ;(app as unknown as { tlsConfig: unknown }).tlsConfig = tlsConfig
+
   // ── CORS ─────────────────────────────────────────────────────────────────
   await app.register(cors, {
     origin: process.env.DASHBOARD_URL
-      ? process.env.DASHBOARD_URL
+      ? process.env.DASHBOARD_URL.split(',').map(s => s.trim()).filter(Boolean)
       : (isProduction ? false : true),
-    credentials: true
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    maxAge: 600
   })
 
   await app.register(cookie)
+
+  // v3.7.0 — CSP / nosniff / frame-options / HSTS on every response
+  registerSecurityHeaders(app, { hsts: tlsConfig.enabled || tlsConfig.behindProxy })
 
   await app.register(multipart, {
     limits: { fileSize: 500 * 1024 * 1024, files: 1 }
@@ -103,7 +118,9 @@ export async function buildServer() {
   // ── Health check ─────────────────────────────────────────────────────────
   app.get('/health', async () => ({
     status: 'ok',
-    version: '3.6.0',
+    version: '3.8.1',
+    tls: tlsConfig.enabled,
+    behindProxy: tlsConfig.behindProxy,
     time: new Date().toISOString()
   }))
 

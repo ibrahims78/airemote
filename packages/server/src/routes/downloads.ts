@@ -4,7 +4,7 @@ import path from 'path'
 import { spawn } from 'child_process'
 import { requireAuth, requireAdmin } from '../middleware/auth'
 
-export const AGENT_VERSION = '3.6.0'
+export const AGENT_VERSION = '3.7.0'
 
 // Root of the repo — always relative to this file's location, not process.cwd()
 // __dirname = packages/server/src/routes  →  4 levels up = workspace root

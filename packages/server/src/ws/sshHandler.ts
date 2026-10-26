@@ -5,6 +5,7 @@ import { deviceRegistry } from './registry'
 import { logAudit } from '../db/audit'
 import { getDb } from '../db/database'
 import { canAccessDevice } from '../lib/deviceAccess'
+import { atLeast } from '../lib/security'
 import type { AuthTokenPayload } from '@airemote/shared'
 
 export function handleSshWebSocket(socket: WebSocket, request: FastifyRequest) {
@@ -24,8 +25,9 @@ export function handleSshWebSocket(socket: WebSocket, request: FastifyRequest) {
         }
 
         // v3.2.1 hardening — admin or device owner only (fail closed)
-        if (!jwtUser || (jwtUser.role !== 'admin' &&
-            !(await canAccessDevice({ userId: jwtUser.userId, role: jwtUser.role }, deviceId)))) {
+        if (!jwtUser || !atLeast(jwtUser.role, 'manager') ||
+            (jwtUser.role !== 'admin' &&
+              !(await canAccessDevice({ userId: jwtUser.userId, role: jwtUser.role }, deviceId)))) {
           socket.send(JSON.stringify({ type: 'ssh:error', payload: { message: 'غير مصرح بالوصول لهذا الجهاز' } }))
           return
         }

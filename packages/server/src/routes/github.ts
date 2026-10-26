@@ -4,6 +4,7 @@ import { getDb } from '../db/database'
 import fs from 'fs'
 import path from 'path'
 import { AGENT_VERSION } from './downloads'
+import { sealSecret, unsealSecret } from '../services/crypto'
 
 const REPO_ROOT    = path.resolve(process.cwd(), '../..')
 const RELEASES_DIR = path.join(REPO_ROOT, 'releases')
@@ -67,7 +68,11 @@ async function getConfig(): Promise<GithubConfig | null> {
   const result = await db.execute({ sql: 'SELECT value FROM settings WHERE key = ?', args: ['github_config'] })
   const row = result.rows[0] as unknown as { value: string } | undefined
   if (!row) return null
-  try { return JSON.parse(row.value) as GithubConfig } catch { return null }
+  try {
+    const cfg = JSON.parse(row.value) as GithubConfig
+    if (typeof cfg.token === 'string') cfg.token = unsealSecret(cfg.token)
+    return cfg
+  } catch { return null }
 }
 
 async function saveConfig(cfg: GithubConfig): Promise<void> {
@@ -75,7 +80,7 @@ async function saveConfig(cfg: GithubConfig): Promise<void> {
   await db.execute({
     sql: `INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?)
           ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
-    args: ['github_config', JSON.stringify(cfg), new Date().toISOString()]
+    args: ['github_config', JSON.stringify({ ...cfg, token: sealSecret(cfg.token) }), new Date().toISOString()]
   })
 }
 

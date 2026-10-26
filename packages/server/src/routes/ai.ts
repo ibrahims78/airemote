@@ -7,6 +7,22 @@ import { getDeviceById } from '../db/devices'
 import { deviceRegistry } from '../ws/registry'
 import { sendCommandToAgent } from '../ws/agentHandler'
 import type { AIConfig, AIMessage, AuthTokenPayload, DeviceStats } from '@airemote/shared'
+import { canAccessDevice } from '../lib/deviceAccess'
+import { assertSafeOutboundUrl, AI_PROVIDER_HOSTS, UnsafeUrlError } from '../lib/security'
+
+/**
+ * v3.7.0 — a client-supplied baseUrl becomes a server-side request, so it must
+ * never point at loopback or the private network (SSRF). Ollama is explicitly
+ * local by design and is the only provider allowed to use a private address.
+ */
+function sanitizeAIConfig(config: AIConfig): AIConfig {
+  if (!config || !config.baseUrl) return config
+  assertSafeOutboundUrl(config.baseUrl, {
+    allowPrivate: config.provider === 'ollama',
+    allowHosts: config.provider === 'ollama' ? undefined : AI_PROVIDER_HOSTS
+  })
+  return config
+}
 
 async function loadConversation(convId: string): Promise<AIMessage[]> {
   try {
@@ -112,6 +128,9 @@ export async function aiRoutes(fastify: FastifyInstance) {
     const user = request.user as unknown as AuthTokenPayload
 
     if (!message?.trim()) return reply.code(400).send({ error: 'Message required' })
+    if (deviceId && !(await canAccessDevice({ userId: user.userId, role: user.role }, deviceId))) {
+      return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
+    }
     if (!config?.provider) return reply.code(400).send({ error: 'AI config required' })
     if (config.provider !== 'ollama' && !config.apiKey?.trim()) {
       const name = config.provider === 'gemini' ? 'Gemini' : config.provider === 'zai' ? 'Z.ai' : 'OpenAI'
@@ -127,7 +146,7 @@ export async function aiRoutes(fastify: FastifyInstance) {
 
     const deviceCtx = deviceId ? await buildDeviceContext(deviceId) : ''
     try {
-      const provider = createAIProvider(config)
+      const provider = createAIProvider(sanitizeAIConfig(config))
       const response = await provider.chat(history, SYSTEM_PROMPT_AR + deviceCtx)
 
       const assistantMsg: AIMessage = { role: 'assistant', content: response, timestamp: new Date() }
@@ -161,6 +180,9 @@ export async function aiRoutes(fastify: FastifyInstance) {
     const user = request.user as unknown as AuthTokenPayload
 
     if (!message?.trim()) return reply.code(400).send({ error: 'Message required' })
+    if (deviceId && !(await canAccessDevice({ userId: user.userId, role: user.role }, deviceId))) {
+      return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
+    }
     if (!config?.provider) return reply.code(400).send({ error: 'AI config required' })
     if (config.provider !== 'ollama' && !config.apiKey?.trim()) {
       const name = config.provider === 'gemini' ? 'Gemini' : config.provider === 'zai' ? 'Z.ai' : 'OpenAI'
@@ -191,7 +213,7 @@ export async function aiRoutes(fastify: FastifyInstance) {
     }
 
     try {
-      const provider = createAIProvider(config)
+      const provider = createAIProvider(sanitizeAIConfig(config))
       let fullResponse = ''
 
       await provider.chatStream(history, systemPrompt, (chunk) => {
@@ -216,9 +238,18 @@ export async function aiRoutes(fastify: FastifyInstance) {
   })
 
   // Get conversation history
-  fastify.get<{ Querystring: { conversationId?: string; deviceId?: string } }>('/history', async (request) => {
+  fastify.get<{ Querystring: { conversationId?: string; deviceId?: string } }>('/history', async (request, reply) => {
     const user = request.user as unknown as AuthTokenPayload
     const convId = request.query.conversationId || `${user.userId}-${request.query.deviceId || 'global'}`
+
+    // v3.7.0 — a conversation id must belong to the caller
+    const owner = (await getDb().execute({
+      sql: 'SELECT user_id FROM ai_conversations WHERE id = ?', args: [convId]
+    })).rows[0] as unknown as { user_id: string } | undefined
+    if (owner && owner.user_id !== user.userId && user.role !== 'admin') {
+      return reply.code(403).send({ error: 'Forbidden' })
+    }
+
     const messages = await loadConversation(convId)
     return { messages, conversationId: convId }
   })
@@ -237,11 +268,17 @@ export async function aiRoutes(fastify: FastifyInstance) {
   })
 
   // Delete conversation
-  fastify.delete<{ Querystring: { conversationId?: string; deviceId?: string } }>('/history', async (request) => {
+  fastify.delete<{ Querystring: { conversationId?: string; deviceId?: string } }>('/history', async (request, reply) => {
     const user = request.user as unknown as AuthTokenPayload
     const convId = request.query.conversationId || `${user.userId}-${request.query.deviceId || 'global'}`
     try {
       const db = getDb()
+      const owner = (await db.execute({
+        sql: 'SELECT user_id FROM ai_conversations WHERE id = ?', args: [convId]
+      })).rows[0] as unknown as { user_id: string } | undefined
+      if (owner && owner.user_id !== user.userId && user.role !== 'admin') {
+        return reply.code(403).send({ error: 'Forbidden' })
+      }
       await db.execute({ sql: 'DELETE FROM ai_conversations WHERE id = ?', args: [convId] })
     } catch {}
     return { ok: true }
@@ -284,7 +321,7 @@ export async function aiRoutes(fastify: FastifyInstance) {
     const prompt = `Device "${device.name}" may be experiencing issues related to: ${metric}.\n\nDiagnostic data collected:\n\`\`\`\n${context.slice(0, 3000)}\n\`\`\`\n\nPlease analyze the data and respond in this exact JSON format (no extra text):\n{\n  "diagnosis": "<root cause>",\n  "suggestion": "<shell command to fix>",\n  "confidence": "high|medium|low",\n  "risk": "low|medium|high",\n  "explanation": "<brief explanation>"\n}`
 
     try {
-      const provider = createAIProvider(config)
+      const provider = createAIProvider(sanitizeAIConfig(config))
       const msgs: AIMessage[] = [{ role: 'user', content: prompt, timestamp: new Date() }]
       const raw = await provider.chat(msgs)
 
@@ -312,7 +349,7 @@ export async function aiRoutes(fastify: FastifyInstance) {
     }
 
     try {
-      const provider = createAIProvider(config)
+      const provider = createAIProvider(sanitizeAIConfig(config))
       const testMessages: AIMessage[] = [{ role: 'user', content: 'Say "OK" in one word only.', timestamp: new Date() }]
       const response = await provider.chat(testMessages)
       return { ok: true, response: response.slice(0, 100) }

@@ -2,6 +2,7 @@ import WebSocket from 'ws'
 import { v4 as uuidv4 } from 'uuid'
 import { spawn, ChildProcess } from 'child_process'
 import fs from 'fs/promises'
+import fsSync from 'fs'
 import path from 'path'
 import { getDeviceInfo } from './system/info'
 import { getDeviceStats } from './system/stats'
@@ -17,7 +18,7 @@ import {
 } from './system/inputControl'
 import type { WSMessage, AgentRegisterPayload, ServerCommandPayload, RemoteMouseEvent, RemoteKeyEvent } from '@airemote/shared'
 
-export const AGENT_VERSION      = '3.6.0'
+export const AGENT_VERSION      = '3.8.1'
 const HEARTBEAT_INTERVAL        = 4000
 const RECONNECT_BASE_DELAY      = 2000
 const RECONNECT_MAX_DELAY       = 30000
@@ -88,7 +89,20 @@ export class AgentService {
   private connect(): void {
     if (!this.running) return
     console.log(`🔌 Connecting to ${this.serverUrl}...`)
-    this.ws = new WebSocket(this.serverUrl)
+    // v3.7.0 — TLS options for the relay connection.
+    //   AGENT_CA_CERT      path to the server CA/certificate (self-signed deployments)
+    //   AGENT_INSECURE_TLS 1 = skip verification (lab only, never production)
+    const wsOptions: WebSocket.ClientOptions = {}
+    try {
+      if (process.env.AGENT_CA_CERT) wsOptions.ca = fsSync.readFileSync(process.env.AGENT_CA_CERT)
+      if (process.env.AGENT_INSECURE_TLS === '1') wsOptions.rejectUnauthorized = false
+    } catch (e) {
+      console.warn('Could not load AGENT_CA_CERT:', (e as Error).message)
+    }
+    if (this.serverUrl.startsWith('ws://') && process.env.AGENT_ALLOW_INSECURE_WS !== '1') {
+      console.warn('WARNING: connecting over ws:// (unencrypted). Use wss:// in production, or set AGENT_ALLOW_INSECURE_WS=1 for an isolated lab.')
+    }
+    this.ws = new WebSocket(this.serverUrl, wsOptions)
     this.ws.on('open', () => this.onOpen())
     this.ws.on('message', (data: Buffer) => this.onMessage(data))
     this.ws.on('close', () => this.onClose())

@@ -27,7 +27,7 @@ import {
   Clipboard, ClipboardPaste, EyeOff, Eye,
   Video, Tv2, Mouse, Keyboard, ChevronDown, Undo2, Home, Layers, Circle,
   Upload, Shield, Zap, CheckCircle2, Pin, PinOff,
-  MessageSquare, Send, Download, Activity, X, PlayCircle, Square, Volume2, VolumeX, RotateCw, Sun
+  MessageSquare, Send, Download, Activity, X, PlayCircle, Square, Volume2, VolumeX, RotateCw, Sun, Scaling
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { createPortal } from 'react-dom'
@@ -111,9 +111,21 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
   const [showClipboard,  setShowClipboard]  = useState(false)
   const [showHint,       setShowHint]       = useState(false)
   const [idleWarning,    setIdleWarning]    = useState(false)
-  const [buffering,      setBuffering]      = useState(false)
-  const bufferTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const bufferShownRef = useRef(false)
+
+  // v3.8.0 — how the remote image fills the viewport. The canvas used to keep
+  // its intrinsic pixel size and only be capped by max-w/max-h, so a 1600x900
+  // stream sat in the middle of a bigger screen with black bands all around.
+  //   fit    = largest size that keeps the aspect ratio (no cropping)
+  //   fill   = cover the viewport (no black edges at any aspect, crops overflow)
+  //   actual = 1:1 pixels
+  const [fitMode,        setFitMode]        = useState<'fit' | 'fill' | 'actual'>(() => {
+    try {
+      const v = localStorage.getItem('airemote.screen.fit')
+      return (v === 'fill' || v === 'actual') ? v : 'fit'
+    } catch { return 'fit' }
+  })
+  const [canvasBox,      setCanvasBox]      = useState<{ w: number; h: number } | null>(null)
+  const [popoutHint,     setPopoutHint]     = useState(!!popout)
 
   // ── Control ───────────────────────────────────────────────────────────────
   const [preset,          setPreset]          = useState<QualityPreset>(QUALITY_PRESETS[1])
@@ -262,6 +274,62 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
     return () => window.clearTimeout(timer)
   }, [popout, resolution.w, resolution.h])
 
+  // v3.8.0 — scale the canvas to the viewport (edge-free fullscreen).
+  useEffect(() => {
+    if (!started) { setCanvasBox(null); return }
+    const area = canvasAreaRef.current
+    if (!area || !resolution.w || !resolution.h) return
+    const compute = () => {
+      const r = area.getBoundingClientRect()
+      if (!r.width || !r.height) return
+      const iw = resolution.w, ih = resolution.h
+      let w = iw, h = ih
+      if (fitMode !== 'actual') {
+        const scale = fitMode === 'fill'
+          ? Math.max(r.width / iw, r.height / ih)
+          : Math.min(r.width / iw, r.height / ih)
+        w = iw * scale; h = ih * scale
+      }
+      const nw = Math.max(1, Math.round(w)), nh = Math.max(1, Math.round(h))
+      setCanvasBox((prev) => (prev && prev.w === nw && prev.h === nh) ? prev : { w: nw, h: nh })
+    }
+    compute()
+    let ro: ResizeObserver | null = null
+    try { ro = new ResizeObserver(compute); ro.observe(area) } catch {}
+    window.addEventListener('resize', compute)
+    return () => {
+      try { ro?.disconnect() } catch {}
+      window.removeEventListener('resize', compute)
+    }
+  }, [started, resolution.w, resolution.h, fitMode])
+
+  const cycleFit = useCallback(() => {
+    setFitMode((m) => {
+      const next = m === 'fit' ? 'fill' : m === 'fill' ? 'actual' : 'fit'
+      try { localStorage.setItem('airemote.screen.fit', next) } catch {}
+      return next
+    })
+  }, [])
+
+  // Esc leaves fullscreen, F11 toggles it — even when the canvas owns focus.
+  useEffect(() => {
+    const onKey = (ev: KeyboardEvent) => {
+      const tag = (ev.target as HTMLElement | null)?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return
+      if (ev.key === 'Escape' && fullscreen) { ev.preventDefault(); setFullscreen(false) }
+      else if (ev.key === 'F11') { ev.preventDefault(); setFullscreen((f) => !f) }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [fullscreen])
+
+  // The help toast on entering the standalone window fades out on its own.
+  useEffect(() => {
+    if (!popout || !popoutHint) return
+    const timer = window.setTimeout(() => setPopoutHint(false), 4200)
+    return () => window.clearTimeout(timer)
+  }, [popout, popoutHint])
+
   useEffect(() => { presetRef.current     = preset        }, [preset])
   useEffect(() => { selectedMonRef.current = selectedMonitor }, [selectedMonitor])
 
@@ -375,32 +443,11 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
   }, [])
 
 
-  // 7-second pre-roll buffering light (YouTube-like). Frames continue in the
-  // background; the operator sees a clear buffer state before the live badge.
-  useEffect(() => {
-    if (status === 'streaming' && !bufferShownRef.current) {
-      bufferShownRef.current = true
-      setBuffering(true)
-      if (bufferTimerRef.current) clearTimeout(bufferTimerRef.current)
-      bufferTimerRef.current = setTimeout(() => setBuffering(false), 7000)
-    }
-    if (status !== 'streaming') {
-      setBuffering(false)
-      if (bufferTimerRef.current) { clearTimeout(bufferTimerRef.current); bufferTimerRef.current = null }
-    }
-  }, [status])
-
-  useEffect(() => () => {
-    if (bufferTimerRef.current) clearTimeout(bufferTimerRef.current)
-  }, [])
-
   // ── WebSocket connect ─────────────────────────────────────────────────────
   const connect = useCallback(async (p: QualityPreset, monitorId = 0) => {
     const myId = ++connectIdRef.current
     if (wsRef.current) { wsRef.current.onclose = null; wsRef.current.close(); wsRef.current = null }
     setStatus('connecting'); setErrorMsg(''); lastSeqRef.current = -1
-    bufferShownRef.current = false
-    setBuffering(false)
     setViewerCount(1)
     setControlEnabled(false); setPermissionState('idle')
     setAudioEnabled(false)
@@ -1212,27 +1259,21 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
         </div>
       )}
 
-      {/* v3.5 — always-visible compact handle for the popout toolbar */}
-      {popout && started && !controlsVisible && !pinned && (
-        <button
-          onClick={revealControls}
+      {/* v3.8.0 — no permanent chrome: the standalone window stays completely
+          edge-free. Moving the mouse to the top edge brings the toolbar back. */}
+      {popout && started && !controlsVisible && (
+        <div
           onMouseEnter={revealControls}
-          onMouseLeave={() => { if (!pinned) scheduleControlsHide(700) }}
-          className="absolute top-0 left-1/2 -translate-x-1/2 z-[60] flex items-center gap-1.5 px-3 py-1 rounded-b-lg bg-navy-900/90 border border-t-0 border-slate-600/60 text-[11px] text-slate-200 shadow-lg hover:bg-navy-800 transition-colors"
-          title="إظهار أدوات التحكم">
-          <Monitor size={11} className="text-brand-teal" />
-          <span className="max-w-[180px] truncate">{deviceName}</span>
-          <ChevronDown size={11} />
-        </button>
+          onClick={revealControls}
+          className="absolute top-0 left-0 right-0 z-[60] h-2.5"
+          aria-hidden
+        />
       )}
 
-      {popout && !controlsVisible && status === 'streaming' && !controlEnabled && (
-        <button
-          onClick={() => requestControl()}
-          className="absolute top-0 right-2 z-[60] flex items-center gap-1 px-2.5 py-1 rounded-b-lg bg-brand-blue/90 border border-t-0 border-brand-blue text-[11px] text-white shadow-lg hover:bg-brand-blue transition-colors"
-          title="تفعيل التحكم عن بُعد">
-          <Shield size={11} /> تحكم
-        </button>
+      {popout && started && popoutHint && status === 'streaming' && (
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[70] px-4 py-2 rounded-full bg-black/60 text-[11px] text-slate-200 backdrop-blur-sm select-none pointer-events-none">
+          Esc للخروج من ملء الشاشة · حرّك الفأرة إلى أعلى الشاشة لإظهار الأدوات
+        </div>
       )}
 
       {/* ── Toolbar ── */}
@@ -1252,14 +1293,27 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
           }}
           className={clsx(
             'cr-live-signal shrink-0',
-            status === 'streaming' && !buffering && 'is-live',
-            (buffering || status === 'connecting') && 'is-buffering'
+            status === 'streaming' && 'is-live',
+            status === 'connecting' && 'is-buffering'
           )}
-          title={buffering ? 'جارٍ التخزين المؤقت' : status === 'streaming' ? 'البث مباشر — افتح البث المستقل' : 'غير متصل'}
+          title={status === 'streaming' ? 'البث مباشر — افتح البث المستقل' : 'غير متصل'}
         >
           <i className="cr-live-signal-dot" />
-          <span>{buffering ? 'تخزين مؤقت' : status === 'streaming' ? 'مباشر' : status === 'connecting' ? 'جارٍ الاتصال' : 'غير متصل'}</span>
+          <span>{status === 'streaming' ? 'مباشر' : status === 'connecting' ? 'جارٍ الاتصال' : 'غير متصل'}</span>
         </button>
+
+        {/* v3.8.0 — how the remote image fills the window (persisted) */}
+        {status === 'streaming' && (
+          <button
+            type="button"
+            onClick={cycleFit}
+            title={'طريقة العرض: ' + (fitMode === 'fit' ? 'ملاءمة كاملة' : fitMode === 'fill' ? 'ملء الشاشة بلا حواف (قص ما يزيد)' : 'بحجم البكسل 1:1')}
+            className="flex items-center gap-1 px-2 py-1 rounded text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 transition-colors shrink-0"
+          >
+            <Scaling size={12} />
+            <span className="hidden xl:inline">{fitMode === 'fit' ? 'ملاءمة' : fitMode === 'fill' ? 'ملء' : '1:1'}</span>
+          </button>
+        )}
 
         {/* T001: Bandwidth meter + FPS + latency */}
         {status === 'streaming' && (
@@ -1592,13 +1646,13 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
           onClick={() => setFullscreen(true)}
           className={clsx(
             'cr-live-signal cr-live-signal-floating',
-            status === 'streaming' && !buffering && 'is-live',
-            (buffering || status === 'connecting') && 'is-buffering'
+            status === 'streaming' && 'is-live',
+            status === 'connecting' && 'is-buffering'
           )}
-          title={buffering ? 'جارٍ التخزين المؤقت' : status === 'streaming' ? 'البث مباشر — ملء الشاشة' : 'غير متصل'}
+          title={status === 'streaming' ? 'البث مباشر — ملء الشاشة' : 'غير متصل'}
         >
           <i className="cr-live-signal-dot" />
-          <span>{buffering ? 'تخزين مؤقت' : status === 'streaming' ? 'مباشر' : status === 'connecting' ? 'جارٍ الاتصال' : 'غير متصل'}</span>
+          <span>{status === 'streaming' ? 'مباشر' : status === 'connecting' ? 'جارٍ الاتصال' : 'غير متصل'}</span>
         </button>
       )}
 
@@ -1608,12 +1662,16 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
 
         <canvas ref={canvasRef}
           className={clsx(
-            'block max-w-full max-h-full shrink-0 object-contain transition-opacity duration-300',
+            'block shrink-0 transition-opacity duration-300',
             status === 'streaming' ? 'opacity-100' : 'opacity-20',
             dragOver && 'ring-2 ring-sky-500/60 ring-dashed',
-            'cursor-none'
+            (status === 'streaming' && !controlsVisible && !pinned) ? 'cursor-none' : ''
           )}
-          style={{ imageRendering: 'auto', width: 'auto', height: 'auto' }}
+          style={{
+            width:  canvasBox ? canvasBox.w + 'px' : 'auto',
+            height: canvasBox ? canvasBox.h + 'px' : 'auto',
+            imageRendering: 'auto',
+          }}
           onMouseMove={handleMouseMove}
           onMouseEnter={e => { setCursorVisible(true); if (controlEnabled) sendMouse('move', e) }}
           onMouseLeave={() => setCursorVisible(false)}
@@ -1727,15 +1785,6 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
         {!popout && keyboardMode && controlEnabled && status === 'streaming' && (
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-amber-500/20 border border-amber-500/30 text-amber-400 text-xs px-3 py-1.5 rounded-full pointer-events-none">
             <Keyboard size={11}/> وضع الكيبورد — جميع المفاتيح تُرسل للجهاز البعيد
-          </div>
-        )}
-
-        {buffering && status === 'streaming' && (
-          <div className="cr-buffer-overlay">
-            <Loader2 size={26} className="animate-spin" />
-            <strong>جارٍ التخزين المؤقت…</strong>
-            <div className="cr-buffer-bar"><span /></div>
-            <small>7 ثوانٍ</small>
           </div>
         )}
 

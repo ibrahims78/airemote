@@ -1,6 +1,21 @@
 'use strict'
 /* global airemote */
 
+// ─── Version (single source of truth: package.json via preload) ─────────────
+// The brand badge and the footer used to be hardcoded and drifted (v3.6.0 while
+// the build was 3.8.x). Fill them from the running app instead.
+function applyAppVersion () {
+  try {
+    const v = (window.airemote && window.airemote.version) || ''
+    if (!v) return
+    document.querySelectorAll('.brand-version').forEach((el) => { el.textContent = 'v' + v })
+    const f = document.getElementById('footer-ver')
+    if (f) f.textContent = 'v' + v
+  } catch {}
+}
+applyAppVersion()
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', applyAppVersion)
+
 // ─── Translations ──────────────────────────────────────────────────────────
 const LANG = {
   ar: {
