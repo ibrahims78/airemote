@@ -5,7 +5,7 @@ import { toast } from '../store/toastStore'
 import type { User, UserRole } from '@airemote/shared'
 import { clsx } from 'clsx'
 import { useT } from '../lib/i18n'
-import { Button, Card, EmptyState, Input, Select, SkeletonRows } from '../components/ui'
+import { Button, Card, EmptyState, Input, Modal, Select, SkeletonRows } from '../components/ui'
 
 function RoleDropdown({ user, onUpdate }: { user: User; onUpdate: (updated: User) => void }) {
   const t = useT()
@@ -109,23 +109,20 @@ function PasswordModal({ user, onClose }: { user: User; onClose: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="glass rounded-2xl w-full max-w-sm">
-        <div className="flex items-center justify-between p-5 border-b border-line">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-primary/15 flex items-center justify-center">
-              <KeyRound size={14} className="text-primary" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-primary-fg text-sm">{t('change_password')}</h3>
-              <p className="text-xs text-muted">{user.name}</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="text-muted hover:text-ink transition-colors">
-            <X size={16} />
-          </button>
-        </div>
-        <form onSubmit={handleSubmit} className="p-5 space-y-3">
+    <Modal
+      open
+      onClose={onClose}
+      title={t('change_password')}
+      description={user.name}
+      size="sm"
+      footer={<>
+        <Button onClick={onClose}>{t('cancel')}</Button>
+        <Button variant="primary" type="submit" form="pw-form" loading={saving} disabled={!password || password !== confirm}>
+          {t('save')}
+        </Button>
+      </>}
+    >
+        <form id="pw-form" onSubmit={handleSubmit} className="space-y-3">
           <div>
             <label className="text-xs text-muted block mb-1">{t('new_password')}</label>
             <input
@@ -148,21 +145,8 @@ function PasswordModal({ user, onClose }: { user: User; onClose: () => void }) {
               <p className="text-xs text-danger mt-1">{t('passwords_mismatch')}</p>
             )}
           </div>
-          <div className="flex gap-2 pt-1">
-            <button
-              type="submit"
-              disabled={saving || !password || password !== confirm}
-              className="flex-1 bg-primary hover:brightness-110 disabled:opacity-40 text-primary-fg text-sm font-medium py-2 rounded-lg transition-colors"
-            >
-              {saving ? t('saving') : t('save')}
-            </button>
-            <button type="button" onClick={onClose} className="px-4 text-sm text-muted hover:text-ink border border-line rounded-lg transition-colors">
-              {t('cancel')}
-            </button>
-          </div>
         </form>
-      </div>
-    </div>
+    </Modal>
   )
 }
 
