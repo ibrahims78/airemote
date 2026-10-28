@@ -19,7 +19,7 @@
       </svg>
     </div>
     <span class="brand-name">AiRemote Agent</span>
-    <span class="brand-version">v3.8.7</span>
+    <span class="brand-version">v3.8.12</span>
   </div>
 
   <div class="title-status" id="title-status">
@@ -509,7 +509,7 @@
     <span class="sep">·</span>
     <span>AiRemote Agent</span>
     <span class="sep">·</span>
-    <span id="footer-ver">v3.8.7</span>
+    <span id="footer-ver">v3.8.12</span>
   </div>
 
 </div><!-- /#app -->
@@ -517,5 +517,18 @@
 <script src="app.js"></script>
 <script src="ai.js"></script>
 <script src="tabs.js"></script>
+<script>
+  /* v3.8.12 — رقم الإصدار يُقرأ من main.js (package.json) لا من نص ثابت في HTML */
+  (function () {
+    try {
+      window.airemote.getState().then(function (s) {
+        if (!s || !s.version) return
+        var t = 'v' + s.version
+        var a = document.querySelector('.brand-version'); if (a) a.textContent = t
+        var b = document.getElementById('footer-ver'); if (b) b.textContent = t
+      }).catch(function () {})
+    } catch (e) {}
+  })()
+</script>
 </body>
 </html>
