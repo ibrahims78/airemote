@@ -63,6 +63,12 @@ html.light {
   ::selection { background: rgba(59,130,246,.35); }
 }
 
+/* R6 — شريط تبويبات أفقي رفيع بدل شريط تمرير ثقيل */
+.tabs-scroll { scrollbar-width: thin; scrollbar-color: rgb(var(--line)) transparent; }
+.tabs-scroll::-webkit-scrollbar { height: 4px; }
+.tabs-scroll::-webkit-scrollbar-track { background: transparent; }
+.tabs-scroll::-webkit-scrollbar-thumb { background: rgb(var(--line)); border-radius: 4px; }
+
 /* ─── Utilities ──────────────────────────────────────────────── */
 @layer utilities {
   /* Glass card */

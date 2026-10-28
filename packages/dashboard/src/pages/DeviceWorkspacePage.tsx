@@ -17,6 +17,7 @@ import { ScreenViewer } from '../components/ScreenViewer'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import type { Device } from '@airemote/shared'
 import { useT } from '../lib/i18n'
+import { Badge, Card, EmptyState } from '../components/ui'
 
 type Tab = 'overview' | 'terminal' | 'monitor' | 'files' | 'ai' | 'commands' | 'screen'
 
@@ -32,7 +33,7 @@ function DeviceInfoPanel({ device }: { device: Device }) {
 
   const infoRows = [
     { label: t('hostname'),  value: device.info?.hostname || '—', icon: Server },
-    { label: t('platform'),  value: device.info ? `${device.info.platform} ${device.info.osVersion}` : '—', icon: Monitor },
+    { label: t('platform'),  value: device.info ? ([device.info.platform, device.info.osVersion].filter(Boolean).join(' ') || '—') : '—', icon: Monitor },
     { label: 'Arch',         value: device.info?.arch || '—', icon: Cpu },
     { label: t('ip_local'),  value: device.info?.ipLocal || '—', icon: Globe },
     { label: t('ip_public'), value: device.info?.ipPublic || '—', icon: Globe },
@@ -42,27 +43,27 @@ function DeviceInfoPanel({ device }: { device: Device }) {
 
   return (
     <div className="space-y-4">
-      <div className="glass rounded-xl overflow-hidden">
-        <div className="px-4 py-3 border-b border-slate-700/50">
-          <h3 className="text-sm font-medium text-slate-200">{t('device_info')}</h3>
+      <div className="rounded-xl border border-line bg-surface overflow-hidden">
+        <div className="px-4 py-3 border-b border-line">
+          <h3 className="text-sm font-medium text-ink">{t('device_info')}</h3>
         </div>
-        <div className="divide-y divide-slate-700/30">
+        <div className="divide-y divide-line/60">
           {infoRows.map(({ label, value, icon: Icon }) => (
             <div key={label} className="flex items-center justify-between px-4 py-2.5">
-              <div className="flex items-center gap-2 text-xs text-slate-400">
-                <Icon size={12} className="text-slate-600" />
+              <div className="flex items-center gap-2 text-xs text-muted">
+                <Icon size={12} className="text-muted/60" />
                 {label}
               </div>
-              <span className="text-xs font-mono text-slate-200">{value}</span>
+              <span className="text-xs font-mono text-ink">{value}</span>
             </div>
           ))}
         </div>
       </div>
 
       {stats && (
-        <div className="glass rounded-xl overflow-hidden">
-          <div className="px-4 py-3 border-b border-slate-700/50">
-            <h3 className="text-sm font-medium text-slate-200">{t('tab_monitor')}</h3>
+        <div className="rounded-xl border border-line bg-surface overflow-hidden">
+          <div className="px-4 py-3 border-b border-line">
+            <h3 className="text-sm font-medium text-ink">{t('tab_monitor')}</h3>
           </div>
           <div className="p-4 grid grid-cols-3 gap-4">
             {[
@@ -73,7 +74,7 @@ function DeviceInfoPanel({ device }: { device: Device }) {
               <div key={item.label} className="text-center">
                 <div className="relative w-14 h-14 mx-auto mb-2">
                   <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                    <circle cx="18" cy="18" r="15.9" fill="none" stroke="#1e293b" strokeWidth="3" />
+                    <circle cx="18" cy="18" r="15.9" fill="none" stroke="currentColor" strokeWidth="3" className="text-line" />
                     <circle
                       cx="18" cy="18" r="15.9" fill="none"
                       stroke={item.stroke} strokeWidth="3"
@@ -82,10 +83,10 @@ function DeviceInfoPanel({ device }: { device: Device }) {
                     />
                   </svg>
                   <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-xs font-bold text-white">{item.value}%</span>
+                    <span className="text-xs font-bold text-ink">{item.value}%</span>
                   </div>
                 </div>
-                <p className="text-xs text-slate-400">{item.label}</p>
+                <p className="text-xs text-muted">{item.label}</p>
               </div>
             ))}
           </div>
@@ -110,12 +111,14 @@ export function DeviceWorkspacePage() {
 
   if (!device) {
     return (
-      <div className="p-6 text-center">
-        <Monitor size={32} className="text-slate-600 mx-auto mb-3" />
-        <p className="text-slate-400">{t('no_devices_yet')}</p>
-        <Link to="/devices" className="text-brand-blue text-sm hover:underline mt-2 inline-block">
-          {t('back_to_devices')}
-        </Link>
+      <div className="p-5">
+        <Card>
+          <EmptyState
+            icon={<Monitor size={26} />}
+            title={t('no_devices_yet')}
+            description={<Link to="/devices" className="text-primary hover:underline">{t('back_to_devices')}</Link>}
+          />
+        </Card>
       </div>
     )
   }
@@ -135,57 +138,54 @@ export function DeviceWorkspacePage() {
   return (
     <div className="flex flex-col h-full min-h-0">
       {/* Header */}
-      <div className="flex-shrink-0 px-6 pt-5 pb-0 border-b border-slate-700/50 bg-navy-900">
+      <div className="flex-shrink-0 px-6 pt-5 pb-0 border-b border-line bg-canvas">
         <div className="flex items-center gap-3 mb-4">
-          <Link to="/devices" className="p-1.5 text-slate-500 hover:text-slate-300 transition-colors rounded-lg hover:bg-slate-700/40">
+          <Link to="/devices" className="p-1.5 text-muted hover:text-ink transition-colors rounded-lg hover:bg-surface2">
             <ArrowLeft size={16} />
           </Link>
-          <div className={clsx('w-8 h-8 rounded-lg flex items-center justify-center', isOnline ? 'bg-brand-blue/15' : 'bg-slate-700/50')}>
-            <Monitor size={14} className={isOnline ? 'text-brand-blue' : 'text-slate-500'} />
+          <div className={clsx('w-8 h-8 rounded-lg flex items-center justify-center', isOnline ? 'bg-primary/15' : 'bg-surface2')}>
+            <Monitor size={14} className={isOnline ? 'text-primary' : 'text-muted'} />
           </div>
           <div>
-            <h2 className="text-base font-bold text-white leading-none">{device.name}</h2>
-            <p className="text-xs text-slate-500 mt-0.5">{device.info?.hostname || device.id.slice(0, 12)}</p>
+            <h2 className="text-base font-bold text-ink leading-none">{device.name}</h2>
+            <p className="text-xs text-muted mt-0.5">{device.info?.hostname || device.id.slice(0, 12)}</p>
           </div>
-          <span className={clsx(
-            'inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full ms-auto',
-            isOnline ? 'bg-emerald-400/10 text-emerald-400' : 'bg-slate-700/50 text-slate-400'
-          )}>
+          <Badge tone={isOnline ? 'success' : 'neutral'} className="ms-auto px-2.5 py-1">
             {isOnline ? <Wifi size={10} /> : <WifiOff size={10} />}
             {isOnline ? t('device_online') : t('device_offline')}
-          </span>
+          </Badge>
           <button
             onClick={() => window.open('/view/' + device.id, '_blank', 'width=1400,height=900')}
             title="فتح البث في نافذة مستقلة (لعرض أكثر من جهاز معاً)"
-            className="p-1.5 rounded-lg text-slate-500 hover:text-brand-teal hover:bg-slate-700/40 transition-colors"
+            className="p-1.5 rounded-lg text-muted hover:text-primary hover:bg-surface2 transition-colors"
           >
             <ExternalLink size={14} />
           </button>
           {stats && (
-            <div className="hidden lg:flex items-center gap-3 text-xs text-slate-400 border-s border-slate-700/50 ps-4 ms-2">
-              <span className="flex items-center gap-1"><Cpu size={10} className="text-brand-blue" /><span className="font-mono text-slate-200">{stats.cpuPercent}%</span></span>
-              <span className="flex items-center gap-1"><MemoryStick size={10} className="text-brand-teal" /><span className="font-mono text-slate-200">{stats.ramPercent}%</span></span>
-              <span className="flex items-center gap-1"><HardDrive size={10} className="text-purple-400" /><span className="font-mono text-slate-200">{stats.diskPercent}%</span></span>
+            <div className="hidden lg:flex items-center gap-3 text-xs text-muted border-s border-line ps-4 ms-2">
+              <span className="flex items-center gap-1"><Cpu size={10} className="text-primary" /><span className="font-mono text-ink">{stats.cpuPercent}%</span></span>
+              <span className="flex items-center gap-1"><MemoryStick size={10} className="text-primary" /><span className="font-mono text-ink">{stats.ramPercent}%</span></span>
+              <span className="flex items-center gap-1"><HardDrive size={10} className="text-info" /><span className="font-mono text-ink">{stats.diskPercent}%</span></span>
             </div>
           )}
         </div>
 
-        <div className="flex gap-1 overflow-x-auto">
+        <div className="tabs-scroll flex gap-1 overflow-x-auto">
           {tabs.map(tb => (
             <button
               key={tb.id}
               onClick={() => !tb.disabled && setTab(tb.id)}
               disabled={tb.disabled}
               className={clsx(
-                'flex items-center gap-2 px-4 py-2.5 text-sm border-b-2 transition-all',
-                tab === tb.id ? 'border-brand-blue text-brand-blue font-medium' :
-                tb.disabled ? 'border-transparent text-slate-600 cursor-not-allowed' :
-                'border-transparent text-slate-400 hover:text-slate-200'
+                'flex shrink-0 items-center gap-2 whitespace-nowrap px-4 py-2.5 text-sm border-b-2 transition-all',
+                tab === tb.id ? 'border-primary text-primary font-medium' :
+                tb.disabled ? 'border-transparent text-muted/60 cursor-not-allowed' :
+                'border-transparent text-muted hover:text-ink'
               )}
             >
               <tb.icon size={14} />
               {tb.label}
-              {tb.disabled && !isOnline && <span className="text-[10px] bg-slate-700/50 text-slate-500 px-1.5 py-0.5 rounded">{t('offline')}</span>}
+              {tb.disabled && !isOnline && <span className="text-[10px] bg-surface2 text-muted px-1.5 py-0.5 rounded">{t('offline')}</span>}
             </button>
           ))}
         </div>
@@ -201,9 +201,9 @@ export function DeviceWorkspacePage() {
               <DeviceInfoPanel device={device} />
             </div>
             <div className="lg:col-span-2">
-              <div className="glass rounded-xl p-5">
-                <h3 className="text-sm font-medium text-slate-200 mb-4 flex items-center gap-2">
-                  <Activity size={14} className="text-brand-blue" />
+              <div className="rounded-xl border border-line bg-surface p-5">
+                <h3 className="text-sm font-medium text-ink mb-4 flex items-center gap-2">
+                  <Activity size={14} className="text-primary" />
                   {t('tab_monitor')}
                 </h3>
                 <MonitoringCharts deviceId={device.id} stats={stats} />
@@ -237,8 +237,8 @@ export function DeviceWorkspacePage() {
 
         {tab === 'monitor' && (
           <div className="space-y-5 p-5">
-            <div className="glass rounded-xl p-5">
-              <h3 className="text-sm font-medium text-slate-200 mb-4">{t('tab_monitor')} — {device.name}</h3>
+            <div className="rounded-xl border border-line bg-surface p-5">
+              <h3 className="text-sm font-medium text-ink mb-4">{t('tab_monitor')} — {device.name}</h3>
               <MonitoringCharts deviceId={device.id} stats={stats} />
             </div>
           </div>
