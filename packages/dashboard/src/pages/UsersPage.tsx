@@ -141,7 +141,7 @@ function PasswordModal({ user, onClose }: { user: User; onClose: () => void }) {
               placeholder={t('password_confirm')} required
               className={clsx(
                 'w-full bg-canvas border rounded-lg px-3 py-2 text-sm text-ink placeholder:text-muted/70 focus:outline-none transition-colors',
-                confirm && password !== confirm ? 'border-red-500/60 focus:border-red-500' : 'border-line focus:border-primary'
+                confirm && password !== confirm ? 'border-danger/60 focus:border-danger' : 'border-line focus:border-primary'
               )}
             />
             {confirm && password !== confirm && (

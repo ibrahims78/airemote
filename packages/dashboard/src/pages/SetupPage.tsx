@@ -52,30 +52,30 @@ export function SetupPage({ onComplete }: { onComplete: () => void }) {
     }
   }
 
-  const strengthColor = metCount === 3 ? 'bg-emerald-400' : metCount >= 2 ? 'bg-yellow-400' : 'bg-orange-400'
+  const strengthColor = metCount === 3 ? 'bg-success' : metCount >= 2 ? 'bg-warning' : 'bg-warning'
 
   return (
-    <div className="min-h-screen bg-navy-900 flex flex-col">
+    <div className="min-h-screen bg-canvas flex flex-col">
       <WindowChrome />
       {/* Top bar */}
       <div className="flex items-center justify-between ps-6 pe-32 py-4">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-brand-blue to-brand-teal flex items-center justify-center shadow-sm shadow-brand-blue/25">
-            <Zap size={14} className="text-white" />
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-primary flex items-center justify-center shadow-sm shadow-brand-blue/25">
+            <Zap size={14} className="text-ink" />
           </div>
-          <span className="font-bold text-white text-sm">AiRemote</span>
+          <span className="font-bold text-ink text-sm">AiRemote</span>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={toggleTheme}
-            className="p-2 text-slate-400 hover:text-slate-200 hover:bg-slate-700/40 rounded-lg transition-all"
+            className="p-2 text-muted hover:text-ink hover:bg-surface2 rounded-lg transition-all"
             title={theme === 'dark' ? (isAr ? 'وضع نهاري' : 'Light Mode') : (isAr ? 'وضع ليلي' : 'Dark Mode')}
           >
             {theme === 'dark' ? <Moon size={15} /> : <Sun size={15} />}
           </button>
           <button
             onClick={toggleLang}
-            className="px-2.5 py-1.5 text-xs font-mono font-medium text-slate-400 hover:text-slate-200 hover:bg-slate-700/40 rounded-lg transition-all"
+            className="px-2.5 py-1.5 text-xs font-mono font-medium text-muted hover:text-ink hover:bg-surface2 rounded-lg transition-all"
           >
             {lang === 'ar' ? 'EN' : 'ع'}
           </button>
@@ -86,13 +86,13 @@ export function SetupPage({ onComplete }: { onComplete: () => void }) {
         <div className="w-full max-w-md animate-fade-in">
           {/* Logo */}
           <div className="text-center mb-8">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-brand-blue to-brand-teal flex items-center justify-center mx-auto mb-5 shadow-xl shadow-brand-blue/20">
-              <Zap size={28} className="text-white" />
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary flex items-center justify-center mx-auto mb-5 shadow-xl shadow-brand-blue/20">
+              <Zap size={28} className="text-ink" />
             </div>
-            <h1 className="text-2xl font-bold text-white">
+            <h1 className="text-2xl font-bold text-ink">
               {isAr ? 'مرحباً بك في AiRemote' : 'Welcome to AiRemote'}
             </h1>
-            <p className="text-slate-400 mt-2 text-sm">
+            <p className="text-muted mt-2 text-sm">
               {isAr ? 'إعداد حساب المسؤول الأول' : 'Create your admin account to get started'}
             </p>
           </div>
@@ -100,42 +100,42 @@ export function SetupPage({ onComplete }: { onComplete: () => void }) {
           <div className="glass rounded-2xl p-6 shadow-2xl">
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                <label className="block text-sm font-medium text-ink/90 mb-1.5">
                   {isAr ? 'الاسم الكامل' : 'Full Name'}
                 </label>
                 <input
                   type="text" required
                   value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
                   placeholder={isAr ? 'إبراهيم' : 'John Doe'}
-                  className="w-full bg-navy-900 border border-slate-600 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-blue transition-colors"
+                  className="w-full bg-canvas border border-line rounded-xl px-4 py-2.5 text-sm text-ink placeholder:text-muted/70 focus:outline-none focus:border-primary transition-colors"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                <label className="block text-sm font-medium text-ink/90 mb-1.5">
                   {isAr ? 'البريد الإلكتروني' : 'Email Address'}
                 </label>
                 <input
                   type="email" required autoComplete="email"
                   value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
                   placeholder="admin@airemote.io"
-                  className="w-full bg-navy-900 border border-slate-600 rounded-xl px-4 py-2.5 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-blue transition-colors"
+                  className="w-full bg-canvas border border-line rounded-xl px-4 py-2.5 text-sm text-ink placeholder:text-muted/70 focus:outline-none focus:border-primary transition-colors"
                   dir="ltr"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                <label className="block text-sm font-medium text-ink/90 mb-1.5">
                   {isAr ? 'كلمة المرور' : 'Password'}
                 </label>
                 <div className="relative">
                   <input
                     type={showPass ? 'text' : 'password'} required
                     value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
-                    className="w-full bg-navy-900 border border-slate-600 rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-brand-blue transition-colors"
+                    className="w-full bg-canvas border border-line rounded-xl px-4 py-2.5 text-sm text-ink focus:outline-none focus:border-primary transition-colors"
                     dir="ltr"
                   />
-                  <button type="button" onClick={() => setShowPass(s => !s)} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
+                  <button type="button" onClick={() => setShowPass(s => !s)} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink/90 transition-colors">
                     {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
                   </button>
                 </div>
@@ -143,12 +143,12 @@ export function SetupPage({ onComplete }: { onComplete: () => void }) {
                   <>
                     <div className="mt-2 flex gap-1">
                       {[...Array(3)].map((_, i) => (
-                        <div key={i} className={clsx('h-1 flex-1 rounded-full transition-all duration-300', i < metCount ? strengthColor : 'bg-slate-700')} />
+                        <div key={i} className={clsx('h-1 flex-1 rounded-full transition-all duration-300', i < metCount ? strengthColor : 'bg-surface2')} />
                       ))}
                     </div>
                     <div className="mt-2 grid grid-cols-1 gap-1">
                       {REQUIREMENTS.map((r, i) => (
-                        <div key={i} className={clsx('flex items-center gap-1.5 text-xs transition-colors', r.test(form.password) ? 'text-emerald-400' : 'text-slate-600')}>
+                        <div key={i} className={clsx('flex items-center gap-1.5 text-xs transition-colors', r.test(form.password) ? 'text-success' : 'text-muted/70')}>
                           <Check size={10} className={r.test(form.password) ? 'opacity-100' : 'opacity-20'} />
                           {isAr ? r.label : r.labelEn}
                         </div>
@@ -159,34 +159,34 @@ export function SetupPage({ onComplete }: { onComplete: () => void }) {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-300 mb-1.5">
+                <label className="block text-sm font-medium text-ink/90 mb-1.5">
                   {isAr ? 'تأكيد كلمة المرور' : 'Confirm Password'}
                 </label>
                 <input
                   type="password" required
                   value={form.confirm} onChange={e => setForm(p => ({ ...p, confirm: e.target.value }))}
                   className={clsx(
-                    'w-full bg-navy-900 border rounded-xl px-4 py-2.5 text-sm text-slate-100 focus:outline-none transition-colors',
-                    form.confirm && form.password !== form.confirm ? 'border-red-500/60 focus:border-red-500' : 'border-slate-600 focus:border-brand-blue'
+                    'w-full bg-canvas border rounded-xl px-4 py-2.5 text-sm text-ink focus:outline-none transition-colors',
+                    form.confirm && form.password !== form.confirm ? 'border-danger/60 focus:border-danger' : 'border-line focus:border-primary'
                   )}
                   dir="ltr"
                 />
                 {form.confirm && form.password !== form.confirm && (
-                  <p className="text-xs text-red-400 mt-1">
+                  <p className="text-xs text-danger mt-1">
                     {isAr ? 'كلمتا المرور غير متطابقتين' : 'Passwords do not match'}
                   </p>
                 )}
               </div>
 
               {error && (
-                <div className="bg-red-500/10 border border-red-500/25 rounded-xl px-4 py-2.5 text-sm text-red-400 animate-fade-in">
+                <div className="bg-danger/10 border border-danger/25 rounded-xl px-4 py-2.5 text-sm text-danger animate-fade-in">
                   {error}
                 </div>
               )}
 
               <button
                 type="submit" disabled={loading}
-                className="w-full bg-brand-blue hover:bg-blue-500 disabled:opacity-50 text-white font-semibold py-2.5 rounded-xl text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-brand-blue/20 mt-1"
+                className="w-full bg-primary hover:brightness-110 disabled:opacity-50 text-ink font-semibold py-2.5 rounded-xl text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-brand-blue/20 mt-1"
               >
                 {loading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                 {loading ? (isAr ? 'جاري الإنشاء...' : 'Creating...') : (isAr ? 'إنشاء الحساب' : 'Create Account')}
@@ -194,7 +194,7 @@ export function SetupPage({ onComplete }: { onComplete: () => void }) {
             </form>
           </div>
 
-          <p className="text-center text-xs text-slate-500 mt-6">
+          <p className="text-center text-xs text-muted mt-6">
             AiRemote v{APP_VERSION} — Open Source Self-hosted Remote Access + AI
           </p>
         </div>

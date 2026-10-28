@@ -47,8 +47,8 @@ function WolModal({ device, token, onClose }: { device: Device; token: string; o
       <div className="glass rounded-2xl w-full max-w-sm">
         <div className="flex items-center justify-between p-5 border-b border-line">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/15 flex items-center justify-center">
-              <Zap size={16} className="text-amber-400" />
+            <div className="w-9 h-9 rounded-xl bg-warning/15 flex items-center justify-center">
+              <Zap size={16} className="text-warning" />
             </div>
             <div>
               <h3 className="font-semibold text-ink">Wake-on-LAN</h3>
@@ -65,7 +65,7 @@ function WolModal({ device, token, onClose }: { device: Device; token: string; o
               value={mac} onChange={e => setMac(e.target.value)}
               placeholder="AA:BB:CC:DD:EE:FF"
               dir="ltr"
-              className="w-full bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder:text-muted/70 font-mono focus:outline-none focus:border-amber-500/60"
+              className="w-full bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder:text-muted/70 font-mono focus:outline-none focus:border-warning/50"
             />
           </div>
           <div>
@@ -74,7 +74,7 @@ function WolModal({ device, token, onClose }: { device: Device; token: string; o
               value={broadcast} onChange={e => setBroadcast(e.target.value)}
               placeholder="255.255.255.255"
               dir="ltr"
-              className="w-full bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder:text-muted/70 font-mono focus:outline-none focus:border-amber-500/60"
+              className="w-full bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder:text-muted/70 font-mono focus:outline-none focus:border-warning/50"
             />
           </div>
 
@@ -93,7 +93,7 @@ function WolModal({ device, token, onClose }: { device: Device; token: string; o
 
           <button
             type="submit" disabled={sending || !mac.trim()}
-            className="w-full flex items-center justify-center gap-2 bg-amber-500/20 hover:bg-amber-500/30 disabled:opacity-40 disabled:cursor-not-allowed text-amber-400 text-sm font-medium py-2.5 rounded-lg transition-colors border border-amber-500/30"
+            className="w-full flex items-center justify-center gap-2 bg-warning/15 hover:bg-warning/20 disabled:opacity-40 disabled:cursor-not-allowed text-warning text-sm font-medium py-2.5 rounded-lg transition-colors border border-warning/30"
           >
             {sending ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
             {sending ? t('wol_sending') : t('wol_send')}
@@ -220,7 +220,7 @@ AIREMOTE_LOG_LEVEL=info`
               <span className="text-sm font-medium text-ink">Linux / macOS</span>
             </div>
             <div className="relative">
-              <pre className="bg-[#0a0f1e] rounded-lg p-3 text-xs font-mono text-slate-300 overflow-x-auto border border-line leading-relaxed">
+              <pre className="bg-[#0a0f1e] rounded-lg p-3 text-xs font-mono text-ink/90 overflow-x-auto border border-line leading-relaxed">
                 {scripts.linux}
               </pre>
               <button
@@ -238,7 +238,7 @@ AIREMOTE_LOG_LEVEL=info`
               <span className="text-xs text-muted ms-7">Docker:</span>
             </div>
             <div className="relative">
-              <pre className="bg-[#0a0f1e] rounded-lg p-3 text-xs font-mono text-slate-300 overflow-x-auto border border-line leading-relaxed">
+              <pre className="bg-[#0a0f1e] rounded-lg p-3 text-xs font-mono text-ink/90 overflow-x-auto border border-line leading-relaxed">
                 {scripts.docker}
               </pre>
               <button
@@ -257,7 +257,7 @@ AIREMOTE_LOG_LEVEL=info`
               <span className="text-sm font-medium text-ink"><code className="text-brand-teal">.env</code></span>
             </div>
             <div className="relative">
-              <pre className="bg-[#0a0f1e] rounded-lg p-3 text-xs font-mono text-slate-300 overflow-x-auto border border-line">
+              <pre className="bg-[#0a0f1e] rounded-lg p-3 text-xs font-mono text-ink/90 overflow-x-auto border border-line">
                 {scripts.env}
               </pre>
               <button
@@ -473,7 +473,7 @@ export function DevicesPage() {
                       {d.status === 'offline' && (
                         <button
                           onClick={() => setWolDevice(d)}
-                          className="p-1.5 text-muted/70 hover:text-amber-400 transition-colors rounded"
+                          className="p-1.5 text-muted/70 hover:text-warning transition-colors rounded"
                           title="Wake-on-LAN" aria-label="Wake-on-LAN"
                         >
                           <Zap size={13} />

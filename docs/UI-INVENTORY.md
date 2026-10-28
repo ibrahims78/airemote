@@ -55,36 +55,39 @@
 
 ## 2.1 امتثال المكتبة — جرد رقمي (R6)
 
-**القياس:** عدد أدوات اللون الصريحة (مثل `bg-slate-800`, `text-sky-400`, `border-brand-blue/40`) لكل ملف في `src`، وعمود «يستخدم المكتبة» يعني استيراداً فعلياً من `components/ui`.
+**القياس:** عدد أدوات اللون الصريحة (مثل `bg-slate-800`, `text-sky-400`, `border-l-yellow-400`, `shadow-brand-teal/25`) لكل ملف في `src`. عمود «يستخدم المكتبة» يعني استيراداً فعلياً من `components/ui`.
 
-**الحصيلة الحالية:** **919** صنفاً صريحاً (كان 1324 قبل شرائح 9–11)، و**9** ملفات على المكتبة.
+**الحصيلة الحالية:** **875** صنفاً صريحاً · **9** ملفات على المكتبة · **10** شاشات بصفر أصناف صريحة.
+
+> **تصحيح قياس (2026-10-28):** البوابة كانت لا ترصد الاتجاهات (`border-l-*`) ولا `shadow-*` ولا `navy-*` ولا `text-white`، فمرّت أصناف مثل `border-l-yellow-400` بلا رصد. وُسِّعت في `scripts/scan-ui-colors.cjs`، فارتفعت أرقام الملفات غير المحوَّلة (مثال `AiChatPanel`: 276 ← 345) وانخفض الإجمالي لأن أربع صفحات صُفِّرت في الجولة نفسها.
 
 | الملف | أصناف صريحة | يستخدم المكتبة | الحالات المطلوبة (تحميل / فارغ / خطأ / هيكل) |
 |---|---|---|---|
-| `components/AiChatPanel.tsx` | 276 | ❌ | — (سطح تفاعلي: قرار مؤجّل) |
-| `components/ScreenViewer.tsx` | 244 | ❌ | — (سطح بث: قرار مؤجّل) |
-| `pages/HelpPage.tsx` | **0** | ✅ | ❌ / ✅ / ✅ / ❌ |
-| `pages/AuditPage.tsx` | **0** | ✅ | ✅ / ✅ / ✅ / ✅ |
-| `pages/SettingsPage.tsx` | **0** | ✅ | ✅ / — / ✅ / ✅ |
-| `components/CommandRunner.tsx` | 66 | ❌ | ❌ / ✅ / ✅ / ❌ |
-| `pages/NotificationsPage.tsx` | 49 | ❌ | ✅ / ✅ / ❌ / ❌ |
-| `components/PTYTerminal.tsx` | 44 | ❌ | — / — / ✅ / ❌ |
-| `components/SettingsExtra.tsx` | 43 | ❌ | ❌ / — / ❌ / ❌ |
-| `pages/AiPage.tsx` | 41 | ❌ | ❌ / ✅ / ❌ / ❌ |
-| `components/SSHTerminal.tsx` | 39 | ❌ | — / — / ✅ / ❌ |
-| `pages/SetupPage.tsx` | 36 | ❌ | ✅ / — / ✅ / ❌ |
-| `components/MonitoringCharts.tsx` | 27 | ❌ | ❌ / ✅ / ❌ / ❌ |
+| `components/AiChatPanel.tsx` | 345 | ❌ | — (سطح تفاعلي: قرار مؤجّل) |
+| `components/ScreenViewer.tsx` | 255 | ❌ | — (سطح بث: قرار مؤجّل) |
+| `components/CommandRunner.tsx` | 70 | ❌ | ❌ / ✅ / ✅ / ❌ |
+| `components/PTYTerminal.tsx` | 48 | ❌ | — / — / ✅ / ❌ |
+| `components/SettingsExtra.tsx` | 47 | ❌ | ❌ / — / ❌ / ❌ |
+| `components/SSHTerminal.tsx` | 41 | ❌ | — / — / ✅ / ❌ |
+| `components/MonitoringCharts.tsx` | 29 | ❌ | ❌ / ✅ / ❌ / ❌ |
+| `components/CommandPalette.tsx` | 13 | ❌ | — / ✅ / — / ❌ |
 | `components/ToastContainer.tsx` | 13 | ❌ | — / — / — / ❌ |
-| `components/CommandPalette.tsx` | 12 | ❌ | — / ✅ / — / ❌ |
-| `pages/DevicesPage.tsx` | 12 | ✅ | ✅ / ✅ / ✅ / ✅ |
+| `App.tsx` | 5 | ❌ | — / — / — / ❌ |
 | `components/ExecConsole.tsx` | 5 | ❌ | — / — / ✅ / ❌ |
-| `App.tsx` | 4 | ❌ | — / — / — / ❌ |
 | `components/ErrorBoundary.tsx` | 4 | ❌ | — / — / ✅ / ❌ |
-| `pages/SessionsPage.tsx` | 2 | ✅ | ✅ / ✅ / ✅ / ✅ |
-| `pages/UsersPage.tsx` | 2 | ✅ | ✅ / ✅ / ✅ / ✅ |
-| `pages/DeviceWorkspacePage.tsx` | 0 | ✅ | — / ✅ / ✅ / ❌ |
-| `components/TransferQueue.tsx` | 0 | ✅ | ✅ / ✅ / ✅ / ✅ |
 | `components/FileManager.tsx` | **0** | ✅ | ✅ / ✅ / ✅ / ✅ |
+| `components/TransferQueue.tsx` | **0** | ✅ | ✅ / ✅ / ✅ / ✅ |
+| `pages/AiPage.tsx` | **0** | ❌ | ❌ / ✅ / ❌ / ❌ |
+| `pages/AuditPage.tsx` | **0** | ✅ | ✅ / ✅ / ✅ / ✅ |
+| `pages/DevicesPage.tsx` | **0** | ✅ | ✅ / ✅ / ✅ / ✅ |
+| `pages/DeviceWorkspacePage.tsx` | **0** | ✅ | — / ✅ / ✅ / ❌ |
+| `pages/HelpPage.tsx` | **0** | ✅ | ❌ / ✅ / ✅ / ❌ |
+| `pages/LoginPage.tsx` | **0** | ❌ | ✅ / — / ✅ / ❌ |
+| `pages/NotificationsPage.tsx` | **0** | ❌ | ✅ / ✅ / ❌ / ❌ |
+| `pages/SessionsPage.tsx` | **0** | ✅ | ✅ / ✅ / ✅ / ✅ |
+| `pages/SettingsPage.tsx` | **0** | ✅ | ✅ / — / ✅ / ✅ |
+| `pages/SetupPage.tsx` | **0** | ❌ | ✅ / — / ✅ / ❌ |
+| `pages/UsersPage.tsx` | **0** | ✅ | ✅ / ✅ / ✅ / ✅ |
 
 **معيار الخروج:** صفر صنف صريح في كل ملف يُعلن «محوَّلاً»، وليس صفراً في المجموع فقط. الملفات المتبقية أعلاه هي قائمة العمل الحقيقية لـR6.
 

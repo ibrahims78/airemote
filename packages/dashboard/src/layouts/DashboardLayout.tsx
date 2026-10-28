@@ -125,7 +125,7 @@ export function DashboardLayout() {
   }
 
   return (
-    <div className="app-shell flex flex-col h-screen bg-navy-900 overflow-hidden">
+    <div className="app-shell flex flex-col h-screen bg-canvas overflow-hidden">
       <header
         className="app-titlebar"
         dir="ltr"

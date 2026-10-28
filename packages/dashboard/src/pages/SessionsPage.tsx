@@ -124,7 +124,7 @@ export function SessionsPage({ embedded = false }: { embedded?: boolean } = {}) 
             <Tv2 size={15} className="text-info" />
             <span className="text-sm font-semibold text-ink">{T('live_streams')}</span>
             {liveStreams.length > 0 && (
-              <span className="ml-1 text-[10px] px-2 py-0.5 rounded-full bg-purple-400/15 text-info font-medium">
+              <span className="ml-1 text-[10px] px-2 py-0.5 rounded-full bg-primary/15 text-info font-medium">
                 {liveStreams.length}
               </span>
             )}
@@ -262,7 +262,7 @@ export function SessionsPage({ embedded = false }: { embedded?: boolean } = {}) 
                         </td>
                         <td className="px-4 py-3 text-xs text-muted/70 font-mono" dir="ltr">{s.ipAddress || '—'}</td>
                         <td className="px-4 py-3">
-                          <span className={clsx('text-[10px] px-2 py-0.5 rounded-full', isActive ? 'bg-emerald-400/10 text-success' : 'bg-surface2 text-muted')}>
+                          <span className={clsx('text-[10px] px-2 py-0.5 rounded-full', isActive ? 'bg-success/10 text-success' : 'bg-surface2 text-muted')}>
                             {isActive ? '●' : '○'}
                           </span>
                         </td>
