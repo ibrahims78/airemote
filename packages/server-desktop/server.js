@@ -2179,6 +2179,8 @@ async function start(config) {
   fastify.addHook('onSend', async (req, reply, payload) => {
     try {
       if (TLS_ACTIVE) reply.header('Strict-Transport-Security', 'max-age=15552000; includeSubDomains')
+      // v3.8.12 / R2 — nosniff لكل الردود (كان على HTML فقط)
+      reply.header('X-Content-Type-Options', 'nosniff')
       const ct = String(reply.getHeader('content-type') || '')
       if (ct.includes('text/html')) {
         reply.header('Content-Security-Policy', "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' ws: wss:; font-src 'self' data: https://fonts.gstatic.com; object-src 'none'; base-uri 'self'; frame-ancestors 'self'")

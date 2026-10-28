@@ -190,6 +190,12 @@ async function main() {
   const aDel = await fetch(BASE + '/api/devices/' + devA2, { method: 'DELETE', headers: H(adminTok) })
   check('J6. admin passes the destructive guard', aDel.status !== 403, 'status=' + aDel.status)
 
+  // ── K. security headers on API responses ───────────────────────────────────
+  const hRes = await fetch(BASE + '/api/health')
+  check('K1. API responses carry X-Content-Type-Options: nosniff',
+    String(hRes.headers.get('x-content-type-options') || '').toLowerCase() === 'nosniff',
+    'header=' + hRes.headers.get('x-content-type-options'))
+
   // ── H. audit rows ──────────────────────────────────────────────────────────
   const db2 = new Database(dbPath)
   const failedRows = db2.prepare("SELECT COUNT(*) c FROM audit_log WHERE action='login_failed'").get().c
