@@ -60,7 +60,7 @@ export function SetupPage({ onComplete }: { onComplete: () => void }) {
       {/* Top bar */}
       <div className="flex items-center justify-between ps-6 pe-32 py-4">
         <div className="flex items-center gap-2.5">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-primary flex items-center justify-center shadow-sm shadow-brand-blue/25">
+          <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-primary flex items-center justify-center shadow-sm shadow-primary/25">
             <Zap size={14} className="text-ink" />
           </div>
           <span className="font-bold text-ink text-sm">AiRemote</span>
@@ -86,7 +86,7 @@ export function SetupPage({ onComplete }: { onComplete: () => void }) {
         <div className="w-full max-w-md animate-fade-in">
           {/* Logo */}
           <div className="text-center mb-8">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary flex items-center justify-center mx-auto mb-5 shadow-xl shadow-brand-blue/20">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary flex items-center justify-center mx-auto mb-5 shadow-xl shadow-primary/20">
               <Zap size={28} className="text-ink" />
             </div>
             <h1 className="text-2xl font-bold text-ink">
@@ -107,7 +107,7 @@ export function SetupPage({ onComplete }: { onComplete: () => void }) {
                   type="text" required
                   value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
                   placeholder={isAr ? 'إبراهيم' : 'John Doe'}
-                  className="w-full bg-canvas border border-line rounded-xl px-4 py-2.5 text-sm text-ink placeholder:text-muted/70 focus:outline-none focus:border-primary transition-colors"
+                  className="h-10 w-full rounded-xl border border-line bg-surface px-4 text-sm text-ink placeholder:text-muted/70 outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25"
                 />
               </div>
 
@@ -119,7 +119,7 @@ export function SetupPage({ onComplete }: { onComplete: () => void }) {
                   type="email" required autoComplete="email"
                   value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
                   placeholder="admin@airemote.io"
-                  className="w-full bg-canvas border border-line rounded-xl px-4 py-2.5 text-sm text-ink placeholder:text-muted/70 focus:outline-none focus:border-primary transition-colors"
+                  className="h-10 w-full rounded-xl border border-line bg-surface px-4 text-sm text-ink placeholder:text-muted/70 outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25"
                   dir="ltr"
                 />
               </div>
@@ -132,7 +132,7 @@ export function SetupPage({ onComplete }: { onComplete: () => void }) {
                   <input
                     type={showPass ? 'text' : 'password'} required
                     value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
-                    className="w-full bg-canvas border border-line rounded-xl px-4 py-2.5 text-sm text-ink focus:outline-none focus:border-primary transition-colors"
+                    className="h-10 w-full rounded-xl border border-line bg-surface px-4 text-sm text-ink outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25"
                     dir="ltr"
                   />
                   <button type="button" onClick={() => setShowPass(s => !s)} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink/90 transition-colors">
@@ -186,7 +186,7 @@ export function SetupPage({ onComplete }: { onComplete: () => void }) {
 
               <button
                 type="submit" disabled={loading}
-                className="w-full bg-primary hover:brightness-110 disabled:opacity-50 text-ink font-semibold py-2.5 rounded-xl text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-brand-blue/20 mt-1"
+                className="w-full bg-primary hover:brightness-110 disabled:opacity-50 text-primary-fg font-semibold py-2.5 rounded-xl text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/20 mt-1"
               >
                 {loading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                 {loading ? (isAr ? 'جاري الإنشاء...' : 'Creating...') : (isAr ? 'إنشاء الحساب' : 'Create Account')}
