@@ -11,6 +11,13 @@ let reconnectDelay = 2000
 let currentUserId:  string | null = null
 let currentToken:   string | null = null
 let extraCallback:  MessageCallback | null = null
+const transferListeners = new Set<(payload: unknown) => void>()
+
+/** R6 — قناة تقدّم نقل الملفات (ft:progress) بلا مزاحمة extraCallback. */
+export function onTransferProgress(cb: (payload: unknown) => void) {
+  transferListeners.add(cb)
+  return () => { transferListeners.delete(cb) }
+}
 
 export async function connectWebSocket(userId: string, token: string, onMessage?: MessageCallback) {
   if (ws?.readyState === WebSocket.OPEN) {
@@ -53,6 +60,10 @@ export async function connectWebSocket(userId: string, token: string, onMessage?
           const p = msg.payload as { deviceId: string; status: string; tunnelLayer?: string; info?: unknown }
           updateDeviceStatus(p.deviceId, p.status as DeviceStatus, p.tunnelLayer as TunnelLayer | undefined)
           if (p.info) updateDeviceInfo(p.deviceId, p.info as Parameters<typeof updateDeviceInfo>[1])
+          break
+        }
+        case 'ft:progress': {
+          transferListeners.forEach(cb => { try { cb(msg.payload) } catch {} })
           break
         }
         case 'broadcast:stats_update':

@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { api } from '../lib/api'
+import { TransferQueue } from './TransferQueue'
 
 interface FileEntry {
   name: string
@@ -326,6 +327,8 @@ export function FileManager({ deviceId, deviceName }: Props) {
         </button>
         <input ref={uploadRef} type="file" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) uploadFile(f) }} />
       </div>
+
+      <TransferQueue deviceId={deviceId} currentPath={path} onFinished={() => { void loadDir(path) }} />
 
       {uploading && (
         <div className="flex items-center gap-2 text-[12px] text-sky-300 bg-sky-500/10 border border-sky-500/20 rounded-lg px-3 py-2">
