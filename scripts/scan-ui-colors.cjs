@@ -22,7 +22,7 @@ function walk (d) {
 walk(ROOT)
 // R6.1 — البوابة تشمل الاتجاهات (border-l/t/r/b/s/e) والظلال والصبغات،
 // وإلا مرّت أصناف مثل border-l-yellow-400 بلا رصد (ثغرة قياس حقيقية).
-const RX = /\b(?:text|bg|border|divide|from|to|via|ring|ring-offset|placeholder|fill|stroke|shadow|accent|outline|decoration|caret)(?:-[xytrblse])?-(?:slate|gray|zinc|neutral|stone|white|black|brand-blue|brand-teal|navy|teal|emerald|green|lime|red|rose|amber|yellow|purple|violet|fuchsia|pink|orange|cyan|sky|indigo)-\d{2,3}(?:\/\d{1,3})?\b/g
+const RX = /\b(?:text|bg|border|divide|from|to|via|ring|ring-offset|placeholder|fill|stroke|shadow|accent|outline|decoration|caret)(?:-[xytrblse])?-(?:slate|gray|zinc|neutral|stone|white|black|brand-blue|brand-teal|navy|teal|emerald|green|lime|red|rose|amber|yellow|purple|violet|fuchsia|pink|orange|cyan|sky|indigo)(?:-\d{2,3})?(?:\/\d{1,3})?\b/g
 const rows = []
 for (const f of files) {
   const s = fs.readFileSync(f, 'utf8')
