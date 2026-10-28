@@ -149,7 +149,8 @@ node_modules\.pnpm\electron@28.3.3\node_modules\electron\dist\electron.exe scrip
 | `force-stop`/إعادة تثبيت APK تُسقط MediaProjection | يلزم منح الالتقاط من جديد؛ نافذة النظام على هذا المحاكي تظهر وتُلغى فوراً |
 | preload معزول (sandbox) | لا يستطيع `require('./package.json')` → يعيد استثناءً صامتاً؛ و`ipcRenderer.sendSync` قد يعلّق الإقلاع |
 | مسارات .NET في PowerShell | `[IO.File]::ReadAllText` بمسار نسبي يقرأ من مجلد العمل لا من `Set-Location`؛ استخدم مسارات مطلقة |
-| pnpm 11 المحلي | يمنع `pnpm --filter` (فحص اعتماديات يفشل)؛ استخدم `tsc` مباشرة و`electron-builder` عبر `node node_modules/electron-builder/out/cli/cli.js` |
+| pnpm 11 المحلي | يمنع `pnpm --filter` (فحص اعتماديات يفشل)؛ استخدم `tsc` مباشرة و`electron-builder` عبر `node node_modules/electron-builder/out/cli/cli.js` |
+| **PowerShell يسطّح مصفوفة زوج واحد** | `@(@('a','b'))` تصبح `@('a','b')`، فيصبح `[0]` حرفاً لا زوجاً. حدث فعلاً 2026-10-28: `Replace('p','l')` أفسد `SetupPage` و`DashboardLayout` (‏import ← imlort) والتزام أُخذ قبل `tsc`. الحل: مصفوفة صريحة `[object[]]`، و`tsc` قبل كل التزام. اكتشفته البطارية لا المراجعة البصرية. |
 | الوكلاء الفرعيون في هذه البيئة | لا يملكون `exec` ولا قراءة خارج مساحة العمل، فمراجعة الكود تُنجز يدوياً |
 | سكربتات التحقق تحتاج Electron | `better-sqlite3` مبني لـABI الخاص بـElectron → `ELECTRON_RUN_AS_NODE=1` + `electron.exe`. ومن مجلد `scripts/` لا يُحلّ `better-sqlite3`/`ws` → شغّل السكربت من `packages/server-desktop` أو استخدم `require.resolve(..., { paths })` |
 | كاش `/api/devices` (عيب معلوم) | الاستجابة تُخزَّن في `perfCache` ولا تُبطَل عند تسجيل جهاز → أرقام إصدار قديمة في اللوحة و`list-devices` بعد أي تحديث. تحقّق بـ`/api/devices?x=<عشوائي>` أو من القاعدة. يُصلح في R5 (`no-store` للمسارات المصادقة) |
