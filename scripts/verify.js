@@ -58,6 +58,7 @@ const steps = [
   { name: 'e2e: desktop late viewer',     cmd: electronStep('packages/server-desktop/test/e2e-screen-join.test.cjs') },
   { name: 'e2e: desktop force keyframe', cmd: electronStep('packages/server-desktop/test/e2e-force-keyframe.test.cjs') },
   { name: 'e2e: security (R2)',          cmd: electronStep('packages/server-desktop/test/e2e-security.test.cjs') },
+  { name: 'unit: secret storage (R2)',   cmd: electronStep('packages/server-desktop/test/secrets.test.cjs') },
 ]
 
 let failures = 0

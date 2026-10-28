@@ -304,25 +304,94 @@ function roleRank(role) { return ({ viewer: 1, user: 1, manager: 2, admin: 3 })[
 function atLeast(role, minimum) { return roleRank(role) >= roleRank(minimum) }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 5. Crypto — AES-256-CBC for SSH credential encryption
+// 5. Crypto — v3.8.12 / R2
+//
+//    • التشفير الجديد: AES-256-GCM (سلامة + كشف تلاعب) بترويسة إصدار «v2:».
+//    • المفتاح: ملف مستقل `secret.key` (32 بايت عشوائية) بجوار قاعدة البيانات،
+//      لا يُشتق من سرّ JWT حتى لا يُفقد كل شيء عند تدويره، ولا يوجد مفتاح
+//      افتراضي مضمَّن (فشل مغلق بدل مفتاح معروف).
+//    • القراءة القديمة: CBC المشتق من JWT مدعومة للقراءة والهجرة فقط.
 // ─────────────────────────────────────────────────────────────────────────────
-function getDerivedKey() {
+let _secretKey = null
+let _secretKeyPath = null
+
+/** المفتاح القديم (قبل R2) — يُستخدم فقط لفكّ القيم القديمة ثم إعادة تشفيرها. */
+function legacyDerivedKey() {
   return crypto.pbkdf2Sync(JWT || 'airemote-default', 'airemote-credentials-salt-v1', 100000, 32, 'sha256')
 }
-function encryptSecret(plaintext) {
-  const key    = getDerivedKey()
-  const iv     = crypto.randomBytes(16)
-  const cipher = crypto.createCipheriv('aes-256-cbc', key, iv)
-  const enc    = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()])
-  return iv.toString('hex') + ':' + enc.toString('hex')
+
+function secretKeyPathFor(dbPath) {
+  return path.join(path.dirname(dbPath || path.join(process.cwd(), 'airemote.db')), 'secret.key')
 }
+
+/** يُنشئ المفتاح عند أول تشغيل ويقرأه بعد ذلك. يفشل بوضوح بدل استخدام مفتاح افتراضي. */
+function initSecretKey(dbPath) {
+  const p = secretKeyPathFor(dbPath)
+  _secretKeyPath = p
+  try {
+    if (fs.existsSync(p)) {
+      const buf = Buffer.from(fs.readFileSync(p, 'utf8').trim(), 'base64')
+      if (buf.length !== 32) throw new Error('secret.key length=' + buf.length + ' (expected 32)')
+      _secretKey = buf
+      return { created: false, path: p }
+    }
+    const buf = crypto.randomBytes(32)
+    fs.mkdirSync(path.dirname(p), { recursive: true })
+    fs.writeFileSync(p, buf.toString('base64'), { mode: 0o600 })
+    _secretKey = buf
+    return { created: true, path: p }
+  } catch (e) {
+    _secretKey = null
+    throw new Error('تعذّر تحضير مفتاح الأسرار: ' + e.message)
+  }
+}
+
+function encryptSecret(plaintext) {
+  if (!_secretKey) throw new Error('secret key not initialised')
+  const iv  = crypto.randomBytes(12)
+  const c   = crypto.createCipheriv('aes-256-gcm', _secretKey, iv)
+  const enc = Buffer.concat([c.update(String(plaintext), 'utf8'), c.final()])
+  const tag = c.getAuthTag()
+  return 'v2:' + iv.toString('base64') + ':' + tag.toString('base64') + ':' + enc.toString('base64')
+}
+
 function decryptSecret(encrypted) {
-  const [ivHex, encHex] = encrypted.split(':')
-  const key    = getDerivedKey()
-  const iv     = Buffer.from(ivHex, 'hex')
-  const enc    = Buffer.from(encHex, 'hex')
-  const d      = crypto.createDecipheriv('aes-256-cbc', key, iv)
-  return Buffer.concat([d.update(enc), d.final()]).toString('utf8')
+  if (!encrypted) return ''
+  if (String(encrypted).startsWith('v2:')) {
+    if (!_secretKey) throw new Error('secret key not initialised')
+    const parts = String(encrypted).split(':')
+    if (parts.length !== 4) throw new Error('malformed v2 secret')
+    const d = crypto.createDecipheriv('aes-256-gcm', _secretKey, Buffer.from(parts[1], 'base64'))
+    d.setAuthTag(Buffer.from(parts[2], 'base64'))
+    return Buffer.concat([d.update(Buffer.from(parts[3], 'base64')), d.final()]).toString('utf8')
+  }
+  // صيغة قديمة: ivHex:encHex بـAES-256-CBC
+  const [ivHex, encHex] = String(encrypted).split(':')
+  const d = crypto.createDecipheriv('aes-256-cbc', legacyDerivedKey(), Buffer.from(ivHex, 'hex'))
+  return Buffer.concat([d.update(Buffer.from(encHex, 'hex')), d.final()]).toString('utf8')
+}
+
+/** يعيد تشفير كل القيم القديمة إلى v2. القيم التي تفشل تبقى كما هي وتُحصى. */
+function migrateLegacySecrets(dbArg) {
+  const conn = dbArg || db
+  if (!conn) return { migrated: 0, failed: 0, skipped: true }
+  let rows
+  try {
+    rows = conn.prepare("SELECT id, secret_enc FROM device_credentials WHERE secret_enc IS NOT NULL AND secret_enc NOT LIKE 'v2:%'").all()
+  } catch {
+    return { migrated: 0, failed: 0, skipped: true }
+  }
+  let migrated = 0, failed = 0
+  for (const r of rows) {
+    try {
+      const plain = decryptSecret(r.secret_enc)
+      conn.prepare('UPDATE device_credentials SET secret_enc=? WHERE id=?').run(encryptSecret(plain), r.id)
+      migrated++
+    } catch {
+      failed++
+    }
+  }
+  return { migrated, failed, skipped: false }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2004,6 +2073,19 @@ async function start(config) {
   _desktopCallbacks = desktopCallbacks
 
   initDb(dbPath)
+
+  // v3.8.12 / R2 — مفتاح أسرار مستقل + هجرة القيم القديمة إلى GCM
+  initSecretKey(dbPath)
+  try {
+    const mig = migrateLegacySecrets()
+    if (mig.migrated || mig.failed) {
+      const msg = '🔄 [secrets] migrated=' + mig.migrated + ' failed=' + mig.failed
+      if (serverLogger && serverLogger.info) serverLogger.info(msg); else console.log(msg)
+    }
+  } catch (e) {
+    const msg = '⚠️ [secrets] migration skipped: ' + e.message
+    if (serverLogger && serverLogger.warn) serverLogger.warn(msg); else console.log(msg)
+  }
 
   // ── v3.7.0 — TLS by default (self-signed for LAN/localhost) ───────────────
   let tlsOptions = null
@@ -3967,4 +4049,7 @@ function getAllDevices() {
     .map(d => ({ ...d, info: parseJson(d.info), tags: parseJson(d.tags, []), isOnline: agentSockets.has(d.id) }))
 }
 
-module.exports = { start, stop, getStatus, getAllDevices, events, getTlsCertPath: () => TLS_CERT_PATH, isTls: () => TLS_ACTIVE }
+module.exports = { start, stop, getStatus, getAllDevices, events, getTlsCertPath: () => TLS_CERT_PATH, isTls: () => TLS_ACTIVE,
+  // v3.8.12 / R2 — خطّافات اختبار لتشفير الأسرار (لا تُستخدم في مسارات الإنتاج)
+  __secrets: { initSecretKey, encryptSecret, decryptSecret, migrateLegacySecrets, legacyDerivedKey,
+               getKeyPath: () => _secretKeyPath, hasKey: () => !!_secretKey } }
