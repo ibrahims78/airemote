@@ -2,12 +2,12 @@ import { useState, useRef, useEffect, useMemo } from 'react'
 import {
   Folder, FileText, FileImage, FileVideo, FileAudio, FileArchive, FileCode,
   Package, Download, Upload, FolderPlus, Trash2, Pencil, RefreshCw, Home,
-  ArrowUp, Search, ArrowUpDown, HardDrive, ChevronRight, X, Check,
-  AlertCircle, Loader2
+  ArrowUp, Search, ArrowUpDown, HardDrive, ChevronRight
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { api } from '../lib/api'
 import { TransferQueue } from './TransferQueue'
+import { Alert, Button, Card, EmptyState, Field, Input, Modal, ProgressBar, Select, SkeletonRows } from './ui'
 
 interface FileEntry {
   name: string
@@ -38,7 +38,9 @@ function formatDate(value: string): string {
   if (!value) return '—'
   const d = new Date(value)
   if (Number.isNaN(d.getTime())) return value
-  return d.toLocaleString('ar', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+  // شكل محايد (لا يعتمد على لغة) حتى لا يعكسه اتجاه RTL — يُعرض داخل dir="ltr".
+  const p = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
 }
 
 function extOf(name: string): string {
@@ -46,17 +48,17 @@ function extOf(name: string): string {
   return i >= 0 ? name.slice(i + 1).toLowerCase() : ''
 }
 
+/** Icon + semantic tone only — no hard-coded palette values (R6). */
 function EntryIcon({ entry }: { entry: FileEntry }) {
-  if (entry.isDirectory) return <Folder size={16} className="text-amber-400" />
+  if (entry.isDirectory) return <Folder size={16} className="shrink-0 text-warning" aria-hidden />
   const ext = extOf(entry.name)
-  if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'heic'].includes(ext)) return <FileImage size={16} className="text-emerald-400" />
-  if (['mp4', 'mkv', 'avi', 'mov', 'webm', '3gp', 'ts'].includes(ext)) return <FileVideo size={16} className="text-sky-400" />
-  if (['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac', 'opus'].includes(ext)) return <FileAudio size={16} className="text-fuchsia-400" />
-  if (['zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz'].includes(ext)) return <FileArchive size={16} className="text-orange-400" />
-  if (['apk', 'aab', 'ipa', 'exe', 'msi', 'deb', 'rpm'].includes(ext)) return <Package size={16} className="text-rose-400" />
-  if (['js', 'ts', 'tsx', 'jsx', 'py', 'java', 'kt', 'c', 'cpp', 'cs', 'go', 'rs', 'php', 'sh', 'ps1', 'json', 'xml', 'yml', 'yaml', 'html', 'css'].includes(ext)) return <FileCode size={16} className="text-indigo-400" />
-  if (['txt', 'md', 'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'csv'].includes(ext)) return <FileText size={16} className="text-slate-300" />
-  return <FileText size={16} className="text-slate-500" />
+  if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'bmp', 'svg', 'heic'].includes(ext)) return <FileImage size={16} className="shrink-0 text-success" aria-hidden />
+  if (['mp4', 'mkv', 'avi', 'mov', 'webm', '3gp', 'ts'].includes(ext)) return <FileVideo size={16} className="shrink-0 text-info" aria-hidden />
+  if (['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac', 'opus'].includes(ext)) return <FileAudio size={16} className="shrink-0 text-primary" aria-hidden />
+  if (['zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz'].includes(ext)) return <FileArchive size={16} className="shrink-0 text-warning" aria-hidden />
+  if (['apk', 'aab', 'ipa', 'exe', 'msi', 'deb', 'rpm'].includes(ext)) return <Package size={16} className="shrink-0 text-danger" aria-hidden />
+  if (['js', 'ts', 'tsx', 'jsx', 'py', 'java', 'kt', 'c', 'cpp', 'cs', 'go', 'rs', 'php', 'sh', 'ps1', 'json', 'xml', 'yml', 'yaml', 'html', 'css'].includes(ext)) return <FileCode size={16} className="shrink-0 text-info" aria-hidden />
+  return <FileText size={16} className="shrink-0 text-muted" aria-hidden />
 }
 
 function authToken(): string {
@@ -68,7 +70,7 @@ function authToken(): string {
   } catch { return '' }
 }
 
-export function FileManager({ deviceId, deviceName }: Props) {
+export function FileManager({ deviceId }: Props) {
   const [path, setPath] = useState('/')
   const [files, setFiles] = useState<FileEntry[]>([])
   const [loading, setLoading] = useState(false)
@@ -92,7 +94,7 @@ export function FileManager({ deviceId, deviceName }: Props) {
   const pathParts = path.split('/').filter(Boolean)
 
   useEffect(() => {
-    loadDir('/')
+    void loadDir('/')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deviceId])
 
@@ -259,225 +261,274 @@ export function FileManager({ deviceId, deviceName }: Props) {
 
   return (
     <div
-      className="h-full flex flex-col gap-3 relative"
+      className="relative flex h-full flex-col gap-2.5"
       onDragOver={e => { e.preventDefault(); setDragOver(true) }}
       onDragLeave={() => setDragOver(false)}
       onDrop={e => {
         e.preventDefault()
         setDragOver(false)
         const f = e.dataTransfer.files?.[0]
-        if (f) uploadFile(f)
+        if (f) void uploadFile(f)
       }}
     >
       {/* Breadcrumb + navigation */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <button onClick={() => loadDir('/')} className="p-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-700/70 text-slate-400" title="الجذر">
-          <Home size={14} />
-        </button>
-        <button onClick={goUp} disabled={path === '/'} className="p-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-700/70 text-slate-400 disabled:opacity-30" title="أعلى">
-          <ArrowUp size={14} />
-        </button>
-        <button onClick={() => loadDir(path)} className="p-1.5 rounded-lg bg-slate-800/60 hover:bg-slate-700/70 text-slate-400" title="تحديث">
-          <RefreshCw size={14} className={clsx(loading && 'animate-spin')} />
-        </button>
-        <div className="flex items-center gap-1 flex-wrap min-w-0 bg-slate-900/60 border border-slate-700/50 rounded-lg px-2 py-1.5">
-          <button onClick={() => loadDir('/')} className="text-[12px] text-slate-400 hover:text-slate-200">الجذر</button>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Button variant="ghost" className="h-7 w-7 px-0" title="الجذر" aria-label="الجذر" icon={<Home size={14} />} onClick={() => void loadDir('/')} />
+        <Button variant="ghost" className="h-7 w-7 px-0" title="أعلى" aria-label="مجلد أعلى" icon={<ArrowUp size={14} />} disabled={path === '/'} onClick={() => void goUp()} />
+        <Button variant="ghost" className="h-7 w-7 px-0" title="تحديث" aria-label="تحديث" icon={<RefreshCw size={14} className={clsx(loading && 'animate-spin')} />} onClick={() => void loadDir(path)} />
+
+        <div className="flex min-w-0 flex-wrap items-center gap-0.5 rounded-lg border border-line bg-surface px-2 py-1">
+          <button onClick={() => void loadDir('/')} className="rounded px-0.5 text-[12px] text-muted transition-colors hover:text-ink">الجذر</button>
           {pathParts.map((part, i) => (
-            <span key={i} className="flex items-center gap-1">
-              <ChevronRight size={11} className="text-slate-600" />
+            <span key={i} className="flex min-w-0 items-center gap-0.5">
+              <ChevronRight size={11} className="shrink-0 text-muted/60" aria-hidden />
               <button
-                onClick={() => loadDir('/' + pathParts.slice(0, i + 1).join('/'))}
-                className="text-[12px] text-slate-300 hover:text-white truncate max-w-[140px]"
+                onClick={() => void loadDir('/' + pathParts.slice(0, i + 1).join('/'))}
+                className="max-w-[140px] truncate rounded px-0.5 text-[12px] text-ink/90 transition-colors hover:text-primary"
+                title={part}
               >{part}</button>
             </span>
           ))}
         </div>
-        <div className="flex-1" />
-        <div className="text-[11px] text-slate-500">{dirCount} مجلد · {files.length - dirCount} ملف · {formatSize(totalSize)}</div>
+
+        <div className="ms-auto hidden items-center gap-1 text-[11px] text-muted sm:flex">
+          <span>{dirCount} مجلد · {files.length - dirCount} ملف ·</span>
+          <span dir="ltr">{formatSize(totalSize)}</span>
+        </div>
       </div>
 
       {/* Toolbar */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <div className="relative flex-1 min-w-[180px]">
-          <Search size={13} className="absolute top-1/2 -translate-y-1/2 start-2.5 text-slate-500" />
-          <input
+      <div className="flex flex-wrap items-center gap-1.5">
+        <div className="relative min-w-[150px] flex-1">
+          <Search size={13} className="pointer-events-none absolute top-1/2 start-2.5 -translate-y-1/2 text-muted" aria-hidden />
+          <Input
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder="بحث في المجلد الحالي…"
-            className="w-full bg-slate-900/60 border border-slate-700/50 rounded-lg ps-8 pe-2 py-1.5 text-[12px] text-slate-200 outline-none focus:border-brand-blue/60"
+            aria-label="بحث في المجلد الحالي"
+            className="h-8 ps-8 pe-2 text-[12px]"
           />
         </div>
-        <div className="flex items-center gap-1 bg-slate-900/60 border border-slate-700/50 rounded-lg px-1.5 py-1">
-          <ArrowUpDown size={12} className="text-slate-500" />
-          <select value={sortKey} onChange={e => setSortKey(e.target.value as SortKey)} className="bg-transparent text-[12px] text-slate-300 outline-none">
+
+        <div className="flex items-center gap-1 rounded-lg border border-line bg-surface px-1.5 py-0.5">
+          <ArrowUpDown size={12} className="text-muted" aria-hidden />
+          <Select
+            value={sortKey}
+            onChange={e => setSortKey(e.target.value as SortKey)}
+            aria-label="ترتيب الملفات"
+            className="h-7 border-0 bg-transparent ps-0 pe-1"
+          >
             <option value="name">الاسم</option>
             <option value="size">الحجم</option>
             <option value="modified">التاريخ</option>
-          </select>
-          <button onClick={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')} className="text-[11px] text-slate-400 hover:text-slate-200 px-1">
+          </Select>
+          <button
+            onClick={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')}
+            className="rounded px-1 text-[11px] text-muted transition-colors hover:text-ink"
+            aria-label={sortDir === 'asc' ? 'ترتيب تنازلي' : 'ترتيب تصاعدي'}
+          >
             {sortDir === 'asc' ? '↑' : '↓'}
           </button>
         </div>
-        <button onClick={() => setShowMkdir(true)} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-slate-800/70 hover:bg-slate-700/80 text-slate-300 text-[12px]">
-          <FolderPlus size={13} /> مجلد جديد
-        </button>
-        <button onClick={() => uploadRef.current?.click()} disabled={uploading} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-brand-blue hover:bg-blue-500 disabled:opacity-50 text-white text-[12px] font-medium">
-          {uploading ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+
+        <Button variant="secondary" icon={<FolderPlus size={13} />} onClick={() => setShowMkdir(true)}>مجلد جديد</Button>
+        <Button variant="primary" loading={uploading} icon={<Upload size={13} />} onClick={() => uploadRef.current?.click()}>
           {uploading ? 'جارٍ الرفع…' : 'رفع ملف'}
-        </button>
-        <input ref={uploadRef} type="file" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) uploadFile(f) }} />
+        </Button>
+        <input ref={uploadRef} type="file" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) void uploadFile(f) }} />
       </div>
 
       <TransferQueue deviceId={deviceId} currentPath={path} onFinished={() => { void loadDir(path) }} />
 
       {uploading && (
-        <div className="flex items-center gap-2 text-[12px] text-sky-300 bg-sky-500/10 border border-sky-500/20 rounded-lg px-3 py-2">
-          <Loader2 size={13} className="animate-spin" /> يتم رفع: <span className="font-mono">{uploadName}</span>
-        </div>
+        <Alert tone="info">
+          يتم رفع <span className="font-mono">{uploadName}</span>
+        </Alert>
       )}
 
-      {error && (
-        <div className="flex items-start gap-2 text-[12px] text-rose-300 bg-rose-500/10 border border-rose-500/20 rounded-lg px-3 py-2">
-          <AlertCircle size={14} className="mt-0.5" />
-          <span className="flex-1">{error}</span>
-          <button onClick={() => setError('')}><X size={13} /></button>
-        </div>
-      )}
+      {error && <Alert tone="danger" onClose={() => setError('')}>{error}</Alert>}
 
       {/* List */}
-      <div className="flex-1 min-h-0 overflow-auto rounded-xl border border-slate-700/50 bg-slate-900/40">
-        <table className="w-full text-[12px]">
-          <thead className="sticky top-0 bg-slate-900/95 backdrop-blur z-10">
-            <tr className="text-slate-500 text-start">
-              <th className="text-start font-medium px-3 py-2">الاسم</th>
-              <th className="text-start font-medium px-3 py-2 w-24">الحجم</th>
-              <th className="text-start font-medium px-3 py-2 w-44">آخر تعديل</th>
-              <th className="w-28" />
-            </tr>
-          </thead>
-          <tbody>
-            {loading && (
-              <tr><td colSpan={4} className="py-14 text-center text-slate-500"><Loader2 size={18} className="animate-spin mx-auto mb-2" />جارٍ تحميل الملفات…</td></tr>
-            )}
-            {!loading && shown.length === 0 && (
-              <tr><td colSpan={4} className="py-14 text-center text-slate-500">
-                <HardDrive size={26} className="mx-auto mb-2 text-slate-700" />
-                {query ? 'لا نتائج مطابقة للبحث' : 'هذا المجلد فارغ — اسحب ملفاً هنا لرفعه'}
-              </td></tr>
-            )}
-            {!loading && shown.map(entry => (
-              <tr key={entry.path} className="border-t border-slate-700/30 hover:bg-slate-800/40 group">
-                <td className="px-3 py-2">
-                  <button
-                    onClick={() => entry.isDirectory ? loadDir(entry.path) : download(entry)}
-                    className="flex items-center gap-2 text-start w-full"
-                    title={entry.path}
-                  >
-                    <EntryIcon entry={entry} />
-                    <span className={clsx('truncate max-w-[360px]', entry.isDirectory ? 'text-slate-100 font-medium' : 'text-slate-300')}>{entry.name}</span>
-                  </button>
-                </td>
-                <td className="px-3 py-2 text-slate-500 font-mono">{entry.isDirectory ? '—' : formatSize(entry.size)}</td>
-                <td className="px-3 py-2 text-slate-500">{formatDate(entry.modified)}</td>
-                <td className="px-3 py-2">
-                  <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {!entry.isDirectory && (
-                      <button onClick={() => download(entry)} disabled={downloadingFile === entry.path} className="p-1.5 rounded text-slate-500 hover:text-sky-400" title="تنزيل">
-                        {downloadingFile === entry.path ? <Loader2 size={13} className="animate-spin" /> : <Download size={13} />}
-                      </button>
-                    )}
-                    <button onClick={() => { setRenamingFile(entry); setRenameValue(entry.name) }} className="p-1.5 rounded text-slate-500 hover:text-amber-400" title="إعادة تسمية">
-                      <Pencil size={13} />
-                    </button>
-                    <button onClick={() => setConfirmDelete(entry)} disabled={deletingFile === entry.path} className="p-1.5 rounded text-slate-500 hover:text-rose-400" title="حذف">
-                      {deletingFile === entry.path ? <Loader2 size={13} className="animate-spin" /> : <Trash2 size={13} />}
-                    </button>
-                  </div>
-                </td>
+      <Card className="flex min-h-0 flex-1 flex-col">
+        <div className="min-h-0 flex-1 overflow-auto">
+          <table className="w-full border-collapse text-[12px]">
+            <thead className="sticky top-0 z-10 bg-surface2/95 backdrop-blur">
+              <tr className="text-muted">
+                <th scope="col" className="px-3 py-2 text-start font-medium">الاسم</th>
+                <th scope="col" className="hidden w-24 px-3 py-2 text-start font-medium sm:table-cell">الحجم</th>
+                <th scope="col" className="hidden w-44 px-3 py-2 text-start font-medium md:table-cell">آخر تعديل</th>
+                <th scope="col" className="w-24 px-2 py-2">
+                  <span className="sr-only">إجراءات</span>
+                </th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {loading && (
+                <tr>
+                  <td colSpan={4} className="px-3 py-3">
+                    <SkeletonRows rows={6} />
+                  </td>
+                </tr>
+              )}
 
-      {/* Download progress (v3.5) */}
+              {!loading && shown.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="p-0">
+                    <EmptyState
+                      icon={<HardDrive size={26} />}
+                      title={query ? 'لا نتائج مطابقة للبحث' : 'هذا المجلد فارغ'}
+                      description={query ? 'جرّب كلمة أخرى أو امسح البحث للعودة إلى قائمة المجلد.' : 'اسحب ملفاً إلى هذه المساحة، أو استخدم «رفع ملف».'}
+                      action={query
+                        ? <Button onClick={() => setQuery('')}>مسح البحث</Button>
+                        : <Button variant="primary" icon={<Upload size={13} />} onClick={() => uploadRef.current?.click()}>رفع ملف</Button>}
+                    />
+                  </td>
+                </tr>
+              )}
+
+              {!loading && shown.map(entry => (
+                <tr key={entry.path} className="group border-t border-line/60 transition-colors hover:bg-surface2/60">
+                  <td className="px-3 py-1.5">
+                    <button
+                      onClick={() => entry.isDirectory ? void loadDir(entry.path) : void download(entry)}
+                      className="flex w-full items-center gap-2 text-start"
+                      title={entry.path}
+                    >
+                      <EntryIcon entry={entry} />
+                      <span className={clsx('truncate', entry.isDirectory ? 'font-medium text-ink' : 'text-ink/90')}>{entry.name}</span>
+                    </button>
+                  </td>
+                  <td className="hidden px-3 py-1.5 sm:table-cell">
+                    <span dir="ltr" className="block font-mono text-muted">{entry.isDirectory ? '—' : formatSize(entry.size)}</span>
+                  </td>
+                  <td className="hidden px-3 py-1.5 md:table-cell">
+                    <span dir="ltr" className="block text-muted">{formatDate(entry.modified)}</span>
+                  </td>
+                  <td className="px-2 py-1.5">
+                    <div className="flex items-center justify-end gap-0.5 opacity-100 transition-opacity focus-within:opacity-100 md:opacity-0 md:group-hover:opacity-100">
+                      {!entry.isDirectory && (
+                        <Button
+                          variant="ghost"
+                          className="h-7 w-7 px-0"
+                          aria-label={`تنزيل ${entry.name}`}
+                          title="تنزيل"
+                          loading={downloadingFile === entry.path}
+                          icon={<Download size={13} />}
+                          onClick={() => void download(entry)}
+                        />
+                      )}
+                      <Button
+                        variant="ghost"
+                        className="h-7 w-7 px-0"
+                        aria-label={`إعادة تسمية ${entry.name}`}
+                        title="إعادة تسمية"
+                        icon={<Pencil size={13} />}
+                        onClick={() => { setRenamingFile(entry); setRenameValue(entry.name) }}
+                      />
+                      <Button
+                        variant="ghost"
+                        className="h-7 w-7 px-0 hover:text-danger"
+                        aria-label={`حذف ${entry.name}`}
+                        title="حذف"
+                        loading={deletingFile === entry.path}
+                        icon={<Trash2 size={13} />}
+                        onClick={() => setConfirmDelete(entry)}
+                      />
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      {/* Download progress */}
       {downloadProgress && (
-        <div className="rounded-xl border border-sky-500/25 bg-sky-500/10 px-3 py-2.5">
+        <div className="rounded-lg border border-info/25 bg-info/10 px-3 py-2">
           <div className="flex items-center justify-between gap-2 text-[11.5px]">
-            <span className="flex items-center gap-1.5 text-sky-200 truncate">
-              <Download size={12} /> {downloadProgress.name}
+            <span className="flex min-w-0 items-center gap-1.5 text-info">
+              <Download size={12} className="shrink-0" aria-hidden />
+              <span className="truncate">{downloadProgress.name}</span>
             </span>
-            <span className="font-mono text-sky-300 flex-shrink-0">
+            <span className="shrink-0 font-mono text-info" dir="ltr">
               {downloadProgress.percent}% · {formatSize(downloadProgress.received)}{downloadProgress.total ? ' / ' + formatSize(downloadProgress.total) : ''}
             </span>
           </div>
-          <div className="mt-1.5 h-1.5 rounded-full bg-slate-700/50 overflow-hidden">
-            <div className="h-full rounded-full bg-gradient-to-r from-sky-500 to-teal-400 transition-all duration-150" style={{ width: Math.max(2, downloadProgress.percent) + '%' }} />
-          </div>
+          <ProgressBar className="mt-1.5" value={downloadProgress.percent} tone="primary" label="تقدم التنزيل" />
         </div>
       )}
 
       {/* Drag overlay */}
       {dragOver && (
-        <div className="absolute inset-0 rounded-xl bg-brand-blue/10 border-2 border-dashed border-brand-blue/50 flex items-center justify-center text-brand-blue text-sm font-medium z-20 pointer-events-none">
-          <Upload size={18} className="me-2" /> أفلت الملف هنا لرفعه إلى: {path}
+        <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-xl border-2 border-dashed border-primary bg-primary/10 text-[13px] font-medium text-primary">
+          <Upload size={18} className="me-2" aria-hidden />
+          أفلت الملف هنا لرفعه إلى: {path}
         </div>
       )}
 
-      {/* Rename modal */}
-      {renamingFile && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setRenamingFile(null)}>
-          <div className="glass rounded-xl p-4 w-full max-w-md" onClick={e => e.stopPropagation()}>
-            <h3 className="text-sm font-semibold text-white mb-3">إعادة تسمية</h3>
-            <input
-              autoFocus
-              value={renameValue}
-              onChange={e => setRenameValue(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') doRename(); if (e.key === 'Escape') setRenamingFile(null) }}
-              className="w-full bg-slate-900/70 border border-slate-700/60 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none focus:border-brand-blue/60"
-            />
-            <div className="flex justify-end gap-2 mt-4">
-              <button onClick={() => setRenamingFile(null)} className="px-3 py-1.5 text-xs rounded-lg bg-slate-800 text-slate-300">إلغاء</button>
-              <button onClick={doRename} className="px-3 py-1.5 text-xs rounded-lg bg-brand-blue text-white"><Check size={12} className="inline me-1" />حفظ</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Rename */}
+      <Modal
+        open={!!renamingFile}
+        onClose={() => setRenamingFile(null)}
+        title="إعادة تسمية"
+        size="sm"
+        footer={<>
+          <Button onClick={() => setRenamingFile(null)}>إلغاء</Button>
+          <Button variant="primary" onClick={() => void doRename()} disabled={!renameValue.trim()}>حفظ</Button>
+        </>}
+      >
+        <Field label="الاسم الجديد" htmlFor="fm-rename">
+          <Input
+            id="fm-rename"
+            autoFocus
+            value={renameValue}
+            onChange={e => setRenameValue(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') void doRename() }}
+          />
+        </Field>
+      </Modal>
 
-      {/* Mkdir modal */}
-      {showMkdir && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setShowMkdir(false)}>
-          <div className="glass rounded-xl p-4 w-full max-w-md" onClick={e => e.stopPropagation()}>
-            <h3 className="text-sm font-semibold text-white mb-3">إنشاء مجلد جديد</h3>
-            <input
-              autoFocus
-              value={mkdirName}
-              onChange={e => setMkdirName(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') doMkdir(); if (e.key === 'Escape') setShowMkdir(false) }}
-              placeholder="اسم المجلد"
-              className="w-full bg-slate-900/70 border border-slate-700/60 rounded-lg px-3 py-2 text-sm text-slate-200 outline-none focus:border-brand-blue/60"
-            />
-            <div className="flex justify-end gap-2 mt-4">
-              <button onClick={() => setShowMkdir(false)} className="px-3 py-1.5 text-xs rounded-lg bg-slate-800 text-slate-300">إلغاء</button>
-              <button onClick={doMkdir} className="px-3 py-1.5 text-xs rounded-lg bg-brand-blue text-white"><Check size={12} className="inline me-1" />إنشاء</button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* New folder */}
+      <Modal
+        open={showMkdir}
+        onClose={() => setShowMkdir(false)}
+        title="إنشاء مجلد جديد"
+        description={path}
+        size="sm"
+        footer={<>
+          <Button onClick={() => setShowMkdir(false)}>إلغاء</Button>
+          <Button variant="primary" onClick={() => void doMkdir()} disabled={!mkdirName.trim()}>إنشاء</Button>
+        </>}
+      >
+        <Field label="اسم المجلد" htmlFor="fm-mkdir">
+          <Input
+            id="fm-mkdir"
+            autoFocus
+            value={mkdirName}
+            onChange={e => setMkdirName(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') void doMkdir() }}
+            placeholder="اسم المجلد"
+          />
+        </Field>
+      </Modal>
 
       {/* Delete confirm */}
-      {confirmDelete && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setConfirmDelete(null)}>
-          <div className="glass rounded-xl p-4 w-full max-w-md" onClick={e => e.stopPropagation()}>
-            <h3 className="text-sm font-semibold text-white mb-2">تأكيد الحذف</h3>
-            <p className="text-xs text-slate-400 mb-4">سيتم حذف <span className="font-mono text-slate-200">{confirmDelete.name}</span> نهائياً من الجهاز. هل أنت متأكد؟</p>
-            <div className="flex justify-end gap-2">
-              <button onClick={() => setConfirmDelete(null)} className="px-3 py-1.5 text-xs rounded-lg bg-slate-800 text-slate-300">إلغاء</button>
-              <button onClick={() => doDelete(confirmDelete)} className="px-3 py-1.5 text-xs rounded-lg bg-rose-500/90 hover:bg-rose-500 text-white">حذف</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <Modal
+        open={!!confirmDelete}
+        onClose={() => setConfirmDelete(null)}
+        title="تأكيد الحذف"
+        description="لا يمكن التراجع عن هذا الإجراء."
+        size="sm"
+        footer={<>
+          <Button onClick={() => setConfirmDelete(null)}>إلغاء</Button>
+          <Button variant="danger" onClick={() => { if (confirmDelete) void doDelete(confirmDelete) }}>حذف</Button>
+        </>}
+      >
+        <p className="text-[12px] text-muted">
+          سيتم حذف <span className="font-mono text-ink">{confirmDelete?.name}</span> نهائياً من الجهاز.
+        </p>
+      </Modal>
     </div>
   )
 }

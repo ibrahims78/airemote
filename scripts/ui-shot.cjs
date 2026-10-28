@@ -88,6 +88,13 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms))
 
   await send('Page.enable')
   await send('Runtime.enable')
+
+  // Emulation: Edge headless clamps window width (~500px), so narrow widths such as
+  // 360 must be forced through device metrics or the shot is not the real layout.
+  if (opt.mobile) {
+    await send('Emulation.setDeviceMetricsOverride', { width: w, height: h, deviceScaleFactor: 1, mobile: false })
+    await send('Emulation.setVisibleSize', { width: w, height: h }).catch(() => {})
+  }
   const origin = new URL(url).origin
 
   // 1) login page first, so localStorage has the right origin

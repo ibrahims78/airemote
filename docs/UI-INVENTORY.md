@@ -1,7 +1,7 @@
 # UI INVENTORY — AiRemote Dashboard
 
-> **الإصدار:** 1.0 · **التاريخ:** 2026-10-28 · **المرحلة:** R0 (بداية R6)
-> **المصدر:** قراءة `packages/dashboard/src` — لا تخمين. الأرقام من فحص آلي لملفات الصفحات.
+> **الإصدار:** 1.1 · **التاريخ:** 2026-10-28 · **المرحلة:** R6 (قيد التنفيذ)
+> **المصدر:** قراءة `packages/dashboard/src` — لا تخمين. الأرقام من فحص آلي: `node scripts/scan-ui-colors.cjs`.
 > **الغرض:** جرد ملزم قبل بناء نظام التصميم، حتى لا تُصمَّم شاشات غير موجودة أو تُنسى شاشات قائمة.
 
 ---
@@ -50,6 +50,45 @@
 | `UsersPage` | 370 | ✅ | ✅ | ✅ | ❌ | ✅ | 0 |
 
 **قراءة الجدول:** «—» تعني أن الحالة غير ذات معنى لهذه الشاشة (مثل «فارغ» في شاشة إعداد). «❌» تعني غياباً يحتاج معالجة.
+
+---
+
+## 2.1 امتثال المكتبة — جرد رقمي (R6)
+
+**القياس:** عدد أدوات اللون الصريحة (مثل `bg-slate-800`, `text-sky-400`, `border-brand-blue/40`) لكل ملف في `src`، وعمود «يستخدم المكتبة» يعني استيراداً فعلياً من `components/ui`.
+
+**الحصيلة الحالية:** **1247** صنفاً صريحاً (كان 1324 قبل شريحة FileManager)، و**6** ملفات على المكتبة.
+
+| الملف | أصناف صريحة | يستخدم المكتبة | الحالات المطلوبة (تحميل / فارغ / خطأ / هيكل) |
+|---|---|---|---|
+| `components/AiChatPanel.tsx` | 276 | ❌ | — (سطح تفاعلي: قرار مؤجّل) |
+| `components/ScreenViewer.tsx` | 244 | ❌ | — (سطح بث: قرار مؤجّل) |
+| `pages/HelpPage.tsx` | 114 | ❌ | ❌ / ✅ / ✅ / ❌ |
+| `pages/AuditPage.tsx` | 111 | ❌ | ✅ / ✅ / ✅ / ❌ |
+| `pages/SettingsPage.tsx` | 103 | ❌ | ✅ / — / ✅ / ❌ |
+| `components/CommandRunner.tsx` | 66 | ❌ | ❌ / ✅ / ✅ / ❌ |
+| `pages/NotificationsPage.tsx` | 49 | ❌ | ✅ / ✅ / ❌ / ❌ |
+| `components/PTYTerminal.tsx` | 44 | ❌ | — / — / ✅ / ❌ |
+| `components/SettingsExtra.tsx` | 43 | ❌ | ❌ / — / ❌ / ❌ |
+| `pages/AiPage.tsx` | 41 | ❌ | ❌ / ✅ / ❌ / ❌ |
+| `components/SSHTerminal.tsx` | 39 | ❌ | — / — / ✅ / ❌ |
+| `pages/SetupPage.tsx` | 36 | ❌ | ✅ / — / ✅ / ❌ |
+| `components/MonitoringCharts.tsx` | 27 | ❌ | ❌ / ✅ / ❌ / ❌ |
+| `components/ToastContainer.tsx` | 13 | ❌ | — / — / — / ❌ |
+| `components/CommandPalette.tsx` | 12 | ❌ | — / ✅ / — / ❌ |
+| `pages/DevicesPage.tsx` | 12 | ✅ | ✅ / ✅ / ✅ / ✅ |
+| `components/ExecConsole.tsx` | 5 | ❌ | — / — / ✅ / ❌ |
+| `App.tsx` | 4 | ❌ | — / — / — / ❌ |
+| `components/ErrorBoundary.tsx` | 4 | ❌ | — / — / ✅ / ❌ |
+| `pages/SessionsPage.tsx` | 2 | ✅ | ✅ / ✅ / ✅ / ✅ |
+| `pages/UsersPage.tsx` | 2 | ✅ | ✅ / ✅ / ✅ / ✅ |
+| `pages/DeviceWorkspacePage.tsx` | 0 | ✅ | — / ✅ / ✅ / ❌ |
+| `components/TransferQueue.tsx` | 0 | ✅ | ✅ / ✅ / ✅ / ✅ |
+| `components/FileManager.tsx` | **0** | ✅ | ✅ / ✅ / ✅ / ✅ |
+
+**معيار الخروج:** صفر صنف صريح في كل ملف يُعلن «محوَّلاً»، وليس صفراً في المجموع فقط. الملفات المتبقية أعلاه هي قائمة العمل الحقيقية لـR6.
+
+**ملاحظة:** `DevicesPage` على المكتبة لكن بقي فيها 12 صنفاً داخل نافذتي `WolModal` و`AgentInstallModal` اليدويتين — بند 4 في قائمة R6.
 
 ---
 

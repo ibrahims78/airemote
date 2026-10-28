@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, useSearchParams, Link } from 'react-router-dom'
 import {
   Monitor, Terminal, Activity, FolderOpen, ArrowLeft,
   Wifi, WifiOff, Cpu, MemoryStick, HardDrive, Clock,
@@ -20,6 +20,9 @@ import { useT } from '../lib/i18n'
 import { Badge, Card, EmptyState } from '../components/ui'
 
 type Tab = 'overview' | 'terminal' | 'monitor' | 'files' | 'ai' | 'commands' | 'screen'
+
+/** كل التبويبات — تُستخدم للتحقق من ?tab= قبل التبديل. */
+const TABS: Tab[] = ['overview', 'commands', 'terminal', 'screen', 'monitor', 'files', 'ai']
 
 
 function DeviceInfoPanel({ device }: { device: Device }) {
@@ -100,7 +103,17 @@ export function DeviceWorkspacePage() {
   const t = useT()
   const { deviceId } = useParams<{ deviceId: string }>()
   const { devices, statsMap, fetchDevices } = useDeviceStore()
-  const [tab, setTab] = useState<Tab>('overview')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const requestedTab = searchParams.get('tab') as Tab | null
+  const [tab, setTabState] = useState<Tab>(requestedTab && TABS.includes(requestedTab) ? requestedTab : 'overview')
+
+  /** التبويب في الرابط: يسمح بالربط العميق (وثائق/لقطات) ويحفظ الاختيار عند التحديث. */
+  function setTab(next: Tab) {
+    setTabState(next)
+    const params = new URLSearchParams(searchParams)
+    params.set('tab', next)
+    setSearchParams(params, { replace: true })
+  }
 
   const device = devices.find(d => d.id === deviceId)
   const stats = deviceId ? statsMap[deviceId] : undefined
