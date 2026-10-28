@@ -16,7 +16,7 @@
 | السيرفر (المصدر) | **3.8.12** — مبني ومثبَّت ويعمل (`/health` = 3.8.12)، ويحمل تعديلات R1–R4 |
 | الوكيل Windows | **3.8.12** على WIN10 وWIN11 (تحديث بالملفات: exe + app.asar ثم إعادة تشغيل) |
 | وكيل Android | **3.8.12 / vc18** على المحاكي وTECNO (إعادة تثبيت + تهيئة عبر Intent + إعادة صلاحيات) |
-| بطارية التحقق | **20/20** (`scripts/verify.js`) — أُضيف `e2e-file-transfer` |
+| بطارية التحقق | **21/21** (`scripts/verify.js`) — أُضيف `e2e-file-transfer` و`contrast AA tokens` |
 | الاختبارات | الأمان 20 · الأسرار 13 · جهات الاتصال 18 · غير المراقب 34 · صلاحيات الأجهزة 31 · Relay 41 · **نقل الملفات 39** · **كاش الأجهزة 7** |
 | الأجهزة | **كلها 3.8.12 وonline**: WIN10 · WIN11 · المحاكي (**3.8.12-android**) · TECNO (**3.8.12-android**) — الأندرويد أُزيل وأُعيد تثبيته لغياب مفتاح الإصدار، والصلاحيات أُعيد منحها |
 | السيرفر المثبَّت | يعمل على 3001 بـ**3.8.12** (يشمل تعديلات R1–R4) — تحقق: `/health` |
@@ -37,7 +37,7 @@
 | **R4** جلسة وكيل‑بوكيل | ✅ **مُغلقة على السيرفر** | آلة حالة `requested→active→suspended→closed` (+`denied`/`expired`)، `/api/relay/*`، رمز أحادي الاستخدام لكل طرف (SHA-256، 90s)، سقف 20، جلسة واحدة لكل جهاز، حارس KB/s، **مهلة سماح 15s واستئناف برمز جديد**، إغلاق `network` مسجّل. قياس: 20 جلسة × 2KB → p95 4.39ms وفقد 0% | `outputs/verify-2026-10-28/r4-relay/` · `outputs/perf/r4/` · `docs/PROTOCOL-RELAY-AR.md` · `f21d84a` |
 | **R4 — بقايا** | ⏳ | واجهة «اتصال بجهاز» والموافقة (→ R6)، وتخزين الحزم في الوكيلين أثناء `suspended`، وقياس شبكة حقيقية بفيديو | — |
 | **R5** نقل ملفات | ✅ **مُغلقة في المصدر** | جدول `file_transfers` + محرّك `lib/file-transfer.js` (تجزئة 1MB، كتابة مُوضَّعة، استكمال بنقطة، SHA-256 من الجهاز ونشر ذرّي، حارس `..`/UNC/أسماء محجوزة/symlinks، سياسة skip/rename/replace، حد سرعة، دفعات ملفات صغيرة). 11 مسار REST + `ft:progress`. وبوابة القبول: 10GB · 10,000 ملف · قطع عند 50% · قرص ممتلئ · `..` | `outputs/verify-2026-10-28/r5-file-transfer/` · `docs/PROTOCOL-FILE-TRANSFER-AR.md` · `2c20448` |
-| **R6** تجربة موحّدة | 🟨 **قيد التنفيذ — شريحتا 1 و2** | **طابور النقل البصري:** `TransferQueue.tsx` داخل تبويب الملفات — شريط تقدم، إيقاف/استكمال/إلغاء، سياسة تعارض، حد سرعة، رفع قابل للاستكمال من المتصفح، واستكمال بإعادة اختيار الملف، ووضعان فاتح/داكن. أُضيفت قناة `ft:progress` في `lib/websocket.ts`.  وأُضيفت **طبقة رموز دلالية** (`canvas/surface/line/ink/muted/primary` عبر متغيّرات CSS) و**مكتبة 12 مكوّناً** (`components/ui`: Button، Input، Select، Field، Card، Badge، Alert، EmptyState، ProgressBar، Skeleton، Modal، Barrel)، وأُعيد بناء الطابور عليها. | `outputs/verify-2026-10-28/r6-ui/REPORT-AR.md` + `REPORT-TOKENS-AR.md` · typecheck + build · 20/20 |
+| **R6** تجربة موحّدة | 🟨 **قيد التنفيذ — شريحتا 1 و2** | **طابور النقل البصري:** `TransferQueue.tsx` داخل تبويب الملفات — شريط تقدم، إيقاف/استكمال/إلغاء، سياسة تعارض، حد سرعة، رفع قابل للاستكمال من المتصفح، واستكمال بإعادة اختيار الملف، ووضعان فاتح/داكن. أُضيفت قناة `ft:progress` في `lib/websocket.ts`.  وأُضيفت **طبقة رموز دلالية** (`canvas/surface/line/ink/muted/primary` عبر متغيّرات CSS) و**مكتبة 12 مكوّناً** (`components/ui`: Button، Input، Select، Field، Card، Badge، Alert، EmptyState، ProgressBar، Skeleton، Modal، Barrel)، وأُعيد بناء الطابور عليها. | `outputs/verify-2026-10-28/r6-ui/REPORT-AR.md` + `REPORT-TOKENS-AR.md` · typecheck + build · بوابة تباين 22/22 · البطارية 21/21 |
 | **R7** تشغيل إنتاجي | ⬜ | — | — |
 | **R8** ميزات المنافسة | ⬜ | — | — |
 | **R9** التحقق والإطلاق | ⬜ | — | — |

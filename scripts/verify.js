@@ -52,6 +52,7 @@ const steps = [
   { name: 'build server (tsc)',          cmd: PNPM + ' --filter @airemote/server build' },
   { name: 'build agent (tsc)',           cmd: PNPM + ' --filter @airemote/agent build' },
   { name: 'typecheck dashboard',         cmd: PNPM + ' --filter @airemote/dashboard typecheck' },
+  { name: 'contrast AA tokens (R6)',     cmd: NODE + ' scripts/check-contrast.cjs' },
   { name: 'unit: registry race',         cmd: NODE + ' packages/server/test/registry-race.test.cjs' },
   { name: 'e2e: web-server connection',  cmd: NODE + ' packages/server/test/e2e-connection.test.cjs' },
   { name: 'e2e: device authorization',   cmd: NODE + ' packages/server/test/e2e-authz.test.cjs' },
