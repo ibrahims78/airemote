@@ -55,6 +55,8 @@ public class AgentService extends Service {
     private volatile String deviceId = "";
     private volatile boolean running = false;
     private long reconnectDelay = 3000;
+    // v3.8.12 — مهمة إعادة اتصال واحدة (لا تراكم) حتى لا تتوالد حلقتا اتصال.
+    private final Runnable reconnectTask = () -> { if (running) connect(); };
     private Handler hbHandler;
     private HandlerThread hbThread;
 
@@ -242,11 +244,15 @@ public class AgentService extends Service {
         reconnectDelay = 3000;
         acquireAgentLocks();
         MainActivity.log("جارٍ الاتصال بالخادم...");
-        connect();
-        hbThread = new HandlerThread("airemote-hb");
-        hbThread.start();
-        hbHandler = new Handler(hbThread.getLooper());
+        // v3.8.12 — المؤقّت قبل أول connect(): onClose مبكر كان يصطدم بـhbHandler=null
+        // فيبقى الوكيل يعمل بلا أي محاولة اتصال لاحقة (سبب «الوكيل يعمل وغير متصل»).
+        if (hbThread == null) {
+            hbThread = new HandlerThread("airemote-hb");
+            hbThread.start();
+        }
+        if (hbHandler == null) hbHandler = new Handler(hbThread.getLooper());
         hbHandler.postDelayed(hbLoop, 2500);
+        connect();
     }
 
     private void stopAgent() {
@@ -302,10 +308,24 @@ public class AgentService extends Service {
         cap.put("controlAuth", Prefs.hasControlPassword(this) ? "password" : ("con" + "sent"));
         return cap;
     }
-
+    private void scheduleReconnect(long delay) {
+        if (hbHandler == null) return;
+        hbHandler.removeCallbacks(reconnectTask);
+        hbHandler.postDelayed(reconnectTask, delay);
+    }
     private void connect() {
         registered = false;
         if (!running) return;
+        // v3.8.12 — اتصال واحد فقط: لا مقبس ثانٍ فوق مفتوح، ولا ترك مقبس قديم حيّ.
+        // العَرَض الذي أُصلح: تسجيلان متزامنان ثم استبدال كل 10 ثوانٍ (code=4000/1006).
+        WebSocketClient prev = ws;
+        if (prev != null) {
+            boolean open = false;
+            try { open = prev.isOpen(); } catch (Exception ignore) { }
+            if (open) return;
+            try { prev.close(); } catch (Exception ignore) { }
+            ws = null;
+        }
         final String url = Prefs.server(this);
         final String token = Prefs.token(this);
         try {
@@ -356,6 +376,8 @@ public class AgentService extends Service {
                 @Override
                 public void onClose(int code, String reason, boolean remote) {
                     android.util.Log.d("AiRemoteAgent", "WebSocket onClose code=" + code + " reason=" + reason);
+                    // v3.8.12 — مقبس مُستبدل: لا تلمس الحالة ولا تُفرغ المرجِع الحيّ.
+                    if (ws != this) return;
                     MainActivity.setStatus("انقطع — إعادة المحاولة", false);
                     MainActivity.log("انقطع الاتصال (" + code + ")");
                     ws = null;
@@ -365,13 +387,13 @@ public class AgentService extends Service {
                         MainActivity.log("أوقف الخادم الاتصال — إعادة محاولة كل 5 ثوانٍ حتى يسمح");
                         running = true;
                         startKickPoller();
-                        if (hbHandler != null) hbHandler.postDelayed(AgentService.this::connect, 5000);
+                        scheduleReconnect(5000);
                         return;
                     }
                     if (running) {
                         final long delay = reconnectDelay;
                         reconnectDelay = Math.min(reconnectDelay + 3000, 30000);
-                        hbHandler.postDelayed(AgentService.this::connect, delay);
+                        scheduleReconnect(delay);
                     }
                 }
 
@@ -388,7 +410,7 @@ public class AgentService extends Service {
             client.connect();
         } catch (Exception e) {
             MainActivity.log("عنوان غير صالح: " + e.getMessage());
-            if (running) hbHandler.postDelayed(this::connect, reconnectDelay);
+            if (running) scheduleReconnect(reconnectDelay);
         }
     }
 
