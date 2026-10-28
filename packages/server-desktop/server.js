@@ -303,9 +303,28 @@ function aiAuth(req, reply) {
 }
 
 // v3.2.1 hardening — device-scoped authorization: admins + device owner only.
+// R3 (الشريحة الثانية) — توسيع السياسة: منح صريح في device_permissions، ورمز
+// وصول غير مراقب مقيَّد بجهاز واحد. كل عملية تحتاج قدرتها الخاصة (hasDeviceCapability).
 function canAccessDevice(user, deviceId) {
   if (!user) return false
   if (user.role === 'admin') return true
+  try {
+    const row = db.prepare("SELECT owner_id FROM devices WHERE id=?").get(deviceId)
+    if (!row) return false
+    if (user.role === 'unattended') return !!user.deviceId && user.deviceId === deviceId
+    if (row.owner_id && row.owner_id === user.userId) return true
+    // أي قدرة ممنوحة تُظهر الجهاز؛ كل عملية تُفحص على حدة.
+    return !!db.prepare('SELECT 1 FROM device_permissions WHERE user_id=? AND device_id=? LIMIT 1')
+      .get(user.userId, deviceId)
+  } catch { return false }
+}
+
+// عمليات دورة حياة الجهاز (تسمية، حذف، حجب، فصل، إيقاظ) للمالك أو المدير فقط:
+// من مُنح control/files/record لا يملك حق حذف الجهاز نفسه.
+function isDeviceOwnerOrAdmin(user, deviceId) {
+  if (!user) return false
+  if (user.role === 'admin') return true
+  if (user.role === 'unattended') return false
   try {
     const row = db.prepare("SELECT owner_id FROM devices WHERE id=?").get(deviceId)
     return !!(row && row.owner_id && row.owner_id === user.userId)
@@ -353,6 +372,119 @@ function ensureContactsSchema() {
     db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_devices_code ON devices(code)')
     return true
   } catch { return false }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+// R3 (الشريحة الثانية) — الوصول غير المراقب + القدرات الدقيقة لكل جهاز
+// ─────────────────────────────────────────────────────────────────────────────
+// كل جهاز يمكن أن يحمل كلمة مرور مستقلة (bcrypt) تسمح بالوصول إليه بلا شخص
+// حاضر أمامه. السياسة: 5 محاولات فاشلة ← قفل مؤقت (5 دقائق افتراضياً).
+// لا تُعاد البصمة ولا تُسجَّل كلمة المرور أو بصمتها في أي ردّ أو سجل تدقيق.
+const UNATTENDED_MAX_FAILURES = Math.max(1, parseInt(process.env.UNATTENDED_MAX_FAILURES || '5', 10) || 5)
+const UNATTENDED_LOCK_MS = Math.max(1000, parseInt(process.env.UNATTENDED_LOCK_MS || String(5 * 60 * 1000), 10) || 300000)
+const UNATTENDED_TOKEN_TTL = String(process.env.UNATTENDED_TOKEN_TTL || '2h')
+const DEVICE_CAPABILITIES = ['control', 'files', 'record']
+
+function ensureDeviceAccessSchema() {
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS device_unattended (
+        device_id       TEXT PRIMARY KEY,
+        password_hash   TEXT NOT NULL,
+        enabled         INTEGER NOT NULL DEFAULT 1,
+        failed_count    INTEGER NOT NULL DEFAULT 0,
+        locked_until    TEXT,
+        last_failed_at  TEXT,
+        last_success_at TEXT,
+        updated_by      TEXT,
+        created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE TABLE IF NOT EXISTS device_permissions (
+        user_id    TEXT NOT NULL,
+        device_id  TEXT NOT NULL,
+        capability TEXT NOT NULL,
+        granted_by TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        PRIMARY KEY (user_id, device_id, capability)
+      );
+      CREATE INDEX IF NOT EXISTS idx_devperm_device ON device_permissions(device_id);
+      CREATE INDEX IF NOT EXISTS idx_devperm_user   ON device_permissions(user_id);
+    `)
+    return true
+  } catch (e) {
+    const m = '⚠️ [access] schema init failed: ' + e.message
+    if (serverLogger && serverLogger.warn) serverLogger.warn(m); else console.log(m)
+    return false
+  }
+}
+
+function unattendedRow(deviceId) {
+  try { return db.prepare('SELECT * FROM device_unattended WHERE device_id=?').get(deviceId) || null } catch { return null }
+}
+
+function unattendedStatus(deviceId) {
+  const row = unattendedRow(deviceId)
+  if (!row) return { deviceId, enabled: false, hasPassword: false, lockedUntil: null, failedCount: 0, lastFailedAt: null, lastSuccessAt: null, updatedAt: null }
+  const lockedUntil = row.locked_until && new Date(row.locked_until).getTime() > Date.now() ? row.locked_until : null
+  return {
+    deviceId,
+    enabled: !!row.enabled,
+    hasPassword: !!row.password_hash,
+    lockedUntil,
+    failedCount: lockedUntil ? 0 : (row.failed_count || 0),
+    lastFailedAt: row.last_failed_at || null,
+    lastSuccessAt: row.last_success_at || null,
+    updatedAt: row.updated_at || null,
+  }
+}
+
+function deviceCapabilitiesOf(userId, deviceId) {
+  try {
+    return db.prepare('SELECT capability FROM device_permissions WHERE user_id=? AND device_id=?').all(userId, deviceId).map(r => r.capability)
+  } catch { return [] }
+}
+
+// القدرة الدقيقة: المالك والمدير يملكان كل شيء؛ المستخدم الممنوح يملك ما مُنح فقط؛
+// ورمز الوصول غير المراقب يملك كل القدرات على جهازه وحده (لا أدوار إدارة).
+function hasDeviceCapability(user, deviceId, capability) {
+  if (!user) return false
+  if (user.role === 'admin') return true
+  let row
+  try { row = db.prepare('SELECT owner_id FROM devices WHERE id=?').get(deviceId) } catch { return false }
+  if (!row) return false
+  if (user.role === 'unattended') return !!user.deviceId && user.deviceId === deviceId
+  if (row.owner_id && row.owner_id === user.userId) return true
+  return deviceCapabilitiesOf(user.userId, deviceId).includes(capability)
+}
+
+function auditCapabilityDenied(p, deviceId, capability, extra) {
+  dbLogAudit({
+    userId: (p && p.userId) || '',
+    userEmail: (p && p.email) || '',
+    deviceId,
+    action: 'capability_denied',
+    details: Object.assign({ capability }, extra || {}),
+    ipAddress: null,
+  })
+}
+
+// ردّ REST موحّد عند نقص القدرة + أثر تدقيق (بوابة R3: رفض 403 مع أثر)
+function denyCapability(reply, p, deviceId, capability, req) {
+  auditCapabilityDenied(p, deviceId, capability, { via: 'rest' })
+  reply.code(403).send({ error: 'غير مصرح بهذه القدرة على هذا الجهاز', code: 'capability_denied', capability })
+  return reply
+}
+
+function accessibleDeviceRows(user) {
+  if (!user) return []
+  try {
+    if (user.role === 'admin') return db.prepare('SELECT * FROM devices ORDER BY name').all()
+    if (user.role === 'unattended') return db.prepare('SELECT * FROM devices WHERE id=?').all(user.deviceId || '')
+    return db.prepare(
+      'SELECT DISTINCT d.* FROM devices d LEFT JOIN device_permissions p ON p.device_id=d.id AND p.user_id=? ' +
+      'WHERE d.owner_id=? OR p.user_id IS NOT NULL ORDER BY d.name'
+    ).all(user.userId, user.userId)
+  } catch { return [] }
 }
 
 // v3.7.0 — roles: viewer is read-only, manager may operate devices, admin manages
@@ -1314,9 +1446,8 @@ function handleClientWs(socket, user) {
   clientSockets.set(socket, { user })
 
   // v3.2.1 hardening — non-admins only receive their own devices
-  const devices  = (user && user.role === 'admin')
-    ? db.prepare("SELECT * FROM devices ORDER BY name").all()
-    : db.prepare("SELECT * FROM devices WHERE owner_id=? ORDER BY name").all(user ? user.userId : '')
+  // R3-2 — الأجهزة المرئية: المملوكة + الممنوحة بقدرة + جهاز الرمز غير المراقب
+  const devices = accessibleDeviceRows(user)
   const snapshot = devices.map(d => ({
     ...d, info: parseJson(d.info), tags: parseJson(d.tags, []),
     capabilities: parseJson(d.capabilities, {}), isOnline: agentSockets.has(d.id),
@@ -1331,7 +1462,7 @@ function handleClientWs(socket, user) {
     if (type === 'client:command') {
       const { deviceId, command, cmdType = 'shell', sessionId } = payload
       const commandId = uuidv4()
-      if (!canAccessDevice(user, deviceId)) { sendJson(socket, { type: 'agent:command_result', payload: { commandId, deviceId, error: 'غير مصرح بالوصول لهذا الجهاز' } }); return }
+      if (!hasDeviceCapability(user, deviceId, 'control')) { auditCapabilityDenied(user, deviceId, 'control', { via: 'ws' }); sendJson(socket, { type: 'agent:command_result', payload: { commandId, deviceId, error: 'غير مصرح بالوصول لهذا الجهاز' } }); return }
       const rec = agentSockets.get(deviceId)
       if (!rec) { sendJson(socket, { type: 'agent:command_result', payload: { commandId, deviceId, error: 'Device offline' } }); return }
       sendJson(rec.ws, { type: 'server:command', payload: { commandId, type: cmdType, command, sessionId } })
@@ -1339,21 +1470,21 @@ function handleClientWs(socket, user) {
     }
     if (type === 'client:screen_start') {
       const { deviceId, fps = 10, quality = 60, maxWidth = 1280, sessionId } = payload
-      if (!canAccessDevice(user, deviceId)) { sendJson(socket, { type: 'screen:error', payload: { message: 'غير مصرح بالوصول لهذا الجهاز' } }); return }
+      if (!hasDeviceCapability(user, deviceId, 'control')) { auditCapabilityDenied(user, deviceId, 'control', { via: 'ws' }); sendJson(socket, { type: 'screen:error', payload: { message: 'غير مصرح بالوصول لهذا الجهاز' } }); return }
       const rec = agentSockets.get(deviceId)
       if (rec) sendJson(rec.ws, { type: 'server:screen_start', payload: { sessionId: sessionId || uuidv4(), fps, quality, maxWidth, binary: true } })
       return
     }
     if (type === 'client:screen_stop') {
       const { deviceId, sessionId } = payload
-      if (!canAccessDevice(user, deviceId)) return
+      if (!hasDeviceCapability(user, deviceId, 'control')) { auditCapabilityDenied(user, deviceId, 'control', { via: 'ws' }); return }
       const rec = agentSockets.get(deviceId)
       if (rec) sendJson(rec.ws, { type: 'server:screen_stop', payload: { sessionId } })
       return
     }
     if (type === 'client:screen_control') {
       const { deviceId, action, x, y, button, key, sessionId } = payload
-      if (!canAccessDevice(user, deviceId)) return
+      if (!hasDeviceCapability(user, deviceId, 'control')) { auditCapabilityDenied(user, deviceId, 'control', { via: 'ws' }); return }
       const rec = agentSockets.get(deviceId)
       if (rec) sendJson(rec.ws, { type: 'server:screen_control', payload: { action, x, y, button, key, sessionId } })
       return
@@ -1376,7 +1507,7 @@ function handlePtyWs(socket, request, user) {
 
   function begin(dId, shellHint, rows, cols) {
     if (!dId) { try { socket.close() } catch {}; return }
-    if (!canAccessDevice(user, dId)) { try { socket.close() } catch {}; return }
+    if (!hasDeviceCapability(user, dId, 'control')) { auditCapabilityDenied(user, dId, 'control', { via: 'pty' }); try { socket.close() } catch {}; return }
     if (started) return
     started = true; deviceId = dId
     if (!ptyClients.has(sessionId)) ptyClients.set(sessionId, new Set())
@@ -1452,14 +1583,14 @@ function handleScreenWs(socket, request, user) {
   const deviceId = query.deviceId
   if (!deviceId) { socket.close(); return }
 
-  if (!canAccessDevice(user, deviceId)) {
+  if (!hasDeviceCapability(user, deviceId, 'control')) {
     // v3.8.12 / R2 — كل محاولة وصول مرفوضة تُدقَّق (الخطة §9)
     dbLogAudit({
       userId: (user && user.userId) || '',
       userEmail: (user && user.email) || '',
       deviceId,
       action: 'screen_denied',
-      details: { reason: 'not_authorized' },
+      details: { reason: 'not_authorized', capability: 'control' },
       ipAddress: request && request.socket ? request.socket.remoteAddress : null,
     })
     try { socket.send(JSON.stringify({ type: 'screen:error', payload: { message: 'غير مصرح بالوصول لهذا الجهاز' } })) } catch {}
@@ -2135,6 +2266,8 @@ async function start(config) {
 
   // v3.8.12 / R3 — عمود code لدفتر العناوين + تعبئة الأجهزة القائمة
   ensureContactsSchema()
+  // v3.8.12 / R3-2 — جداول الوصول غير المراقب والصلاحيات الدقيقة
+  ensureDeviceAccessSchema()
   {
     const assigned = ensureAllDeviceCodes()
     if (assigned) {
@@ -2231,6 +2364,8 @@ async function start(config) {
     if (!token) return
     let payload = null
     try { payload = verifyToken(token) } catch { return }
+    // R3-2 — رمز الوصول غير المراقب مقيَّد بجهاز واحد؛ القدرات تُفحص في كل مسار.
+    if (payload && payload.role === 'unattended') return
     if (!atLeast(payload.role, 'manager')) {
       // الإيقاف الفعلي بـthrow: send() داخل خطّاف async لا يمنع تنفيذ المعالج
       // (اكتُشف بالاختبار: كان حذف الجهاز يُنفَّذ رغم وصول 403 للمستخدم).
@@ -2699,9 +2834,7 @@ async function start(config) {
   // ── Devices ───────────────────────────────────────────────────────────────
   fastify.get('/api/devices', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
-    const rows = p.role === 'admin'
-      ? db.prepare("SELECT * FROM devices ORDER BY name").all()
-      : db.prepare("SELECT * FROM devices WHERE owner_id=? ORDER BY name").all(p.userId)
+    const rows = accessibleDeviceRows(p)
     return rows.map(d => {
       const online = agentSockets.has(d.id)
       const rm = (agentSockets.get(d.id)?.ws?._socket?.remoteAddress || null)
@@ -2721,7 +2854,7 @@ async function start(config) {
 
   fastify.post('/api/devices/:id/disconnect', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
-    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'Forbidden' })
+    if (!isDeviceOwnerOrAdmin(p, req.params.id)) return reply.code(403).send({ error: 'المالك أو المدير فقط يدير الجهاز', code: 'owner_required' })
     const d = db.prepare('SELECT * FROM devices WHERE id=?').get(req.params.id)
     if (!d) return reply.code(404).send({ error: 'Not found' })
     const rec = agentSockets.get(req.params.id)
@@ -2733,7 +2866,7 @@ async function start(config) {
 
   fastify.post('/api/devices/:id/block', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
-    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'Forbidden' })
+    if (!isDeviceOwnerOrAdmin(p, req.params.id)) return reply.code(403).send({ error: 'المالك أو المدير فقط يدير الجهاز', code: 'owner_required' })
     const d = db.prepare('SELECT * FROM devices WHERE id=?').get(req.params.id)
     if (!d) return reply.code(404).send({ error: 'Not found' })
     const rec = agentSockets.get(req.params.id)
@@ -2745,7 +2878,7 @@ async function start(config) {
 
   fastify.post('/api/devices/:id/unblock', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
-    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'Forbidden' })
+    if (!isDeviceOwnerOrAdmin(p, req.params.id)) return reply.code(403).send({ error: 'المالك أو المدير فقط يدير الجهاز', code: 'owner_required' })
     const d = db.prepare('SELECT * FROM devices WHERE id=?').get(req.params.id)
     if (!d) return reply.code(404).send({ error: 'Not found' })
     db.prepare("UPDATE devices SET status='offline' WHERE id=?").run(req.params.id)
@@ -2841,6 +2974,138 @@ async function start(config) {
     dbLogAudit({ userId: p.userId, userEmail: p.email, action: 'contact_deleted', details: { displayName: row.display_name }, ipAddress: req.ip })
     return { ok: true }
   })
+  // ── v3.8.12 / R3-2 — الوصول غير المراقب (كلمة مرور لكل جهاز) ───────────────
+  fastify.get('/api/devices/:id/access', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
+    return unattendedStatus(req.params.id)
+  })
+
+  fastify.post('/api/devices/:id/access', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    if (!atLeast(p.role, 'manager')) return reply.code(403).send({ error: 'Manager role required', code: 'role_too_low' })
+    if (!isDeviceOwnerOrAdmin(p, req.params.id)) return reply.code(403).send({ error: 'المالك أو المدير فقط يضبط كلمة مرور الوصول', code: 'owner_required' })
+    const dev = db.prepare('SELECT id, name, code FROM devices WHERE id=?').get(req.params.id)
+    if (!dev) return reply.code(404).send({ error: 'Not found' })
+    const body = req.body || {}
+    const existing = unattendedRow(dev.id)
+
+    if (body.enabled === false) {
+      if (!existing) return reply.code(404).send({ error: 'لا توجد كلمة مرور لهذا الجهاز', code: 'no_unattended_password' })
+      db.prepare("UPDATE device_unattended SET enabled=0, failed_count=0, locked_until=NULL, updated_by=?, updated_at=datetime('now') WHERE device_id=?").run(p.userId, dev.id)
+      dbLogAudit({ userId: p.userId, userEmail: p.email, deviceId: dev.id, action: 'unattended_cleared', details: { enabled: false }, ipAddress: req.ip })
+      return { ok: true, ...unattendedStatus(dev.id) }
+    }
+
+    const password = String(body.password || '')
+    if (password.length < 8) return reply.code(400).send({ error: 'كلمة مرور الجهاز يجب أن تكون 8 أحرف على الأقل', code: 'password_too_short' })
+    if (password.length > 200) return reply.code(400).send({ error: 'كلمة المرور طويلة جداً', code: 'password_too_long' })
+    const hash = await bcrypt.hash(password, 10)
+    db.prepare(
+      'INSERT INTO device_unattended (device_id, password_hash, enabled, failed_count, locked_until, updated_by, updated_at) ' +
+      "VALUES (?,?,1,0,NULL,?,datetime('now')) " +
+      "ON CONFLICT(device_id) DO UPDATE SET password_hash=excluded.password_hash, enabled=1, failed_count=0, locked_until=NULL, updated_by=excluded.updated_by, updated_at=datetime('now')"
+    ).run(dev.id, hash, p.userId)
+    // لا تُسجَّل كلمة المرور ولا بصمتها — الطول وحده للسياق.
+    dbLogAudit({ userId: p.userId, userEmail: p.email, deviceId: dev.id, action: 'unattended_set', details: { enabled: true, length: password.length, replaced: !!(existing && existing.password_hash) }, ipAddress: req.ip })
+    return { ok: true, ...unattendedStatus(dev.id) }
+  })
+
+  // دخول غير مراقب: الجهاز نفسه هو نطاق الرمز (role=unattended + deviceId مقفل).
+  fastify.post('/api/access/unattended', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (req, reply) => {
+    const body = req.body || {}
+    const password = String(body.password || '')
+    const code = body.code != null ? String(body.code) : (body.deviceCode != null ? String(body.deviceCode) : '')
+    const deviceId = body.deviceId != null ? String(body.deviceId) : ''
+    if (!password) return reply.code(400).send({ error: 'password required' })
+    if (!code && !deviceId) return reply.code(400).send({ error: 'code أو deviceId مطلوب', code: 'device_reference_required' })
+    const dev = deviceId
+      ? db.prepare('SELECT * FROM devices WHERE id=?').get(deviceId)
+      : deviceByCode(code)
+    if (!dev) {
+      dbLogAudit({ action: 'unattended_login_failed', details: { reason: 'unknown_device' }, ipAddress: req.ip })
+      return reply.code(404).send({ error: 'لا يوجد جهاز بهذا المعرّف', code: 'unknown_device' })
+    }
+    const row = unattendedRow(dev.id)
+    if (!row || !row.enabled) {
+      dbLogAudit({ deviceId: dev.id, action: 'unattended_denied', details: { reason: 'disabled' }, ipAddress: req.ip })
+      return reply.code(403).send({ error: 'الوصول غير المراقب غير مُفعَّل لهذا الجهاز', code: 'unattended_disabled' })
+    }
+    const now = Date.now()
+    if (row.locked_until) {
+      const until = new Date(row.locked_until).getTime()
+      if (until > now) {
+        const retryAfterMs = until - now
+        dbLogAudit({ deviceId: dev.id, action: 'unattended_locked', details: { retryAfterMs }, ipAddress: req.ip })
+        reply.header('Retry-After', String(Math.ceil(retryAfterMs / 1000)))
+        return reply.code(429).send({ error: 'الوصول مقفل مؤقتاً بعد محاولات فاشلة', code: 'unattended_locked', retryAfterMs })
+      }
+      db.prepare('UPDATE device_unattended SET failed_count=0, locked_until=NULL WHERE device_id=?').run(dev.id)
+      row.failed_count = 0
+    }
+    const okPassword = await bcrypt.compare(password, row.password_hash)
+    if (!okPassword) {
+      const failed = (row.failed_count || 0) + 1
+      if (failed >= UNATTENDED_MAX_FAILURES) {
+        db.prepare("UPDATE device_unattended SET failed_count=0, locked_until=?, last_failed_at=?, updated_at=datetime('now') WHERE device_id=?")
+          .run(new Date(now + UNATTENDED_LOCK_MS).toISOString(), new Date(now).toISOString(), dev.id)
+        dbLogAudit({ deviceId: dev.id, action: 'unattended_locked', details: { attempts: failed, lockMs: UNATTENDED_LOCK_MS }, ipAddress: req.ip })
+        reply.header('Retry-After', String(Math.ceil(UNATTENDED_LOCK_MS / 1000)))
+        return reply.code(429).send({ error: 'الوصول مقفل مؤقتاً بعد محاولات فاشلة', code: 'unattended_locked', retryAfterMs: UNATTENDED_LOCK_MS })
+      }
+      db.prepare("UPDATE device_unattended SET failed_count=?, last_failed_at=?, updated_at=datetime('now') WHERE device_id=?")
+        .run(failed, new Date(now).toISOString(), dev.id)
+      dbLogAudit({ deviceId: dev.id, action: 'unattended_login_failed', details: { attempts: failed, max: UNATTENDED_MAX_FAILURES }, ipAddress: req.ip })
+      return reply.code(401).send({ error: 'كلمة مرور الجهاز غير صحيحة', code: 'bad_device_password', remaining: UNATTENDED_MAX_FAILURES - failed })
+    }
+    db.prepare("UPDATE device_unattended SET failed_count=0, locked_until=NULL, last_success_at=?, updated_at=datetime('now') WHERE device_id=?")
+      .run(new Date(now).toISOString(), dev.id)
+    const accessToken = signToken({ userId: 'unattended:' + dev.id, email: 'unattended@device', role: 'unattended', deviceId: dev.id, purpose: 'unattended' }, UNATTENDED_TOKEN_TTL)
+    dbLogAudit({ userId: 'unattended:' + dev.id, userEmail: 'unattended@device', deviceId: dev.id, action: 'unattended_login', details: { code: dev.code || null }, ipAddress: req.ip })
+    return { ok: true, accessToken, token: accessToken, role: 'unattended', expiresIn: UNATTENDED_TOKEN_TTL, capabilities: DEVICE_CAPABILITIES.slice(), device: { id: dev.id, name: dev.name, code: dev.code || null } }
+  })
+
+  // ── v3.8.12 / R3-2 — الصلاحية الدقيقة لكل جهاز (مستخدم × جهاز × قدرة) ──────
+  fastify.get('/api/devices/:id/permissions', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    if (!isDeviceOwnerOrAdmin(p, req.params.id)) return reply.code(403).send({ error: 'المالك أو المدير فقط يرى الصلاحيات', code: 'owner_required' })
+    const grants = db.prepare(
+      'SELECT p.user_id, p.capability, u.email, u.name, u.role FROM device_permissions p LEFT JOIN users u ON u.id=p.user_id WHERE p.device_id=?'
+    ).all(req.params.id)
+    const byUser = new Map()
+    for (const g of grants) {
+      if (!byUser.has(g.user_id)) byUser.set(g.user_id, { userId: g.user_id, email: g.email || null, name: g.name || null, role: g.role || null, capabilities: [] })
+      byUser.get(g.user_id).capabilities.push(g.capability)
+    }
+    return { deviceId: req.params.id, capabilities: DEVICE_CAPABILITIES.slice(), grants: Array.from(byUser.values()) }
+  })
+
+  fastify.put('/api/devices/:id/permissions/:userId', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    if (!isDeviceOwnerOrAdmin(p, req.params.id)) return reply.code(403).send({ error: 'المالك أو المدير فقط يمنح الصلاحيات', code: 'owner_required' })
+    const dev = db.prepare('SELECT id, owner_id FROM devices WHERE id=?').get(req.params.id)
+    if (!dev) return reply.code(404).send({ error: 'Not found' })
+    const target = db.prepare('SELECT id, email, name, role FROM users WHERE id=?').get(req.params.userId)
+    if (!target) return reply.code(404).send({ error: 'لا يوجد مستخدم بهذا المعرّف', code: 'unknown_user' })
+    if (target.id === dev.owner_id) return reply.code(400).send({ error: 'المالك يملك كل القدرات أصلاً', code: 'owner_has_all' })
+    const body = req.body || {}
+    const wanted = DEVICE_CAPABILITIES.filter(c => body[c] === true)
+    db.prepare('DELETE FROM device_permissions WHERE user_id=? AND device_id=?').run(target.id, dev.id)
+    const ins = db.prepare('INSERT INTO device_permissions (user_id, device_id, capability, granted_by) VALUES (?,?,?,?)')
+    for (const c of wanted) ins.run(target.id, dev.id, c, p.userId)
+    dbLogAudit({ userId: p.userId, userEmail: p.email, deviceId: dev.id, action: 'permission_granted', details: { targetUserId: target.id, targetEmail: target.email, capabilities: wanted }, ipAddress: req.ip })
+    return { ok: true, userId: target.id, capabilities: wanted }
+  })
+
+  fastify.delete('/api/devices/:id/permissions/:userId', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    if (!isDeviceOwnerOrAdmin(p, req.params.id)) return reply.code(403).send({ error: 'المالك أو المدير فقط يسحب الصلاحيات', code: 'owner_required' })
+    const target = db.prepare('SELECT id, email FROM users WHERE id=?').get(req.params.userId)
+    if (!target) return reply.code(404).send({ error: 'لا يوجد مستخدم بهذا المعرّف', code: 'unknown_user' })
+    const info = db.prepare('DELETE FROM device_permissions WHERE user_id=? AND device_id=?').run(target.id, req.params.id)
+    dbLogAudit({ userId: p.userId, userEmail: p.email, deviceId: req.params.id, action: 'permission_revoked', details: { targetUserId: target.id, removed: info.changes }, ipAddress: req.ip })
+    return { ok: true, userId: target.id, removed: info.changes }
+  })
 
   fastify.get('/api/devices/:id', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
@@ -2858,7 +3123,7 @@ async function start(config) {
 
   fastify.put('/api/devices/:id', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
-    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
+    if (!isDeviceOwnerOrAdmin(p, req.params.id)) return reply.code(403).send({ error: 'المالك أو المدير فقط يدير الجهاز', code: 'owner_required' })
     const { name, tags } = req.body || {}
     const updates = []; const vals = []
     if (name) { updates.push('name=?'); vals.push(name) }
@@ -2871,7 +3136,7 @@ async function start(config) {
 
   fastify.delete('/api/devices/:id', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
-    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
+    if (!isDeviceOwnerOrAdmin(p, req.params.id)) return reply.code(403).send({ error: 'المالك أو المدير فقط يدير الجهاز', code: 'owner_required' })
     const d = db.prepare("SELECT name FROM devices WHERE id=?").get(req.params.id)
     if (!d) return reply.code(404).send({ error: 'Not found' })
     db.prepare("DELETE FROM devices WHERE id=?").run(req.params.id)
@@ -2881,7 +3146,7 @@ async function start(config) {
 
   fastify.post('/api/devices/:id/wol', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
-    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
+    if (!isDeviceOwnerOrAdmin(p, req.params.id)) return reply.code(403).send({ error: 'المالك أو المدير فقط يدير الجهاز', code: 'owner_required' })
     const d = db.prepare("SELECT info FROM devices WHERE id=?").get(req.params.id)
     if (!d) return reply.code(404).send({ error: 'Device not found' })
     const info = parseJson(d.info) || {}
@@ -2956,14 +3221,14 @@ async function start(config) {
   // ── Device FS Relay ───────────────────────────────────────────────────────
   fastify.get('/api/devices/:id/fs', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
-    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
+    if (!hasDeviceCapability(p, req.params.id, 'files')) return denyCapability(reply, p, req.params.id, 'files', req)
     try { return await agentFsRequest(req.params.id, 'list', { path: req.query?.path || '/' }) }
     catch (e) { return reply.code(502).send({ error: e.message }) }
   })
 
   fastify.get('/api/devices/:id/fs/download', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
-    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
+    if (!hasDeviceCapability(p, req.params.id, 'files')) return denyCapability(reply, p, req.params.id, 'files', req)
     const { path: fsPath } = req.query || {}
     if (!fsPath) return reply.code(400).send({ error: 'path required' })
     const name = String(fsPath).split('/').pop() || 'file'
@@ -2986,7 +3251,7 @@ async function start(config) {
 
   fastify.post('/api/devices/:id/fs/mkdir', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
-    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
+    if (!hasDeviceCapability(p, req.params.id, 'files')) return denyCapability(reply, p, req.params.id, 'files', req)
     const { path: fsPath } = req.body || {}
     if (!fsPath) return reply.code(400).send({ error: 'path required' })
     try { return await agentFsRequest(req.params.id, 'mkdir', { path: fsPath }) }
@@ -2996,14 +3261,14 @@ async function start(config) {
   // v3.2.2 — Dashboard FS aliases (list / delete / rename)
   fastify.get('/api/devices/:id/fs/list', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
-    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
+    if (!hasDeviceCapability(p, req.params.id, 'files')) return denyCapability(reply, p, req.params.id, 'files', req)
     try { return await agentFsRequest(req.params.id, 'list', { path: req.query?.path || '/' }) }
     catch (e) { return reply.code(502).send({ error: e.message }) }
   })
 
   fastify.post('/api/devices/:id/fs/delete', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
-    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
+    if (!hasDeviceCapability(p, req.params.id, 'files')) return denyCapability(reply, p, req.params.id, 'files', req)
     const { path: fsPath } = req.body || {}
     if (!fsPath) return reply.code(400).send({ error: 'path required' })
     try { return await agentFsRequest(req.params.id, 'delete', { path: fsPath }) }
@@ -3012,7 +3277,7 @@ async function start(config) {
 
   fastify.post('/api/devices/:id/fs/rename', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
-    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
+    if (!hasDeviceCapability(p, req.params.id, 'files')) return denyCapability(reply, p, req.params.id, 'files', req)
     const { oldPath, newPath } = req.body || {}
     if (!oldPath || !newPath) return reply.code(400).send({ error: 'oldPath and newPath required' })
     try { return await agentFsRequest(req.params.id, 'rename', { path: oldPath, newPath }) }
@@ -3021,7 +3286,7 @@ async function start(config) {
 
   fastify.delete('/api/devices/:id/fs', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
-    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
+    if (!hasDeviceCapability(p, req.params.id, 'files')) return denyCapability(reply, p, req.params.id, 'files', req)
     const { path: fsPath } = req.query || {}
     if (!fsPath) return reply.code(400).send({ error: 'path required' })
     try { return await agentFsRequest(req.params.id, 'delete', { path: fsPath }) }
@@ -3031,7 +3296,7 @@ async function start(config) {
   // fs upload (streaming chunks to agent)
   fastify.post('/api/devices/:id/fs/upload', { bodyLimit: 268435456 }, async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
-    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'Forbidden' })
+    if (!hasDeviceCapability(p, req.params.id, 'files')) return denyCapability(reply, p, req.params.id, 'files', req)
     const destPath = req.query?.path
     if (!destPath) return reply.code(400).send({ error: 'path required' })
     const rec = agentSockets.get(req.params.id)
@@ -3057,7 +3322,7 @@ async function start(config) {
   fastify.post('/api/devices/:id/exec', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
     if (!atLeast(p.role, 'manager')) return reply.code(403).send({ error: 'Manager role required to run commands' })
-    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
+    if (!hasDeviceCapability(p, req.params.id, 'control')) return denyCapability(reply, p, req.params.id, 'control', req)
     const { command, timeoutMs } = req.body || {}
     if (!command || typeof command !== 'string') return reply.code(400).send({ error: 'command required' })
     if (command.length > 4000) return reply.code(400).send({ error: 'command too long (max 4000)' })
@@ -3095,7 +3360,7 @@ async function start(config) {
   // v3.3.4 — one-shot screenshot (dashboard chat): capture on the device, return JPEG
   fastify.get('/api/devices/:id/screenshot', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
-    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
+    if (!hasDeviceCapability(p, req.params.id, 'control')) return denyCapability(reply, p, req.params.id, 'control', req)
     const rec = agentSockets.get(req.params.id)
     if (!rec) return reply.code(502).send({ error: 'Device offline' })
     // v3.4.2 — Android: capture on device via AISHOT command, then read the JPEG back
@@ -3201,7 +3466,7 @@ if ($target -eq $null) { 'name-not-found' } else {
   // v3.3.4 — remote control for the AI: real mouse/keyboard actions via the agent
   fastify.post('/api/devices/:id/control', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
-    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
+    if (!hasDeviceCapability(p, req.params.id, 'control')) return denyCapability(reply, p, req.params.id, 'control', req)
     const rec = agentSockets.get(req.params.id)
     if (!rec) return reply.code(502).send({ error: 'Device offline' })
     const b = req.body || {}
@@ -3793,7 +4058,7 @@ if ($target -eq $null) { 'name-not-found' } else {
     const p = authMiddleware(req, reply); if (!p) return
     const { deviceId, name } = req.body || {}
     if (!deviceId) return reply.code(400).send({ error: 'deviceId required' })
-    if (!canAccessDevice(p, deviceId)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
+    if (!hasDeviceCapability(p, deviceId, 'record')) return denyCapability(reply, p, deviceId, 'record', req)
     const id = uuidv4(); const now = new Date().toISOString()
     db.prepare("INSERT INTO recordings (id, device_id, user_id, name, started_at) VALUES (?,?,?,?,?)").run(id, deviceId, p.userId, name || `Recording ${now.slice(0,10)}`, now)
     return reply.code(201).send({ id, deviceId, userId: p.userId, name, startedAt: now })
