@@ -2130,3 +2130,32 @@ html.light .ai-page-online, html.light .ai-page-cancel { background: #fff; borde
   .login-brand-copy h2 { font-size: 22px; margin-top: 8px; }
   .login-preview { display: none; }
 }
+
+/* ───────────────────────────────────────────────────────────────────────────
+   R6 — جسر الرموز: طبقة Control Room تقرأ نفس متغيّرات index.css
+   بدل لوحتها المستقلة. القواعد هنا تأتي أخيراً فتفوز على التعريف الأصلي،
+   وتحوّل 255 استخداماً لـvar(--cr-*) إلى مصدر اللون الواحد.
+   ─────────────────────────────────────────────────────────────────────────── */
+:root {
+  --cr-bg: rgb(var(--bg));
+  --cr-bg-2: rgb(var(--surface-2));
+  --cr-panel: rgb(var(--surface));
+  --cr-panel-2: rgb(var(--surface-2));
+  --cr-surface: rgb(var(--surface-2));
+  --cr-line: rgb(var(--line) / .85);
+  --cr-line-strong: rgb(var(--line));
+  --cr-text: rgb(var(--ink));
+  --cr-text-2: rgb(var(--ink) / .82);
+  --cr-muted: rgb(var(--muted));
+  --cr-muted-2: rgb(var(--muted) / .92);
+  --cr-teal: rgb(var(--primary));
+  --cr-teal-soft: rgb(var(--primary) / .11);
+  --cr-amber: rgb(var(--warning));
+  --cr-red: rgb(var(--danger));
+  --cr-green: rgb(var(--success));
+  --cr-shadow: 0 16px 42px rgb(0 0 0 / .18);
+}
+
+/* أصداف كانت مكتوبة بألوان حرفية */
+.app-rail { background: rgb(var(--surface)) !important; }
+.app-topbar { background: rgb(var(--surface) / .88) !important; }
