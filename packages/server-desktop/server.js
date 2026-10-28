@@ -2140,12 +2140,20 @@ async function start(config) {
   await fastify.register(frateLimit, { global: false, max: 200, timeWindow: '1 minute' })
   await fastify.register(fws)
 
+  // معالج خطأ مخصّص لحالة رفض الدور فقط؛ بقية الأخطاء تمرّ للمعالج الافتراضي.
+  fastify.setErrorHandler((err, req, reply) => {
+    if (err && err.code === 'role_too_low') {
+      return reply.code(403).send({ error: err.message, code: 'role_too_low' })
+    }
+    reply.send(err)
+  })
+
   // v3.8.12 / R2 — حارس موحّد للعمليات المدمِّرة على الأجهزة.
   // المشكلة: كل مسارات fs/* وcontrol/block/unblock/disconnect وحذف الجهاز كانت
   // تكتفي بالملكية، فمشاهد يملك جهازاً يستطيع حذفه أو التحكم به — خلافاً لسياسة
   // الأدوار المعلنة (viewer للقراءة فقط، manager يشغّل). الحارس هنا فقط يمنع
   // دوراً أقل من manager عند وجود رمز صالح؛ غياب الرمز يترك الرد 401 للمسار.
-  fastify.addHook('onRequest', async (req, reply) => {
+  fastify.addHook('preHandler', async (req, reply) => {
     const method = req.method
     if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return
     const url = String(req.url || '').split('?')[0]
@@ -2158,7 +2166,12 @@ async function start(config) {
     let payload = null
     try { payload = verifyToken(token) } catch { return }
     if (!atLeast(payload.role, 'manager')) {
-      reply.code(403).send({ error: 'Manager role required for device operations', code: 'role_too_low' })
+      // الإيقاف الفعلي بـthrow: send() داخل خطّاف async لا يمنع تنفيذ المعالج
+      // (اكتُشف بالاختبار: كان حذف الجهاز يُنفَّذ رغم وصول 403 للمستخدم).
+      const err = new Error('Manager role required for device operations')
+      err.statusCode = 403
+      err.code = 'role_too_low'
+      throw err
     }
   })
 

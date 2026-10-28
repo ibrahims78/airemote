@@ -167,7 +167,7 @@ async function main() {
   // ── J. role matrix: viewer owns a device but must not operate it ───────────
   const jDelete = await fetch(BASE + '/api/devices/' + devV, { method: 'DELETE', headers: H(viewerTok) })
   check('J1. viewer cannot delete own device', jDelete.status === 403, 'status=' + jDelete.status)
-  const jBlock = await fetch(BASE + '/api/devices/' + devV + '/block', { method: 'POST', headers: H(viewerTok) })
+  const jBlock = await fetch(BASE + '/api/devices/' + devV + '/block', { method: 'POST', headers: H(viewerTok), body: '{}' })
   check('J2. viewer cannot block own device', jBlock.status === 403, 'status=' + jBlock.status)
   const jFs = await fetch(BASE + '/api/devices/' + devV + '/fs/delete', {
     method: 'POST', headers: H(viewerTok), body: JSON.stringify({ path: 'C:/x' }),
@@ -179,12 +179,12 @@ async function main() {
   check('J4. viewer cannot send control input', jCtl.status === 403, 'status=' + jCtl.status)
   const jList = await fetch(BASE + '/api/devices/' + devV + '/fs/list?path=C%3A%2F', { headers: H(viewerTok) })
   const jListBody = await jList.text()
+  check('J5. viewer can read own device (device offline -> 502, never role_too_low)',
+    jList.status === 502 && !/role_too_low/.test(jListBody), 'status=' + jList.status + ' body=' + jListBody.slice(0, 60))
   const jDev = await fetch(BASE + '/api/devices', { headers: H(viewerTok) })
   const jDevBody = await jDev.json().catch(() => null)
-  const seesOwn = Array.isArray(jDevBody) && jDevBody.some((d) => d.id === devV)
-  check('J5. viewer is not role-blocked from reading (403 must not be role_too_low)',
-    !(jList.status === 403 && /role_too_low|Manager role/.test(jListBody)),
-    'status=' + jList.status + ' body=' + jListBody.slice(0, 60) + ' seesOwn=' + seesOwn)
+  check('J7. viewer sees own device in the list', Array.isArray(jDevBody) && jDevBody.some((d) => d.id === devV),
+    'count=' + (Array.isArray(jDevBody) ? jDevBody.length : 'not-array'))
 
   // admin must still pass the guard (not 403)
   const aDel = await fetch(BASE + '/api/devices/' + devA2, { method: 'DELETE', headers: H(adminTok) })
