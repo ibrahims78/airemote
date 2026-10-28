@@ -39,6 +39,12 @@
 
 ---
 
+### أُضيف
+- **R3 — هوية ودفتر عناوين:** معرّف جهاز قصير (9 أرقام) في `devices.code` مع هجرة تلقائية وتعبئة للأجهزة القائمة.
+- `contacts` (ملكي لكل مستخدم) + `GET/POST/PATCH/DELETE /api/contacts` + `GET /api/devices/by-code/:code`.
+- تدقيق `contact_created` / `contact_deleted`.
+- اختبار `e2e-contacts` (18 فحصاً) داخل البطارية → 16/16.
+
 ## [3.8.11] — 2026-10-28
 
 ### أُضيف

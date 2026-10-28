@@ -103,6 +103,19 @@ function initDb(dbPath) {
       created_at     TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at     TEXT NOT NULL DEFAULT (datetime('now'))
     );
+    CREATE TABLE IF NOT EXISTS contacts (
+      id           TEXT PRIMARY KEY,
+      owner_id     TEXT NOT NULL,
+      display_name TEXT NOT NULL,
+      device_id    TEXT,
+      device_code  TEXT,
+      group_name   TEXT,
+      favorite     INTEGER NOT NULL DEFAULT 0,
+      note         TEXT,
+      created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_contacts_owner ON contacts(owner_id);
     CREATE TABLE IF NOT EXISTS sessions (
       id           TEXT PRIMARY KEY,
       device_id    TEXT NOT NULL,
@@ -296,6 +309,49 @@ function canAccessDevice(user, deviceId) {
   try {
     const row = db.prepare("SELECT owner_id FROM devices WHERE id=?").get(deviceId)
     return !!(row && row.owner_id && row.owner_id === user.userId)
+  } catch { return false }
+}
+
+// v3.8.12 / R3 — معرّف جهاز قصير وقابل للقراءة (9 أرقام) يُستخدم في دفتر العناوين والاتصال السريع.
+// يُولَّد عند الحاجة (lazy) حتى تعمل الأجهزة المُسجَّلة قبل الترقية بلا هجرة إجبارية.
+function ensureDeviceCode(deviceId) {
+  let row
+  try { row = db.prepare('SELECT code FROM devices WHERE id=?').get(deviceId) } catch { return null }
+  if (!row) return null
+  if (row.code) return row.code
+  for (let i = 0; i < 25; i++) {
+    const code = String(crypto.randomInt(100000000, 1000000000))
+    try {
+      const info = db.prepare("UPDATE devices SET code=? WHERE id=? AND (code IS NULL OR code='')").run(code, deviceId)
+      if (info.changes === 1) return code
+      const again = db.prepare('SELECT code FROM devices WHERE id=?').get(deviceId)
+      if (again && again.code) return again.code
+    } catch { /* تعارض فريد — جرّب رقماً آخر */ }
+  }
+  return null
+}
+
+function ensureAllDeviceCodes() {
+  try {
+    const rows = db.prepare("SELECT id FROM devices WHERE code IS NULL OR code=''").all()
+    let assigned = 0
+    for (const r of rows) { if (ensureDeviceCode(r.id)) assigned++ }
+    return assigned
+  } catch { return 0 }
+}
+
+function deviceByCode(code) {
+  const clean = String(code || '').replace(/\D/g, '')
+  if (clean.length !== 9) return null
+  try { return db.prepare('SELECT * FROM devices WHERE code=?').get(clean) } catch { return null }
+}
+
+function ensureContactsSchema() {
+  try {
+    const cols = db.prepare("PRAGMA table_info(devices)").all().map(c => c.name)
+    if (!cols.includes('code')) db.exec('ALTER TABLE devices ADD COLUMN code TEXT')
+    db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_devices_code ON devices(code)')
+    return true
   } catch { return false }
 }
 
@@ -2076,6 +2132,16 @@ async function start(config) {
 
   // v3.8.12 / R2 — مفتاح أسرار مستقل + هجرة القيم القديمة إلى GCM
   initSecretKey(dbPath)
+
+  // v3.8.12 / R3 — عمود code لدفتر العناوين + تعبئة الأجهزة القائمة
+  ensureContactsSchema()
+  {
+    const assigned = ensureAllDeviceCodes()
+    if (assigned) {
+      const m = '🔢 [devices] assigned codes to ' + assigned + ' device(s)'
+      if (serverLogger && serverLogger.info) serverLogger.info(m); else console.log(m)
+    }
+  }
   try {
     const mig = migrateLegacySecrets()
     if (mig.migrated || mig.failed) {
@@ -2644,7 +2710,7 @@ async function start(config) {
       if (!info.ipPublic && rmClean) info.ipPublic = rmClean
       const tunnelLayer = rmClean ? (/^10\.90\./.test(rmClean) ? 'zerotier' : (/^(192\.168\.|10\.)/.test(rmClean) ? 'lan' : 'wan')) : null
       return {
-        ...d, info, tags: parseJson(d.tags, []),
+        ...d, code: d.code || ensureDeviceCode(d.id) || null, info, tags: parseJson(d.tags, []),
         capabilities: parseJson(d.capabilities, {}), isOnline: online,
         status: d.status === 'blocked' ? 'blocked' : (online ? 'online' : 'offline'),
         remoteIp: rmClean, tunnelLayer,
@@ -2695,6 +2761,85 @@ async function start(config) {
     db.prepare("INSERT INTO devices (id, name, token, owner_id, tags) VALUES (?,?,?,?,?)").run(id, name, token, p.userId, JSON.stringify(tags))
     dbLogAudit({ userId: p.userId, userEmail: p.email, action: 'device_created', details: { name }, ipAddress: req.ip })
     return reply.code(201).send({ id, name, token, tags, status: 'offline', isOnline: false })
+  })
+
+  // ── v3.8.12 / R3 — الاتصال بمعرّف قصير ─────────────────────────────────────
+  fastify.get('/api/devices/by-code/:code', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    const dev = deviceByCode(req.params.code)
+    // لا نكشف وجود جهاز لا يملك المستخدم صلاحيته
+    if (!dev || !canAccessDevice(p, dev.id)) return reply.code(404).send({ error: 'لا يوجد جهاز بهذا المعرّف' })
+    return {
+      id: dev.id, name: dev.name, code: dev.code, status: dev.status,
+      isOnline: agentSockets.has(dev.id), ownerId: dev.owner_id,
+    }
+  })
+
+  // ── v3.8.12 / R3 — دفتر العناوين (ملكي لكل مستخدم) ────────────────────────
+  fastify.get('/api/contacts', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    const q = String(req.query?.q || '').trim().toLowerCase()
+    const rows = db.prepare('SELECT * FROM contacts WHERE owner_id=? ORDER BY favorite DESC, display_name COLLATE NOCASE').all(p.userId)
+    const mapped = rows.map(c => ({
+      id: c.id, displayName: c.display_name, deviceId: c.device_id, deviceCode: c.device_code,
+      group: c.group_name, favorite: !!c.favorite, note: c.note,
+      device: c.device_id ? (() => { const d = db.prepare('SELECT id,name,status FROM devices WHERE id=?').get(c.device_id); return d ? { ...d, isOnline: agentSockets.has(d.id) } : null })() : null,
+      createdAt: c.created_at, updatedAt: c.updated_at,
+    }))
+    if (!q) return mapped
+    return mapped.filter(c => (c.displayName || '').toLowerCase().includes(q) || String(c.deviceCode || '').includes(q) || String(c.group || '').toLowerCase().includes(q))
+  })
+
+  fastify.post('/api/contacts', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    const b = req.body || {}
+    const displayName = String(b.displayName || '').trim()
+    if (!displayName) return reply.code(400).send({ error: 'displayName required' })
+    if (displayName.length > 120) return reply.code(400).send({ error: 'displayName too long' })
+    let deviceId = b.deviceId ? String(b.deviceId) : null
+    let deviceCode = b.deviceCode ? String(b.deviceCode).replace(/\D/g, '') : null
+    if (deviceId) {
+      const d = db.prepare('SELECT id, code FROM devices WHERE id=?').get(deviceId)
+      if (!d) return reply.code(404).send({ error: 'الجهاز غير موجود' })
+      if (!canAccessDevice(p, deviceId)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
+      deviceCode = deviceCode || d.code || ensureDeviceCode(deviceId)
+    } else if (deviceCode) {
+      if (deviceCode.length !== 9) return reply.code(400).send({ error: 'deviceCode must be 9 digits' })
+      const d = deviceByCode(deviceCode)
+      if (d) deviceId = d.id
+    } else {
+      return reply.code(400).send({ error: 'deviceId or deviceCode required' })
+    }
+    const id = uuidv4()
+    db.prepare('INSERT INTO contacts (id, owner_id, display_name, device_id, device_code, group_name, favorite, note) VALUES (?,?,?,?,?,?,?,?)')
+      .run(id, p.userId, displayName, deviceId, deviceCode, b.group ? String(b.group) : null, b.favorite ? 1 : 0, b.note ? String(b.note) : null)
+    dbLogAudit({ userId: p.userId, userEmail: p.email, deviceId, action: 'contact_created', details: { displayName }, ipAddress: req.ip })
+    return { ok: true, id }
+  })
+
+  fastify.patch('/api/contacts/:id', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    const row = db.prepare('SELECT * FROM contacts WHERE id=?').get(req.params.id)
+    if (!row || row.owner_id !== p.userId) return reply.code(404).send({ error: 'Not found' })
+    const b = req.body || {}
+    const sets = [], vals = []
+    if (b.displayName !== undefined) { const n = String(b.displayName).trim(); if (!n) return reply.code(400).send({ error: 'displayName empty' }); sets.push('display_name=?'); vals.push(n) }
+    if (b.group !== undefined) { sets.push('group_name=?'); vals.push(b.group ? String(b.group) : null) }
+    if (b.favorite !== undefined) { sets.push('favorite=?'); vals.push(b.favorite ? 1 : 0) }
+    if (b.note !== undefined) { sets.push('note=?'); vals.push(b.note ? String(b.note) : null) }
+    if (!sets.length) return reply.code(400).send({ error: 'nothing to update' })
+    sets.push("updated_at=datetime('now')")
+    db.prepare(`UPDATE contacts SET ${sets.join(',')} WHERE id=? AND owner_id=?`).run(...vals, row.id, p.userId)
+    return { ok: true }
+  })
+
+  fastify.delete('/api/contacts/:id', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    const row = db.prepare('SELECT id, owner_id, display_name FROM contacts WHERE id=?').get(req.params.id)
+    if (!row || row.owner_id !== p.userId) return reply.code(404).send({ error: 'Not found' })
+    db.prepare('DELETE FROM contacts WHERE id=? AND owner_id=?').run(row.id, p.userId)
+    dbLogAudit({ userId: p.userId, userEmail: p.email, action: 'contact_deleted', details: { displayName: row.display_name }, ipAddress: req.ip })
+    return { ok: true }
   })
 
   fastify.get('/api/devices/:id', async (req, reply) => {
