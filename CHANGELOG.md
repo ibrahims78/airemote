@@ -20,7 +20,7 @@
 - هذا الملف: `CHANGELOG.md`.
 - `docs/UI-INVENTORY.md` — جرد 13 شاشة و7 فجوات موثّقة (مدخل R6).
 - `scripts/perf/measure.cjs` + `docs/perf-baseline.json` — مسبار أداء موحّد وبوابة انحدار (تفاوتات + أرضية ضجيج + median عبر نوافذ).
-- CI بثلاث مهام: `verify` (إلزامية، 18 خطوة)، `desktop-e2e` (تجريبية)، `installer` (يدوية).
+- CI بثلاث مهام: `verify` (إلزامية، 19 خطوة)، `desktop-e2e` (تجريبية)، `installer` (يدوية).
 
 ### تغيّر
 - أُرشفت `docs/AIREMOTE-ROADMAP-AR.md` (خارطة سابقة لا تُستخدم للتخطيط).
@@ -50,6 +50,14 @@
 - **R3-2 — حصر دورة حياة الجهاز:** `isDeviceOwnerOrAdmin` على `PUT/DELETE /devices/:id` و`block/unblock/disconnect/wol` — من مُنح قدرة لا يستطيع حذف الجهاز.
 - اختبار `e2e-unattended` (34 فحصاً) و`e2e-device-permissions` (31 فحصاً) داخل البطارية → **18/18**.
 - تقرير الشريحة: `outputs/verify-2026-10-28/r3-access/REPORT-AR.md`.
+- **R4 — جلسة وكيل‑بوكيل عبر Relay:** آلة حالة صريحة (`requested → accepted → active → closed` مع `denied`/`expired`)، وواجهة `/api/relay/*` (`request`، `:id/decision`، `sessions`، `:id`، `:id/close`)، ورسائل `session:offer` / `accept` / `deny` / `token` / `ready` / `data` / `close` / `expired` / `throttled` / `state`.
+- **R4 — الصلاحية قبل الإشعار:** فحص القدرة على الجهاز الهدف يسبق أي `session:offer`؛ الوكيل الهدف لا يستلم شيئاً عند الرفض السياسي.
+- **R4 — رمز جلسة:** 64-hex ببصمة SHA-256 في `session_tokens`، صلاحية 90s، يُستهلك مرة لكل طرف ويُرفض من أي جهاز ثالث؛ التمرير بعد الربط بهوية المقبس لا بالرمز.
+- **R4 — حدود:** سقف 20 جلسة (`503 relay_capacity`)، جلسة واحدة لكل جهاز (`409 session_conflict`)، حارس نطاق `RELAY_SESSION_KBPS` مع `session:throttled`، ومهلة عرض 60s.
+- **R4 — الانقطاع:** إغلاق مقبس الوكيل يغلق جلساته بسبب `network`، يُبلّغ الطرف الآخر، ويُنهي صف `sessions` بالمدة.
+- **R4 — البروتوكول:** `docs/PROTOCOL-RELAY-AR.md` (v1.0) يوصّف الحالات والرسائل والأخطاء والحدود كما نُفِّذت.
+- اختبار `e2e-agent-session` (33 فحصاً، ثلاثة مقابس وكلاء حقيقية) داخل البطارية → **19/19**.
+- تقرير المرحلة: `outputs/verify-2026-10-28/r4-relay/REPORT-AR.md`.
 
 ## [3.8.11] — 2026-10-28
 
