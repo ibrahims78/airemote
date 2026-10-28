@@ -20,7 +20,7 @@
 - هذا الملف: `CHANGELOG.md`.
 - `docs/UI-INVENTORY.md` — جرد 13 شاشة و7 فجوات موثّقة (مدخل R6).
 - `scripts/perf/measure.cjs` + `docs/perf-baseline.json` — مسبار أداء موحّد وبوابة انحدار (تفاوتات + أرضية ضجيج + median عبر نوافذ).
-- CI بثلاث مهام: `verify` (إلزامية، 16 خطوة)، `desktop-e2e` (تجريبية)، `installer` (يدوية).
+- CI بثلاث مهام: `verify` (إلزامية، 18 خطوة)، `desktop-e2e` (تجريبية)، `installer` (يدوية).
 
 ### تغيّر
 - أُرشفت `docs/AIREMOTE-ROADMAP-AR.md` (خارطة سابقة لا تُستخدم للتخطيط).
@@ -44,6 +44,12 @@
 - `contacts` (ملكي لكل مستخدم) + `GET/POST/PATCH/DELETE /api/contacts` + `GET /api/devices/by-code/:code`.
 - تدقيق `contact_created` / `contact_deleted`.
 - اختبار `e2e-contacts` (18 فحصاً) داخل البطارية → 16/16.
+- **R3-2 — الوصول غير المراقب:** جدول `device_unattended` (bcrypt تكلفة 10) + `POST/GET /api/devices/:id/access` للتعيين والتعطيل والحالة + `POST /api/access/unattended` يُصدر رمزاً مقيَّداً بجهاز واحد (`role=unattended`، صلاحية `2h`).
+- **R3-2 — سياسة المحاولات:** 5 محاولات فاشلة ← قفل مؤقت 5 دقائق (`429` + `Retry-After`)، وتدقيق `unattended_set` / `unattended_cleared` / `unattended_login` / `unattended_login_failed` / `unattended_locked` / `unattended_denied`. لا تُسجَّل كلمة المرور ولا بصمتها.
+- **R3-2 — الصلاحية الدقيقة:** جدول `device_permissions` (مستخدم × جهاز × `control|files|record`) + `GET/PUT/DELETE /api/devices/:id/permissions`، محترماً في `canAccessDevice` و15 مساراً و6 نقاط WebSocket، مع رفض `403 capability_denied` وأثر تدقيق.
+- **R3-2 — حصر دورة حياة الجهاز:** `isDeviceOwnerOrAdmin` على `PUT/DELETE /devices/:id` و`block/unblock/disconnect/wol` — من مُنح قدرة لا يستطيع حذف الجهاز.
+- اختبار `e2e-unattended` (34 فحصاً) و`e2e-device-permissions` (31 فحصاً) داخل البطارية → **18/18**.
+- تقرير الشريحة: `outputs/verify-2026-10-28/r3-access/REPORT-AR.md`.
 
 ## [3.8.11] — 2026-10-28
 
