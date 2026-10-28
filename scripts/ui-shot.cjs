@@ -76,6 +76,16 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms))
     ws.send(JSON.stringify({ id, method, params: params || {} }))
   })
 
+  let token = opt.token || null
+  if (!token && opt.login) {
+    const [email, pass] = String(opt.login).split(':')
+    const originApi = new URL(url).origin
+    const r = await fetch(originApi + '/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password: pass }) })
+    const j = await r.json().catch(() => ({}))
+    token = j.token || null
+    if (!token) console.error('login failed for ' + email)
+  }
+
   await send('Page.enable')
   await send('Runtime.enable')
   const origin = new URL(url).origin
@@ -85,7 +95,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms))
   await sleep(1200)
 
   const auth = JSON.stringify({
-    state: { token: opt.token || null, refreshToken: null, user: { id: opt.uid || '', email: 'admin@test.local', name: 'Admin', role: 'admin' } },
+    state: { token: token, refreshToken: null, user: { id: opt.uid || '', email: 'admin@test.local', name: 'Admin', role: 'admin' } },
     version: 0
   })
   const ui = JSON.stringify({ state: { theme, lang: 'ar', sidebarOpen: true }, version: 0 })
@@ -93,7 +103,20 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms))
 
   // 2) target page
   await send('Page.navigate', { url })
-  await sleep(Number(opt.wait || 1800))
+  // Wait for the SPA to leave its boot screen (and for data to land).
+  const deadline = Date.now() + Number(opt.wait || 9000)
+  for (;;) {
+    await sleep(300)
+    let txt = ''
+    try {
+      const r = await send('Runtime.evaluate', { expression: 'document.body ? document.body.innerText.slice(0, 400) : ""', returnByValue: true })
+      txt = (r && r.result && r.result.value) || ''
+    } catch {}
+    const booting = /Loading AiRemote/.test(txt) || txt.trim() === ''
+    if (!booting) break
+    if (Date.now() > deadline) break
+  }
+  await sleep(600)
   if (opt.eval) { try { await send('Runtime.evaluate', { expression: opt.eval, awaitPromise: true }) } catch {} await sleep(600) }
 
   const shot = await send('Page.captureScreenshot', { format: 'png', captureBeyondViewport: false })
