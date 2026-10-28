@@ -8,6 +8,7 @@ import { clsx } from 'clsx'
 import { useT } from '../lib/i18n'
 import { formatRelativeLang } from '../lib/i18n'
 import { useUIStore } from '../store/uiStore'
+import { Alert, Button, EmptyState, SkeletonRows } from '../components/ui'
 
 interface Notification {
   id: string
@@ -210,12 +211,14 @@ export function NotificationsPage({ embedded = false }: { embedded?: boolean } =
             </p>
           </div>
         </div>
-        <button
-          onClick={() => { loadNotifications(); loadRules() }}
-          className="p-2 text-muted hover:text-ink hover:bg-surface2 rounded-lg transition-colors"
-        >
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-        </button>
+        <Button
+          variant="ghost"
+          className="h-8 w-8 px-0"
+          aria-label={T('refresh')}
+          title={T('refresh')}
+          icon={<RefreshCw size={14} className={loading ? 'animate-spin' : undefined} />}
+          onClick={() => { void loadNotifications(); void loadRules() }}
+        />
       </div>
 
       {/* Tabs */}
@@ -238,29 +241,26 @@ export function NotificationsPage({ embedded = false }: { embedded?: boolean } =
           {/* Actions */}
           {notifications.length > 0 && (
             <div className="flex items-center gap-2">
-              <button
-                onClick={markAllRead}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-surface2 text-muted hover:text-ink rounded-lg transition-colors"
-              >
-                <CheckCheck size={12} /> {T('notif_mark_read')}
-              </button>
-              <button
-                onClick={clearRead}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-danger/10 text-danger hover:bg-danger/20 rounded-lg transition-colors"
-              >
-                <Trash2 size={12} /> {T('notif_clear_read')}
-              </button>
+              <Button variant="secondary" icon={<CheckCheck size={12} />} onClick={() => void markAllRead()}>
+                {T('notif_mark_read')}
+              </Button>
+              <Button variant="danger" icon={<Trash2 size={12} />} onClick={() => void clearRead()}>
+                {T('notif_clear_read')}
+              </Button>
             </div>
           )}
 
           {/* Notification list */}
-          {notifications.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <BellOff size={40} className="text-muted/70 mb-3" />
-              <p className="text-muted text-sm">{T('notif_no_notifications')}</p>
-              <p className="text-muted/70 text-xs mt-1">{T('notif_no_notifications_hint')}</p>
-            </div>
-          ) : notifications.map(notif => {
+          {notifications.length === 0 ? (loading ? (
+            <SkeletonRows rows={6} />
+          ) : (
+            <EmptyState
+              icon={<BellOff size={30} />}
+              title={T('notif_no_notifications')}
+              description={T('notif_no_notifications_hint')}
+            />
+          )) : null}
+          {notifications.length > 0 && notifications.map(notif => {
             const Icon      = TYPE_ICONS[notif.type] ?? Bell
             const sevStyle  = SEVERITY_STYLES[notif.severity]  ?? SEVERITY_STYLES.info
             const iconColor = SEVERITY_ICON_COLOR[notif.severity] ?? 'text-primary'

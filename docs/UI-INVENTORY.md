@@ -83,13 +83,13 @@
 | `pages/DeviceWorkspacePage.tsx` | **0** | ✅ | — / ✅ / ✅ / ❌ |
 | `pages/HelpPage.tsx` | **0** | ✅ | ❌ / ✅ / ✅ / ❌ |
 | `pages/LoginPage.tsx` | **0** | ❌ | ✅ / — / ✅ / ❌ |
-| `pages/NotificationsPage.tsx` | **0** | ❌ | ✅ / ✅ / ❌ / ❌ |
+| `pages/NotificationsPage.tsx` | **0** | ✅ | ✅ / ✅ / ❌ / ✅ |
 | `pages/SessionsPage.tsx` | **0** | ✅ | ✅ / ✅ / ✅ / ✅ |
 | `pages/SettingsPage.tsx` | **0** | ✅ | ✅ / — / ✅ / ✅ |
 | `pages/SetupPage.tsx` | **0** | ❌ | ✅ / — / ✅ / ❌ |
 | `pages/UsersPage.tsx` | **0** | ✅ | ✅ / ✅ / ✅ / ✅ |
 
-**معيار الخروج:** صفر صنف صريح في كل ملف يُعلن «محوَّلاً»، وليس صفراً في المجموع فقط. الملفات المتبقية أعلاه هي قائمة العمل الحقيقية لـR6.
+**نطاق الاستثناء:** `AiChatPanel` و`ScreenViewer` سطحان تفاعليان بقرار مكتوب (`docs/ADR-R6-INTERACTIVE-SURFACES-AR.md`): الكروم يدخل البوابة، وألوان المحتوى تُثبَّت في قائمة استثناء صريحة. `LoginPage` سطح علامة يستهلك CSS خاصاً به.\n\n**معيار الخروج:** صفر صنف صريح في كل ملف يُعلن «محوَّلاً»، وليس صفراً في المجموع فقط. الملفات المتبقية أعلاه هي قائمة العمل الحقيقية لـR6.
 
 **ملاحظة:** `DevicesPage` على المكتبة لكن بقي فيها 12 صنفاً داخل نافذتي `WolModal` و`AgentInstallModal` اليدويتين — بند 4 في قائمة R6.
 
