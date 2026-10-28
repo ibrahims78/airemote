@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  Upload, Pause, Play, X, ChevronDown, ChevronUp, Loader2, CheckCircle2,
-  AlertTriangle, FileUp, Gauge
+  Upload, Pause, Play, X, ChevronDown, ChevronUp, CheckCircle2, FileUp, Gauge, FolderUp
 } from 'lucide-react'
-import { clsx } from 'clsx'
 import { api } from '../lib/api'
 import { onTransferProgress } from '../lib/websocket'
+import { Alert, Badge, Button, EmptyState, ProgressBar, Select } from './ui'
 
 interface Transfer {
   id: string
@@ -38,6 +37,18 @@ interface Props {
 
 const CHUNK = 1024 * 1024
 
+type Tone = 'neutral' | 'info' | 'success' | 'warning' | 'danger'
+
+const STATE: Record<string, { label: string; tone: Tone }> = {
+  queued: { label: 'في الانتظار', tone: 'neutral' },
+  running: { label: 'جارٍ', tone: 'info' },
+  paused: { label: 'متوقف', tone: 'warning' },
+  completed: { label: 'مكتمل', tone: 'success' },
+  failed: { label: 'فشل', tone: 'danger' },
+  cancelled: { label: 'ملغى', tone: 'neutral' },
+  skipped: { label: 'تم التخطّي', tone: 'info' }
+}
+
 function authToken(): string {
   try {
     const raw = localStorage.getItem('airemote-auth')
@@ -64,26 +75,6 @@ async function sha256Of(file: File): Promise<string | null> {
   } catch { return null }
 }
 
-const STATE_LABEL: Record<string, string> = {
-  queued: 'في الانتظار',
-  running: 'جارٍ',
-  paused: 'متوقف',
-  completed: 'مكتمل',
-  failed: 'فشل',
-  cancelled: 'ملغى',
-  skipped: 'تم التخطّي'
-}
-
-const STATE_STYLE: Record<string, string> = {
-  queued: 'bg-slate-100 text-slate-600 dark:bg-slate-500/15 dark:text-slate-300',
-  running: 'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300',
-  paused: 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300',
-  completed: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
-  failed: 'bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300',
-  cancelled: 'bg-slate-100 text-slate-500 dark:bg-slate-500/15 dark:text-slate-400',
-  skipped: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/15 dark:text-indigo-300'
-}
-
 export function TransferQueue({ deviceId, currentPath, onFinished }: Props) {
   const [open, setOpen] = useState(false)
   const [transfers, setTransfers] = useState<Transfer[]>([])
@@ -105,8 +96,7 @@ export function TransferQueue({ deviceId, currentPath, onFinished }: Props) {
   const refresh = useCallback(async () => {
     try {
       const res = await api.get(`/api/file-transfers?deviceId=${encodeURIComponent(deviceId)}&limit=40`, { timeout: 15000 })
-      const list = (res.data?.transfers || []) as Transfer[]
-      setTransfers(list)
+      setTransfers((res.data?.transfers || []) as Transfer[])
       setUnavailable(false)
     } catch (e: unknown) {
       const err = e as { response?: { status?: number } }
@@ -132,8 +122,7 @@ export function TransferQueue({ deviceId, currentPath, onFinished }: Props) {
     let offset = from
     try {
       while (offset < file.size) {
-        const stop = stopRef.current[id]
-        if (stop) break
+        if (stopRef.current[id]) break
         const blob = file.slice(offset, Math.min(offset + CHUNK, file.size))
         await api.put(`/api/file-transfers/${id}/data?offset=${offset}`, blob, {
           headers: { 'Content-Type': 'application/octet-stream' },
@@ -254,45 +243,41 @@ export function TransferQueue({ deviceId, currentPath, onFinished }: Props) {
   const active = transfers.filter(t => ['running', 'paused', 'queued', 'failed'].includes(t.state)).length
 
   return (
-    <div className="rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-slate-900/40 overflow-hidden">
+    <div className="rounded-xl border border-line bg-surface overflow-hidden">
       <button
         onClick={() => setOpen(v => !v)}
-        className="w-full flex items-center justify-between px-3 py-2 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors"
+        aria-expanded={open}
+        className="flex w-full items-center justify-between px-3 py-2 transition-colors duration-fast hover:bg-surface2"
       >
-        <span className="flex items-center gap-2 text-[12px] font-medium text-slate-700 dark:text-slate-200">
-          <FileUp size={14} className="text-brand-blue" />
+        <span className="flex items-center gap-2 text-[12px] font-medium text-ink">
+          <FileUp size={14} className="text-primary" />
           نقل الملفات
-          {active > 0 && <span className="px-1.5 py-0.5 rounded-full bg-sky-500/20 text-sky-300 text-[10px]">{active} نشط</span>}
+          {active > 0 && <Badge tone="info">{active} نشط</Badge>}
         </span>
-        <span className="flex items-center gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+        <span className="flex items-center gap-2 text-[11px] text-muted">
           {transfers.length > 0 && <span>{transfers.length} عنصر</span>}
           {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </span>
       </button>
 
       {open && (
-        <div className="border-t border-slate-200 dark:border-white/10 p-3 space-y-3">
+        <div className="space-y-3 border-t border-line p-3">
           {unavailable ? (
-            <div className="text-[11px] text-amber-700 dark:text-amber-300/90 bg-amber-50 dark:bg-amber-500/10 rounded-lg px-2.5 py-2">
-              محرّك النقل غير متاح على السيرفر المثبَّت (يتطلب 3.8.13). التغيير موجود في المصدر فقط.
-            </div>
+            <Alert tone="warning" title="محرّك النقل غير متاح">
+              السيرفر المثبَّت لا يحمل مسارات R5 (يتطلب 3.8.13). التغيير موجود في المصدر فقط.
+            </Alert>
           ) : (
             <>
               <div className="flex flex-wrap items-center gap-2">
-                <button
-                  onClick={() => fileRef.current?.click()}
-                  disabled={busy === 'new'}
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-brand-blue hover:bg-blue-500 disabled:opacity-50 text-white text-[12px] font-medium"
-                >
-                  {busy === 'new' ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
+                <Button variant="primary" size="sm" loading={busy === 'new'} icon={<Upload size={13} />} onClick={() => fileRef.current?.click()}>
                   رفع قابل للاستكمال
-                </button>
+                </Button>
                 <input
-                  ref={fileRef} type="file" className="hidden"
+                  ref={fileRef} type="file" className="hidden" aria-label="اختر ملفاً للرفع"
                   onChange={e => { const f = e.target.files?.[0]; if (f) void startNew(f); e.currentTarget.value = '' }}
                 />
                 <input
-                  ref={resumeRef} type="file" className="hidden"
+                  ref={resumeRef} type="file" className="hidden" aria-label="اختر الملف لاستكمال النقل"
                   onChange={e => {
                     const f = e.target.files?.[0]
                     e.currentTarget.value = ''
@@ -302,92 +287,73 @@ export function TransferQueue({ deviceId, currentPath, onFinished }: Props) {
                     }
                   }}
                 />
-                <label className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
+                <label className="flex items-center gap-1 text-[11px] text-muted">
                   عند التعارض
-                  <select
-                    value={conflict} onChange={e => setConflict(e.target.value as 'rename' | 'replace' | 'skip')}
-                    className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-white/10 rounded-md px-1.5 py-1 text-[11px] text-slate-700 dark:text-slate-200"
-                  >
+                  <Select value={conflict} onChange={e => setConflict(e.target.value as 'rename' | 'replace' | 'skip')} aria-label="سياسة التعارض">
                     <option value="rename">إعادة تسمية</option>
                     <option value="replace">استبدال</option>
                     <option value="skip">تخطٍّ</option>
-                  </select>
+                  </Select>
                 </label>
-                <label className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400">
+                <label className="flex items-center gap-1 text-[11px] text-muted">
                   <Gauge size={12} />
                   حد السرعة
-                  <select
-                    value={speedMbps} onChange={e => setSpeedMbps(e.target.value)}
-                    className="bg-white dark:bg-slate-800 border border-slate-300 dark:border-white/10 rounded-md px-1.5 py-1 text-[11px] text-slate-700 dark:text-slate-200"
-                  >
+                  <Select value={speedMbps} onChange={e => setSpeedMbps(e.target.value)} aria-label="حد السرعة">
                     <option value="0">بلا حد</option>
                     <option value="2">2 MB/s</option>
                     <option value="8">8 MB/s</option>
                     <option value="32">32 MB/s</option>
-                  </select>
+                  </Select>
                 </label>
               </div>
 
-              {error && (
-                <div className="flex items-start gap-1.5 text-[11px] text-rose-600 dark:text-rose-300 bg-rose-50 dark:bg-rose-500/10 rounded-lg px-2.5 py-2">
-                  <AlertTriangle size={12} className="mt-0.5 shrink-0" /> {error}
-                </div>
-              )}
+              {error && <Alert tone="danger" onClose={() => setError('')}>{error}</Alert>}
 
               {transfers.length === 0 ? (
-                <div className="text-[11px] text-slate-500 dark:text-slate-500 py-2">لا عمليات نقل بعد. الملفات المرفوعة من هنا تُستكمل بعد الانقطاع.</div>
+                <EmptyState
+                  icon={<FolderUp size={18} />}
+                  title="لا عمليات نقل بعد"
+                  description="الرفع من هنا قابل للاستكمال: إن انقطع الاتصال أو أُغلقت الصفحة تعود من آخر نقطة."
+                />
               ) : (
-                <div className="space-y-1.5 max-h-64 overflow-y-auto pe-1">
+                <div className="max-h-64 space-y-1.5 overflow-y-auto pe-1">
                   {transfers.map(t => {
                     const name = (t.finalPath || t.destPath || t.sourcePath || '').split(/[\\/]/).pop() || '—'
                     const pct = t.percent ?? (t.size ? Math.min(100, (t.bytesDone / t.size) * 100) : 0)
                     const canResume = (t.state === 'paused' || t.state === 'failed') && t.direction === 'upload'
                     const isBusy = busy === t.id
+                    const meta = STATE[t.state] || STATE.queued
                     return (
-                      <div key={t.id} className="rounded-lg bg-slate-50 dark:bg-white/[0.03] border border-slate-200 dark:border-white/5 px-2.5 py-1.5">
+                      <div key={t.id} className="rounded-lg border border-line bg-surface2 px-2.5 py-1.5">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-[11px] text-slate-700 dark:text-slate-200 truncate" title={t.destPath}>{name}</span>
-                          <span className={clsx('text-[10px] px-1.5 py-0.5 rounded-full shrink-0', STATE_STYLE[t.state] || STATE_STYLE.queued)}>
-                            {STATE_LABEL[t.state] || t.state}
-                          </span>
+                          <span className="truncate text-[11px] text-ink" title={t.destPath}>{name}</span>
+                          <Badge tone={meta.tone}>{meta.label}</Badge>
                         </div>
-                        <div className="mt-1 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700/60 overflow-hidden">
-                          <div
-                            className={clsx('h-full transition-all', t.state === 'failed' ? 'bg-rose-400' : t.state === 'completed' ? 'bg-emerald-400' : 'bg-sky-400')}
-                            style={{ width: `${t.state === 'completed' ? 100 : Math.max(1, Math.min(100, pct))}%` }}
-                          />
-                        </div>
+                        <ProgressBar
+                          className="mt-1"
+                          value={t.state === 'completed' ? 100 : pct}
+                          tone={t.state === 'failed' ? 'danger' : t.state === 'completed' ? 'success' : 'primary'}
+                          label={`تقدم ${name}`}
+                        />
                         <div className="mt-1 flex items-center justify-between gap-2">
-                          <span className="text-[10px] text-slate-500 dark:text-slate-500 truncate">
+                          <span className="truncate text-[10px] text-muted">
                             {fmtBytes(t.bytesDone)} / {fmtBytes(t.size)} · {t.direction === 'upload' ? 'رفع' : 'تنزيل'}
                             {t.error ? ` · ${t.error}` : ''}
                           </span>
-                          <span className="flex items-center gap-1 shrink-0">
+                          <span className="flex shrink-0 items-center gap-0.5">
                             {t.state === 'running' && (
-                              <button onClick={() => void pause(t.id)} disabled={isBusy} title="إيقاف مؤقت"
-                                className="p-1 rounded hover:bg-white/10 text-amber-300 disabled:opacity-40">
-                                {isBusy ? <Loader2 size={12} className="animate-spin" /> : <Pause size={12} />}
-                              </button>
+                              <Button variant="ghost" size="sm" className="!px-1" loading={isBusy} aria-label="إيقاف مؤقت" title="إيقاف مؤقت" icon={<Pause size={12} />} onClick={() => void pause(t.id)} />
                             )}
                             {canResume && (
-                              <button onClick={() => void resume(t.id)} disabled={isBusy} title="استكمال"
-                                className="p-1 rounded hover:bg-white/10 text-emerald-300 disabled:opacity-40">
-                                {isBusy ? <Loader2 size={12} className="animate-spin" /> : <Play size={12} />}
-                              </button>
+                              <Button variant="ghost" size="sm" className="!px-1 text-success" loading={isBusy} aria-label="استكمال" title="استكمال" icon={<Play size={12} />} onClick={() => void resume(t.id)} />
                             )}
                             {t.state === 'queued' && (
-                              <button onClick={() => void startQueued(t)} disabled={isBusy} title="بدء"
-                                className="p-1 rounded hover:bg-white/10 text-emerald-300 disabled:opacity-40">
-                                <Play size={12} />
-                              </button>
+                              <Button variant="ghost" size="sm" className="!px-1 text-success" aria-label="بدء" title="بدء" icon={<Play size={12} />} onClick={() => void startQueued(t)} />
                             )}
                             {['running', 'paused', 'queued', 'failed'].includes(t.state) && (
-                              <button onClick={() => void cancel(t.id)} disabled={isBusy} title="إلغاء"
-                                className="p-1 rounded hover:bg-white/10 text-rose-300 disabled:opacity-40">
-                                <X size={12} />
-                              </button>
+                              <Button variant="ghost" size="sm" className="!px-1 text-danger" loading={isBusy} aria-label="إلغاء" title="إلغاء" icon={<X size={12} />} onClick={() => void cancel(t.id)} />
                             )}
-                            {t.state === 'completed' && <CheckCircle2 size={12} className="text-emerald-400" />}
+                            {t.state === 'completed' && <CheckCircle2 size={12} className="text-success" aria-hidden />}
                           </span>
                         </div>
                       </div>

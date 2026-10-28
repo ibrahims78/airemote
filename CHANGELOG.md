@@ -15,6 +15,7 @@
 ## [Unreleased]
 
 ### أُضيف
+- **R6 (شريحة 2) — طبقة رموز ومكتبة مكوّنات:** متغيّرات CSS دلالية (`canvas/surface/surface2/line/ink/muted/primary/success/warning/danger/info`) يقرأها Tailwind، و12 مكوّناً في `components/ui` (Button، Input، Select، Field، Card، Badge، Alert، EmptyState، ProgressBar، Skeleton، Modal) مع دعم `aria` وحالتي الفاتح/الداكن، وأُعيد بناء `TransferQueue` عليها بلا ألوان صريحة.
 - **R6 (شريحة 1) — طابور النقل البصري:** مكوّن `TransferQueue.tsx` داخل تبويب الملفات (شريط تقدم، إيقاف/استكمال/إلغاء، سياسة تعارض، حد سرعة، رفع قابل للاستكمال، استكمال بإعادة اختيار الملف، وضعان فاتح/داكن)، وقناة `ft:progress` في `lib/websocket.ts`.
 - **R5 — نقل ملفات قابل للاستكمال:** جدول `file_transfers` (اتجاه، حجم، `next_offset`، بصمتان، حالة، سياسة تعارض، حد سرعة) بهجرة غير كاسرة، ومحرّك `packages/server-desktop/lib/file-transfer.js`.
 - **R5 — بروتوكول الوكيل:** `server:ft_open/write/read/finish/abort` + `server:ft_put_many`، وتنفيذه على الجهاز في `packages/agent-desktop/lib/file-transfer-agent.js` (كتابة مُوضَّعة، ملف `.airemote-part`، نشر ذرّي بعد SHA-256).
