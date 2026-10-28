@@ -1328,6 +1328,15 @@ function handleScreenWs(socket, request, user) {
   if (!deviceId) { socket.close(); return }
 
   if (!canAccessDevice(user, deviceId)) {
+    // v3.8.12 / R2 — كل محاولة وصول مرفوضة تُدقَّق (الخطة §9)
+    dbLogAudit({
+      userId: (user && user.userId) || '',
+      userEmail: (user && user.email) || '',
+      deviceId,
+      action: 'screen_denied',
+      details: { reason: 'not_authorized' },
+      ipAddress: request && request.socket ? request.socket.remoteAddress : null,
+    })
     try { socket.send(JSON.stringify({ type: 'screen:error', payload: { message: 'غير مصرح بالوصول لهذا الجهاز' } })) } catch {}
     socket.close()
     return
@@ -2274,7 +2283,7 @@ async function start(config) {
     return { needsSetup: c === 0, setupRequired: c === 0 }
   })
 
-  fastify.post('/api/auth/setup', async (req, reply) => {
+  fastify.post('/api/auth/setup', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { email, password, name = 'Admin' } = req.body || {}
     if (!email || !password) return reply.code(400).send({ error: 'email and password required' })
     if (password.length < 12) return reply.code(400).send({ error: 'Password must be at least 12 characters' })
@@ -2308,7 +2317,7 @@ async function start(config) {
     return { accessToken, token: accessToken, refreshToken, user: { id: user.id, email: user.email, name: user.name, role: user.role } }
   })
 
-  fastify.post('/api/auth/login/verify-totp', async (req, reply) => {
+  fastify.post('/api/auth/login/verify-totp', { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { totpToken, code } = req.body || {}
     if (!totpToken || !code) return reply.code(400).send({ error: 'totpToken and code required' })
     let payload; try { payload = verifyToken(totpToken) } catch { return reply.code(401).send({ error: 'Invalid token' }) }
@@ -2324,7 +2333,7 @@ async function start(config) {
     return { accessToken, token: accessToken, refreshToken, user: { id: user.id, email: user.email, name: user.name, role: user.role } }
   })
 
-  fastify.post('/api/auth/refresh', async (req, reply) => {
+  fastify.post('/api/auth/refresh', { config: { rateLimit: { max: 20, timeWindow: '1 minute' } } }, async (req, reply) => {
     const { refreshToken } = req.body || {}
     if (!refreshToken) return reply.code(400).send({ error: 'refreshToken required' })
     const hash = crypto.createHash('sha256').update(refreshToken).digest('hex')
@@ -2347,7 +2356,7 @@ async function start(config) {
     return u
   })
 
-  fastify.post('/api/auth/ws-ticket', async (req, reply) => {
+  fastify.post('/api/auth/ws-ticket', { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } }, async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
     const ticketId = uuidv4()
     wsTickets.set(ticketId, { ...p, expires: Date.now() + 30_000 })
@@ -2361,7 +2370,7 @@ async function start(config) {
     return { ok: true }
   })
 
-  fastify.post('/api/auth/change-password', async (req, reply) => {
+  fastify.post('/api/auth/change-password', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
     const { currentPassword, newPassword } = req.body || {}
     if (!currentPassword || !newPassword) return reply.code(400).send({ error: 'Both passwords required' })
