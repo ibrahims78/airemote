@@ -1,0 +1,109 @@
+{
+  "startedAt": "2026-10-28T14:10:07.974Z",
+  "sizeGB": 10,
+  "smallFiles": 10000,
+  "checks": [
+    {
+      "id": "G5",
+      "desc": "مسار ..\\.. مرفوض قبل أي كتابة",
+      "ok": true,
+      "detail": "{\"error\":\"المسار يحوي .. وهو مرفوض\",\"code\":\"path_traversal\"}"
+    },
+    {
+      "id": "G1a",
+      "desc": "إنشاء نقل 10GB",
+      "ok": true,
+      "detail": "{\"ok\":true,\"transfer\":{\"id\":\"f8527072-98a5-43e4-a820-2a61ae8fa7d6\",\"batchId\":null,\"deviceId\":\"2f0f121b-a8aa-4fbf-be8e-285fcd7392d1\",\"direction\":\"upload\",\"source"
+    },
+    {
+      "id": "G1b",
+      "desc": "فتح الوكيل عند 0",
+      "ok": true,
+      "detail": "{\"ok\":true,\"transfer\":{\"id\":\"f8527072-98a5-43e4-a820-2a61ae8fa7d6\",\"batchId\":null,\"deviceId\":\"2f0f121b-a8aa-4fbf-be8e-285fcd7392d1\",\"direction\":\"upload\",\"source"
+    },
+    {
+      "id": "G1d",
+      "desc": "10GB اكتمل وبصمة الجهاز تطابق المصدر",
+      "ok": true,
+      "detail": "{\"ok\":true,\"transfer\":{\"id\":\"f8527072-98a5-43e4-a820-2a61ae8fa7d6\",\"batchId\":null,\"deviceId\":\"2f0f121b-a8aa-4fbf-be8e-285fcd7392d1\",\"direction\":\"upload\",\"sourcePath\":null,\"destPath\":\"/C:/Users/admin/AppData/Local/Temp/airemote-ft-gate-49hVL"
+    },
+    {
+      "id": "G1e",
+      "desc": "حجم الملف على القرص مطابق",
+      "ok": true,
+      "detail": 10737418240
+    },
+    {
+      "id": "G1f",
+      "desc": "عيّنات عشوائية من الملف مطابقة",
+      "ok": true
+    },
+    {
+      "id": "G3a",
+      "desc": "قطع عند 50% مع حفظ نقطة الاستكمال",
+      "ok": true,
+      "detail": "{\"ok\":true,\"transfer\":{\"id\":\"5af1031f-586c-4775-9bde-4b1dbfe416d8\",\"batchId\":null,\"deviceId\":\"2f0f121b-a8aa-4fbf-be8e-285fcd7392d1\",\"direction\":\"upload\",\"sourcePath\":null,\"destPath\":\"/C:/Users/admin/A"
+    },
+    {
+      "id": "G3b",
+      "desc": "الاستكمال من 50% بالضبط",
+      "ok": true,
+      "detail": "{\"ok\":true,\"transfer\":{\"id\":\"5af1031f-586c-4775-9bde-4b1dbfe416d8\",\"batchId\":null,\"deviceId\":\"2f0f121b-a8aa-4fbf-be8e-285fcd7392d1\",\"direction\":\"upload\",\"sourcePath\":null,\"destPath\":\"/C:/Users/admin/A"
+    },
+    {
+      "id": "G3c",
+      "desc": "بصمة الملف بعد الاستكمال مطابقة للأصل",
+      "ok": true,
+      "detail": "{\"ok\":true,\"transfer\":{\"id\":\"5af1031f-586c-4775-9bde-4b1dbfe416d8\",\"batchId\":null,\"deviceId\":\"2f0f121b-a8aa-4fbf-be8e-285fcd7392d1\",\"direction\":\"upload\",\"sourcePath\":null,\"destPath\":\"/C:/Users/admin/A"
+    },
+    {
+      "id": "G4a",
+      "desc": "قرص ممتلئ → خطأ disk_full واضح",
+      "ok": true,
+      "detail": "{\"error\":\"لا توجد مساحة كافية على قرص الجهاز — لم يُنشَر أي ملف تالف ويمكن الاستكمال بعد تفريغ مساحة\",\"code\":\"disk_full\"}"
+    },
+    {
+      "id": "G4b",
+      "desc": "لا ملف نهائي تالف",
+      "ok": true
+    },
+    {
+      "id": "G4c",
+      "desc": "الاستكمال بعد تفريغ مساحة ممكن",
+      "ok": true,
+      "detail": "{\"ok\":true,\"transfer\":{\"id\":\"fb84270d-84c0-4644-ace2-17f9108ae5dc\",\"batchId\":null,\"deviceId\":\"2f0f121b-a8aa-4fbf-be8e-285fcd7392d1\",\"direction\":\"upload\",\"sourcePath\":null,\"destPath\":\"/C:/Users/admin/A"
+    },
+    {
+      "id": "G2a",
+      "desc": "10000 ملف صغير اكتمل في دفعة واحدة",
+      "ok": true,
+      "detail": "{\"ok\":true,\"batchId\":\"16796d1f-83ef-45e4-8e55-43c6443515fd\",\"total\":10000,\"completed\":10000,\"failed\":0,\"bytes\":588890,\"elapsedMs\":130462,\"results\":[{\"name\":\"s_00000.txt\",\"state\":\"completed\",\"bytes\":56},{\"name\":\"s_00001.txt\",\"state\":\"complet"
+    },
+    {
+      "id": "G2b",
+      "desc": "عيّنة محتوى مطابقة",
+      "ok": true
+    },
+    {
+      "id": "G2c",
+      "desc": "كل الملفات موجودة على القرص",
+      "ok": true,
+      "detail": "count=10000"
+    }
+  ],
+  "gate1": {
+    "id": "f8527072-98a5-43e4-a820-2a61ae8fa7d6",
+    "bytes": 10737418240,
+    "seconds": 420.114,
+    "mibPerSec": 24.4,
+    "sha256": "86382b3221471768608e1b79383eb6bf232b128c50ea154169b8257559cbba8d",
+    "filePath": "C:\\Users\\admin\\AppData\\Local\\Temp\\airemote-ft-gate-49hVLE\\gate-10gb.bin"
+  },
+  "gate2": {
+    "files": 10000,
+    "seconds": 130.881,
+    "filesPerSec": 76.4
+  },
+  "finishedAt": "2026-10-28T14:19:22.722Z",
+  "failed": 0
+}

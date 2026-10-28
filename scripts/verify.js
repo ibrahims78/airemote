@@ -63,6 +63,7 @@ const steps = [
   { name: 'e2e: unattended access (R3)',  cmd: electronStep('packages/server-desktop/test/e2e-unattended.test.cjs') },
   { name: 'e2e: device permissions (R3)', cmd: electronStep('packages/server-desktop/test/e2e-device-permissions.test.cjs') },
   { name: 'e2e: agent session relay (R4)', cmd: electronStep('packages/server-desktop/test/e2e-agent-session.test.cjs') },
+  { name: 'e2e: file transfer (R5)',   cmd: electronStep('packages/server-desktop/test/e2e-file-transfer.test.cjs') },
   { name: 'unit: secret storage (R2)',   cmd: electronStep('packages/server-desktop/test/secrets.test.cjs') },
 ]
 

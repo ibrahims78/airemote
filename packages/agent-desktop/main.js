@@ -9,6 +9,15 @@ const crypto = require('crypto')
 const { exec, spawn } = require('child_process')
 const WebSocket = require('ws')
 
+// R5 — محرّك نقل الملفات على الجهاز (مقاطع، استكمال، تحقق SHA-256، حارس مسارات)
+const { createAgentTransfer } = require('./lib/file-transfer-agent')
+const ftAgent = createAgentTransfer({
+  send,
+  roots: process.env.AIREMOTE_FT_ROOTS,
+  log: (level, msg) => { try { addLog(level === "error" ? "error" : "info", msg) } catch {} }
+})
+
+
 // v3.3.0 — software rendering for reliable screen capture: the GPU-accelerated
 // capture path returned black frames after display-mode changes on virtual GPUs
 // (observed on VMware SVGA); the software path is robust and measured faster there.
@@ -726,6 +735,16 @@ function handleMsg(msg) {
       }
       break
     }
+    // ── R5: resumable file transfer ───────────────────────────────────────
+    case 'server:ft_open':
+    case 'server:ft_write':
+    case 'server:ft_read':
+    case 'server:ft_finish':
+    case 'server:ft_abort': {
+      ftAgent.handle(msg)
+      break
+    }
+
 
     // ── T002: Chunked file write (v3.0.0) ──────────────────────────────────
     case 'server:fs_write_chunk': {

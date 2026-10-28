@@ -41,6 +41,8 @@ function getSsh2()     { if (!_ssh2)     _ssh2     = require('ssh2');        ret
 // 2. In-Memory Registries
 // ─────────────────────────────────────────────────────────────────────────────
 const agentSockets      = new Map()   // deviceId → { ws, info, deviceName, connectedAt, stats }
+const { createFileTransferManager } = require('./lib/file-transfer')
+let fileTransfers = null
 const clientSockets     = new Map()   // Map<WebSocket, { user }>
 const ptyClients        = new Map()   // sessionId → Set<WebSocket>
 const screenViewers     = new Map()   // deviceId  → Set<WebSocket>
@@ -1441,6 +1443,11 @@ function handleAgentWs(socket) {
       return
     }
 
+    if (type && type.startsWith('agent:ft_')) {
+      try { fileTransfers && fileTransfers.handleAgentMessage(type, payload, deviceId) } catch {}
+      return
+    }
+
     if (type === 'agent:fs_chunk') {
       const st = pendingFsStreams.get(payload.opId)
       if (!st) return
@@ -1495,6 +1502,7 @@ function handleAgentWs(socket) {
         serverLogger?.warn('agent', `disconnected name="${rec ? rec.deviceName : String(deviceId).slice(0, 8)}" after=${up}s`)
       } catch {}
       agentSockets.delete(deviceId); markDeviceOffline(deviceId); fireOfflineAlerts(deviceId)
+      try { fileTransfers && fileTransfers.onDeviceOffline(deviceId) } catch {}
       // R4 — لا تُغلق فوراً: مهلة سماح واحدة ثم إغلاق بسبب network.
       try { relaySuspendForDevice(deviceId) } catch {}
     }
@@ -2607,6 +2615,28 @@ async function start(config) {
   ensureContactsSchema()
   // v3.8.12 / R3-2 — جداول الوصول غير المراقب والصلاحيات الدقيقة
   ensureDeviceAccessSchema()
+
+  // R5 — محرّك نقل الملفات: جدول file_transfers + استكمال + تحقق بصمة
+  fileTransfers = createFileTransferManager({
+    db,
+    log: {
+      info: (m) => (serverLogger && serverLogger.info ? serverLogger.info('ft', m) : console.log(m)),
+      warn: (m) => (serverLogger && serverLogger.warn ? serverLogger.warn('ft', m) : console.log(m)),
+      error: (m) => (serverLogger && serverLogger.error ? serverLogger.error('ft', m) : console.error(m))
+    },
+    getSocket: (id) => agentSockets.get(id) || null,
+    sendJson,
+    notify: (userId, msg) => sendToUser(userId, msg),
+    audit: (action, deviceId, details) => {
+      try {
+        const row = details && details.id ? db.prepare('SELECT user_id FROM file_transfers WHERE id=?').get(details.id) : null
+        dbLogAudit({ userId: row ? row.user_id : '', deviceId, action, details: JSON.stringify(details || {}) })
+      } catch {}
+    },
+    roots: process.env.AIREMOTE_FT_ROOTS,
+  })
+  fileTransfers.init()
+
   {
     const assigned = ensureAllDeviceCodes()
     if (assigned) {
@@ -2718,6 +2748,9 @@ async function start(config) {
   // ── v3.4.0 harden + perf: security headers (HTML) + Brotli/Gzip + ETag + cache ──
   fastify.addHook('onSend', async (req, reply, payload) => {
     try {
+      // R5 — ردود API حالة حيّة: لا تخزين في المتصفح ولا في أي
+      // وسيط، ولا في كاش الضغط بالأسفل (المفتاح صار بصمة المحتوى).
+      if (String((req.raw ? req.raw.url : req.url) || '').split('?')[0].startsWith('/api/')) reply.header('Cache-Control', 'no-store')
       if (TLS_ACTIVE) reply.header('Strict-Transport-Security', 'max-age=15552000; includeSubDomains')
       // v3.8.12 / R2 — nosniff لكل الردود (كان على HTML فقط)
       reply.header('X-Content-Type-Options', 'nosniff')
@@ -2745,9 +2778,16 @@ async function start(config) {
       else return payload
       if (buf.length < 1024 || buf.length > 6 * 1024 * 1024) return buf
       const urlPath = String(req.raw ? req.raw.url : req.url || '')
+      const pathOnly = urlPath.split('?')[0]
+      // R5 — لا تخزين لأي ردّ API: الردود تحمل حالة حيّة (إصدارات
+      // الأجهزة، الجلسات، النقل). الكاش القديم كان يُفتح بمفتاح URL+الطول، فأي
+      // ردّين متساويين في الطول يتبادلان الجسم المضغوط — وهو سبب ظهور إصدار
+      // قديم لجهاز بعد تحديثه (عيب موثَّق في HANDOFF §5).
       const isHashed = /\/assets\/[^/]*-[A-Za-z0-9_-]{8,}\.(js|css)$/.test(urlPath)
       const ae = String(req.headers['accept-encoding'] || '')
-      const ck = urlPath + ':' + buf.length
+      // الأصول المبصومة فقط تُخزَّن بمفتاح المسار؛ الردود الديناميكية تُفتح ببصمة
+      // المحتوى نفسه فلا يمكن أن يُخدَم جسم قديم تحت مفتاح جديد.
+      const ck = isHashed ? (urlPath + ':' + buf.length) : crypto.createHash('sha1').update(buf).digest('hex')
       let out = perfCache.get(ck)
       if (!out) {
         out = { br: zlib.brotliCompressSync(buf, { params: { [zlib.constants.BROTLI_PARAM_QUALITY]: 5 } }), gz: zlib.gzipSync(buf) }
@@ -3655,6 +3695,147 @@ async function start(config) {
     }
     try { const data = await waitResp; return { ok: true, ...(data || {}) } }
     catch (e) { return reply.code(502).send({ error: e.message }) }
+  })
+
+  // ── R5 — نقل الملفات: مقاطع قابلة للاستكمال، تحقق SHA-256، وحارس مسارات ────
+  function ftErrorReply (reply, e) {
+    const status = (e && e.status) ? e.status : (e && e.code === 'device_offline' ? 409 : 400)
+    return reply.code(status).send({ error: e.message, code: (e && e.code) || 'ft_error', expected: e && e.expected })
+  }
+  function ftAuth (req, reply) {
+    const p = authMiddleware(req, reply); if (!p) return null
+    const row = fileTransfers.getRow(req.params.tid)
+    if (!row) { reply.code(404).send({ error: 'النقل غير موجود', code: 'not_found' }); return null }
+    if (!hasDeviceCapability(p, row.device_id, 'files')) { denyCapability(reply, p, row.device_id, 'files', req); return null }
+    return p
+  }
+
+  fastify.post('/api/devices/:id/file-transfers', { config: { rateLimit: { max: 120, timeWindow: '1 minute' } } }, async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    if (!hasDeviceCapability(p, req.params.id, 'files')) return denyCapability(reply, p, req.params.id, 'files', req)
+    try {
+      const b = req.body || {}
+      const row = fileTransfers.createTransfer({
+        user: p, deviceId: req.params.id, direction: b.direction || 'upload',
+        path: b.path, size: b.size, sha256: b.sha256, conflict: b.conflict,
+        speedLimitKbps: b.speedLimitKbps, name: b.name
+      })
+      return reply.code(201).send({ ok: true, transfer: fileTransfers.publicRow(row) })
+    } catch (e) { return ftErrorReply(reply, e) }
+  })
+
+  // دفعة الملفات الصغيرة: بيان واحد، صفّ لكل ملف، تقدّم لكل ملف.
+  fastify.post('/api/devices/:id/file-transfers/batch', { bodyLimit: 134217728 }, async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    if (!hasDeviceCapability(p, req.params.id, 'files')) return denyCapability(reply, p, req.params.id, 'files', req)
+    try {
+      const b = req.body || {}
+      const out = await fileTransfers.createBatch({
+        user: p, deviceId: req.params.id, destDir: b.destDir,
+        files: b.files, conflict: b.conflict, speedLimitKbps: b.speedLimitKbps
+      })
+      return reply.send({ ok: out.failed === 0, ...out })
+    } catch (e) { return ftErrorReply(reply, e) }
+  })
+
+  fastify.get('/api/file-transfers', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    return {
+      transfers: fileTransfers.list(p, {
+        deviceId: req.query && req.query.deviceId,
+        batchId: req.query && req.query.batchId,
+        state: req.query && req.query.state,
+        limit: req.query && req.query.limit
+      })
+    }
+  })
+
+  fastify.get('/api/file-transfers/:tid', async (req, reply) => {
+    const p = ftAuth(req, reply); if (!p) return
+    try { return { transfer: fileTransfers.get(req.params.tid, p) } } catch (e) { return ftErrorReply(reply, e) }
+  })
+
+  fastify.post('/api/file-transfers/:tid/start', async (req, reply) => {
+    const p = ftAuth(req, reply); if (!p) return
+    try {
+      const row = await fileTransfers.start(req.params.tid, p)
+      return { ok: true, transfer: fileTransfers.publicRow(row) }
+    } catch (e) { return ftErrorReply(reply, e) }
+  })
+
+  // رفع مقطع واحد (1MB افتراضياً) بإزاحة صريحة؛ العميل يكرّر من nextOffset.
+  fastify.put('/api/file-transfers/:tid/data', { bodyLimit: 16777216 }, async (req, reply) => {
+    const p = ftAuth(req, reply); if (!p) return
+    try {
+      const buf = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body || '')
+      const row = await fileTransfers.writeChunk(req.params.tid, p, Number(req.query && req.query.offset), buf)
+      return { ok: true, transfer: fileTransfers.publicRow(row) }
+    } catch (e) { return ftErrorReply(reply, e) }
+  })
+
+  // تنزيل متدفّق من الجهاز، يدعم from=offset للاستكمال.
+  fastify.get('/api/file-transfers/:tid/data', async (req, reply) => {
+    const p = ftAuth(req, reply); if (!p) return
+    const row = fileTransfers.getRow(req.params.tid)
+    try {
+      const name = String(row.source_path || row.final_path || 'file').split(/[\\/]/).pop() || 'file'
+      const asciiName = name.replace(/[^\x20-\x7E]/g, '_').replace(/["\\]/g, '')
+      const utf8Name = encodeURIComponent(name).replace(/'/g, '%27')
+      const partial = req.query && req.query.length != null
+      reply.hijack()
+      reply.raw.writeHead(200, {
+        'Content-Type': 'application/octet-stream',
+        'Content-Disposition': 'attachment; filename="' + asciiName + '"; filename*=UTF-8\'\'' + utf8Name,
+        'Cache-Control': 'no-store',
+        'X-Accel-Buffering': 'no',
+        'Accept-Ranges': 'bytes'
+      })
+      let offset = Math.max(0, Number(req.query && req.query.offset) || 0)
+      const cap = Math.max(0, Number(req.query && req.query.length) || 0)
+      const chunk = fileTransfers.chunkSize
+      let sent = 0
+      for (;;) {
+        const want = cap > 0 ? Math.min(chunk, cap - sent) : chunk
+        if (want <= 0) break
+        const r = await fileTransfers.readChunk(row.id, p, offset, want)
+        if (r.data && r.data.length) {
+          reply.raw.write(r.data)
+          sent += r.data.length
+          offset += r.data.length
+        } else break
+        if (r.eof) break
+      }
+      reply.raw.end()
+      if (cap === 0) { try { await fileTransfers.finish(row.id, p, null) } catch {} }
+    } catch (e) {
+      try { reply.raw.destroy() } catch {}
+    }
+  })
+
+  fastify.post('/api/file-transfers/:tid/finish', async (req, reply) => {
+    const p = ftAuth(req, reply); if (!p) return
+    try {
+      const row = await fileTransfers.finish(req.params.tid, p, (req.body || {}).sha256)
+      return { ok: true, transfer: fileTransfers.publicRow(row) }
+    } catch (e) { return ftErrorReply(reply, e) }
+  })
+
+  fastify.post('/api/file-transfers/:tid/pause', async (req, reply) => {
+    const p = ftAuth(req, reply); if (!p) return
+    try { return { ok: true, transfer: fileTransfers.publicRow(await fileTransfers.pause(req.params.tid, p, 'paused_by_user')) } }
+    catch (e) { return ftErrorReply(reply, e) }
+  })
+
+  fastify.post('/api/file-transfers/:tid/resume', async (req, reply) => {
+    const p = ftAuth(req, reply); if (!p) return
+    try { return { ok: true, transfer: fileTransfers.publicRow(await fileTransfers.resume(req.params.tid, p)) } }
+    catch (e) { return ftErrorReply(reply, e) }
+  })
+
+  fastify.post('/api/file-transfers/:tid/cancel', async (req, reply) => {
+    const p = ftAuth(req, reply); if (!p) return
+    try { return { ok: true, transfer: fileTransfers.publicRow(await fileTransfers.cancel(req.params.tid, p, 'cancelled_by_user')) } }
+    catch (e) { return ftErrorReply(reply, e) }
   })
 
   // v3.2.2 — Remote command execution (Dashboard /api/devices/:id/exec)

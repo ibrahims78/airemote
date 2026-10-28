@@ -21,23 +21,23 @@
 
 ```powershell
 cd 'D:\autoclaw projects-new\AiRemote'
-git log --oneline -3      # يجب أن يبدأ بـ 8a40bf4 أو أحدث
+git log --oneline -3      # يجب أن يبدأ بـ dc53345 أو أحدث
 git status --short        # يجب أن يكون فارغاً
-node scripts/verify.js    # المتوقع: ALL VERIFICATION STEPS PASSED (19/19)
+node scripts/verify.js    # المتوقع: ALL VERIFICATION STEPS PASSED (20/20)
 node scripts/list-devices.cjs   # يجب أن تظهر الأجهزة الأربعة على 3.8.12
 ```
 
-إن لم تظهر 19/19 فلا تبدأ أي تطوير — أبلغني بالنتيجة أولاً.
-إن ظهر إصدار قديم لجهاز في `list-devices`، فهذا كاش `/api/devices` وليس حالة الجهاز: تحقّق بـ`/api/devices?x=1`.
+إن لم تظهر 20/20 فلا تبدأ أي تطوير — أبلغني بالنتيجة أولاً.
+كاش `/api/devices` أُصلح في R5؛ إن ظهر إصدار قديم فتحقّق من `/api/devices` أولاً ثم من قاعدة البيانات.
 
 ## الحالة التي تستلمها
 
-- **R0/R1/R2/R3/R4 مُغلقة.** R4 (جلسة وكيل‑بوكيل عبر Relay) مُغلقة على السيرفر: آلة حالة `requested→active→suspended→closed` مع `denied/expired`، رمز جلسة أحادي الاستخدام لكل طرف (SHA-256، 90s)، موافقة صريحة، سقف 20 جلسة، حارس KB/s، تعليق/استئناف 15 ثانية. مقيَّس: 20 جلسة × 2KB → p95 4.39ms وفقد 0%.
+- **R0/R1/R2/R3/R4 مُغلقة، وR5 مُغلقة في المصدر.** R5: نقل ملفات قابل للاستكمال — `file_transfers`، تجزئة 1MB، نقطة استكمال، SHA-256 من الجهاز ونشر ذرّي، حارس `..`/symlinks، سياسة skip/rename/replace، حد سرعة، دفعات صغيرة. البوابة: 10GB · 10,000 ملف · قطع 50% · قرص ممتلئ · `..`. R4 (جلسة وكيل‑بوكيل عبر Relay) مُغلقة على السيرفر: آلة حالة `requested→active→suspended→closed` مع `denied/expired`، رمز جلسة أحادي الاستخدام لكل طرف (SHA-256، 90s)، موافقة صريحة، سقف 20 جلسة، حارس KB/s، تعليق/استئناف 15 ثانية. مقيَّس: 20 جلسة × 2KB → p95 4.39ms وفقد 0%.
 - **الإصدار 3.8.12** على السيرفر المثبَّت (`https://127.0.0.1:3001/health`) وWIN10 وWIN11 والمحاكي وTECNO.
-- **الاختبارات:** بطارية 19 خطوة — `e2e-security` 20 · `e2e-contacts` 18 · `e2e-unattended` 34 · `e2e-device-permissions` 31 · `e2e-agent-session` 41.
+- **الاختبارات:** بطارية 20 خطوة — `e2e-security` 20 · `e2e-contacts` 18 · `e2e-unattended` 34 · `e2e-device-permissions` 31 · `e2e-agent-session` 41 · `e2e-file-transfer` 39.
 - **الشجرة نظيفة** على الفرع `checkpoint/3.8.1-2026-10-26`.
 
-## المهمة التالية: R5 — نقل الملفات (وفق الخطة §5)
+## المهمة التالية: R6 — تجربة موحّدة
 
 قبلها بند إصلاح صغير: **كاش `/api/devices`** يُظهر إصدارات قديمة — أبطِله (`no-store` للمسارات المصادقة أو إبطال `perfCache` عند `device:status`) واختبره.
 
