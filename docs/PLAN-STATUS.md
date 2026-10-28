@@ -115,6 +115,9 @@ node scripts/verify.js               # البطارية الكاملة (19 خط�
 | أدلة R3 | `outputs/verify-2026-10-28/r3-identity/` + `outputs/verify-2026-10-28/r3-access/` |
 | أدلة R4 | `outputs/verify-2026-10-28/r4-relay/` |
 | بروتوكول Relay | `docs/PROTOCOL-RELAY-AR.md` (v1.1، مع جدول القياس) |
+| بروتوكول نقل الملفات | `docs/PROTOCOL-FILE-TRANSFER-AR.md` (v1.0) |
+| تسليم الحساب (R6) | `docs/HANDOFF-2026-10-28-R6-AR.md` + `docs/HANDOFF-PROMPT-AR.md` |
+| أدلة R6 | `outputs/verify-2026-10-28/r6-ui/` (تقارير + لقطات + سجلات) |
 | قياس سعة Relay | `outputs/perf/r4/` + `scripts/perf/relay-capacity.cjs` |
 | تشخيص وكيل الأندرويد | `docs/DIAG-ANDROID-2026-10-28-AR.md` |
 | تاريخ الإصدارات | `CHANGELOG.md` |
@@ -126,3 +129,4 @@ node scripts/verify.js               # البطارية الكاملة (19 خط�
 - لم تُحدَّث الخطة نفسها بحالة كل مرحلة؛ الحالة هنا وفي `PROJECT_STATE` فقط. (الخطة تبقى وثيقة اتجاه لا سجل تنفيذ.)
 - التزامات Git **محلية فقط**؛ لا يوجد remote، فالحساب الجديد يرى نفس القرص لا نفس المستودع البعيد.
 - `patterns` المتبعة في الجلسة (مثل نمط التجاوزات الدقيقة `pkg@major`) مسجّلة في تقارير المراحل لا في وثيقة مستقلة.
+
