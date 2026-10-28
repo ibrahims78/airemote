@@ -21,7 +21,7 @@
 
 ```powershell
 cd 'D:\autoclaw projects-new\AiRemote'
-git log --oneline -3      # يجب أن يبدأ بـ dc53345 أو أحدث
+git log --oneline -3      # يجب أن يبدأ بـ 2c20448 أو أحدث
 git status --short        # يجب أن يكون فارغاً
 node scripts/verify.js    # المتوقع: ALL VERIFICATION STEPS PASSED (20/20)
 node scripts/list-devices.cjs   # يجب أن تظهر الأجهزة الأربعة على 3.8.12
