@@ -56,6 +56,7 @@ const steps = [
   { name: 'e2e: device authorization',   cmd: NODE + ' packages/server/test/e2e-authz.test.cjs' },
   { name: 'e2e: desktop-server control', cmd: electronStep() },
   { name: 'e2e: desktop late viewer',     cmd: electronStep('packages/server-desktop/test/e2e-screen-join.test.cjs') },
+  { name: 'e2e: desktop force keyframe', cmd: electronStep('packages/server-desktop/test/e2e-force-keyframe.test.cjs') },
 ]
 
 let failures = 0

@@ -41,10 +41,11 @@ const BASE = `https://${HOST}:${PORT}`
 // تفاوتات افتراضية لكل مؤشر (نسبة) + أرضية ضجيج مطلقة.
 // السبب: سطح المكتب الساكن يتراوح بين 1.1 و1.5 fps؛ نسبة 10% تعني فشلاً دائماً.
 const DEFAULT_TOLERANCES = {
-  idle:   { fps: 0.60, kbps: 0.25, avgFrameKB: 0.25, firstFrameMs: 0.50 },
-  active: { fps: 0.25, kbps: 0.25, avgFrameKB: 0.30, firstFrameMs: 0.50 },
+  // fps ليس مؤشراً للساكن بعد v3.8.12: الشاشة التي لا تتغيّر لا يجب أن ترسل إطارات.
+  idle:   { kbps: 0.25, avgFrameKB: 0.25, firstFrameMs: 0.50, fullFrameRatio: 0 },
+  active: { fps: 0.25, kbps: 0.25, avgFrameKB: 0.30, firstFrameMs: 0.50, fullFrameRatio: 0 },
 }
-const DEFAULT_FLOORS = { fps: 0.5, kbps: 20, avgFrameKB: 5, firstFrameMs: 300 }
+const DEFAULT_FLOORS = { fps: 0.5, kbps: 20, avgFrameKB: 5, firstFrameMs: 300, fullFrameRatio: 0.05 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 const median = (a) => {
@@ -141,7 +142,6 @@ function die(msg) {
     await sleep(SECONDS * 1000)
     const dt = (Date.now() - t0) / 1000
     const frames = st.frames - f0, bytes = st.bytes - b0
-    if (frames === 0) die('لم تُستلم أي إطارات في نافذة القياس — تحقق من الجلسة والبث قبل تسجيل رقم.')
     windows.push({
       seconds: +dt.toFixed(2), frames, bytes,
       fps: frames / dt, kbps: bytes / 1024 / dt, avgFrameKB: bytes / frames / 1024,
@@ -151,6 +151,11 @@ function die(msg) {
     if (i < RUNS - 1) await sleep(500)
   }
   try { ws.close() } catch {}
+
+  const totalChk = windows.reduce((a, w) => a + w.frames, 0)
+  if (totalChk === 0 && MODE === 'active') {
+    die('لم تُستلم أي إطارات في وضع النشاط — تحقق من البث قبل تسجيل رقم.')
+  }
 
   const pool = windows.flatMap((w) => w.gaps)
   const totalFrames = windows.reduce((a, w) => a + w.frames, 0)
@@ -164,6 +169,7 @@ function die(msg) {
     frameGapP95ms: pct(pool, 95),
     fullFrameRatio: totalFrames ? +(totalKey / totalFrames).toFixed(3) : null,
     firstFrameMs: st.firstFrameMs,
+    silent: totalChk === 0,
     payload: { webp: st.webp, jpeg: st.jpeg },
     dimsSeen: [...st.dims.entries()].sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ×${v}`),
   }
@@ -204,10 +210,11 @@ function die(msg) {
         regression: !!(beyondTol && beyondFloor),
       })
     }
-    cmp('fps', metrics.fps, bm.fps, true)
+    if (MODE !== 'idle') cmp('fps', metrics.fps, bm.fps, true)
     cmp('avgFrameKB', metrics.avgFrameKB, bm.avgFrameKB, false)
     cmp('kbps', metrics.kbps, bm.kbps, false)
     cmp('firstFrameMs', metrics.firstFrameMs, bm.firstFrameMs, false)
+    cmp('fullFrameRatio', metrics.fullFrameRatio, bm.fullFrameRatio, false)
 
     record.verdict = {
       baseline: BASELINE, mode: MODE,

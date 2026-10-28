@@ -1,0 +1,115 @@
+{
+  "tool": "scripts/perf/measure.cjs",
+  "schema": 2,
+  "measuredAt": "2026-10-28T07:05:04.796Z",
+  "mode": "idle",
+  "runs": 2,
+  "durationSec": 30,
+  "server": {
+    "version": "3.8.11",
+    "port": 3001,
+    "tls": true
+  },
+  "device": {
+    "name": "WIN10-VM",
+    "id": "b42175d0-d0c9-428d-ab94-4e66dff56af3",
+    "agentVersion": "3.8.7",
+    "platform": "windows"
+  },
+  "station": {
+    "host": "127.0.0.1",
+    "port": "3001",
+    "requestedFps": 18,
+    "quality": 60,
+    "maxWidth": 1600,
+    "binary": true
+  },
+  "windows": [
+    {
+      "seconds": 15,
+      "frames": 5,
+      "fps": 0.33,
+      "kbps": 16.88,
+      "avgFrameKB": 50.64
+    },
+    {
+      "seconds": 15,
+      "frames": 2,
+      "fps": 0.13,
+      "kbps": 16.1,
+      "avgFrameKB": 120.74
+    }
+  ],
+  "metrics": {
+    "fps": 0.23,
+    "kbps": 16.49,
+    "avgFrameKB": 85.69,
+    "frameGapP50ms": 1390,
+    "frameGapP95ms": 13321,
+    "fullFrameRatio": 0.286,
+    "firstFrameMs": 910,
+    "silent": false,
+    "payload": {
+      "webp": 3,
+      "jpeg": 14
+    },
+    "dimsSeen": [
+      "1600x676 ×4",
+      "1472x622 ×2",
+      "1344x568 ×2",
+      "1216x514 ×1",
+      "1280x541 ×1",
+      "1408x595 ×1",
+      "1536x649 ×1",
+      "360x113 ×1",
+      "224x113 ×1",
+      "200x97 ×1",
+      "232x65 ×1",
+      "64x56 ×1"
+    ]
+  },
+  "verdict": {
+    "baseline": "docs\\perf-baseline.json",
+    "mode": "idle",
+    "rule": "انحدار = تجاوز التفاوت النسبي AND تجاوز أرضية الضجيج المطلقة",
+    "checks": [
+      {
+        "name": "avgFrameKB",
+        "current": 85.69,
+        "baseline": 133.93,
+        "deltaPct": -36,
+        "tolerancePct": 35,
+        "noiseFloor": 10,
+        "regression": false
+      },
+      {
+        "name": "kbps",
+        "current": 16.49,
+        "baseline": 15.66,
+        "deltaPct": 5.3,
+        "tolerancePct": 35,
+        "noiseFloor": 20,
+        "regression": false
+      },
+      {
+        "name": "firstFrameMs",
+        "current": 910,
+        "baseline": 941,
+        "deltaPct": -3.3,
+        "tolerancePct": 50,
+        "noiseFloor": 300,
+        "regression": false
+      },
+      {
+        "name": "fullFrameRatio",
+        "current": 0.286,
+        "baseline": 0.286,
+        "deltaPct": 0,
+        "tolerancePct": 50,
+        "noiseFloor": 0.1,
+        "regression": false
+      }
+    ],
+    "failed": 0
+  }
+}

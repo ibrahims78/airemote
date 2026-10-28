@@ -1373,6 +1373,18 @@ function handleScreenWs(socket, request, user) {
         console.log('🖥️  [screen] replayed full frame to late viewer device=' + String(deviceId).slice(0, 8))
       } catch {}
     }
+
+    // v3.8.12 — الإطار المخزَّن قد يكون قديماً؛ نطلب من الوكيل إطاراً كاملاً فورياً.
+    // بدونه يصبح الإطار الكامل الدوري (15s) مصدر الصورة الوحيد للملتحق الجديد.
+    {
+      const recAg = agentSockets.get(deviceId)
+      if (recAg) {
+        try {
+          sendJson(recAg.ws, { type: 'server:force_keyframe', payload: { sessionId }, timestamp: Date.now() })
+          console.log('🖥️  [screen] requested fresh keyframe for late viewer device=' + String(deviceId).slice(0, 8))
+        } catch {}
+      }
+    }
   } else {
     sessionId = uuidv4()
     session   = { deviceId, viewers: new Set([socket]), startedAt: Date.now(), connectTimer: null, stopTimer: null, userId: (user && user.userId) || null, dbId: null }

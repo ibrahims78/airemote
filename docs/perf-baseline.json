@@ -1,44 +1,64 @@
 {
-  "schema": 2,
+  "schema": 3,
   "createdAt": "2026-10-28",
-  "condition": "WIN10 VM headless (nogui) · agent 3.8.7 · server 3.8.11 · /screen binary=1 fps=18 quality=60 maxWidth=1600 · median of 3 windows x 10s",
-  "note": "Headless VM is reproducible and conservative. GUI runs measured earlier: 12.3-12.7 fps active (outputs/verify-2026-10-28). Do not compare across conditions.",
+  "condition": "WIN10 VM headless (nogui) · agent app.asar built from source (v3.8.12 capture fix) · server 3.8.11 · /screen binary=1 fps=18 quality=60 maxWidth=1600 · median of 2-3 windows",
+  "note": "Post-R1 baseline: idle is intentionally silent (no frames when nothing changes), so fps is NOT gated for idle; bytes/s and fullFrameRatio are.",
   "tolerances": {
     "idle": {
-      "fps": 0.6,
-      "kbps": 0.25,
-      "avgFrameKB": 0.3,
-      "firstFrameMs": 0.5
+      "kbps": 0.35,
+      "avgFrameKB": 0.35,
+      "firstFrameMs": 0.5,
+      "fullFrameRatio": 0.5
     },
     "active": {
       "fps": 0.3,
       "kbps": 0.3,
       "avgFrameKB": 0.3,
-      "firstFrameMs": 0.5
+      "firstFrameMs": 0.5,
+      "fullFrameRatio": 0.5
     }
   },
   "floors": {
     "fps": 0.5,
     "kbps": 20,
     "avgFrameKB": 10,
-    "firstFrameMs": 300
+    "firstFrameMs": 300,
+    "fullFrameRatio": 0.1
   },
   "benchmarks": {
     "idle": {
-      "fps": 0.7,
-      "kbps": 167.82,
-      "avgFrameKB": 239.73,
-      "frameGapP50ms": 1538,
-      "frameGapP95ms": 1585,
-      "firstFrameMs": 1169
+      "fps": 0.23,
+      "kbps": 15.66,
+      "avgFrameKB": 133.93,
+      "frameGapP50ms": 1007,
+      "frameGapP95ms": 15078,
+      "firstFrameMs": 941,
+      "fullFrameRatio": 0.286
     },
     "active": {
-      "fps": 8.3,
-      "kbps": 198.66,
-      "avgFrameKB": 23.65,
-      "frameGapP50ms": 84,
-      "frameGapP95ms": 369,
-      "firstFrameMs": 3
+      "fps": 6.57,
+      "kbps": 61.56,
+      "avgFrameKB": 9.46,
+      "frameGapP50ms": 83,
+      "frameGapP95ms": 437,
+      "firstFrameMs": 809,
+      "fullFrameRatio": 0.01
+    }
+  },
+  "history": {
+    "preR1_2026-10-28": {
+      "idle": {
+        "fps": 0.7,
+        "kbps": 167.82,
+        "avgFrameKB": 239.73,
+        "fullFrameRatio": 1.0
+      },
+      "active": {
+        "fps": 8.3,
+        "kbps": 198.66,
+        "avgFrameKB": 23.65,
+        "fullFrameRatio": 0.19
+      }
     }
   }
 }

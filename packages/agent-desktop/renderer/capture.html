@@ -37,6 +37,7 @@ let   sampleCanvas = null
 let   sampleCtx    = null
 let   prevSample   = null
 let   lastFullAt   = 0
+let   forceFull    = false   // v3.8.12 — يطلبه السيرفر عند التحاق مشاهد جديد
 
 let sessionId       = null
 let captureTimer    = null
@@ -297,16 +298,26 @@ function captureFrame() {
   const s   = frameSeq++
 
   // v3.3.2 — partial-frame (delta) engine: transmit only the changed region
+  // v3.8.12 — الإطار الكامل صار حدثاً نادراً (أمان كل 15s) لا إيقاعاً:
+  // سطح المكتب الساكن لا يُرسل شيئاً بدل إرسال ~240KB كل 1.5s، والملتحق الجديد
+  // يُخدَم بإطار كامل مطلوب من السيرفر (force-keyframe) لا بانتظار الدوري.
+  const FULL_REFRESH_MS = 15000
   let mode = 'full', rx = 0, ry = 0
   if (sid) {
     let d = null
     try { d = computeDelta(cw, ch) } catch (e) {}
-    if (d && d.none && (Date.now() - lastFullAt) < 1500) {
-      if (captureTimer !== null) armTimer(1000 / currentFps)   // static screen — nothing to send
-      return
-    }
     const sinceFull = Date.now() - lastFullAt
-    if (d && !d.none && (d.w * d.h) < (cw * ch * 0.55) && sinceFull < 2000) {
+
+    if (forceFull) {
+      forceFull = false
+      mode = 'full'
+    } else if (d && d.none) {
+      if (sinceFull < FULL_REFRESH_MS) {
+        if (captureTimer !== null) armTimer(1000 / currentFps)   // شاشة ساكنة — لا شيء يُرسل
+        return
+      }
+      mode = 'full'                                              // إطار أمان دوري
+    } else if (d && !d.none && (d.w * d.h) < (cw * ch * 0.55) && sinceFull < FULL_REFRESH_MS) {
       mode = 'delta'; rx = d.x; ry = d.y
       if (regionCanvas.width !== d.w || regionCanvas.height !== d.h) { regionCanvas.width = d.w; regionCanvas.height = d.h }
       regionCtx.drawImage(canvas, d.x, d.y, d.w, d.h, 0, 0, d.w, d.h)
@@ -394,6 +405,11 @@ ipcRenderer.on('audio-control', (_, p) => {
   } else if (sessionId) {
     startAudioRecorder(sessionId)
   }
+})
+
+// v3.8.12 — طلب إطار كامل فوري (التحاق مشاهد جديد أو تبديل شاشة)
+ipcRenderer.on('force-keyframe', () => {
+  forceFull = true
 })
 
 ipcRenderer.on('set-quality', (_, p) => {

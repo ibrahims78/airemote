@@ -590,6 +590,12 @@ function handleMsg(msg) {
     case 'server:screen_stop':
       handleScreenStop(msg.payload)
       break
+    case 'server:force_keyframe':
+      // v3.8.12 — السيرفر يطلب إطاراً كاملاً فورياً (مشاهد جديد التحق بجلسة قائمة)
+      if (capWin && !capWin.isDestroyed()) {
+        try { capWin.webContents.send('force-keyframe') } catch {}
+      }
+      break
     case 'server:audio_control':
       if (capWin && !capWin.isDestroyed()) {
         capWin.webContents.send('audio-control', { sessionId: msg.payload?.sessionId, enabled: !!msg.payload?.enabled })
