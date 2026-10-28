@@ -6,12 +6,12 @@
   --line: 51 65 85;
   --ink: 241 245 249;
   --muted: 148 163 184;
-  --primary: 96 165 250;
-  --primary-fg: 15 23 42;
+  --primary: 56 214 196;
+  --primary-fg: 7 19 29;
   --success: 16 185 129;
   --warning: 245 158 11;
   --danger: 251 113 133;
-  --info: 56 189 248;
+  --info: 96 165 250;
 }
 html.light {
   --bg: 241 245 249;
@@ -20,12 +20,12 @@ html.light {
   --line: 226 232 240;
   --ink: 15 23 42;
   --muted: 71 85 105;
-  --primary: 37 99 235;
+  --primary: 12 110 100;
   --primary-fg: 255 255 255;
   --success: 4 120 87;
   --warning: 146 64 14;
   --danger: 190 18 60;
-  --info: 3 105 161;
+  --info: 29 78 216;
 }
 
 @tailwind base;
