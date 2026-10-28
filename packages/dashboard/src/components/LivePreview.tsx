@@ -96,6 +96,7 @@ export function LivePreview({ deviceId, deviceName, autoStart = false }: Props) 
     const params = new URLSearchParams({
       ...authParam,
       deviceId,
+      binary: '1',
       fps: '15',
       quality: '62',
       maxWidth: '1280',
@@ -121,7 +122,9 @@ export function LivePreview({ deviceId, deviceName, autoStart = false }: Props) 
         if (isDelta && buf.byteLength < 21) return
         const dx = isDelta ? view.getUint32(13) : 0
         const dy = isDelta ? view.getUint32(17) : 0
-        const jpeg = new Blob([buf.slice(isDelta ? 21 : 13)], { type: 'image/jpeg' })
+        // v3.8.2 - Android agents encode WebP (flags bit2); Windows agents send JPEG
+        const mime = (flags & 4) !== 0 ? 'image/webp' : 'image/jpeg'
+        const jpeg = new Blob([buf.slice(isDelta ? 21 : 13)], { type: mime })
         createImageBitmap(jpeg).then(bmp => {
           const canvas = canvasRef.current
           if (!canvas) { bmp.close(); return }

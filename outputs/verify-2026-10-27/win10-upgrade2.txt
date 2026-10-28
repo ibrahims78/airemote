@@ -1,0 +1,2 @@
+﻿start 2026-10-28T00:03:08.0783208+03:00
+ERROR: Cannot stop process "AiRemote Agent (1940)" because of the following error: Access is denied

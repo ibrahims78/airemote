@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html><body><script>
+window.__probe = async function () {
+  const out = {}
+  try {
+    const s = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
+    out.loopback = { video: s.getVideoTracks().length, audio: s.getAudioTracks().length, label: s.getAudioTracks()[0] ? s.getAudioTracks()[0].label : '' }
+  } catch (e) { out.loopback = { error: String(e && e.message || e) } }
+  try {
+    const m = await navigator.mediaDevices.getUserMedia({ audio: true })
+    out.mic = { audio: m.getAudioTracks().length, label: m.getAudioTracks()[0] ? m.getAudioTracks()[0].label : '' }
+  } catch (e) { out.mic = { error: String(e && e.message || e) } }
+  return out
+}
+</script></body></html>

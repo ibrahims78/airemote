@@ -118,7 +118,7 @@ export async function buildServer() {
   // ── Health check ─────────────────────────────────────────────────────────
   app.get('/health', async () => ({
     status: 'ok',
-    version: '3.8.1',
+    version: '3.8.8',
     tls: tlsConfig.enabled,
     behindProxy: tlsConfig.behindProxy,
     time: new Date().toISOString()

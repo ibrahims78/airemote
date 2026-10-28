@@ -1,0 +1,14 @@
+ USERNAME              SESSIONNAME        ID  STATE   IDLE TIME  LOGON TIME
+ admin                 console             1  Active      none   23/10/2026 10:06 ê
+---TASKS--- 
+
+Image Name                     PID Session Name        Session#    Mem Usage
+========================= ======== ================ =========== ============
+AiRemote Agent.exe            1364 Console                    1     80,628 K
+AiRemote Agent.exe            1720 Console                    1     48,040 K
+AiRemote Agent.exe            9028 Console                    1     43,708 K
+AiRemote Agent.exe            7552 Console                    1     84,916 K
+---SESSIONS--- 
+ SESSIONNAME       USERNAME                 ID  STATE   TYPE        DEVICE 
+>services                                    0  Disc                        
+ console           admin                     1  Active                      

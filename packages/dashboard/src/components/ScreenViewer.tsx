@@ -69,11 +69,11 @@ interface RecordingMeta {
 
 // maxWidth controls the agent-side resize — smaller = less bandwidth + faster encode
 const QUALITY_PRESETS: QualityPreset[] = [
-  { label: 'توفير',        fps: 12, quality: 50, maxWidth: 1280 },
-  { label: 'متوازن',       fps: 18, quality: 60, maxWidth: 1600 },
-  { label: 'دقة عالية',    fps: 24, quality: 68, maxWidth: 1920 },
-  { label: 'ممتاز',        fps: 30, quality: 66, maxWidth: 1920 },
-  { label: 'سلاسة قصوى',   fps: 30, quality: 55, maxWidth: 1600 }
+  { label: 'توفير',        fps: 12, quality: 55, maxWidth: 1280 },
+  { label: 'متوازن',       fps: 20, quality: 70, maxWidth: 1600 },
+  { label: 'دقة عالية',    fps: 25, quality: 78, maxWidth: 1920 },
+  { label: 'ممتاز',        fps: 30, quality: 72, maxWidth: 1920 },
+  { label: 'سلاسة قصوى',   fps: 30, quality: 60, maxWidth: 1600 }
 ]
 
 const IDLE_TIMEOUT_MS = 5 * 60 * 1000
@@ -104,6 +104,8 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
 
   // ── UI ────────────────────────────────────────────────────────────────────
   const [fullscreen,     setFullscreen]     = useState(!!popout)
+  // v3.8.11 — the bar floats over the image, so it must not stay: it auto-hides and
+  // comes back on hover, which leaves the desktop edge-to-edge and unobstructed.
   const [pinned,         setPinned]         = useState(false)
   const [controlsVisible, setControlsVisible] = useState(true)
   const [showSettings,   setShowSettings]   = useState(false)
@@ -129,6 +131,8 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
 
   // ── Control ───────────────────────────────────────────────────────────────
   const [preset,          setPreset]          = useState<QualityPreset>(QUALITY_PRESETS[1])
+  const [qualityPos,      setQualityPos]      = useState<{ top: number; left: number } | null>(null)
+  const qualityBtnRef = useRef<HTMLButtonElement>(null)
   const [controlEnabled,  setControlEnabled]  = useState(false)
   const [pwModal,         setPwModal]         = useState(false)
   const [pwInput,         setPwInput]         = useState('')
@@ -192,6 +196,8 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const fpsCountRef        = useRef(0)
+  const statsTotalRef      = useRef(0)
+  const statsKeyRef        = useRef(0)
   const fpsTimerRef        = useRef<ReturnType<typeof setInterval> | null>(null)
   const pingTimerRef       = useRef<ReturnType<typeof setInterval> | null>(null)
   const lastSeqRef         = useRef(-1)
@@ -280,14 +286,21 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
     const area = canvasAreaRef.current
     if (!area || !resolution.w || !resolution.h) return
     const compute = () => {
-      const r = area.getBoundingClientRect()
-      if (!r.width || !r.height) return
+      // v3.8.9 - the measured box must exclude padding, otherwise the canvas is
+      // taller than the visible area and overflow-hidden clips the bottom of the
+      // remote desktop (the 'not the whole screen' symptom in the popout).
+      const cs = getComputedStyle(area)
+      const padX = (parseFloat(cs.paddingLeft) || 0) + (parseFloat(cs.paddingRight) || 0)
+      const padY = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0)
+      const availW = Math.max(1, area.clientWidth - padX)
+      const availH = Math.max(1, area.clientHeight - padY)
+      if (!availW || !availH) return
       const iw = resolution.w, ih = resolution.h
       let w = iw, h = ih
       if (fitMode !== 'actual') {
         const scale = fitMode === 'fill'
-          ? Math.max(r.width / iw, r.height / ih)
-          : Math.min(r.width / iw, r.height / ih)
+          ? Math.max(availW / iw, availH / ih)
+          : Math.min(availW / iw, availH / ih)
         w = iw * scale; h = ih * scale
       }
       const nw = Math.max(1, Math.round(w)), nh = Math.max(1, Math.round(h))
@@ -344,6 +357,9 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
     fpsTimerRef.current = setInterval(() => {
       setFps(fpsCountRef.current)
       fpsCountRef.current = 0
+      // one batched update per second instead of two React renders per frame
+      setFrameStats({ total: statsTotalRef.current, keyframes: statsKeyRef.current })
+      setFrameCount(statsTotalRef.current)
     }, 1000)
   }, [])
 
@@ -472,7 +488,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
     if (myId !== connectIdRef.current) return
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const params   = new URLSearchParams({ ...authParam, deviceId, fps: String(p.fps), quality: String(p.quality), maxWidth: String(p.maxWidth) })
+    const params   = new URLSearchParams({ ...authParam, deviceId, binary: '1', fps: String(p.fps), quality: String(p.quality), maxWidth: String(p.maxWidth) })
     const ws       = new WebSocket(`${protocol}//${window.location.host}/screen?${params}`)
     ws.binaryType  = 'arraybuffer'   // receive binary frames as ArrayBuffer, not Blob
     wsRef.current  = ws
@@ -505,16 +521,16 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
         lastFrameAtRef.current = Date.now()
         setStatus('streaming'); startFpsCounter(); startBwCounter()
         bwBytesRef.current += buf.byteLength - 13
-        setFrameStats(prev => ({
-          total:     prev.total + 1,
-          keyframes: flags & 1 ? prev.keyframes + 1 : prev.keyframes
-        }))
+        statsTotalRef.current++
+        if (flags & 1) statsKeyRef.current++
         if (decodingRef.current) return   // skip — previous frame still decoding
         // v3.3.2 — delta frames (flags bit1): [x:4][y:4] then the JPEG of just the changed region
         const isDelta = (flags & 2) !== 0
         const dx = isDelta ? view.getUint32(13) : 0
         const dy = isDelta ? view.getUint32(17) : 0
-        const jpeg = new Blob([buf.slice(isDelta ? 21 : 13)], { type: 'image/jpeg' })
+        // v3.8.2 - Android agents encode WebP (flags bit2); Windows agents send JPEG
+        const mime = (flags & 4) !== 0 ? 'image/webp' : 'image/jpeg'
+        const jpeg = new Blob([buf.slice(isDelta ? 21 : 13)], { type: mime })
         decodingRef.current = true
         createImageBitmap(jpeg).then(bmp => {
           decodingRef.current = false
@@ -535,7 +551,6 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
           }
           bmp.close()
           fpsCountRef.current++
-          setFrameCount(c => c + 1)
         }).catch(() => { decodingRef.current = false })
         return
       }
@@ -559,10 +574,8 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
               drawFrame(data, width, height)
             }
             bwBytesRef.current += Math.ceil((data?.length ?? 0) * 3 / 4)
-            setFrameStats(prev => ({
-              total:     prev.total + 1,
-              keyframes: keyframe ? prev.keyframes + 1 : prev.keyframes
-            }))
+            statsTotalRef.current++
+            if (keyframe) statsKeyRef.current++
             break
           }
           case 'screen:audio':
@@ -1074,16 +1087,29 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
     sendWs({ type: 'screen:record_stop', payload: {} })
     setSvrRecording(false)
   }
+  // v3.8.11 — the MP4 is muxed asynchronously after stop, so poll until the server
+  // serves video/mp4 instead of handing out the ZIP the moment the user clicks.
+  const [mp4State, setMp4State] = useState<'idle' | 'preparing' | 'ready'>('idle')
   const downloadServerRecording = async () => {
     if (!svrRecMeta?.sessionId) return
-    const r = await fetch(`/api/recordings/${svrRecMeta.sessionId}/download`, {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-    if (!r.ok) return
+    setMp4State('preparing')
+    let r: Response | null = null
+    for (let i = 0; i < 30; i++) {
+      r = await fetch(`/api/recordings/${svrRecMeta.sessionId}/download`, {
+        headers: { Authorization: `Bearer ${token}` }
+      })
+      if (!r.ok) { await new Promise(res => setTimeout(res, 1000)); continue }
+      if ((r.headers.get('content-type') || '').startsWith('video/mp4')) break
+      await new Promise(res => setTimeout(res, 1200))
+    }
+    if (!r || !r.ok) { setMp4State('idle'); return }
     const blob = await r.blob()
+    const isMp4 = (r.headers.get('content-type') || '').startsWith('video/mp4')
+    setMp4State('ready')
     const url  = URL.createObjectURL(blob)
     const a    = document.createElement('a')
-    a.href = url; a.download = `rec-${deviceName}-${new Date().toISOString().slice(0,10)}.zip`
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')
+    a.href = url; a.download = `AiRemote-${deviceName}-${stamp}.${isMp4 ? 'mp4' : 'zip'}`
     a.click(); URL.revokeObjectURL(url)
     setSvrRecMeta(null)
   }
@@ -1299,38 +1325,51 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
           title={status === 'streaming' ? 'البث مباشر — افتح البث المستقل' : 'غير متصل'}
         >
           <i className="cr-live-signal-dot" />
-          <span>{status === 'streaming' ? 'مباشر' : status === 'connecting' ? 'جارٍ الاتصال' : 'غير متصل'}</span>
         </button>
 
-        {/* v3.8.0 — how the remote image fills the window (persisted) */}
+        {/* v3.8.9 — one obvious control for how the remote desktop fits */}
         {status === 'streaming' && (
-          <button
-            type="button"
-            onClick={cycleFit}
-            title={'طريقة العرض: ' + (fitMode === 'fit' ? 'ملاءمة كاملة' : fitMode === 'fill' ? 'ملء الشاشة بلا حواف (قص ما يزيد)' : 'بحجم البكسل 1:1')}
-            className="flex items-center gap-1 px-2 py-1 rounded text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 transition-colors shrink-0"
-          >
-            <Scaling size={12} />
-            <span className="hidden xl:inline">{fitMode === 'fit' ? 'ملاءمة' : fitMode === 'fill' ? 'ملء' : '1:1'}</span>
-          </button>
+          <div className="flex items-center gap-0.5 rounded-lg border border-slate-700/60 bg-slate-800/70 p-0.5 shrink-0"
+               role="group" aria-label="طريقة عرض شاشة الجهاز">
+            <Scaling size={12} className="text-slate-500 mx-1" />
+            {([
+              { id: 'fit',    label: 'ملاءمة', hint: 'سطح المكتب كاملاً داخل النافذة' },
+              { id: 'fill',   label: 'ملء',    hint: 'ملء النافذة بالكامل (يُقصّ ما يزيد)' },
+              { id: 'actual', label: '1:1',    hint: 'بكسل مقابل بكسل' },
+            ] as const).map((o) => (
+              <button
+                key={o.id}
+                type="button"
+                onClick={() => { setFitMode(o.id); try { localStorage.setItem('airemote.screen.fit', o.id) } catch {} }}
+                title={o.hint + (o.id === 'fit' ? ' — الافتراضي' : '')}
+                aria-pressed={fitMode === o.id}
+                className={clsx('px-2 py-0.5 rounded-md text-[11px] leading-5 transition-colors',
+                  fitMode === o.id
+                    ? 'bg-sky-500/20 text-sky-200 font-medium ring-1 ring-sky-400/40'
+                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50')}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
         )}
 
         {/* T001: Bandwidth meter + FPS + latency */}
         {status === 'streaming' && (
-          <span className="flex items-center gap-2 text-xs font-mono text-slate-500 shrink-0">
-            <span>{fps}fps · {resolution.w}×{resolution.h}</span>
+          <span className="flex items-center gap-2 text-xs font-mono text-slate-500 shrink-0 tabular-nums">
+            <span className="inline-block w-[4.4em] text-right">{fps}fps</span>
+            <span className="inline-block w-[7.2em] text-right">{resolution.w}×{resolution.h}</span>
             {latency >= 0 && (
               <span className={clsx(
+                'inline-block w-[3.4em] text-right',
                 latency < 50  ? 'text-emerald-400' :
                 latency < 150 ? 'text-amber-400'   :
                 latency < 300 ? 'text-orange-400'  : 'text-red-400'
               )}>{latency}ms</span>
             )}
-            {bwDisplay > 0 && (
-              <span className="flex items-center gap-0.5 text-slate-600" title={`${frameStats.keyframes} keyframes / ${frameStats.total} total frames`}>
-                <Activity size={9}/> {fmtBytes(bwDisplay)}
-              </span>
-            )}
+            <span className="inline-block w-[5.6em] text-right text-slate-600" title={`${frameStats.keyframes} keyframes / ${frameStats.total} total frames`}>
+              {bwDisplay > 0 ? fmtBytes(bwDisplay) : '—'}
+            </span>
           </span>
         )}
 
@@ -1475,14 +1514,14 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
           {/* T008: Server recording */}
           {status === 'streaming' && (
             svrRecMeta && !svrRecording ? (
-              <button onClick={downloadServerRecording}
-                title={`تنزيل تسجيل الخادم (${svrRecMeta.frameCount} إطار)`}
-                className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 transition-colors">
-                <Download size={11}/> تسجيل
+              <button onClick={downloadServerRecording} disabled={mp4State === 'preparing'}
+                title="تنزيل الفيديو (MP4 بصوت) — يُجهَّز تلقائياً بعد الإيقاف"
+                className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 disabled:opacity-60 transition-colors">
+                {mp4State === 'preparing' ? <><Loader2 size={11} className="animate-spin"/> جارٍ التجهيز</> : <><Download size={11}/> تحميل MP4</>}
               </button>
             ) : (
               <button onClick={svrRecording ? stopServerRecording : startServerRecording}
-                title={svrRecording ? 'إيقاف تسجيل الخادم' : 'تسجيل الجلسة بجودة عالية (JPEG ZIP)'}
+                title={svrRecording ? 'إيقاف التسجيل (فيديو + صوت)' : 'تسجيل الجلسة: فيديو MP4 بصوت + نسخة ZIP'}
                 className={clsx('flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors',
                   svrRecording ? 'bg-orange-500/20 text-orange-400 hover:bg-orange-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
                 )}>
@@ -1578,14 +1617,35 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
             </button>
           )}
 
-          {/* Quality settings */}
+          {/* Quality settings — rendered in a portal so the toolbar never clips it */}
           <div className="relative">
-            <button onClick={() => setShowSettings(s => !s)} className="p-1.5 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 transition-colors" title="إعدادات الجودة">
+            <button
+              ref={qualityBtnRef}
+              onClick={() => {
+                if (showSettings) { setShowSettings(false); return }
+                const r = qualityBtnRef.current?.getBoundingClientRect()
+                const W = 268
+                const left = Math.max(8, Math.min(r ? r.right - W : 12, window.innerWidth - W - 8))
+                const top  = Math.max(8, Math.min(r ? r.bottom + 6 : 64, window.innerHeight - 120))
+                setQualityPos({ top, left })
+                setShowSettings(true)
+              }}
+              className="p-1.5 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 transition-colors"
+              title="إعدادات الجودة">
               <Settings2 size={13}/>
             </button>
-            {showSettings && (
-              <div className="absolute top-full right-0 mt-1 bg-navy-800 border border-slate-700/50 rounded-lg shadow-xl z-20 min-w-[230px]" onClick={e => e.stopPropagation()}>
-                <div className="px-3 py-2 text-xs text-slate-500 border-b border-slate-700/30">الجودة / السرعة</div>
+            {showSettings && qualityPos && createPortal(
+              <div className="fixed inset-0 z-[300]" onClick={() => setShowSettings(false)} onContextMenu={e => e.preventDefault()}>
+                <div className="absolute rounded-xl border shadow-2xl"
+                     style={{ top: qualityPos.top, left: qualityPos.left, width: 268, maxHeight: 'min(72vh, 460px)', overflowY: 'auto',
+                              background: '#0b1622', borderColor: 'rgba(148,163,184,0.35)', color: '#e2e8f0' }}
+                     onClick={e => e.stopPropagation()}>
+                <div className="px-3 py-2 text-xs text-slate-500 border-b border-slate-700/30">الجودة / الدقة</div>
+                <button onClick={() => applyPreset({ label: 'أصلية', fps: preset.fps, quality: Math.max(72, preset.quality), maxWidth: Math.max(640, resolution.w || 1920) })}
+                  className="w-full text-left px-3 py-2 text-xs hover:bg-slate-700/50 transition-colors flex items-center justify-between text-slate-200">
+                  <span>أصلية — بلا تصغير</span>
+                  <span className="font-mono text-[10px] text-slate-500">{resolution.w || '?'}px</span>
+                </button>
                 {QUALITY_PRESETS.map(p => (
                   <button key={p.label} onClick={() => applyPreset(p)}
                     className={clsx('w-full text-left px-3 py-2 text-xs hover:bg-slate-700/50 transition-colors flex items-center justify-between',
@@ -1595,7 +1655,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
                       {p.fps === 30 && <Zap size={9} className="text-yellow-400"/>}
                       {p.label}
                     </span>
-                    <span className="text-slate-500 font-mono text-[10px]">{p.fps}fps · q{p.quality}</span>
+                    <span className="text-slate-500 font-mono text-[10px]">{p.fps}fps · q{p.quality} · {p.maxWidth}px</span>
                   </button>
                 ))}
                 <div className="border-t border-slate-700/30 px-3 py-2 space-y-1.5">
@@ -1614,7 +1674,8 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
                     </div>
                   )}
                 </div>
-              </div>
+              </div></div>,
+              document.body
             )}
           </div>
 
@@ -1640,24 +1701,10 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
         </div>
       </div>}
 
-      {started && popout && (
-        <button
-          type="button"
-          onClick={() => setFullscreen(true)}
-          className={clsx(
-            'cr-live-signal cr-live-signal-floating',
-            status === 'streaming' && 'is-live',
-            status === 'connecting' && 'is-buffering'
-          )}
-          title={status === 'streaming' ? 'البث مباشر — ملء الشاشة' : 'غير متصل'}
-        >
-          <i className="cr-live-signal-dot" />
-          <span>{status === 'streaming' ? 'مباشر' : status === 'connecting' ? 'جارٍ الاتصال' : 'غير متصل'}</span>
-        </button>
-      )}
+
 
       {/* ── Canvas area ── */}
-      {started && <div ref={canvasAreaRef} className="flex-1 min-h-0 relative flex items-center justify-center overflow-hidden bg-slate-950"
+      {started && <div ref={canvasAreaRef} className={clsx('flex-1 min-h-0 relative flex items-center justify-center bg-slate-950', fitMode === 'actual' ? 'overflow-auto' : 'overflow-hidden', popout && 'pt-14')}
         onClick={() => { setShowSettings(false); setShowMonitors(false); setShowClipboard(false) }}>
 
         <canvas ref={canvasRef}
@@ -1670,6 +1717,8 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
           style={{
             width:  canvasBox ? canvasBox.w + 'px' : 'auto',
             height: canvasBox ? canvasBox.h + 'px' : 'auto',
+            maxWidth:  fitMode === 'fit' ? '100%' : 'none',
+            maxHeight: fitMode === 'fit' ? '100%' : 'none',
             imageRendering: 'auto',
           }}
           onMouseMove={handleMouseMove}

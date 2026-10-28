@@ -70,6 +70,11 @@ public class MainActivity extends Activity {
         Prefs.bootstrap(this);
         instance = this;
         setContentView(R.layout.activity_main);
+        // v3.8.3 - version labels must follow BuildConfig, never a hardcoded string
+        TextView verTop = findViewById(R.id.tv_ver_top);
+        if (verTop != null) verTop.setText("v" + com.airemote.agent.BuildConfig.VERSION_NAME);
+        TextView verBottom = findViewById(R.id.tv_ver_bottom);
+        if (verBottom != null) verBottom.setText("v" + com.airemote.agent.BuildConfig.VERSION_NAME + " · AiRemote Agent");
         hideSystemUi();
 
         // v3.5 — file manager needs storage access on Android 9 and below

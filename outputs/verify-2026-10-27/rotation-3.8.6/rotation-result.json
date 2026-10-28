@@ -1,0 +1,110 @@
+{
+  "device": "07f8ae91-5b64-41d9-97df-ce649772b0d3",
+  "serial": "12927374CM001019",
+  "shots": [
+    {
+      "name": "1-portrait",
+      "png": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-10-27\\rotation-3.8.6\\1-portrait.png",
+      "mean": 19.6,
+      "window": {
+        "w": 1897,
+        "h": 912
+      },
+      "canvas": {
+        "w": 720,
+        "h": 1600
+      },
+      "streaming": false,
+      "text": "Esc للخروج من ملء الشاشة · حرّك الفأرة إلى أعلى الشاشة لإظهار الأدوات TECNO-KL4 مباشر 7fps · 720×1600 8.0KB/s متوقف تحكم إيقاف مباشر",
+      "recv": 31
+    },
+    {
+      "name": "2-landscape",
+      "png": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-10-27\\rotation-3.8.6\\2-landscape.png",
+      "mean": 48,
+      "window": {
+        "w": 1897,
+        "h": 912
+      },
+      "canvas": {
+        "w": 1600,
+        "h": 720
+      },
+      "streaming": false,
+      "text": "TECNO-KL4 مباشر 1fps · 1600×720 1ms 23.0KB/s تحكم إيقاف مباشر",
+      "recv": 44
+    },
+    {
+      "name": "3-portrait-again",
+      "png": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-10-27\\rotation-3.8.6\\3-portrait-again.png",
+      "mean": 18.7,
+      "window": {
+        "w": 1897,
+        "h": 912
+      },
+      "canvas": {
+        "w": 720,
+        "h": 1600
+      },
+      "streaming": false,
+      "text": "TECNO-KL4 مباشر 1fps · 720×1600 1ms 1.1KB/s تحكم إيقاف مباشر",
+      "recv": 57
+    }
+  ],
+  "ok": true,
+  "rotation": {
+    "portrait": {
+      "name": "1-portrait",
+      "png": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-10-27\\rotation-3.8.6\\1-portrait.png",
+      "mean": 19.6,
+      "window": {
+        "w": 1897,
+        "h": 912
+      },
+      "canvas": {
+        "w": 720,
+        "h": 1600
+      },
+      "streaming": false,
+      "text": "Esc للخروج من ملء الشاشة · حرّك الفأرة إلى أعلى الشاشة لإظهار الأدوات TECNO-KL4 مباشر 7fps · 720×1600 8.0KB/s متوقف تحكم إيقاف مباشر",
+      "recv": 31
+    },
+    "landscape": {
+      "name": "2-landscape",
+      "png": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-10-27\\rotation-3.8.6\\2-landscape.png",
+      "mean": 48,
+      "window": {
+        "w": 1897,
+        "h": 912
+      },
+      "canvas": {
+        "w": 1600,
+        "h": 720
+      },
+      "streaming": false,
+      "text": "TECNO-KL4 مباشر 1fps · 1600×720 1ms 23.0KB/s تحكم إيقاف مباشر",
+      "recv": 44
+    },
+    "portraitAgain": {
+      "name": "3-portrait-again",
+      "png": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-10-27\\rotation-3.8.6\\3-portrait-again.png",
+      "mean": 18.7,
+      "window": {
+        "w": 1897,
+        "h": 912
+      },
+      "canvas": {
+        "w": 720,
+        "h": 1600
+      },
+      "streaming": false,
+      "text": "TECNO-KL4 مباشر 1fps · 720×1600 1ms 1.1KB/s تحكم إيقاف مباشر",
+      "recv": 57
+    }
+  },
+  "net": {
+    "recv": 57,
+    "bytes": 462259,
+    "closes": 1
+  }
+}

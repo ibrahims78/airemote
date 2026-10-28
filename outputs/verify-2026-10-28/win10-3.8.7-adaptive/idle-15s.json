@@ -1,0 +1,29 @@
+﻿{
+  "device": "WIN10-VM",
+  "seconds": 15,
+  "fps": 1.1,
+  "kbps": 190,
+  "avgFrameKB": 177.9,
+  "frameGapP50ms": 185,
+  "keyframes": 19,
+  "deltas": 4,
+  "payload": {
+    "webp": 3,
+    "jpeg": 20
+  },
+  "firstFrame": {
+    "flags": 5,
+    "len": 243379,
+    "magic": "RIFF\u001e6\u0003\u0000",
+    "w": 1600,
+    "h": 676
+  },
+  "lastFrame": {
+    "w": 1600,
+    "h": 676,
+    "flags": 1,
+    "kb": 239.6
+  },
+  "dimsSeen": "1600x676 x11, 1472x622 x2, 1344x568 x2, 1216x514 x1, 1280x541 x1, 1408x595 x1, 1536x649 x1, 320x113 x1, 256x113 x1, 208x105 x1, 232x65 x1",
+  "errors": []
+}

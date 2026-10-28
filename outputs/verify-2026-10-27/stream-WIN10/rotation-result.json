@@ -1,0 +1,44 @@
+{
+  "device": "b42175d0-d0c9-428d-ab94-4e66dff56af3",
+  "serial": "",
+  "shots": [
+    {
+      "name": "1-portrait",
+      "png": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-10-27\\stream-WIN10\\1-portrait.png",
+      "mean": 80.9,
+      "window": {
+        "w": 1897,
+        "h": 912
+      },
+      "canvas": {
+        "w": 1600,
+        "h": 676
+      },
+      "streaming": false,
+      "text": "Esc للخروج من ملء الشاشة · حرّك الفأرة إلى أعلى الشاشة لإظهار الأدوات WIN10-VM مباشر 1fps · 1600×676 226.8KB/s تحكم إيقاف مباشر",
+      "recv": 11
+    }
+  ],
+  "ok": true,
+  "net": {
+    "recv": 11,
+    "bytes": 315465,
+    "closes": 1
+  },
+  "single": {
+    "name": "1-portrait",
+    "png": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-10-27\\stream-WIN10\\1-portrait.png",
+    "mean": 80.9,
+    "window": {
+      "w": 1897,
+      "h": 912
+    },
+    "canvas": {
+      "w": 1600,
+      "h": 676
+    },
+    "streaming": false,
+    "text": "Esc للخروج من ملء الشاشة · حرّك الفأرة إلى أعلى الشاشة لإظهار الأدوات WIN10-VM مباشر 1fps · 1600×676 226.8KB/s تحكم إيقاف مباشر",
+    "recv": 11
+  }
+}

@@ -23,6 +23,7 @@
  *   LAB_PORT       default 3001
  *   LAB_DEVICE     device-name substring, default "Android"
  *   TAP_X TAP_Y    normalized tap target (0..1), default 0.871 / 0.088
+ *   EXTRA_PAYLOAD_JSON  optional JSON merged into the control request payload
  *   SKIP_CONTROL   1 = stream only, never request control
  *   BUDGET_MS      wait budget, default 45000
  *
@@ -41,6 +42,10 @@ const TAP_X = Number(process.env.TAP_X || '0.871')
 const TAP_Y = Number(process.env.TAP_Y || '0.088')
 const SKIP_CONTROL = process.env.SKIP_CONTROL === '1'
 const BUDGET_MS = Number(process.env.BUDGET_MS || '45000')
+// Optional extra fields for the control request (e.g. a device-side secret).
+// Kept out of this file on purpose: the value comes from the environment and
+// is never written to disk or printed.
+const EXTRA_PAYLOAD = JSON.parse(process.env.EXTRA_PAYLOAD_JSON || '{}')
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
 const say = (...a) => console.log('[ctl]', ...a)
@@ -98,7 +103,7 @@ async function main() {
     setTimeout(() => {
       if (SKIP_CONTROL) { say('SKIP_CONTROL=1 — stream only'); return }
       const requestId = Math.random().toString(36).slice(2, 10)
-      ws.send(JSON.stringify({ type: 'screen:request_control', payload: { requestId } }))
+      ws.send(JSON.stringify({ type: 'screen:request_control', payload: { requestId, ...EXTRA_PAYLOAD } }))
       state.control = 'requested'
       say('CONTROL_REQUESTED — waiting for the device-side consent dialog')
     }, 900)

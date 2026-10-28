@@ -38,7 +38,7 @@ const RECONNECT_BASE = 2_000
 const RECONNECT_MAX  = 30_000
 const CONFIG_FILE    = path.join(app.getPath('userData'), 'airemote-config.json')
 const LOG_MAX        = 300
-const AGENT_VERSION  = '3.8.1'
+const AGENT_VERSION  = '3.8.7'
 
 // v3.7.0 — TLS policy for the relay connection.
 //   AGENT_CA_CERT       path to a PEM certificate to trust (self-signed servers)
@@ -2201,6 +2201,17 @@ ipcMain.on('screen-frame-binary', (_, { sessionId, width, height, seq, buffer, f
   }
 
   const jpegBuf = Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer)
+
+  // v3.8.7 — never let a slow link build a queue: a dropped frame keeps latency
+  // flat, while a queued frame delays every frame after it (the cursor feels laggy).
+  if (ws.bufferedAmount > 1_200_000) {
+    framesDropped++
+    if (framesDropped === 1 || framesDropped % 100 === 0) {
+      addLog('warn', `\u{1F5A5}\u{FE0F} [screen] \u062a\u0645 \u0625\u0633\u0642\u0627\u0637 ${framesDropped} \u0625\u0637\u0627\u0631\u0627\u064b \u2014 \u0627\u0644\u0634\u0628\u0643\u0629 \u0623\u0628\u0637\u0623 \u0645\u0646 \u0627\u0644\u0627\u0644\u062a\u0642\u0627\u0637`)
+    }
+    return
+  }
+
   try { ws.send(Buffer.concat([header, jpegBuf])) } catch { /* ws closing */ }
 
   // Track FPS & log milestones

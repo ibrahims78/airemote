@@ -72,6 +72,22 @@ public class AgentService extends Service {
     private volatile String streamSessionId = "";
     private volatile int streamQuality = 60;
     private volatile int streamMaxWidth = 1280;
+    // v3.8.2 - binary frames (no base64/JSON) negotiated by the server.
+    private volatile boolean streamBinary = false;
+    private Bitmap bmpFull = null;
+    private android.graphics.Canvas scaleCanvas = null;
+    private ByteArrayOutputStream frameBos = null;
+    private long perfFrames = 0, perfBytes = 0, perfEncodeMs = 0, perfLastLog = 0;
+    // v3.8.3 - delta frames: only the changed rectangle is encoded and sent.
+    private static final int DELTA_MAX_RUN = 20;
+    private static final long KEYFRAME_INTERVAL_MS = 2000;
+    private boolean streamDelta = true;
+    private int[] curPixels = null, prevPixels = null;
+    private int prevFw = 0, prevFh = 0, deltaRun = 0;
+    private long lastFrameMs = 0, perfSkipped = 0;
+    // v3.8.4 - low-end phones encode WebP slower than they can stream it; fall back to JPEG.
+    private int slowEncodeStreak = 0;
+    private boolean forceJpeg = false;
     private volatile MediaProjection activeProjection = null;
     private volatile VirtualDisplay activeVd = null;
     private volatile ImageReader activeReader = null;
@@ -671,6 +687,11 @@ public class AgentService extends Service {
                 break;
             case "server:screen_set_quality":
                 streamQuality = Math.min(Math.max(payload.optInt("quality", 60), 10), 95);
+                break;
+            case "server:screen_set_delta":
+                // v3.8.3 - the server turns delta off while it records full frames.
+                streamDelta = payload.optBoolean("delta", true);
+                prevPixels = null;
                 break;
             case "server:fs_write_chunk": {
                 final JSONObject chunkPayload = payload;
@@ -1383,12 +1404,17 @@ public class AgentService extends Service {
             streamQuality = Math.min(Math.max(payload.optInt("quality", streamQuality), 10), 95);
             int mw = payload.optInt("maxWidth", streamMaxWidth);
             if (mw > 0) streamMaxWidth = Math.min(Math.max(mw, 320), 1920);
+            streamBinary = payload.optBoolean("binary", streamBinary);
+            prevPixels = null;
             return;
         }
         streamSessionId = sid;
         streamFps = Math.min(Math.max(payload.optInt("fps", 8), 1), 30);
         streamQuality = Math.min(Math.max(payload.optInt("quality", 60), 10), 95);
         streamMaxWidth = Math.min(Math.max(payload.optInt("maxWidth", 1280), 320), 1920);
+        streamBinary = payload.optBoolean("binary", false);
+        streamDelta = payload.optBoolean("delta", true);
+        prevPixels = null; deltaRun = 0; slowEncodeStreak = 0; forceJpeg = false;
         stopScreenStreamRaw();
         saveDisplaySettings();
         screenOffMode = false;
@@ -1481,6 +1507,11 @@ public class AgentService extends Service {
                             capW = fullW; capH = fullH;
                             if (oldReader != null) oldReader.close();
                             if (scaled != null) { scaled.recycle(); scaled = null; }
+                            // The Canvas is bound to one Bitmap. After a rotation it still
+                            // points at the recycled one and drawing into it throws, which
+                            // used to kill the capture loop (black screen after rotating).
+                            scaleCanvas = null;
+                            prevPixels = null; curPixels = null; deltaRun = 0;
                             MainActivity.log("screen orientation changed: " + fullW + "x" + fullH);
                         } catch (Exception re) {
                             MainActivity.log("screen rotation resize failed: " + re.getMessage());
@@ -1497,32 +1528,118 @@ public class AgentService extends Service {
                         if (scaled == null || scaled.getWidth() != fw || scaled.getHeight() != fh) {
                             if (scaled != null) scaled.recycle();
                             scaled = Bitmap.createBitmap(fw, fh, Bitmap.Config.ARGB_8888);
+                            scaleCanvas = null;   // canvas belongs to the previous bitmap
                         }
                         Image.Plane[] planes = image.getPlanes();
                         ByteBuffer buffer = planes[0].getBuffer();
                         int pixelStride = planes[0].getPixelStride();
                         int rowStride = planes[0].getRowStride();
                         int rowPadding = rowStride - pixelStride * fullW;
-                        Bitmap bmp = Bitmap.createBitmap(fullW + rowPadding / pixelStride, fullH, Bitmap.Config.ARGB_8888);
+                        Bitmap bmp = frameBitmap(fullW, fullH, rowPadding, pixelStride);
+                        buffer.rewind();
                         bmp.copyPixelsFromBuffer(buffer);
-                        android.graphics.Canvas cv = new android.graphics.Canvas(scaled);
+                        if (scaleCanvas == null) scaleCanvas = new android.graphics.Canvas(scaled);
                         android.graphics.Rect src = new android.graphics.Rect(0, 0, fullW, fullH);
                         android.graphics.Rect dst = new android.graphics.Rect(0, 0, fw, fh);
-                        cv.drawBitmap(bmp, src, dst, null);
-                        bmp.recycle();
-                        ByteArrayOutputStream bos = new ByteArrayOutputStream(131072);
-                        scaled.compress(Bitmap.CompressFormat.JPEG, streamQuality, bos);
-                        String b64 = Base64.encodeToString(bos.toByteArray(), Base64.NO_WRAP);
-                        JSONObject fr = new JSONObject();
-                        fr.put("sessionId", sid);
-                        fr.put("data", b64);
-                        fr.put("width", fw);
-                        fr.put("height", fh);
-                        fr.put("seq", ++seq);
-                        fr.put("ts", System.currentTimeMillis());
-                        fr.put("keyframe", true);
-                        fr.put("quality", streamQuality);
-                        sendMsg("agent:screen_frame", fr);
+                        scaleCanvas.drawBitmap(bmp, src, dst, null);
+                        // v3.8.3 - send only the changed rectangle when the diff is small.
+                        boolean skipFrame = false;
+                        boolean delta = false;
+                        int rw = fw, rh = fh, rx = 0, ry = 0;
+                        if (streamBinary && streamDelta) {
+                            if (curPixels == null || curPixels.length != fw * fh) {
+                                curPixels = new int[fw * fh];
+                                prevPixels = null;
+                            }
+                            scaled.getPixels(curPixels, 0, fw, 0, 0, fw, fh);
+                            boolean same = prevPixels != null && prevFw == fw && prevFh == fh;
+                            int[] box = (same && deltaRun < DELTA_MAX_RUN)
+                                    ? diffRegion(curPixels, prevPixels, fw, fh) : null;
+                            if (same && box == null && SystemClock.elapsedRealtime() - lastFrameMs < KEYFRAME_INTERVAL_MS) {
+                                skipFrame = true;                        // static screen: nothing to send
+                            } else if (same && box != null
+                                    && ((long) box[2] * box[3]) * 100L < (long) fw * fh * 70L) {
+                                rx = box[0]; ry = box[1]; rw = box[2]; rh = box[3];
+                                delta = true;
+                            }
+                        }
+                        if (skipFrame) {
+                            perfSkipped++;
+                        } else {
+                            ByteArrayOutputStream bos = frameBuffer();
+                            Bitmap regionBmp = null;
+                            try {
+                                Bitmap toEncode = scaled;
+                                if (delta) {
+                                    regionBmp = Bitmap.createBitmap(scaled, rx, ry, rw, rh);
+                                    if (regionBmp != null) toEncode = regionBmp;
+                                }
+                                boolean webp = false;
+                                long encStart = SystemClock.elapsedRealtime();
+                                if (!forceJpeg) {
+                                    try {
+                                        if (Build.VERSION.SDK_INT >= 30) {
+                                            webp = toEncode.compress(Bitmap.CompressFormat.WEBP_LOSSY, streamQuality, bos);
+                                        } else {
+                                            webp = toEncode.compress(Bitmap.CompressFormat.WEBP, streamQuality, bos);
+                                        }
+                                    } catch (Throwable ignore) { webp = false; }
+                                }
+                                long encMs = SystemClock.elapsedRealtime() - encStart;
+                                // Adaptive: WebP saves bytes but on slow SoCs it costs more frames
+                                // than it saves. Three slow encodes in a row -> stay on JPEG.
+                                if (webp && encMs > 150) {
+                                    if (++slowEncodeStreak >= 3 && !forceJpeg) {
+                                        forceJpeg = true;
+                                        MainActivity.log("encoder: WebP too slow (" + encMs + " ms) — switched to JPEG");
+                                        android.util.Log.d("AiRemoteAgent", "encoder fallback to JPEG after " + encMs + " ms");
+                                    }
+                                } else {
+                                    slowEncodeStreak = 0;
+                                }
+                                if (!webp || bos.size() == 0) {
+                                    bos.reset();
+                                    toEncode.compress(Bitmap.CompressFormat.JPEG, streamQuality, bos);
+                                    webp = false;
+                                }
+                                byte[] img = bos.toByteArray();
+                                bos.reset();
+                                int fseq = ++seq;
+                                if (streamBinary) {
+                                    sendBinaryFrame(sid, rw, rh, fseq,
+                                            (byte) ((delta ? 2 : 1) | (webp ? 4 : 0)), img, rx, ry);
+                                } else {
+                                    String b64 = Base64.encodeToString(img, Base64.NO_WRAP);
+                                    JSONObject fr = new JSONObject();
+                                    fr.put("sessionId", sid);
+                                    fr.put("data", b64);
+                                    fr.put("width", rw);
+                                    fr.put("height", rh);
+                                    fr.put("seq", fseq);
+                                    fr.put("ts", System.currentTimeMillis());
+                                    fr.put("keyframe", !delta);
+                                    fr.put("quality", streamQuality);
+                                    sendMsg("agent:screen_frame", fr);
+                                }
+                                lastFrameMs = SystemClock.elapsedRealtime();
+                                if (streamBinary && streamDelta && curPixels != null) {
+                                    if (prevPixels == null || prevPixels.length != curPixels.length) {
+                                        prevPixels = new int[curPixels.length];
+                                    }
+                                    System.arraycopy(curPixels, 0, prevPixels, 0, curPixels.length);
+                                    prevFw = fw; prevFh = fh;
+                                    deltaRun = delta ? (deltaRun + 1) : 0;
+                                }
+                                perfSample(t0, img.length);
+                            } finally {
+                                if (regionBmp != null && regionBmp != scaled && !regionBmp.isRecycled()) {
+                                    regionBmp.recycle();
+                                }
+                            }
+                        }
+                    } catch (Exception fe) {
+                        // A single bad frame (rotation, resized display) must not stop capture.
+                        MainActivity.log("frame skipped: " + fe.getMessage());
                     } finally {
                         image.close();
                     }
@@ -1537,6 +1654,8 @@ public class AgentService extends Service {
                 try { if (reader != null) reader.close(); } catch (Exception ignore) { }
                 try { if (projection != null) projection.stop(); } catch (Exception ignore) { }
             } finally {
+                try { if (bmpFull != null && !bmpFull.isRecycled()) bmpFull.recycle(); } catch (Exception ignore) { }
+                bmpFull = null; scaleCanvas = null; frameBos = null;
                 try {
                     JSONObject c = new JSONObject();
                     c.put("sessionId", sid);
@@ -1547,6 +1666,100 @@ public class AgentService extends Service {
         });
         streamThread.setDaemon(true);
         streamThread.start();
+    }
+
+    /** Reused full-size bitmap: avoids a multi-megabyte allocation every frame. */
+    private Bitmap frameBitmap(int fullW, int fullH, int rowPadding, int pixelStride) {
+        int needW = fullW + rowPadding / pixelStride;
+        Bitmap b = bmpFull;
+        if (b == null || b.isRecycled() || b.getWidth() != needW || b.getHeight() != fullH) {
+            if (b != null && !b.isRecycled()) b.recycle();
+            b = Bitmap.createBitmap(needW, fullH, Bitmap.Config.ARGB_8888);
+            bmpFull = b;
+        }
+        return b;
+    }
+
+    private ByteArrayOutputStream frameBuffer() {
+        if (frameBos == null) frameBos = new ByteArrayOutputStream(131072);
+        frameBos.reset();
+        return frameBos;
+    }
+
+    /**
+     * v3.8.2 - binary screen frame (same wire format the Windows agent uses):
+     * [0x01][sessionId:36B][width:4B][height:4B][seq:4B][flags:1B][image...]
+     * flags bit0 = keyframe, bit1 = delta, bit2 = WebP payload.
+     */
+    private void sendBinaryFrame(String sid, int w, int h, int seq, byte flags, byte[] img, int dx, int dy) {
+        WebSocketClient c = ws;
+        if (c == null || !c.isOpen()) return;
+        try {
+            byte[] id = new byte[36];
+            byte[] s = sid.getBytes("UTF-8");
+            System.arraycopy(s, 0, id, 0, Math.min(36, s.length));
+            boolean isDelta = (flags & 2) != 0;
+            java.nio.ByteBuffer bb = java.nio.ByteBuffer.allocate((isDelta ? 58 : 50) + img.length);
+            bb.put((byte) 0x01);
+            bb.put(id);
+            bb.putInt(w);
+            bb.putInt(h);
+            bb.putInt(seq);
+            bb.put(flags);
+            if (isDelta) {
+                bb.putInt(dx);
+                bb.putInt(dy);
+            }
+            bb.put(img);
+            c.send(bb.array());
+        } catch (Exception ignore) { }
+    }
+
+    /**
+     * v3.8.3 - bounding box of the pixels that actually changed, sampled on a 2px
+     * grid (cheap enough for 720p at 10 fps) and padded so WebP/JPEG edges stay clean.
+     */
+    private int[] diffRegion(int[] cur, int[] prev, int w, int h) {
+        int minX = w, minY = h, maxX = -1, maxY = -1;
+        for (int y = 0; y < h; y += 2) {
+            int row = y * w;
+            for (int x = 0; x < w; x += 2) {
+                if (((cur[row + x] ^ prev[row + x]) & 0x00F0F0F0) != 0) {
+                    if (x < minX) minX = x;
+                    if (x > maxX) maxX = x;
+                    if (y < minY) minY = y;
+                    if (y > maxY) maxY = y;
+                }
+            }
+        }
+        if (maxX < 0) return null;
+        int pad = 8;
+        int x0 = Math.max(0, minX - pad) & ~1;
+        int y0 = Math.max(0, minY - pad) & ~1;
+        int x1 = Math.min(w - 1, maxX + pad);
+        int y1 = Math.min(h - 1, maxY + pad);
+        int bw = Math.min(w - x0, x1 - x0 + 1);
+        int bh = Math.min(h - y0, y1 - y0 + 1);
+        return new int[]{x0, y0, Math.max(2, bw), Math.max(2, bh)};
+    }
+
+    /** v3.8.2 - fps / throughput / encode-time counters, logged every 5s. */
+    private void perfSample(long t0, int bytes) {
+        long now = SystemClock.elapsedRealtime();
+        if (perfLastLog == 0) { perfLastLog = now; return; }
+        perfFrames++;
+        perfBytes += bytes;
+        perfEncodeMs += now - t0;
+        long dt = now - perfLastLog;
+        if (dt < 5000) return;
+        int fps = Math.round(perfFrames * 1000f / dt);
+        int kbps = Math.round(perfBytes / 1024f * 1000f / dt);
+        int ms = Math.round(perfEncodeMs / (float) Math.max(1, perfFrames));
+        String perfLine = "perf: " + fps + " fps, " + kbps + " KB/s, encode " + ms + " ms"
+                + (perfSkipped > 0 ? ", skipped " + perfSkipped : "");
+        MainActivity.log(perfLine);
+        android.util.Log.d("AiRemoteAgent", perfLine);   // v3.8.3 - also visible in logcat
+        perfFrames = 0; perfBytes = 0; perfEncodeMs = 0; perfLastLog = now;
     }
 
     private void stopScreenStreamRaw() {

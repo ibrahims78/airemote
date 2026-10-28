@@ -18,7 +18,7 @@ import {
 } from './system/inputControl'
 import type { WSMessage, AgentRegisterPayload, ServerCommandPayload, RemoteMouseEvent, RemoteKeyEvent } from '@airemote/shared'
 
-export const AGENT_VERSION      = '3.8.1'
+export const AGENT_VERSION      = '3.8.7'
 const HEARTBEAT_INTERVAL        = 4000
 const RECONNECT_BASE_DELAY      = 2000
 const RECONNECT_MAX_DELAY       = 30000

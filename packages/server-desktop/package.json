@@ -1,6 +1,6 @@
 {
   "name": "airemote-server-desktop",
-  "version": "3.8.1",
+  "version": "3.8.11",
   "description": "AiRemote Server â€” Windows Desktop Application",
   "main": "main.js",
   "author": "AiRemote",
@@ -66,6 +66,10 @@
         "filter": [
           "**/*"
         ]
+      },
+      {
+        "from": "bin/ffmpeg.exe",
+        "to": "ffmpeg.exe"
       }
     ],
     "win": {

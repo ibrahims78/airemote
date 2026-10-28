@@ -1,0 +1,56 @@
+{
+  "device": "07f8ae91-5b64-41d9-97df-ce649772b0d3",
+  "serial": "",
+  "shots": [
+    {
+      "name": "1-portrait",
+      "png": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-10-27\\ui-3.8.6b\\1-portrait.png",
+      "mean": 19.1,
+      "window": {
+        "w": 1897,
+        "h": 912
+      },
+      "canvas": {
+        "w": 720,
+        "h": 1600
+      },
+      "streaming": false,
+      "text": "Esc للخروج من ملء الشاشة · حرّك الفأرة إلى أعلى الشاشة لإظهار الأدوات TECNO-KL4 6fps 720×1600 6.6KB/s تحكم إيقاف",
+      "recv": 27
+    },
+    {
+      "name": "menu-open",
+      "png": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-10-27\\ui-3.8.6b\\menu-open.png",
+      "mean": 21.5,
+      "window": {
+        "w": 1897,
+        "h": 912
+      },
+      "canvas": {
+        "w": 720,
+        "h": 1600
+      },
+      "streaming": false,
+      "text": "TECNO-KL4 0fps 720×1600 1ms — تحكم 2 إيقاف الجودة / السرعة توفير 12fps · q50 متوازن 18fps · q60 دقة عالية 24fps · q68 ممتاز 30fps · q66 سلاسة قصوى 30fps · q55 ج",
+      "recv": 30
+    }
+  ],
+  "ok": false,
+  "ui": {
+    "toolbarWidth1": 977,
+    "toolbarWidth2": 1026,
+    "menu": {
+      "w": 268,
+      "h": 256,
+      "top": 40,
+      "left": 8,
+      "inView": true,
+      "items": 6
+    }
+  },
+  "net": {
+    "recv": 30,
+    "bytes": 91861,
+    "closes": 1
+  }
+}

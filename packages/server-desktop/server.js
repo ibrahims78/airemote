@@ -703,6 +703,33 @@ function clearScreenFrameState(vws) {
   try { delete vws._screenFrameState } catch {}
 }
 
+// v3.8.2 - viewers that asked for JSON (?binary=0) still need the frame as
+// JSON+base64. Re-encode it from the compact binary packet on demand.
+function screenFrameJsonFromPacket(packet) {
+  try {
+    const flags   = packet[12]
+    const isDelta = (flags & 2) !== 0
+    const width   = packet.readUInt32BE(0)
+    const height  = packet.readUInt32BE(4)
+    const seq     = packet.readUInt32BE(8)
+    const dx      = isDelta ? packet.readUInt32BE(13) : 0
+    const dy      = isDelta ? packet.readUInt32BE(17) : 0
+    const img     = packet.slice(isDelta ? 21 : 13)
+    return JSON.stringify({
+      type: 'screen:frame',
+      payload: {
+        data: img.toString('base64'),
+        width, height, seq,
+        keyframe: (flags & 1) !== 0,
+        webp: (flags & 4) !== 0,
+        deltaRegion: isDelta ? { x: dx, y: dy } : null,
+        rxTs: Date.now()
+      },
+      timestamp: Date.now()
+    })
+  } catch { return null }
+}
+
 function sendToScreenViewers(deviceId, obj) {
   const viewers = screenViewers.get(deviceId)
   if (!viewers) return
@@ -864,8 +891,17 @@ function handleAgentWs(socket) {
         const packet  = Buffer.concat([header, jpeg])
         const viewers = screenViewers.get(deviceId)
         if (viewers) {
+          let legacyJson = null
           for (const vws of viewers) {
-            try { if (vws.readyState === 1) queueScreenFrame(vws, packet) } catch {}
+            try {
+              if (vws.readyState !== 1) continue
+              if (vws._binaryFrames) {
+                queueScreenFrame(vws, packet)
+              } else {
+                if (!legacyJson) legacyJson = screenFrameJsonFromPacket(packet)
+                if (legacyJson) queueScreenFrame(vws, legacyJson)
+              }
+            } catch {}
           }
         }
       } catch {}
@@ -1180,7 +1216,7 @@ function handleClientWs(socket, user) {
       const { deviceId, fps = 10, quality = 60, maxWidth = 1280, sessionId } = payload
       if (!canAccessDevice(user, deviceId)) { sendJson(socket, { type: 'screen:error', payload: { message: 'غير مصرح بالوصول لهذا الجهاز' } }); return }
       const rec = agentSockets.get(deviceId)
-      if (rec) sendJson(rec.ws, { type: 'server:screen_start', payload: { sessionId: sessionId || uuidv4(), fps, quality, maxWidth } })
+      if (rec) sendJson(rec.ws, { type: 'server:screen_start', payload: { sessionId: sessionId || uuidv4(), fps, quality, maxWidth, binary: true } })
       return
     }
     if (type === 'client:screen_stop') {
@@ -1305,6 +1341,12 @@ function handleScreenWs(socket, request, user) {
   const quality  = clamp(query.quality,  10,  95,   65)
   const maxWidth = clamp(query.maxWidth, 320, 1920, 1280)
 
+  // v3.8.5 - binary packets stay the default (every dashboard before 3.8.2
+  // expects the 13/21-byte header); ?binary=0 opts into JSON+base64 for callers
+  // that cannot read binary frames. Resolved BEFORE the join branch: a late
+  // viewer is served from the cached full frame, in the format it asked for.
+  socket._binaryFrames = String(query.binary || '1') !== '0'
+
   if (!agentSockets.get(deviceId)) {
     try { socket.send(JSON.stringify({ type: 'screen:error', payload: { message: 'الجهاز غير متصل / Device is offline' } })) } catch {}
     socket.close()
@@ -1325,8 +1367,9 @@ function handleScreenWs(socket, request, user) {
     const cachedFrame = lastFullFrameByDevice.get(deviceId)
     if (cachedFrame && socket.readyState === 1) {
       try {
-        if (cachedFrame.packet) socket.send(cachedFrame.packet)
-        else if (cachedFrame.json) socket.send(cachedFrame.json)
+        if (cachedFrame.packet) {
+          socket.send(socket._binaryFrames ? cachedFrame.packet : screenFrameJsonFromPacket(cachedFrame.packet))
+        } else if (cachedFrame.json) socket.send(cachedFrame.json)
         console.log('🖥️  [screen] replayed full frame to late viewer device=' + String(deviceId).slice(0, 8))
       } catch {}
     }
@@ -1338,7 +1381,7 @@ function handleScreenWs(socket, request, user) {
     deviceScreenSess.set(deviceId, sessionId)
 
     const rec = agentSockets.get(deviceId)
-    if (rec) sendJson(rec.ws, { type: 'server:screen_start', payload: { sessionId, fps, quality, maxWidth }, timestamp: Date.now() })
+    if (rec) sendJson(rec.ws, { type: 'server:screen_start', payload: { sessionId, fps, quality, maxWidth, binary: true }, timestamp: Date.now() })
 
     session.connectTimer = setTimeout(() => {
       try { if (socket.readyState === 1) socket.send(JSON.stringify({ type: 'screen:error', payload: { message: 'Agent did not start screen capture — make sure the agent is v2.0.0+' } })) } catch {}
@@ -1346,6 +1389,7 @@ function handleScreenWs(socket, request, user) {
     }, 60000)
   }
 
+  // v3.8.2 - frame format flag; resolved above, before the join branch.
   if (!screenViewers.has(deviceId)) screenViewers.set(deviceId, new Set())
   screenViewers.get(deviceId).add(socket)
 
@@ -1396,6 +1440,7 @@ function handleScreenWs(socket, request, user) {
             fps:      clamp(payload.fps,      1,   30,   fps),
             quality:  clamp(payload.quality,  10,  95,   quality),
             maxWidth: clamp(payload.maxWidth, 320, 1920, maxWidth),
+            binary: true,
             monitorId: payload.monitorId || 0
           },
           timestamp: Date.now()
@@ -1403,7 +1448,7 @@ function handleScreenWs(socket, request, user) {
         break
       case 'screen:set_monitor':
         sendJson(rec.ws, { type: 'server:screen_set_monitor', payload: { sessionId, monitorId: payload.monitorId || 0 }, timestamp: Date.now() })
-        sendJson(rec.ws, { type: 'server:screen_start', payload: { sessionId, fps, quality, maxWidth, monitorId: payload.monitorId || 0 }, timestamp: Date.now() })
+        sendJson(rec.ws, { type: 'server:screen_start', payload: { sessionId, fps, quality, maxWidth, binary: true, monitorId: payload.monitorId || 0 }, timestamp: Date.now() })
         break
       case 'screen:get_monitors':
         sendJson(rec.ws, { type: 'server:screen_get_monitors', payload: { sessionId }, timestamp: Date.now() })
@@ -1455,11 +1500,22 @@ function handleScreenWs(socket, request, user) {
         const maxFrames = Math.min(Math.max(parseInt(payload.maxFrames) || 600, 30), 7200)
         db.prepare("INSERT INTO recordings (id, device_id, user_id, name, started_at) VALUES (?,?,?,?,?)").run(recId, deviceId, user.userId, 'تسجيل شاشة ' + nowIso.slice(0, 19), nowIso)
         screenRecorders.set(deviceId, { recId, userId: user.userId, frames: [], audio: [], bytes: 0, audioBytes: 0, maxFrames, startedAt: Date.now() })
+        // v3.8.3 - recordings need complete frames, so turn delta encoding off while recording
+        const recAgentStart = agentSockets.get(deviceId)
+        if (recAgentStart) sendJson(recAgentStart.ws, { type: 'server:screen_set_delta', payload: { delta: false }, timestamp: Date.now() })
+        // v3.8.8 - a recording without sound is half a recording: ask the agent for PCM
+        // audio for the duration of the recording (16 kHz mono, same path as live listen).
+        // NB: no sessionId here — the agent compares it with the STREAM session and
+        // would drop the message (that is why recordings had zero audio chunks).
+        if (recAgentStart) sendJson(recAgentStart.ws, { type: 'server:audio_control', payload: { enabled: true }, timestamp: Date.now() })
         sendJson(socket, { type: 'screen:record_status', payload: { recording: true, meta: { sessionId: recId, startedAt: nowIso, maxFrames } } })
         break
       }
       case 'screen:record_stop': {
         const meta = finalizeScreenRecording(deviceId)
+        const recAgentStop = agentSockets.get(deviceId)
+        if (recAgentStop) sendJson(recAgentStop.ws, { type: 'server:screen_set_delta', payload: { delta: true }, timestamp: Date.now() })
+        if (recAgentStop) sendJson(recAgentStop.ws, { type: 'server:audio_control', payload: { enabled: false }, timestamp: Date.now() })
         sendJson(socket, { type: 'screen:record_status', payload: { recording: false, meta } })
         break
       }
@@ -1473,7 +1529,7 @@ function handleScreenWs(socket, request, user) {
 
       // ── Legacy protocol (older dashboards / clients) ─────────────────────
       case 'screen_start':
-        sendJson(rec.ws, { type: 'server:screen_start', payload: { sessionId: uuidv4(), fps: msg.fps || 10, quality: msg.quality || 60, maxWidth: msg.maxWidth || 1280 } })
+        sendJson(rec.ws, { type: 'server:screen_start', payload: { sessionId: uuidv4(), fps: msg.fps || 10, quality: msg.quality || 60, maxWidth: msg.maxWidth || 1280, binary: true } })
         break
       case 'screen_stop':
         sendJson(rec.ws, { type: 'server:screen_stop', payload: { sessionId: msg.sessionId } })
@@ -1783,6 +1839,87 @@ function recordScreenFrame(deviceId, jpegBuf) {
     r.bytes += jpegBuf.length
   } catch {}
 }
+// v3.8.8 - a recording should be a video, not a folder of stills. The ZIP stays as the
+// lossless fallback (and is the only output when ffmpeg is absent); the MP4 is built
+// asynchronously so stopping a recording never blocks the server.
+function findFfmpeg() {
+  // v3.8.10 - the installer ships ffmpeg next to the app (extraResources), so a
+  // packaged server never depends on something the user installed by hand.
+  const bundled = [
+    process.resourcesPath ? path.join(process.resourcesPath, 'ffmpeg.exe') : null,
+    path.join(__dirname, 'bin', 'ffmpeg.exe')
+  ].filter(Boolean)
+  const cands = [process.env.AIREMOTE_FFMPEG].concat(bundled, ['C:\\ffmpeg\\bin\\ffmpeg.exe']).filter(Boolean)
+  for (const c of cands) { try { if (fs.existsSync(c)) return c } catch {} }
+  return null
+}
+
+function exportRecordingMp4(r, dir) {
+  const ff = findFfmpeg()
+  if (!ff) return
+  const frames = r.frames || []
+  if (!frames.length) return
+  const tmp = path.join(dir, 'tmp-' + r.recId)
+  try {
+    fs.mkdirSync(tmp, { recursive: true })
+    const durationSec = Math.max(1, (Date.now() - r.startedAt) / 1000)
+    const fps = Math.min(30, Math.max(1, Math.round(frames.length / durationSec)))
+    const perFrame = 1 / fps
+
+    // v3.8.11 - a recording can mix WebP and JPEG frames (the agent falls back to
+    // JPEG when WebP is slow). Writing them all with the first frame's extension
+    // made ffmpeg stop at the first mismatch (a 9s clip became 1s), so every frame
+    // keeps its real extension and the concat demuxer carries the timing.
+    const list = ['ffconcat version 1.0']
+    for (let i = 0; i < frames.length; i++) {
+      const buf = frames[i]
+      const isWebp = buf.length > 12 && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP'
+      const isJpeg = buf.length > 3 && buf[0] === 0xFF && buf[1] === 0xD8
+      const name = 'frame-' + String(i).padStart(5, '0') + (isWebp ? '.webp' : (isJpeg ? '.jpg' : '.bin'))
+      fs.writeFileSync(path.join(tmp, name), buf)
+      if (name.endsWith('.bin')) continue
+      list.push("file '" + name + "'")
+      list.push('duration ' + perFrame.toFixed(4))
+    }
+    if (list.length <= 1) return
+    list.push("file '" + list[list.length - 2].replace(/^file '/, '').replace(/'$/, '') + "'")   // hold the last frame
+    fs.writeFileSync(path.join(tmp, 'list.txt'), list.join('\n'), 'utf8')
+
+    const audio = (r.audio && r.audio.length) ? Buffer.concat(r.audio) : null
+    if (audio && audio.length) fs.writeFileSync(path.join(tmp, 'audio.pcm'), audio)
+
+    const out = path.join(dir, r.recId + '.mp4')
+    const args = ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', path.join(tmp, 'list.txt')]
+    if (audio && audio.length) args.push('-f', 's16le', '-ar', '16000', '-ac', '1', '-i', path.join(tmp, 'audio.pcm'))
+    args.push('-vsync', 'cfr', '-r', String(fps), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-pix_fmt', 'yuv420p')
+    if (audio && audio.length) args.push('-c:a', 'aac', '-b:a', '128k', '-shortest')
+    args.push('-movflags', '+faststart', out)
+
+    try { serverLogger && serverLogger.info('recording', 'muxing with ' + ff) } catch {}
+    const { spawn } = require('child_process')
+    const p = spawn(ff, args, { windowsHide: true })
+    let err = ''
+    p.stderr.on('data', (d) => { if (err.length < 600) err += String(d) })
+    p.on('error', (e) => { try { serverLogger && serverLogger.warn('recording', 'ffmpeg spawn: ' + e.message) } catch {} })
+    p.on('close', (code) => {
+      try {
+        if (code === 0 && fs.existsSync(out) && fs.statSync(out).size > 1024) {
+          const mb = fs.statSync(out).size / 1024 / 1024
+          db.prepare('UPDATE recordings SET file_path=?, size_mb=? WHERE id=?').run(out, mb, r.recId)
+          const audioSec = audio ? (audio.length / 32000) : 0
+          try { serverLogger && serverLogger.info('recording', 'video ' + String(r.recId).slice(0, 8) + ' ' + mb.toFixed(1) + 'MB fps=' + fps + ' frames=' + frames.length + ' audio=' + audioSec.toFixed(1) + 's') } catch {}
+        } else {
+          try { serverLogger && serverLogger.warn('recording', 'ffmpeg exit ' + code + ' ' + err.replace(/\s+/g, ' ').slice(0, 300)) } catch {}
+        }
+      } catch {}
+      try { fs.rmSync(tmp, { recursive: true, force: true }) } catch {}
+    })
+  } catch (e) {
+    try { fs.rmSync(tmp, { recursive: true, force: true }) } catch {}
+    try { serverLogger && serverLogger.warn('recording', 'mp4 export failed: ' + e.message) } catch {}
+  }
+}
+
 function finalizeScreenRecording(deviceId) {
   const r = screenRecorders.get(deviceId)
   if (!r) return null
@@ -1791,7 +1928,11 @@ function finalizeScreenRecording(deviceId) {
     const dir = path.join(path.dirname(_config.dbPath || '.'), 'recordings')
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
     const zipPath = path.join(dir, r.recId + '.zip')
-    const entries = r.frames.map((buf, i) => ({ name: 'frame-' + String(i).padStart(5, '0') + '.jpg', data: buf }))
+    // v3.8.2 - frames may be WebP (flags bit2) instead of JPEG; pick the right extension
+    const entries = r.frames.map((buf, i) => {
+      const isWebp = buf.length > 12 && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP'
+      return { name: 'frame-' + String(i).padStart(5, '0') + (isWebp ? '.webp' : '.jpg'), data: buf }
+    })
     if (r.audio && r.audio.length) entries.push({ name: r.audioFormat === 'pcm16' ? 'audio.pcm' : 'audio.webm', data: Buffer.concat(r.audio) })
     if (!entries.length) entries.push({ name: 'README.txt', data: Buffer.from('No frames captured', 'utf8') })
     fs.writeFileSync(zipPath, buildZipStore(entries))
@@ -1799,6 +1940,7 @@ function finalizeScreenRecording(deviceId) {
     const endedAt = new Date().toISOString()
     const durationSec = Math.max(0, Math.floor((Date.now() - r.startedAt) / 1000))
     db.prepare("UPDATE recordings SET ended_at=?, file_path=?, size_mb=? WHERE id=?").run(endedAt, zipPath, sizeMb, r.recId)
+    try { exportRecordingMp4(r, dir) } catch {}
     return { sessionId: r.recId, frames: r.frames.length, audioChunks: (r.audio || []).length, sizeMB: sizeMb, durationSec, endedAt }
   } catch (e) {
     try { db.prepare("UPDATE recordings SET ended_at=? WHERE id=?").run(new Date().toISOString(), r.recId) } catch {}
@@ -1828,9 +1970,9 @@ let _startedAt = null
 let TLS_ACTIVE   = false
 let TLS_CERT_PATH = null
 
-const AGENT_VERSION = '3.8.1'   // agent artifact version (downloads)
+const AGENT_VERSION = '3.8.7'   // agent artifact version (downloads)
 let serverLogger = null   // set in start(); lets WS handlers write to the app log
-const SERVER_VERSION = '3.8.1'  // server build version (/health)
+const SERVER_VERSION = '3.8.11'  // server build version (/health)
 
 async function start(config) {
   if (started) return
@@ -3467,9 +3609,16 @@ if ($target -eq $null) { 'name-not-found' } else {
     if (!rec) return reply.code(404).send({ error: 'Not found' })
     if (p.role !== 'admin' && rec.user_id !== p.userId) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا التسجيل' })
     if (!rec.file_path || !fs.existsSync(rec.file_path)) return reply.code(404).send({ error: 'Recording file not found' })
-    reply.header('Content-Type', 'application/zip')
-    reply.header('Content-Disposition', 'attachment; filename="recording-' + String(rec.id).slice(0, 8) + '.zip"')
-    return fs.createReadStream(rec.file_path)
+    // v3.8.8 - serve the muxed MP4 when the exporter finished, the ZIP otherwise.
+    let filePath = rec.file_path
+    if (filePath.toLowerCase().endsWith('.zip')) {
+      const asMp4 = filePath.replace(/\.zip$/i, '.mp4')
+      try { if (fs.existsSync(asMp4)) filePath = asMp4 } catch {}
+    }
+    const isMp4 = filePath.toLowerCase().endsWith('.mp4')
+    reply.header('Content-Type', isMp4 ? 'video/mp4' : 'application/zip')
+    reply.header('Content-Disposition', 'attachment; filename="recording-' + String(rec.id).slice(0, 8) + (isMp4 ? '.mp4' : '.zip') + '"')
+    return fs.createReadStream(filePath)
   })
   // ── GitHub Releases ───────────────────────────────────────────────────────
   const REPO_ROOT    = path.resolve(__dirname, '../..')

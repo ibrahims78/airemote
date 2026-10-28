@@ -48,7 +48,11 @@ let cachedSources   = []   // [{id, name, index}] from main process
 let currentMaxWidth = 1280
 let lastTrackRestartAt = 0
 let lastMonitorIdx = 0
-let encoding        = false  // guard: prevent concurrent JPEG blobs
+let encoding        = false  // guard: prevent concurrent encodes
+let useWebp         = true   // v3.8.7 — WebP is ~30-45% smaller than JPEG at equal quality
+let webpSlowStreak  = 0      // fall back to JPEG if this CPU is slow at WebP
+let webpDisabledAt  = 0      // v3.8.7 — retry WebP after 30s instead of giving up forever
+let qualityScale    = 1      // v3.8.7 — adaptive resolution (0.6 … 1.0) so slow CPUs stay smooth
 let audioCtx        = null
 let audioProc       = null
 let audioSource     = null
@@ -244,7 +248,7 @@ function armTimer(delay) {
 
 // v3.3.2 — changed-region detection on a downscaled sample (fast, low memory)
 function computeDelta(cw, ch) {
-  const sw = Math.max(32, Math.min(320, cw >> 4))
+  const sw = Math.max(48, Math.min(480, cw >> 3))
   const sh = Math.max(18, Math.round(sw * (ch / cw)))
   if (!sampleCanvas) { sampleCanvas = document.createElement('canvas'); sampleCtx = sampleCanvas.getContext('2d', { willReadFrequently: true }) }
   if (sampleCanvas.width !== sw || sampleCanvas.height !== sh) { sampleCanvas.width = sw; sampleCanvas.height = sh; prevSample = null }
@@ -266,10 +270,10 @@ function computeDelta(cw, ch) {
   prevSample = cur
   if (maxX < 0) return { none: true }
   const sx = cw / sw, sy = ch / sh
-  const x  = Math.max(0, Math.floor(minX * sx) - 12)
-  const y  = Math.max(0, Math.floor(minY * sy) - 12)
-  const x2 = Math.min(cw, Math.ceil((maxX + 1) * sx) + 12)
-  const y2 = Math.min(ch, Math.ceil((maxY + 1) * sy) + 12)
+  const x  = Math.max(0, Math.floor(minX * sx) - 24)
+  const y  = Math.max(0, Math.floor(minY * sy) - 24)
+  const x2 = Math.min(cw, Math.ceil((maxX + 1) * sx) + 24)
+  const y2 = Math.min(ch, Math.ceil((maxY + 1) * sy) + 24)
   return { x: x, y: y, w: Math.max(8, x2 - x), h: Math.max(8, y2 - y) }
 }
 
@@ -280,7 +284,8 @@ function captureFrame() {
   // v3.3.0 — scale to currentMaxWidth when needed (keeps JPEG encode fast and stream smooth)
   const vw = video.videoWidth
   const vh = video.videoHeight
-  const scale = (currentMaxWidth && vw > currentMaxWidth) ? (currentMaxWidth / vw) : 1
+  const baseScale = (currentMaxWidth && vw > currentMaxWidth) ? (currentMaxWidth / vw) : 1
+  const scale = baseScale * qualityScale
   const cw = Math.max(2, Math.round(vw * scale))
   const ch = Math.max(2, Math.round(vh * scale))
   if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch }
@@ -300,7 +305,8 @@ function captureFrame() {
       if (captureTimer !== null) armTimer(1000 / currentFps)   // static screen — nothing to send
       return
     }
-    if (d && !d.none && (d.w * d.h) < (cw * ch * 0.55)) {
+    const sinceFull = Date.now() - lastFullAt
+    if (d && !d.none && (d.w * d.h) < (cw * ch * 0.55) && sinceFull < 2000) {
       mode = 'delta'; rx = d.x; ry = d.y
       if (regionCanvas.width !== d.w || regionCanvas.height !== d.h) { regionCanvas.width = d.w; regionCanvas.height = d.h }
       regionCtx.drawImage(canvas, d.x, d.y, d.w, d.h, 0, 0, d.w, d.h)
@@ -312,10 +318,28 @@ function captureFrame() {
   const encW = mode === 'delta' ? regionCanvas.width  : w
   const encH = mode === 'delta' ? regionCanvas.height : h
   const encCanvas = mode === 'delta' ? regionCanvas : canvas
+  const wantWebp = useWebp
   encCanvas.toBlob(blob => {
+    const encMs = performance.now() - tEnc
     encoding = false
     // v3.3.1: re-arm right after encode completes — even frame intervals
     if (captureTimer !== null) armTimer((1000 / currentFps) - (performance.now() - tEnc))
+
+    // v3.8.7 — WebP keeps quality but cuts bytes; on a slow CPU it can cost frames,
+    // so three slow encodes in a row switch to JPEG, and we retry WebP a minute later.
+    if (wantWebp) {
+      if (encMs > 90) { if (++webpSlowStreak >= 3) { useWebp = false; webpDisabledAt = Date.now(); console.log('encoder: WebP too slow (' + Math.round(encMs) + ' ms) — switched to JPEG') } }
+      else { webpSlowStreak = 0 }
+    } else if (webpDisabledAt && Date.now() - webpDisabledAt > 30000) {
+      useWebp = true; webpSlowStreak = 0; webpDisabledAt = 0
+    }
+
+    // v3.8.7 — adaptive resolution: a 1600x900 encode can take 150ms+ on a VM CPU,
+    // which shows up as a 1-2 fps stream. Trade a little sharpness for smoothness,
+    // and climb back up as soon as the encoder is fast again.
+    if (encMs > 110 && qualityScale > 0.6) qualityScale = Math.max(0.6, +(qualityScale - 0.08).toFixed(2))
+    else if (encMs < 45 && qualityScale < 1) qualityScale = Math.min(1, +(qualityScale + 0.04).toFixed(2))
+
     if (!blob || !sid) return
     if (mode === 'full') lastFullAt = Date.now()
     blob.arrayBuffer().then(buf => {
@@ -324,13 +348,13 @@ function captureFrame() {
         width:     encW,
         height:    encH,
         seq:       s,
-        flags:     mode === 'delta' ? 2 : 0,   // bit1 = partial frame (x,y follow in header)
+        flags:     (mode === 'delta' ? 2 : 1) | (wantWebp ? 4 : 0),   // bit0 keyframe, bit1 delta, bit2 WebP
         x:         rx,
         y:         ry,
         buffer:    Buffer.from(buf)
       })
     }).catch(() => { /* ignore decode errors */ })
-  }, 'image/jpeg', currentQuality / 100)
+  }, wantWebp ? 'image/webp' : 'image/jpeg', currentQuality / 100)
 }
 
 // ── Stop capture ─────────────────────────────────────────────────────────

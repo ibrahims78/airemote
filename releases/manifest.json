@@ -1,7 +1,7 @@
 {
   "product": "AiRemote",
-  "version": "3.8.1",
-  "generatedAt": "2026-10-26T18:11:39.957Z",
+  "version": "3.8.5",
+  "generatedAt": "2026-10-27T18:15:14.300Z",
   "artifacts": [
     {
       "name": "agent-windows/AiRemote-Agent-Setup-v3.8.1-x64.exe",
@@ -9,9 +9,19 @@
       "sha256": "eb45805799f72729ab574d1f50865c0a0549b0da49b8d6565e395456379f44de"
     },
     {
+      "name": "agent-windows/AiRemote-Agent-Setup-v3.8.5-x64.exe",
+      "size": 76356978,
+      "sha256": "95ae1aeccb8a0e3c03ce18489f5afdbec36d6b74eee8d2d367f88602ce895667"
+    },
+    {
       "name": "agent-windows/AiRemote-Agent-v3.8.1-Windows-x64.zip",
       "size": 103961486,
       "sha256": "b278ab34121d8258b8d641739ae35f09447148cd849ac600678a69e519c536c1"
+    },
+    {
+      "name": "agent-windows/AiRemote-Agent-v3.8.5-Windows-x64.zip",
+      "size": 103961529,
+      "sha256": "e23649f405f1789fc9fba401a8c5b97619efab06fcfa21a73570cea0deea9a01"
     },
     {
       "name": "android-agent/AiRemote-Agent-Android-v3.8.1-lab.apk",
@@ -22,6 +32,26 @@
       "name": "android-agent/AiRemote-Agent-Android-v3.8.1.apk",
       "size": 148663,
       "sha256": "db1ea0bd2b5220c582009d037c973a4a30e1732ae790f175ba3e9b9620f7d019"
+    },
+    {
+      "name": "android-agent/AiRemote-Agent-Android-v3.8.2.apk",
+      "size": 148663,
+      "sha256": "c0b24b7ee7201e1569513a26cb1c931b4a8b0be609c57ba0f926f5bb9dd11bf1"
+    },
+    {
+      "name": "android-agent/AiRemote-Agent-Android-v3.8.3.apk",
+      "size": 152759,
+      "sha256": "c0e185e1d3e83650db4bbd04091cc815b0980ece3bdb9498b598e7089288d773"
+    },
+    {
+      "name": "android-agent/AiRemote-Agent-Android-v3.8.4.apk",
+      "size": 152759,
+      "sha256": "5aec5d835d952f5641916ae1d0369dce13e2499840d24c707045be21df3bb60b"
+    },
+    {
+      "name": "android-agent/AiRemote-Agent-Android-v3.8.5.apk",
+      "size": 152759,
+      "sha256": "15d9c88b2767d05b9d5b8c03966ffc9a798d7816a977c7994ec3d1bdcd9639ff"
     },
     {
       "name": "old releases/agent-windows/AiRemote-Agent-Setup-v3.5.0-x64.exe",
@@ -164,9 +194,39 @@
       "sha256": "a1cfc211ead85397a54131ec33fd87ab39fc3eb21bfb364aaf0654d932498181"
     },
     {
+      "name": "server-windows/AiRemote-Server-Setup-v3.8.2-x64.exe",
+      "size": 94257291,
+      "sha256": "d3e1784ec19e8063c102fc91eb05d77dfaee46acfdd3f3bb0dec24a5c8ded897"
+    },
+    {
+      "name": "server-windows/AiRemote-Server-Setup-v3.8.3-x64.exe",
+      "size": 94257804,
+      "sha256": "9d8062ee4b758b70b52a33469ce9acf365730379c362c6115f7dea2ba2a0c195"
+    },
+    {
+      "name": "server-windows/AiRemote-Server-Setup-v3.8.5-x64.exe",
+      "size": 94256844,
+      "sha256": "4ba9e188b3adfb4601edc761cf3bfe10a91bc486626a194e779cb0f31befc7cb"
+    },
+    {
       "name": "server-windows/AiRemote-Server-v3.8.1-Windows-x64.zip",
       "size": 127276910,
       "sha256": "100c478acf1c67f0c06755ec227d69b5087255a193da6a29d36fbdccfb9c9198"
+    },
+    {
+      "name": "server-windows/AiRemote-Server-v3.8.2-Windows-x64.zip",
+      "size": 127277268,
+      "sha256": "f79435c9cfe5fdf0c65aba28a307642d417e77814637dbe35301a9fb436f886d"
+    },
+    {
+      "name": "server-windows/AiRemote-Server-v3.8.3-Windows-x64.zip",
+      "size": 127277384,
+      "sha256": "83f9aad8ab1220aaf1a35ebf1dc67b56fbdecd15ff2a5dc18cb2987f3ab718fd"
+    },
+    {
+      "name": "server-windows/AiRemote-Server-v3.8.5-Windows-x64.zip",
+      "size": 127277855,
+      "sha256": "34573c1f8a0619225f75a00408a124202bf215387d055f3e78dbb4a8b3a7140b"
     }
   ]
 }

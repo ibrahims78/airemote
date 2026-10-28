@@ -1,0 +1,44 @@
+{
+  "device": "d147684b-2451-4418-a628-86f11aa66a4e",
+  "serial": "",
+  "shots": [
+    {
+      "name": "1-portrait",
+      "png": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-10-27\\perf-baseline-WIN11\\1-portrait.png",
+      "mean": 119.1,
+      "window": {
+        "w": 1897,
+        "h": 912
+      },
+      "canvas": {
+        "w": 1600,
+        "h": 900
+      },
+      "streaming": false,
+      "text": "Esc للخروج من ملء الشاشة · حرّك الفأرة إلى أعلى الشاشة لإظهار الأدوات WIN11-VM 3fps 1600×900 107.1KB/s تحكم إيقاف",
+      "recv": 16
+    }
+  ],
+  "ok": true,
+  "net": {
+    "recv": 16,
+    "bytes": 413298,
+    "closes": 2
+  },
+  "single": {
+    "name": "1-portrait",
+    "png": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-10-27\\perf-baseline-WIN11\\1-portrait.png",
+    "mean": 119.1,
+    "window": {
+      "w": 1897,
+      "h": 912
+    },
+    "canvas": {
+      "w": 1600,
+      "h": 900
+    },
+    "streaming": false,
+    "text": "Esc للخروج من ملء الشاشة · حرّك الفأرة إلى أعلى الشاشة لإظهار الأدوات WIN11-VM 3fps 1600×900 107.1KB/s تحكم إيقاف",
+    "recv": 16
+  }
+}

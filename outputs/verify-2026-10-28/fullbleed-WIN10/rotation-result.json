@@ -1,0 +1,44 @@
+{
+  "device": "b42175d0-d0c9-428d-ab94-4e66dff56af3",
+  "serial": "",
+  "shots": [
+    {
+      "name": "1-portrait",
+      "png": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-10-28\\fullbleed-WIN10\\1-portrait.png",
+      "mean": 62.5,
+      "window": {
+        "w": 1897,
+        "h": 912
+      },
+      "canvas": {
+        "w": 1600,
+        "h": 900
+      },
+      "streaming": false,
+      "text": "Esc للخروج من ملء الشاشة · حرّك الفأرة إلى أعلى الشاشة لإظهار الأدوات WIN10-VM ملاءمة ملء 1:1 6fps 1600×900 2.08MB/s تحكم إيقاف",
+      "recv": 14
+    }
+  ],
+  "ok": true,
+  "net": {
+    "recv": 14,
+    "bytes": 3826722,
+    "closes": 1
+  },
+  "single": {
+    "name": "1-portrait",
+    "png": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-10-28\\fullbleed-WIN10\\1-portrait.png",
+    "mean": 62.5,
+    "window": {
+      "w": 1897,
+      "h": 912
+    },
+    "canvas": {
+      "w": 1600,
+      "h": 900
+    },
+    "streaming": false,
+    "text": "Esc للخروج من ملء الشاشة · حرّك الفأرة إلى أعلى الشاشة لإظهار الأدوات WIN10-VM ملاءمة ملء 1:1 6fps 1600×900 2.08MB/s تحكم إيقاف",
+    "recv": 14
+  }
+}

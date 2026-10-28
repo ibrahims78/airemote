@@ -1,0 +1,44 @@
+{
+  "device": "07f8ae91-5b64-41d9-97df-ce649772b0d3",
+  "serial": "",
+  "shots": [
+    {
+      "name": "1-portrait",
+      "png": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-10-28\\fullbleed-TECNO\\1-portrait.png",
+      "mean": 16,
+      "window": {
+        "w": 1897,
+        "h": 912
+      },
+      "canvas": {
+        "w": 720,
+        "h": 1600
+      },
+      "streaming": false,
+      "text": "Esc للخروج من ملء الشاشة · حرّك الفأرة إلى أعلى الشاشة لإظهار الأدوات TECNO-KL4 ملاءمة ملء 1:1 0fps 720×1600 — تحكم إيقاف",
+      "recv": 9
+    }
+  ],
+  "ok": true,
+  "net": {
+    "recv": 9,
+    "bytes": 45279,
+    "closes": 1
+  },
+  "single": {
+    "name": "1-portrait",
+    "png": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-10-28\\fullbleed-TECNO\\1-portrait.png",
+    "mean": 16,
+    "window": {
+      "w": 1897,
+      "h": 912
+    },
+    "canvas": {
+      "w": 720,
+      "h": 1600
+    },
+    "streaming": false,
+    "text": "Esc للخروج من ملء الشاشة · حرّك الفأرة إلى أعلى الشاشة لإظهار الأدوات TECNO-KL4 ملاءمة ملء 1:1 0fps 720×1600 — تحكم إيقاف",
+    "recv": 9
+  }
+}
