@@ -57,7 +57,7 @@
 
 **القياس:** عدد أدوات اللون الصريحة (مثل `bg-slate-800`, `text-sky-400`, `border-brand-blue/40`) لكل ملف في `src`، وعمود «يستخدم المكتبة» يعني استيراداً فعلياً من `components/ui`.
 
-**الحصيلة الحالية:** **1247** صنفاً صريحاً (كان 1324 قبل شريحة FileManager)، و**6** ملفات على المكتبة.
+**الحصيلة الحالية:** **1144** صنفاً صريحاً (كان 1324 قبل شريحتَي FileManager وSettingsPage)، و**7** ملفات على المكتبة.
 
 | الملف | أصناف صريحة | يستخدم المكتبة | الحالات المطلوبة (تحميل / فارغ / خطأ / هيكل) |
 |---|---|---|---|
@@ -65,7 +65,7 @@
 | `components/ScreenViewer.tsx` | 244 | ❌ | — (سطح بث: قرار مؤجّل) |
 | `pages/HelpPage.tsx` | 114 | ❌ | ❌ / ✅ / ✅ / ❌ |
 | `pages/AuditPage.tsx` | 111 | ❌ | ✅ / ✅ / ✅ / ❌ |
-| `pages/SettingsPage.tsx` | 103 | ❌ | ✅ / — / ✅ / ❌ |
+| `pages/SettingsPage.tsx` | **0** | ✅ | ✅ / — / ✅ / ✅ |
 | `components/CommandRunner.tsx` | 66 | ❌ | ❌ / ✅ / ✅ / ❌ |
 | `pages/NotificationsPage.tsx` | 49 | ❌ | ✅ / ✅ / ❌ / ❌ |
 | `components/PTYTerminal.tsx` | 44 | ❌ | — / — / ✅ / ❌ |

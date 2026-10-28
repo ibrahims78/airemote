@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
   Settings, Server, Bot, Bell, Save, Check, Eye, EyeOff,
-  RefreshCw, Info, Sun, Moon, Globe, Copy, Wifi, WifiOff, Loader,
+  Info, Sun, Moon, Globe, Copy, Wifi, WifiOff,
   History, Shield, Users
 } from 'lucide-react'
 import { api } from '../lib/api'
@@ -10,6 +10,7 @@ import { useUIStore } from '../store/uiStore'
 import { useT } from '../lib/i18n'
 import { toast } from '../store/toastStore'
 import { clsx } from 'clsx'
+import { Alert, Button, Input, SkeletonRows } from '../components/ui'
 import { useAuthStore } from '../store/authStore'
 import { APP_VERSION } from '../lib/version'
 import { SessionsPage } from './SessionsPage'
@@ -196,18 +197,16 @@ export function SettingsPage() {
           </p>
         </div>
         {tab === 'general' && (
-          <button
+          <Button
+            size="md"
+            variant={saved ? 'secondary' : 'primary'}
+            loading={saving}
+            icon={saved ? <Check size={14} /> : <Save size={14} />}
             onClick={handleSave}
-            disabled={saving}
-            className={clsx(
-              'flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-lg transition-all flex-shrink-0',
-              saved ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30' :
-              'bg-brand-blue hover:bg-blue-500 disabled:opacity-50 text-white shadow-lg shadow-brand-blue/15'
-            )}
+            className="flex-shrink-0"
           >
-            {saving ? <RefreshCw size={14} className="animate-spin" /> : saved ? <Check size={14} /> : <Save size={14} />}
             {saving ? T('saving') : saved ? T('saved') : T('save_settings')}
-          </button>
+          </Button>
         )}
       </div>
 
@@ -232,27 +231,26 @@ export function SettingsPage() {
       </div>
 
       {tab === 'general' && (loading ? (
-        <div className="text-center py-12 text-slate-500">
-          <div className="w-5 h-5 border-2 border-brand-blue border-t-transparent rounded-full animate-spin mx-auto mb-2" />
-          {T('loading')}
+        <div className="mx-auto grid w-full max-w-3xl gap-3 py-3">
+          <SkeletonRows rows={6} />
         </div>
       ) : (
         <div className="grid gap-4 max-w-3xl w-full mx-auto">
 
           {/* Appearance & Language */}
-          <Section icon={Globe} color="text-brand-teal" title={T('appearance')}>
-            <div className="grid grid-cols-2 gap-3">
+          <Section icon={Globe} color="text-primary" title={T('appearance')}>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {/* Theme */}
               <div>
-                <label className="block text-xs text-slate-500 mb-2">{T('theme_label')}</label>
+                <label className="block text-xs text-muted mb-2">{T('theme_label')}</label>
                 <div className="flex gap-2">
                   <button
                     onClick={() => theme !== 'dark' && toggleTheme()}
                     className={clsx(
                       'flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium border transition-all',
                       theme === 'dark'
-                        ? 'bg-slate-700/50 border-brand-blue/40 text-brand-blue'
-                        : 'border-slate-600 text-slate-400 hover:border-slate-500 hover:text-slate-300'
+                        ? 'bg-surface2 border-primary/40 text-primary'
+                        : 'border-line text-muted hover:border-line hover:text-ink/90'
                     )}
                   >
                     <Moon size={13} /> {T('theme_dark')}
@@ -262,8 +260,8 @@ export function SettingsPage() {
                     className={clsx(
                       'flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium border transition-all',
                       theme === 'light'
-                        ? 'bg-amber-400/10 border-amber-400/40 text-amber-400'
-                        : 'border-slate-600 text-slate-400 hover:border-slate-500 hover:text-slate-300'
+                        ? 'bg-primary/10 border-primary/40 text-primary'
+                        : 'border-line text-muted hover:border-line hover:text-ink/90'
                     )}
                   >
                     <Sun size={13} /> {T('theme_light')}
@@ -272,15 +270,15 @@ export function SettingsPage() {
               </div>
               {/* Language */}
               <div>
-                <label className="block text-xs text-slate-500 mb-2">{T('lang_label')}</label>
+                <label className="block text-xs text-muted mb-2">{T('lang_label')}</label>
                 <div className="flex gap-2">
                   <button
                     onClick={() => lang !== 'ar' && toggleLang()}
                     className={clsx(
                       'flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium border transition-all',
                       lang === 'ar'
-                        ? 'bg-brand-blue/10 border-brand-blue/40 text-brand-blue'
-                        : 'border-slate-600 text-slate-400 hover:border-slate-500 hover:text-slate-300'
+                        ? 'bg-primary/10 border-primary/40 text-primary'
+                        : 'border-line text-muted hover:border-line hover:text-ink/90'
                     )}
                   >
                     {T('lang_ar')}
@@ -290,8 +288,8 @@ export function SettingsPage() {
                     className={clsx(
                       'flex-1 flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium border transition-all',
                       lang === 'en'
-                        ? 'bg-brand-blue/10 border-brand-blue/40 text-brand-blue'
-                        : 'border-slate-600 text-slate-400 hover:border-slate-500 hover:text-slate-300'
+                        ? 'bg-primary/10 border-primary/40 text-primary'
+                        : 'border-line text-muted hover:border-line hover:text-ink/90'
                     )}
                   >
                     {T('lang_en')}
@@ -302,69 +300,64 @@ export function SettingsPage() {
           </Section>
 
           {/* Server Info */}
-          <Section icon={Server} color="text-brand-blue" title={T('server_info')}>
+          <Section icon={Server} color="text-primary" title={T('server_info')}>
             <div className="space-y-3">
               {/* HTTP URL */}
               <div>
-                <label className="block text-xs text-slate-500 mb-1.5">{T('server_address')}</label>
+                <label className="block text-xs text-muted mb-1.5">{T('server_address')}</label>
                 <div className="flex items-center gap-2">
-                  <input
+                  <Input
                     readOnly value={window.location.origin}
-                    className="flex-1 bg-navy-900 border border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-400 font-mono"
+                    className="flex-1 font-mono text-muted"
                     dir="ltr"
                   />
-                  <button
+                  <Button
+                    variant="ghost"
+                    className={clsx('h-9 w-9 shrink-0 border border-line px-0', copied && 'text-success')}
+                    aria-label={isAr ? 'نسخ عنوان السيرفر' : 'Copy server address'}
+                    icon={copied ? <Check size={14} /> : <Copy size={14} />}
                     onClick={copyServerUrl}
-                    className={clsx(
-                      'p-2 border rounded-lg transition-colors flex-shrink-0',
-                      copied ? 'text-emerald-400 border-emerald-500/30 bg-emerald-400/10' : 'text-slate-500 hover:text-white bg-navy-900 border-slate-700'
-                    )}
-                  >
-                    {copied ? <Check size={14} /> : <Copy size={14} />}
-                  </button>
+                  />
                 </div>
               </div>
 
               {/* WebSocket URL — for Desktop Agent */}
               <div>
-                <label className="block text-xs text-slate-500 mb-1.5">
+                <label className="block text-xs text-muted mb-1.5">
                   {T('ws_url_label')}
                 </label>
                 <div className="flex items-center gap-2">
-                  <input
+                  <Input
                     readOnly value={wsUrl}
-                    className="flex-1 bg-navy-900 border border-brand-teal/40 rounded-lg px-3 py-2 text-sm text-brand-teal font-mono"
+                    className="flex-1 font-mono text-primary"
                     dir="ltr"
                   />
-                  <button
+                  <Button
+                    variant="ghost"
+                    className={clsx('h-9 w-9 shrink-0 border px-0', copiedWs ? 'border-success/30 bg-success/10 text-success' : 'border-line text-primary')}
+                    aria-label={isAr ? 'نسخ عنوان WebSocket' : 'Copy WebSocket URL'}
+                    icon={copiedWs ? <Check size={14} /> : <Copy size={14} />}
                     onClick={copyWsUrl}
-                    className={clsx(
-                      'p-2 border rounded-lg transition-colors flex-shrink-0',
-                      copiedWs ? 'text-emerald-400 border-emerald-500/30 bg-emerald-400/10' : 'text-brand-teal border-brand-teal/30 hover:bg-brand-teal/10 bg-navy-900'
-                    )}
-                  >
-                    {copiedWs ? <Check size={14} /> : <Copy size={14} />}
-                  </button>
+                  />
                 </div>
-                <p className="text-xs text-brand-teal/60 mt-1.5 flex items-center gap-1.5">
+                <p className="text-xs text-muted mt-1.5 flex items-center gap-1.5">
                   <Info size={11} />
                   {T('ws_url_hint')}
                 </p>
               </div>
 
-              <div className="flex items-start gap-2 text-xs text-slate-500 bg-slate-700/20 rounded-lg p-3">
-                <Info size={13} className="text-brand-blue flex-shrink-0 mt-0.5" />
-                <span>{T('server_address_hint')}</span>
-              </div>
+              <Alert tone="info">
+                {T('server_address_hint')}
+              </Alert>
             </div>
           </Section>
 
           {/* AI Settings */}
-          <Section icon={Bot} color="text-brand-teal" title={T('ai_settings')}>
+          <Section icon={Bot} color="text-primary" title={T('ai_settings')}>
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1.5">{T('ai_provider')}</label>
+                  <label className="block text-xs text-muted mb-1.5">{T('ai_provider')}</label>
                   <select
                     value={ai.aiProvider}
                     onChange={e => {
@@ -375,7 +368,7 @@ export function SettingsPage() {
                       setAi({ aiProvider: prov, aiModel: sv?.model || MODELS[prov]?.[0] || '', aiApiKey: sv?.apiKey || '', ollamaUrl: sv?.baseUrl || '' })
                       setValidateState('idle')
                     }}
-                    className="w-full bg-navy-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-brand-teal"
+                    className="h-9 w-full rounded-lg border border-line bg-surface px-3 text-[13px] text-ink placeholder:text-muted/70 outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25"
                     dir="ltr"
                   >
                     <option value="openai">OpenAI</option>
@@ -385,11 +378,11 @@ export function SettingsPage() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1.5">{T('ai_model')}</label>
+                  <label className="block text-xs text-muted mb-1.5">{T('ai_model')}</label>
                   <select
                     value={ai.aiModel}
                     onChange={e => { setAi(p => ({ ...p, aiModel: e.target.value })); setValidateState('idle') }}
-                    className="w-full bg-navy-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-brand-teal"
+                    className="h-9 w-full rounded-lg border border-line bg-surface px-3 text-[13px] text-ink placeholder:text-muted/70 outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25"
                     dir="ltr"
                   >
                     {availableModels.map(m => <option key={m} value={m}>{m}</option>)}
@@ -399,7 +392,7 @@ export function SettingsPage() {
 
               {ai.aiProvider !== 'ollama' ? (
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1.5">
+                  <label className="block text-xs text-muted mb-1.5">
                     {ai.aiProvider === 'openai' ? 'OpenAI API Key' : ai.aiProvider === 'zai' ? 'Z.ai API Key' : 'Gemini API Key'}
                   </label>
                   <div className="relative">
@@ -408,23 +401,23 @@ export function SettingsPage() {
                       value={ai.aiApiKey}
                       onChange={e => { setAi(p => ({ ...p, aiApiKey: e.target.value })); setValidateState('idle') }}
                       placeholder={ai.aiProvider === 'openai' ? 'sk-...' : ai.aiProvider === 'zai' ? 'Z.ai API key' : 'AI...'}
-                      className="w-full bg-navy-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-brand-teal font-mono pe-10"
+                      className="h-9 w-full rounded-lg border border-line bg-surface px-3 text-[13px] text-ink placeholder:text-muted/70 outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25 font-mono pe-10"
                       dir="ltr"
                     />
-                    <button type="button" onClick={() => setShowKey(s => !s)} className="absolute end-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors">
+                    <button type="button" onClick={() => setShowKey(s => !s)} className="absolute end-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink/90 transition-colors">
                       {showKey ? <EyeOff size={14} /> : <Eye size={14} />}
                     </button>
                   </div>
                 </div>
               ) : (
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1.5">Ollama URL</label>
+                  <label className="block text-xs text-muted mb-1.5">Ollama URL</label>
                   <input
                     type="text"
                     value={ai.ollamaUrl}
                     onChange={e => { setAi(p => ({ ...p, ollamaUrl: e.target.value })); setValidateState('idle') }}
                     placeholder="http://localhost:11434"
-                    className="w-full bg-navy-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-brand-teal font-mono"
+                    className="h-9 w-full rounded-lg border border-line bg-surface px-3 text-[13px] text-ink placeholder:text-muted/70 outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25 font-mono"
                     dir="ltr"
                   />
                 </div>
@@ -432,13 +425,13 @@ export function SettingsPage() {
 
               {(ai.aiProvider === 'openai' || ai.aiProvider === 'zai') && (
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1.5">{isAr ? 'عنوان API مخصص (اختياري)' : 'Custom API Base URL (optional)'}</label>
+                  <label className="block text-xs text-muted mb-1.5">{isAr ? 'عنوان API مخصص (اختياري)' : 'Custom API Base URL (optional)'}</label>
                   <input
                     type="text"
                     value={ai.ollamaUrl}
                     onChange={e => { setAi(p => ({ ...p, ollamaUrl: e.target.value })); setValidateState('idle') }}
                     placeholder={ai.aiProvider === 'zai' ? 'https://api.z.ai/api/paas/v4' : 'https://api.openai.com'}
-                    className="w-full bg-navy-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-brand-teal font-mono"
+                    className="h-9 w-full rounded-lg border border-line bg-surface px-3 text-[13px] text-ink placeholder:text-muted/70 outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25 font-mono"
                     dir="ltr"
                   />
                 </div>
@@ -446,30 +439,24 @@ export function SettingsPage() {
 
               {/* Validate button */}
               <div className="flex items-center gap-3 pt-1">
-                <button
-                  onClick={handleValidate}
+                <Button
+                  variant={validateState === 'error' ? 'danger' : 'secondary'}
+                  loading={validateState === 'loading'}
                   disabled={validateState === 'loading' || (ai.aiProvider !== 'ollama' && !ai.aiApiKey.trim() && !/pollinations/i.test(ai.ollamaUrl || ''))}
-                  className={clsx(
-                    'flex items-center gap-2 text-xs font-medium px-3 py-2 rounded-lg border transition-all disabled:opacity-40 disabled:cursor-not-allowed',
-                    validateState === 'ok'
-                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
-                      : validateState === 'error'
-                        ? 'bg-red-500/10 border-red-500/30 text-red-400'
-                        : 'bg-slate-700/30 border-slate-600 text-slate-300 hover:border-brand-teal hover:text-brand-teal'
-                  )}
+                  icon={validateState === 'ok' ? <Wifi size={12} /> : validateState === 'error' ? <WifiOff size={12} /> : <Wifi size={12} />}
+                  onClick={handleValidate}
+                  className={clsx(validateState === 'ok' && 'border-success/30 bg-success/10 text-success')}
                 >
-                  {validateState === 'loading' ? (
-                    <><Loader size={12} className="animate-spin" /> {isAr ? 'جاري الاختبار...' : 'Testing...'}</>
-                  ) : validateState === 'ok' ? (
-                    <><Wifi size={12} /> {isAr ? 'الاتصال ناجح' : 'Connected'}</>
-                  ) : validateState === 'error' ? (
-                    <><WifiOff size={12} /> {isAr ? 'فشل الاتصال' : 'Failed'}</>
-                  ) : (
-                    <><Wifi size={12} /> {isAr ? 'اختبار الاتصال' : 'Test Connection'}</>
-                  )}
-                </button>
+                  {validateState === 'loading'
+                    ? (isAr ? 'جاري الاختبار...' : 'Testing...')
+                    : validateState === 'ok'
+                      ? (isAr ? 'الاتصال ناجح' : 'Connected')
+                      : validateState === 'error'
+                        ? (isAr ? 'فشل الاتصال' : 'Failed')
+                        : (isAr ? 'اختبار الاتصال' : 'Test Connection')}
+                </Button>
                 {validateMsg && validateState !== 'loading' && (
-                  <p className={clsx('text-xs', validateState === 'ok' ? 'text-emerald-400' : 'text-red-400')}>
+                  <p className={clsx('text-xs', validateState === 'ok' ? 'text-success' : 'text-danger')}>
                     {validateMsg}
                   </p>
                 )}
@@ -481,76 +468,73 @@ export function SettingsPage() {
           <TwoFactorSection />
         <TasksSection />
 
-        <Section icon={Bell} color="text-yellow-400" title={T('notifications')}>
+        <Section icon={Bell} color="text-warning" title={T('notifications')}>
             <div className="space-y-3">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1.5">{isAr ? 'توكن البوت (Bot Token)' : 'Bot Token'}</label>
+                  <label className="block text-xs text-muted mb-1.5">{isAr ? 'توكن البوت (Bot Token)' : 'Bot Token'}</label>
                   <input
                     type="password"
                     value={telegramToken}
                     onChange={e => setTelegramToken(e.target.value)}
                     placeholder="1234567890:ABCdefGHI..."
-                    className="w-full bg-navy-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-yellow-400 font-mono"
+                    className="h-9 w-full rounded-lg border border-line bg-surface px-3 text-[13px] text-ink placeholder:text-muted/70 outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25 font-mono"
                     dir="ltr"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs text-slate-500 mb-1.5">{isAr ? 'معرّف المحادثة (Chat ID)' : 'Chat ID'}</label>
+                  <label className="block text-xs text-muted mb-1.5">{isAr ? 'معرّف المحادثة (Chat ID)' : 'Chat ID'}</label>
                   <input
                     type="text"
                     value={telegramChatId}
                     onChange={e => setTelegramChatId(e.target.value)}
                     placeholder="1029428155"
-                    className="w-full bg-navy-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-yellow-400 font-mono"
+                    className="h-9 w-full rounded-lg border border-line bg-surface px-3 text-[13px] text-ink placeholder:text-muted/70 outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25 font-mono"
                     dir="ltr"
                   />
                 </div>
               </div>
               <div className="flex items-center gap-3 flex-wrap">
-                <button
-                  onClick={handleTelegramTest}
+                <Button
+                  variant={tgTest === 'error' ? 'danger' : 'secondary'}
+                  loading={tgTest === 'loading'}
                   disabled={tgTest === 'loading' || !telegramToken || !telegramChatId}
-                  className={clsx(
-                    'flex items-center gap-2 text-xs font-medium px-3 py-2 rounded-lg border transition-all disabled:opacity-40 disabled:cursor-not-allowed',
-                    tgTest === 'ok' ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' :
-                    tgTest === 'error' ? 'bg-red-500/10 border-red-500/30 text-red-400' :
-                    'bg-slate-700/30 border-slate-600 text-slate-300 hover:border-yellow-400 hover:text-yellow-400'
-                  )}
+                  icon={tgTest === 'ok' ? <Wifi size={12} /> : tgTest === 'error' ? <WifiOff size={12} /> : <Bell size={12} />}
+                  onClick={handleTelegramTest}
+                  className={clsx(tgTest === 'ok' && 'border-success/30 bg-success/10 text-success')}
                 >
-                  {tgTest === 'loading' ? <><Loader size={12} className="animate-spin" /> {isAr ? 'جارٍ الإرسال...' : 'Sending...'}</> :
-                   tgTest === 'ok' ? <><Wifi size={12} /> {isAr ? 'تم الإرسال' : 'Sent'}</> :
-                   tgTest === 'error' ? <><WifiOff size={12} /> {isAr ? 'فشل' : 'Failed'}</> :
-                   <><Bell size={12} /> {isAr ? 'إرسال رسالة اختبار' : 'Send Test Message'}</>}
-                </button>
+                  {tgTest === 'loading' ? (isAr ? 'جارٍ الإرسال...' : 'Sending...')
+                    : tgTest === 'ok' ? (isAr ? 'تم الإرسال' : 'Sent')
+                    : tgTest === 'error' ? (isAr ? 'فشل' : 'Failed')
+                    : (isAr ? 'إرسال رسالة اختبار' : 'Send Test Message')}
+                </Button>
                 {tgTestMsg && tgTest !== 'loading' && (
-                  <p className={clsx('text-xs', tgTest === 'ok' ? 'text-emerald-400' : 'text-red-400')}>{tgTestMsg}</p>
+                  <p className={clsx('text-xs', tgTest === 'ok' ? 'text-success' : 'text-danger')}>{tgTestMsg}</p>
                 )}
               </div>
               <div className="pt-1">
-                <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer">
-                  <input type="checkbox" checked={telegramEnabled} onChange={e => setTelegramEnabled(e.target.checked)} className="accent-yellow-400" />
+                <label className="flex items-center gap-2 text-xs text-ink/90 cursor-pointer">
+                  <input type="checkbox" checked={telegramEnabled} onChange={e => setTelegramEnabled(e.target.checked)} className="accent-primary" />
                   {isAr ? 'تفعيل إشعارات Telegram' : 'Enable Telegram notifications'}
                 </label>
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 {([{ key: 'online' as const, label: 'اتصال جهاز' }, { key: 'offline' as const, label: 'انقطاع جهاز' }, { key: 'chat' as const, label: 'رسائل الدردشة' }]).map(ev => (
-                  <label key={ev.key} className="flex items-center gap-1.5 text-[11px] text-slate-400 bg-slate-700/20 rounded-lg px-2 py-1.5 cursor-pointer">
-                    <input type="checkbox" checked={!!tgEvents[ev.key]} onChange={e => setTgEvents(p => ({ ...p, [ev.key]: e.target.checked }))} className="accent-yellow-400" />
+                  <label key={ev.key} className="flex items-center gap-1.5 text-[11px] text-muted bg-surface2/60 rounded-lg px-2 py-1.5 cursor-pointer">
+                    <input type="checkbox" checked={!!tgEvents[ev.key]} onChange={e => setTgEvents(p => ({ ...p, [ev.key]: e.target.checked }))} className="accent-primary" />
                     {isAr ? ev.label : ev.key}
                   </label>
                 ))}
               </div>
-              <div className="flex items-start gap-2 text-xs text-slate-500 bg-slate-700/20 rounded-lg p-3">
-                <Info size={13} className="text-yellow-400 flex-shrink-0 mt-0.5" />
-                <span>{isAr ? 'أنشئ بوتاً عبر @BotFather ثم الصق التوكن هنا، وأرسل /start للبوت من حسابك ثم ضع Chat ID.' : 'Create a bot via @BotFather, paste the token, send /start, and fill the Chat ID.'}</span>
-              </div>
+              <Alert tone="warning">
+                {isAr ? 'أنشئ بوتاً عبر @BotFather ثم الصق التوكن هنا، وأرسل /start للبوت من حسابك ثم ضع Chat ID.' : 'Create a bot via @BotFather, paste the token, send /start, and fill the Chat ID.'}
+              </Alert>
             </div>
           </Section>
 
           {/* Version info */}
-          <div className="text-center text-xs text-slate-700 py-2">
-            AiRemote v{appVersion || APP_VERSION} — Open Source | <span className="text-slate-600">MIT License</span>
+          <div className="text-center text-xs text-muted py-2">
+            AiRemote v{appVersion || APP_VERSION} — Open Source | <span className="text-muted">MIT License</span>
           </div>
         </div>
 
