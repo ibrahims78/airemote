@@ -484,7 +484,7 @@ function doConnect() {
       addLog('info', `📋 [register] hostname=${info.hostname} os=${info.osVersion} shell=${shell}`)
       lastRegisterPayload = {
         token:        config.token.trim(),
-        info:         { ...info, agentVersion: AGENT_VERSION },
+        info:         { ...info, agentVersion: AGENT_VERSION, elevated: isRunningElevated() },
         stats,
         tunnelLayer:  'relay',
         capabilities: {
@@ -736,6 +736,20 @@ function handleMsg(msg) {
 
 // ─── File System (proxy FS) ────────────────────────────────────────────────
 const fsPromises = require('fs').promises
+
+// ── v3.8.12 / R2 — كشف التشغيل بصلاحيات مرتفعة ────────────────────────────────
+// التصميم يبقى asInvoker (لا طلب رفع ذاتي). لكن كثيراً ما يشغّل المستخدم أدوات
+// الوصول عن بُعد «كمسؤول»، فتنتقل الصلاحية إلى كل أمر يُنفَّذ عن بُعد. لا نمنع
+// ذلك (يكسر حالات مشروعة)، بل نُبلّغ به للسيرفر واللوحة ليكون مرئياً.
+function isRunningElevated () {
+  // فحص ACL عبر fs.accessSync أعطى نتيجة موجبة خاطئة على عملية Medium integrity،
+  // لذا نستخدم اختباراً قاطعاً: `net session` ينجح فقط بصلاحيات إدارية.
+  try {
+    const { execFileSync } = require('child_process')
+    execFileSync('net', ['session'], { stdio: 'ignore', windowsHide: true, timeout: 3000 })
+    return true
+  } catch { return false }
+}
 
 function toOsPath(p) {
   if (process.platform !== 'win32') return p
