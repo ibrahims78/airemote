@@ -1,0 +1,17 @@
+{
+  "at": "2026-10-28T11:43:20.510Z",
+  "sessions": 20,
+  "framesPerSession": 12,
+  "frameBytes": 65536,
+  "setupMs": 163,
+  "elapsedMs": 458,
+  "sent": 240,
+  "received": 240,
+  "lossPercent": 0,
+  "throughputKBps": 33537.1,
+  "latencyMs": {
+    "p50": 28.54,
+    "p95": 36.7,
+    "max": 43.79
+  }
+}

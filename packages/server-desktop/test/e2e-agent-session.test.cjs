@@ -48,6 +48,7 @@ process.env.RELAY_MAX_SESSIONS = '2'
 process.env.RELAY_OFFER_TTL_MS = '4000'
 process.env.RELAY_TOKEN_TTL_MS = '60000'
 process.env.RELAY_SESSION_KBPS = '64'
+process.env.RELAY_RECONNECT_GRACE_MS = '900'
 
 let failed = 0
 const check = (d, c, x) => { if (c) console.log('PASS: ' + d); else { console.error('FAIL: ' + d + (x ? '  (' + x + ')' : '')); failed++ } }
@@ -234,19 +235,59 @@ function connectAgent() {
   const stExpired = await getSession(tokOwner, r5.sessionId).then(r => r.json())
   check('H2. session state is expired', stExpired.state === 'expired', stExpired.state)
 
-  // ── H2. network drop closes the session ────────────────────────────────────
+  // ── H2. short drop suspends, then resumes inside the grace window ──────────
   cA.drain(); cB.drain()
   const r6 = await request(tokOwner, { targetDeviceId: devB, access: 'control', requesterDeviceId: devA }).then(r => r.json())
   await cB.next('session:offer')
   cB.send({ type: 'session:accept', payload: { sessionId: r6.sessionId } })
   const tk6 = await cA.next('session:token')
+  await cB.next('session:token')
   cA.send({ type: 'relay:hello', payload: { sessionId: r6.sessionId, token: tk6.payload.token } })
   await cA.next('session:ready')
+  cB.send({ type: 'relay:hello', payload: { sessionId: r6.sessionId, token: tk6.payload.token } })
+  await cB.next('session:ready')
   cB.ws.close()
+  const susp = await cA.next('session:suspended', 8000)
+  check('H3. a dropped peer suspends instead of closing', susp.payload.sessionId === r6.sessionId, JSON.stringify(susp.payload))
+  const stSusp = await waitState(r6.sessionId, 'suspended')
+  check('H4. state is suspended inside the grace window', stSusp.state === 'suspended', stSusp.state)
+
+  const cB2 = await connectAgent()
+  cB2.send({ type: 'agent:register', payload: { token: tok[devB], info: { platform: 'windows' }, capabilities: {} } })
+  await cB2.next('server:registered')
+  const reTokenA = await cA.next('session:token', 8000)
+  const resumedA = await cA.next('session:resumed', 8000)
+  check('H5. resume issues a fresh token to the survivor', !!reTokenA.payload.token && reTokenA.payload.resumed === true, JSON.stringify({ resumed: reTokenA.payload.resumed }))
+  check('H6. session:resumed reaches the survivor', resumedA.payload.sessionId === r6.sessionId)
+  const reTokenB = await cB2.next('session:token', 8000)
+  check('H7. the reconnected peer gets the same new token', reTokenB.payload.token === reTokenA.payload.token)
+  cA.send({ type: 'relay:hello', payload: { sessionId: r6.sessionId, token: reTokenA.payload.token } })
+  await cA.next('session:ready')
+  cB2.send({ type: 'relay:hello', payload: { sessionId: r6.sessionId, token: reTokenB.payload.token } })
+  await cB2.next('session:ready')
+  cA.send({ type: 'relay:data', payload: { sessionId: r6.sessionId, channel: 'control', data: { op: 'after-resume' } } })
+  const afterResume = await cB2.next('relay:data')
+  check('H8. relay passes data again after the resume', afterResume.payload.data.op === 'after-resume')
+  const stResumed = await waitState(r6.sessionId, 'active')
+  check('H9. state is active again', stResumed.state === 'active')
+
+  // ── H3. no reconnect inside the grace window → clean network close ─────────
+  cA.drain()
+  const r7 = await request(tokOwner, { targetDeviceId: devC, access: 'view', requesterDeviceId: devA }).then(r => r.json())
+  await cC.next('session:offer')
+  cC.send({ type: 'session:accept', payload: { sessionId: r7.sessionId } })
+  const tk7 = await cA.next('session:token')
+  cA.send({ type: 'relay:hello', payload: { sessionId: r7.sessionId, token: tk7.payload.token } })
+  await cA.next('session:ready')
+  cC.send({ type: 'relay:hello', payload: { sessionId: r7.sessionId, token: tk7.payload.token } })
+  await cC.next('session:ready')
+  cC.ws.close()
+  const susp2 = await cA.next('session:suspended', 8000)
+  check('H10. a second drop suspends first as well', susp2.payload.sessionId === r7.sessionId)
   const netClose = await cA.next('session:close', 8000)
-  check('H3. a dropped peer closes the session with reason=network', netClose.payload.reason === 'network' && netClose.payload.sessionId === r6.sessionId, JSON.stringify(netClose.payload))
-  const stNet = await waitState(r6.sessionId, 'closed')
-  check('H4. state is closed after the drop', stNet.state === 'closed' && stNet.reason === 'network', JSON.stringify({ state: stNet.state, reason: stNet.reason }))
+  check('H11. no return inside the grace window closes as network', netClose.payload.reason === 'network' && netClose.payload.sessionId === r7.sessionId, JSON.stringify(netClose.payload))
+  const stNet = await waitState(r7.sessionId, 'closed')
+  check('H12. state is closed with reason=network', stNet.state === 'closed' && stNet.reason === 'network', JSON.stringify({ state: stNet.state, reason: stNet.reason }))
 
   // ── I. audit + token ledger ────────────────────────────────────────────────
   const db2 = new Database(dbPath)
@@ -256,10 +297,12 @@ function connectAgent() {
     requested: count('session_requested'), accepted: count('session_accepted'), denied: count('session_denied'),
     closed: count('session_closed'), expired: count('session_expired'), policy: count('session_policy_denied'),
     conflict: count('session_conflict'), capacity: count('session_capacity_rejected'), rejected: count('session_token_rejected'),
+    suspended: count('session_suspended'), resumed: count('session_resumed'),
   }
   db2.close()
   check('I1. request/accept/deny/close/expire all audited', n.requested >= 6 && n.accepted >= 2 && n.denied >= 1 && n.closed >= 2 && n.expired >= 1, JSON.stringify(n))
   check('I2. policy, conflict and capacity refusals audited', n.policy >= 1 && n.conflict >= 1 && n.capacity >= 1, JSON.stringify(n))
+  check('I2b. suspend/resume audited', n.suspended >= 2 && n.resumed >= 1, JSON.stringify({ suspended: n.suspended, resumed: n.resumed }))
   check('I3. token ledger records the single use', tokens.c >= 2 && tokens.used >= 1, JSON.stringify(tokens))
 
   console.log(failed ? `\n${failed} CHECK(S) FAILED` : '\nALL AGENT SESSION CHECKS PASSED')

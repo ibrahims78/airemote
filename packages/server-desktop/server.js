@@ -1199,6 +1199,8 @@ function handleAgentWs(socket) {
         try { prevAgent.ws.close(4000, 'replaced by newer agent connection') } catch {}
       }
       agentSockets.set(deviceId, { ws: socket, info, deviceName: device.name, connectedAt: Date.now(), stats: null })
+      // R4 — عودة الوكيل داخل مهلة السماح تُستأنف بها جلسته بدل إغلاقها.
+      try { relayResumeForDevice(deviceId) } catch {}
       try {
         const plat = (info && info.platform) || 'unknown'
         const addr = (socket._socket && socket._socket.remoteAddress) || '?'
@@ -1493,8 +1495,8 @@ function handleAgentWs(socket) {
         serverLogger?.warn('agent', `disconnected name="${rec ? rec.deviceName : String(deviceId).slice(0, 8)}" after=${up}s`)
       } catch {}
       agentSockets.delete(deviceId); markDeviceOffline(deviceId); fireOfflineAlerts(deviceId)
-      // R4 — انقطاع الشبكة يغلق جلسات Relay الخاصة بالجهاز بسبب مسجّل.
-      try { relayCloseForDevice(deviceId, 'network') } catch {}
+      // R4 — لا تُغلق فوراً: مهلة سماح واحدة ثم إغلاق بسبب network.
+      try { relaySuspendForDevice(deviceId) } catch {}
     }
   })
   socket.on('error', () => {})
@@ -1511,7 +1513,8 @@ const RELAY_TOKEN_TTL_MS   = Math.max(5000, parseInt(process.env.RELAY_TOKEN_TTL
 const RELAY_SESSION_KBPS   = Math.max(16, parseInt(process.env.RELAY_SESSION_KBPS || '2048', 10) || 2048)
 const RELAY_CHANNELS       = ['screen', 'control', 'files', 'chat']
 const RELAY_ACCESS_CAPABILITY = { view: null, control: 'control', files: 'files' }
-const RELAY_ACTIVE_STATES  = ['requested', 'accepted', 'active']
+const RELAY_ACTIVE_STATES  = ['requested', 'accepted', 'active', 'suspended']
+const RELAY_RECONNECT_GRACE_MS = Math.max(0, parseInt(process.env.RELAY_RECONNECT_GRACE_MS || '15000', 10) || 0)
 const relaySessions = new Map()   // sessionId → session object (ذاكرة؛ الحالة الدائمة في sessions/audit_log)
 
 function relayGet(sessionId) { return sessionId ? (relaySessions.get(String(sessionId)) || null) : null }
@@ -1551,12 +1554,14 @@ function relayPruneLater(session, ms) {
 // إغلاق واحد لكل الأسباب: طرف، مهلة، شبكة، أو سياسة.
 function relayCloseSession(session, reason, actorUserId) {
   if (!session || session.state === 'closed') return false
-  const wasEstablished = session.state === 'active'
+  // الجلسة المعلّقة (suspended) أُسِّست فعلاً: إغلاقها يبلّغ الطرفين ويُدقَّق.
+  const wasEstablished = session.state === 'active' || session.state === 'suspended'
   const wasPending = session.state === 'requested' || session.state === 'accepted'
   session.state = 'closed'
   session.closedAt = Date.now()
   session.reason = String(reason || 'user')
   if (session.offerTimer) { clearTimeout(session.offerTimer); session.offerTimer = null }
+  if (session.suspendTimer) { clearTimeout(session.suspendTimer); session.suspendTimer = null }
   if (wasEstablished || wasPending) {
     relaySendToDevice(session.requester.deviceId, { type: 'session:close', payload: { sessionId: session.id, reason: session.reason } })
     relaySendToDevice(session.target.deviceId, { type: 'session:close', payload: { sessionId: session.id, reason: session.reason } })
@@ -1712,6 +1717,68 @@ function relayCloseForDevice(deviceId, reason) {
   }
   return n
 }
+// ── R4 (تكملة) — مهلة سماح للانقطاع العابر (`suspended`) ─────────────────────
+// عند سقوط مقبس أحد الطرفين لا تُغلق الجلسة فوراً: تنتقل إلى `suspended` لمهلة
+// واحدة، فإن عاد الوكيل بنفس الجهاز استُؤنفت الجلسة برمز جديد؛ وإلا أُغلقت بـnetwork.
+function relaySuspendForDevice(deviceId) {
+  if (!deviceId) return 0
+  let n = 0
+  for (const s of relaySessions.values()) {
+    if (s.requester.deviceId !== deviceId && s.target.deviceId !== deviceId) continue
+    if (s.state === 'requested' || s.state === 'accepted') { relayCloseSession(s, 'network'); n++; continue }
+    if (s.state !== 'active') continue
+    s.state = 'suspended'
+    s.suspendedAt = Date.now()
+    const peerId = s.requester.deviceId === deviceId ? s.target.deviceId : s.requester.deviceId
+    relaySendToDevice(peerId, { type: 'session:suspended', payload: { sessionId: s.id, reason: 'network', graceMs: RELAY_RECONNECT_GRACE_MS } })
+    dbLogAudit({
+      userId: s.requester.userId || '', userEmail: s.requester.email || '', deviceId: s.target.deviceId,
+      action: 'session_suspended', details: { sessionId: s.id, graceMs: RELAY_RECONNECT_GRACE_MS, lost: deviceId }, ipAddress: null,
+    })
+    relayBroadcastState(s)
+    if (s.suspendTimer) clearTimeout(s.suspendTimer)
+    const snap = s
+    s.suspendTimer = setTimeout(() => {
+      if (snap.state !== 'suspended') return
+      snap.suspendTimer = null
+      relayCloseSession(snap, 'network')
+    }, RELAY_RECONNECT_GRACE_MS)
+    if (s.suspendTimer && s.suspendTimer.unref) s.suspendTimer.unref()
+    n++
+  }
+  return n
+}
+
+function relayResumeForDevice(deviceId) {
+  if (!deviceId) return 0
+  let n = 0
+  for (const s of relaySessions.values()) {
+    if (s.state !== 'suspended') continue
+    if (s.requester.deviceId !== deviceId && s.target.deviceId !== deviceId) continue
+    if (s.suspendTimer) { clearTimeout(s.suspendTimer); s.suspendTimer = null }
+    s.state = 'active'
+    s.resumedAt = Date.now()
+    // الرمز القديم قد يكون انتهت صلاحيته أثناء الغياب — يُصدر رمز جديد للطرفين.
+    const token = relayIssueToken(s)
+    const payload = {
+      sessionId: s.id, access: s.access, token, tokenExpiresAt: s.tokenExpiresAt,
+      requesterDeviceId: s.requester.deviceId, targetDeviceId: s.target.deviceId,
+      channels: RELAY_CHANNELS.slice(), resumed: true,
+    }
+    relaySendToDevice(s.requester.deviceId, { type: 'session:token', payload })
+    relaySendToDevice(s.target.deviceId, { type: 'session:token', payload })
+    relaySendToDevice(s.requester.deviceId, { type: 'session:resumed', payload: { sessionId: s.id } })
+    relaySendToDevice(s.target.deviceId, { type: 'session:resumed', payload: { sessionId: s.id } })
+    dbLogAudit({
+      userId: s.requester.userId || '', userEmail: s.requester.email || '', deviceId: s.target.deviceId,
+      action: 'session_resumed', details: { sessionId: s.id, suspendedMs: Date.now() - (s.suspendedAt || Date.now()) }, ipAddress: null,
+    })
+    relayBroadcastState(s)
+    n++
+  }
+  return n
+}
+
 // 10. WebSocket — Dashboard Client
 // ─────────────────────────────────────────────────────────────────────────────
 function handleClientWs(socket, user) {
@@ -2521,7 +2588,7 @@ let TLS_CERT_PATH = null
 
 const AGENT_VERSION = '3.8.7'   // agent artifact version (downloads)
 let serverLogger = null   // set in start(); lets WS handlers write to the app log
-const SERVER_VERSION = '3.8.11'  // server build version (/health)
+const SERVER_VERSION = '3.8.12'  // server build version (/health)
 
 async function start(config) {
   if (started) return
