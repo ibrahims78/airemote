@@ -46,6 +46,7 @@ function electronStep(file) {
 
 const steps = [
   { name: 'static import check',         cmd: NODE + ' scripts/check-imports.js' },
+  { name: 'syntax: agent main.js',        cmd: NODE + ' --check packages/agent-desktop/main.js' },
   { name: 'build shared',                cmd: PNPM + ' --filter @airemote/shared build' },
   { name: 'build ai-engine',             cmd: PNPM + ' --filter @airemote/ai-engine build' },
   { name: 'build server (tsc)',          cmd: PNPM + ' --filter @airemote/server build' },
