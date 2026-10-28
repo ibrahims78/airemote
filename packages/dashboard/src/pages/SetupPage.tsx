@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom'
 import { clsx } from 'clsx'
 import { APP_VERSION } from '../lib/version'
 import { WindowChrome } from '../components/WindowChrome'
+import { Alert, Button, Field, Input } from '../components/ui'
 
 const REQUIREMENTS = [
   { label: '8 أحرف على الأقل', labelEn: 'At least 8 characters', test: (p: string) => p.length >= 8 },
@@ -61,7 +62,7 @@ export function SetupPage({ onComplete }: { onComplete: () => void }) {
       <div className="flex items-center justify-between ps-6 pe-32 py-4">
         <div className="flex items-center gap-2.5">
           <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-primary to-primary flex items-center justify-center shadow-sm shadow-primary/25">
-            <Zap size={14} className="text-ink" />
+            <Zap size={14} className="text-primary-fg" />
           </div>
           <span className="font-bold text-ink text-sm">AiRemote</span>
         </div>
@@ -87,7 +88,7 @@ export function SetupPage({ onComplete }: { onComplete: () => void }) {
           {/* Logo */}
           <div className="text-center mb-8">
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary to-primary flex items-center justify-center mx-auto mb-5 shadow-xl shadow-primary/20">
-              <Zap size={28} className="text-ink" />
+              <Zap size={28} className="text-primary-fg" />
             </div>
             <h1 className="text-2xl font-bold text-ink">
               {isAr ? 'مرحباً بك في AiRemote' : 'Welcome to AiRemote'}
@@ -99,43 +100,45 @@ export function SetupPage({ onComplete }: { onComplete: () => void }) {
 
           <div className="glass rounded-2xl p-6 shadow-2xl">
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-ink/90 mb-1.5">
-                  {isAr ? 'الاسم الكامل' : 'Full Name'}
-                </label>
-                <input
+              <Field label={isAr ? 'الاسم الكامل' : 'Full Name'} htmlFor="setup-name" required>
+                <Input
+                  id="setup-name"
                   type="text" required
                   value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
                   placeholder={isAr ? 'إبراهيم' : 'John Doe'}
-                  className="h-10 w-full rounded-xl border border-line bg-surface px-4 text-sm text-ink placeholder:text-muted/70 outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25"
+                  autoComplete="name"
                 />
-              </div>
+              </Field>
 
-              <div>
-                <label className="block text-sm font-medium text-ink/90 mb-1.5">
-                  {isAr ? 'البريد الإلكتروني' : 'Email Address'}
-                </label>
-                <input
-                  type="email" required autoComplete="email"
+              <Field label={isAr ? 'البريد الإلكتروني' : 'Email Address'} htmlFor="setup-email" required>
+                <Input
+                  id="setup-email"
+                  type="email" required autoComplete="email" dir="ltr"
                   value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))}
                   placeholder="admin@airemote.io"
-                  className="h-10 w-full rounded-xl border border-line bg-surface px-4 text-sm text-ink placeholder:text-muted/70 outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25"
-                  dir="ltr"
                 />
-              </div>
+              </Field>
 
-              <div>
-                <label className="block text-sm font-medium text-ink/90 mb-1.5">
-                  {isAr ? 'كلمة المرور' : 'Password'}
-                </label>
+              <Field
+                label={isAr ? 'كلمة المرور' : 'Password'}
+                htmlFor="setup-password"
+                required
+                error={form.confirm && form.password !== form.confirm ? (isAr ? 'كلمتا المرور غير متطابقتين' : 'Passwords do not match') : undefined}
+              >
                 <div className="relative">
-                  <input
-                    type={showPass ? 'text' : 'password'} required
+                  <Input
+                    id="setup-password"
+                    type={showPass ? 'text' : 'password'} required dir="ltr"
+                    className="pl-10"
                     value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))}
-                    className="h-10 w-full rounded-xl border border-line bg-surface px-4 text-sm text-ink outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25"
-                    dir="ltr"
+                    autoComplete="new-password"
                   />
-                  <button type="button" onClick={() => setShowPass(s => !s)} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink/90 transition-colors">
+                  <button
+                    type="button"
+                    onClick={() => setShowPass(s => !s)}
+                    aria-label={showPass ? (isAr ? 'إخفاء كلمة المرور' : 'Hide password') : (isAr ? 'إظهار كلمة المرور' : 'Show password')}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted transition-colors hover:text-ink"
+                  >
                     {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
                   </button>
                 </div>
@@ -148,7 +151,7 @@ export function SetupPage({ onComplete }: { onComplete: () => void }) {
                     </div>
                     <div className="mt-2 grid grid-cols-1 gap-1">
                       {REQUIREMENTS.map((r, i) => (
-                        <div key={i} className={clsx('flex items-center gap-1.5 text-xs transition-colors', r.test(form.password) ? 'text-success' : 'text-muted/70')}>
+                        <div key={i} className={clsx('flex items-center gap-1.5 text-[11px] transition-colors', r.test(form.password) ? 'text-success' : 'text-muted')}>
                           <Check size={10} className={r.test(form.password) ? 'opacity-100' : 'opacity-20'} />
                           {isAr ? r.label : r.labelEn}
                         </div>
@@ -156,41 +159,32 @@ export function SetupPage({ onComplete }: { onComplete: () => void }) {
                     </div>
                   </>
                 )}
-              </div>
+              </Field>
 
-              <div>
-                <label className="block text-sm font-medium text-ink/90 mb-1.5">
-                  {isAr ? 'تأكيد كلمة المرور' : 'Confirm Password'}
-                </label>
-                <input
-                  type="password" required
+              <Field label={isAr ? 'تأكيد كلمة المرور' : 'Confirm Password'} htmlFor="setup-confirm" required>
+                <Input
+                  id="setup-confirm"
+                  type="password" required dir="ltr"
                   value={form.confirm} onChange={e => setForm(p => ({ ...p, confirm: e.target.value }))}
-                  className={clsx(
-                    'w-full bg-canvas border rounded-xl px-4 py-2.5 text-sm text-ink focus:outline-none transition-colors',
-                    form.confirm && form.password !== form.confirm ? 'border-danger/60 focus:border-danger' : 'border-line focus:border-primary'
-                  )}
-                  dir="ltr"
+                  autoComplete="new-password"
+                  invalid={!!form.confirm && form.password !== form.confirm}
                 />
-                {form.confirm && form.password !== form.confirm && (
-                  <p className="text-xs text-danger mt-1">
-                    {isAr ? 'كلمتا المرور غير متطابقتين' : 'Passwords do not match'}
-                  </p>
-                )}
-              </div>
+              </Field>
 
-              {error && (
-                <div className="bg-danger/10 border border-danger/25 rounded-xl px-4 py-2.5 text-sm text-danger animate-fade-in">
-                  {error}
-                </div>
-              )}
+              {error && <Alert tone="danger" onClose={() => setError('')}>{error}</Alert>}
 
-              <button
-                type="submit" disabled={loading}
-                className="w-full bg-primary hover:brightness-110 disabled:opacity-50 text-primary-fg font-semibold py-2.5 rounded-xl text-sm transition-all flex items-center justify-center gap-2 shadow-lg shadow-primary/20 mt-1"
+              <Button
+                type="submit"
+                variant="primary"
+                size="md"
+                loading={loading}
+                disabled={!form.name.trim() || !form.email.trim()}
+                className="mt-1 w-full justify-center"
               >
-                {loading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-                {loading ? (isAr ? 'جاري الإنشاء...' : 'Creating...') : (isAr ? 'إنشاء الحساب' : 'Create Account')}
-              </button>
+                {loading
+                  ? (isAr ? 'جاري الإنشاء...' : 'Creating...')
+                  : (isAr ? 'إنشاء الحساب' : 'Create Account')}
+              </Button>
             </form>
           </div>
 

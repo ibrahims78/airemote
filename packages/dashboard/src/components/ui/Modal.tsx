@@ -26,7 +26,14 @@ export function Modal({ open, onClose, title, description, children, footer, siz
   useEffect(() => {
     if (!open) return
     restore.current = document.activeElement as HTMLElement
-    const t = setTimeout(() => panel.current?.focus(), 0)
+    const t = setTimeout(() => {
+      const el = panel.current
+      if (!el) return
+      // React already moved focus to an [autoFocus] field inside the dialog —
+      // steal it back to the panel only when nothing inside is focused.
+      if (el.contains(document.activeElement)) return
+      el.focus()
+    }, 0)
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     document.addEventListener('keydown', onKey)
     const prev = document.body.style.overflow
@@ -43,7 +50,7 @@ export function Modal({ open, onClose, title, description, children, footer, siz
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3">
-      <div className="absolute inset-0 bg-black/50 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
+      <div className="absolute inset-0 bg-overlay/50 backdrop-blur-[2px]" onClick={onClose} aria-hidden />
       <div
         ref={panel}
         role="dialog"

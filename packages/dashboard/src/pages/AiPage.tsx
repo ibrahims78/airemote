@@ -2,15 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useDeviceStore } from '../store/deviceStore'
 import { AiChatPanel } from '../components/AiChatPanel'
-import { Bot, Cpu, MemoryStick, Monitor, Wifi, Circle, X } from 'lucide-react'
+import { Bot, Circle, Monitor, Wifi, X } from 'lucide-react'
 import { clsx } from 'clsx'
 import { useT } from '../lib/i18n'
 import { useUIStore } from '../store/uiStore'
 
 export function AiPage() {
-  const t       = useT()
-  const isLight = useUIStore(s => s.theme === 'light')
-  const isAr    = useUIStore(s => s.lang === 'ar')
+  const t    = useT()
+  const isAr = useUIStore(s => s.lang === 'ar')
   const { devices, statsMap, fetchDevices } = useDeviceStore()
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | undefined>(() => {
     try { return localStorage.getItem('airemote-ai-device-v1') || undefined } catch { return undefined }
@@ -19,7 +18,7 @@ export function AiPage() {
   const initialPrompt = searchParams.get('prompt') || undefined
   const autoPickedRef = useRef(false)
 
-  const onlineDevices  = devices.filter(d => d.status === 'online')
+  const onlineDevices = devices.filter(d => d.status === 'online')
 
   useEffect(() => {
     try {
@@ -44,7 +43,7 @@ export function AiPage() {
     <div className="ai-page-shell flex h-full">
 
       {/* ── Main chat area ───────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex min-w-0 flex-1 flex-col">
 
         <div className="ai-page-head">
           <div className="ai-page-head-main">
@@ -70,54 +69,46 @@ export function AiPage() {
           </div>
         </div>
 
-        <div className="flex-1 min-h-0">
+        <div className="min-h-0 flex-1">
           <AiChatPanel deviceId={selectedDeviceId} key={selectedDeviceId || 'global'} initialPrompt={initialPrompt} />
         </div>
       </div>
 
       {/* ── Devices sidebar ──────────────────────────────────────────────── */}
-      <div className={clsx(
-        'w-64 flex-shrink-0 border-s flex flex-col',
-        isLight ? 'border-line bg-surface/60' : 'border-line bg-surface/40'
-      )}>
-        <div className={clsx(
-          'px-4 py-3 border-b flex-shrink-0',
-          isLight ? 'border-line' : 'border-line'
-        )}>
-          <h3 className={clsx('text-xs font-semibold uppercase tracking-wider', isLight ? 'text-muted' : 'text-muted')}>
+      <div className="flex w-64 flex-shrink-0 flex-col border-s border-line bg-surface/50">
+        <div className="flex-shrink-0 border-b border-line px-4 py-3">
+          <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted">
             {t('ai_connected_devices')}
           </h3>
           {onlineDevices.length > 0 && (
-            <p className={clsx('text-[10px] mt-0.5', isLight ? 'text-muted' : 'text-muted/70')}>
-              {t('ai_select_device_hint')}
-            </p>
+            <p className="mt-0.5 text-[10px] text-muted">{t('ai_select_device_hint')}</p>
           )}
         </div>
 
-        <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
+        <div className="flex-1 space-y-1.5 overflow-y-auto p-3">
 
           {/* Global option */}
           <button
+            type="button"
             onClick={() => setSelectedDeviceId(undefined)}
+            aria-pressed={!selectedDeviceId}
             className={clsx(
-              'w-full text-start p-2.5 rounded-xl border transition-all',
+              'w-full rounded-xl border p-2.5 text-start transition-colors',
               !selectedDeviceId
-                ? 'bg-primary/10 border-primary/30 text-primary'
-                : isLight
-                  ? 'border-transparent hover:border-line hover:bg-surface2 text-muted'
-                  : 'border-transparent hover:border-line hover:bg-surface2/60 text-muted'
+                ? 'border-primary/30 bg-primary/10 text-primary'
+                : 'border-transparent text-muted hover:border-line hover:bg-surface2'
             )}
           >
             <div className="flex items-center gap-2">
-              <Bot size={12} className={!selectedDeviceId ? 'text-primary' : isLight ? 'text-muted' : 'text-muted'} />
+              <Bot size={12} />
               <span className="text-xs font-medium">{t('ai_global')}</span>
             </div>
           </button>
 
           {onlineDevices.length === 0 && (
-            <div className="text-center py-8">
-              <Monitor size={24} className={clsx('mx-auto mb-2', isLight ? 'text-ink/90' : 'text-muted/50')} />
-              <p className={clsx('text-xs', isLight ? 'text-muted' : 'text-muted/70')}>{t('no_devices_yet')}</p>
+            <div className="py-6 text-center">
+              <Monitor size={22} className="mx-auto mb-2 text-muted/70" />
+              <p className="text-xs text-muted">{t('no_devices_yet')}</p>
             </div>
           )}
 
@@ -127,70 +118,57 @@ export function AiPage() {
             return (
               <button
                 key={d.id}
+                type="button"
                 onClick={() => setSelectedDeviceId(d.id)}
+                aria-pressed={isSelected}
                 className={clsx(
-                  'w-full text-start p-3 rounded-xl border transition-all',
+                  'w-full rounded-xl border p-3 text-start transition-colors',
                   isSelected
-                    ? isLight
-                      ? 'bg-primary/10 border-primary/30'
-                      : 'bg-primary/10 border-primary/30'
-                    : isLight
-                      ? 'border-transparent hover:border-line hover:bg-surface2'
-                      : 'border-transparent hover:border-line hover:bg-surface2/60'
+                    ? 'border-primary/30 bg-primary/10'
+                    : 'border-transparent hover:border-line hover:bg-surface2'
                 )}
               >
                 {/* Device name + status */}
-                <div className="flex items-center gap-2 mb-2">
+                <div className="mb-2 flex items-center gap-2">
                   <div className={clsx(
-                    'w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0',
-                    isSelected
-                      ? isLight ? 'bg-primary/15' : 'bg-primary/20'
-                      : isLight ? 'bg-surface2' : 'bg-surface2'
+                    'flex h-6 w-6 shrink-0 items-center justify-center rounded-lg',
+                    isSelected ? 'bg-primary/15' : 'bg-surface2'
                   )}>
-                    <Monitor size={11} className={isSelected ? isLight ? 'text-primary' : 'text-primary' : isLight ? 'text-muted' : 'text-muted'} />
+                    <Monitor size={11} className={isSelected ? 'text-primary' : 'text-muted'} />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={clsx(
-                      'text-xs font-medium truncate',
-                      isSelected ? isLight ? 'text-primary' : 'text-primary' : isLight ? 'text-muted/50' : 'text-ink'
-                    )}>
+                  <div className="min-w-0 flex-1">
+                    <p className={clsx('truncate text-xs font-medium', isSelected ? 'text-primary' : 'text-ink')}>
                       {d.name}
                     </p>
                     <div className="flex items-center gap-1">
-                      <Circle size={5} className="text-success fill-current" />
+                      <Circle size={5} className="fill-current text-success" />
                       <span className="text-[10px] text-success">{t('online')}</span>
-                      {isSelected && (
-                        <span className={clsx('text-[10px] ms-1', isLight ? 'text-primary' : 'text-primary')}>✓</span>
-                      )}
                     </div>
                   </div>
                 </div>
 
                 {/* Stats mini bars */}
-                {stats && (
+                {stats ? (
                   <div className="grid grid-cols-3 gap-1 text-center">
                     {[
-                      { label: 'CPU',  value: stats.cpuPercent,  color: '#38bdf8' },
-                      { label: 'RAM',  value: stats.ramPercent,  color: '#2dd4bf' },
-                      { label: 'Disk', value: stats.diskPercent, color: stats.diskPercent > 85 ? '#fb923c' : '#c084fc' },
+                      { label: 'CPU',  value: stats.cpuPercent,  tone: 'bg-info' },
+                      { label: 'RAM',  value: stats.ramPercent,  tone: 'bg-primary' },
+                      { label: 'Disk', value: stats.diskPercent, tone: stats.diskPercent > 85 ? 'bg-warning' : 'bg-info' },
                     ].map(item => (
                       <div key={item.label}>
-                        <div className={clsx('text-[10px] font-mono font-bold', isLight ? 'text-muted/50' : 'text-ink')}>
-                          {item.value}%
-                        </div>
-                        <div className={clsx('text-[10px]', isLight ? 'text-muted' : 'text-muted')}>
-                          {item.label}
-                        </div>
-                        <div className={clsx('w-full rounded-full h-1 mt-0.5', isLight ? 'bg-line' : 'bg-surface2')}>
-                          <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(item.value, 100)}%`, background: item.color }} />
+                        <div className="font-mono text-[10px] font-bold text-ink">{item.value}%</div>
+                        <div className="text-[10px] text-muted">{item.label}</div>
+                        <div className="mt-0.5 h-1 w-full overflow-hidden rounded-full bg-surface2">
+                          <div
+                            className={clsx('h-full rounded-full transition-all', item.tone)}
+                            style={{ width: `${Math.min(item.value, 100)}%` }}
+                          />
                         </div>
                       </div>
                     ))}
                   </div>
-                )}
-
-                {!stats && (
-                  <div className={clsx('flex items-center gap-1 text-[10px]', isLight ? 'text-muted' : 'text-muted/70')}>
+                ) : (
+                  <div className="flex items-center gap-1 text-[10px] text-muted">
                     <Wifi size={9} />
                     {t('connecting')}
                   </div>

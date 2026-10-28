@@ -31,7 +31,7 @@ export function Alert({ tone = 'info', title, children, onClose, className }: Pr
         {children && <div className={clsx(title && 'mt-0.5', 'opacity-90')}>{children}</div>}
       </div>
       {onClose && (
-        <button onClick={onClose} aria-label="إغلاق التنبيه" className="shrink-0 rounded p-0.5 hover:bg-black/5">
+        <button onClick={onClose} aria-label="إغلاق التنبيه" className="shrink-0 rounded p-0.5 hover:bg-surface2">
           <X size={12} />
         </button>
       )}

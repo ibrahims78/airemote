@@ -1,6 +1,6 @@
 # UI INVENTORY — AiRemote Dashboard
 
-> **الإصدار:** 1.1 · **التاريخ:** 2026-10-28 · **المرحلة:** R6 (قيد التنفيذ)
+> **الإصدار:** 1.2 · **التاريخ:** 2026-10-29 · **المرحلة:** R6 (قيد التنفيذ)
 > **المصدر:** قراءة `packages/dashboard/src` — لا تخمين. الأرقام من فحص آلي: `node scripts/scan-ui-colors.cjs`.
 > **الغرض:** جرد ملزم قبل بناء نظام التصميم، حتى لا تُصمَّم شاشات غير موجودة أو تُنسى شاشات قائمة.
 
@@ -35,18 +35,18 @@
 
 | الصفحة | أسطر | تحميل | فارغ | خطأ | هيكل | i18n | عربي مكتوب مباشرة (حرف) |
 |---|---|---|---|---|---|---|---|
-| `AiPage` | 206 | ❌ | ✅ | ❌ | ❌ | ✅ | 8 |
+| `AiPage` | 183 | ❌ | ✅ | ❌ | ❌ | ✅ | 8 |
 | `AuditPage` | 273 | ✅ | ✅ | ✅ | ❌ | ✅ | **190** |
-| `DevicesPage` | 529 | ✅ | ✅ | ✅ | ✅ | ✅ | 5 |
+| `DevicesPage` | 436 | ✅ | ✅ | ✅ | ✅ | ✅ | 5 |
 | `DeviceWorkspacePage` | 264 | ❌ | ✅ | ✅ | ❌ | ✅ | 38 |
-| `HelpPage` | 365 | ❌ | ✅ | ✅ | ❌ | ❌ (isAr محلي) | **484** |
+| `HelpPage` | 354 | ❌ | ✅ | ✅ | ❌ | ❌ (isAr محلي) | **484** |
 | `LoginPage` | 244 | ✅ | — | ✅ | ❌ | ✅ | **405** |
-| `NotificationsPage` | 393 | ✅ | ✅ | ❌ | ❌ | ✅ | 52 |
+| `NotificationsPage` | 427 | ✅ | ✅ | ✅ | ✅ | ✅ | 52 |
 | `OverviewPage` | 440 | ✅ | ✅ | ❌ | ❌ | ✅ | **856** |
 | `ScreenPopoutPage` | 46 | ❌ | — | ❌ | ❌ | ❌ | 0 |
 | `SessionsPage` | 286 | ✅ | ✅ | ✅ | ✅ | ✅ | 0 |
 | `SettingsPage` | 566 | ✅ | — | ✅ | ❌ | ✅ | **353** |
-| `SetupPage` | 205 | ✅ | — | ✅ | ❌ | ❌ (isAr محلي) | 248 |
+| `SetupPage` | 198 | ✅ | — | ✅ | ❌ | ❌ (isAr محلي) | 248 |
 | `UsersPage` | 370 | ✅ | ✅ | ✅ | ❌ | ✅ | 0 |
 
 **قراءة الجدول:** «—» تعني أن الحالة غير ذات معنى لهذه الشاشة (مثل «فارغ» في شاشة إعداد). «❌» تعني غياباً يحتاج معالجة.
@@ -57,41 +57,44 @@
 
 **القياس:** عدد أدوات اللون الصريحة (مثل `bg-slate-800`, `text-sky-400`, `border-l-yellow-400`, `shadow-brand-teal/25`) لكل ملف في `src`. عمود «يستخدم المكتبة» يعني استيراداً فعلياً من `components/ui`.
 
-**الحصيلة الحالية:** **875** صنفاً صريحاً · **9** ملفات على المكتبة · **10** شاشات بصفر أصناف صريحة.
+**الحصيلة الحالية:** **1061** صنفاً صريحاً · **11** ملفاً على المكتبة · **11** شاشة/ملفاً بصفر أصناف صريحة.
 
 > **تصحيح قياس (2026-10-28):** البوابة كانت لا ترصد الاتجاهات (`border-l-*`) ولا `shadow-*` ولا `navy-*` ولا `text-white`، فمرّت أصناف مثل `border-l-yellow-400` بلا رصد. وُسِّعت في `scripts/scan-ui-colors.cjs`، فارتفعت أرقام الملفات غير المحوَّلة (مثال `AiChatPanel`: 276 ← 345) وانخفض الإجمالي لأن أربع صفحات صُفِّرت في الجولة نفسها.
+>
+> **خط الأساس 1089 ← 1061 (2026-10-29):** بعد توسيع البوابة إلى `brand-*` بلا درجة (الالتزام `b29f829`) صار الأساس 1089. الشريحة 15 صفّرت `DevicesPage` (11)، `HelpPage` (12)، `SetupPage` (2)، `NotificationsPage` (1)، و`ui/Modal`+`ui/Alert` (1 لكل منهما).
 
 | الملف | أصناف صريحة | يستخدم المكتبة | الحالات المطلوبة (تحميل / فارغ / خطأ / هيكل) |
 |---|---|---|---|
-| `components/AiChatPanel.tsx` | 345 | ❌ | — (سطح تفاعلي: قرار مؤجّل) |
-| `components/ScreenViewer.tsx` | 255 | ❌ | — (سطح بث: قرار مؤجّل) |
-| `components/CommandRunner.tsx` | 70 | ❌ | ❌ / ✅ / ✅ / ❌ |
-| `components/PTYTerminal.tsx` | 48 | ❌ | — / — / ✅ / ❌ |
-| `components/SettingsExtra.tsx` | 47 | ❌ | ❌ / — / ❌ / ❌ |
-| `components/SSHTerminal.tsx` | 41 | ❌ | — / — / ✅ / ❌ |
-| `components/MonitoringCharts.tsx` | 29 | ❌ | ❌ / ✅ / ❌ / ❌ |
-| `components/CommandPalette.tsx` | 13 | ❌ | — / ✅ / — / ❌ |
-| `components/ToastContainer.tsx` | 13 | ❌ | — / — / — / ❌ |
-| `App.tsx` | 5 | ❌ | — / — / — / ❌ |
-| `components/ExecConsole.tsx` | 5 | ❌ | — / — / ✅ / ❌ |
-| `components/ErrorBoundary.tsx` | 4 | ❌ | — / — / ✅ / ❌ |
+| `components/AiChatPanel.tsx` | 444 | ❌ | — (سطح تفاعلي: قرار مؤجّل) |
+| `components/ScreenViewer.tsx` | 281 | ❌ | — (سطح بث: قرار مؤجّل) |
+| `components/CommandRunner.tsx` | 80 | ❌ | ❌ / ✅ / ✅ / ❌ |
+| `components/PTYTerminal.tsx` | 55 | ❌ | — / — / ✅ / ❌ |
+| `components/SettingsExtra.tsx` | 59 | ❌ | ❌ / — / ❌ / ❌ |
+| `components/SSHTerminal.tsx` | 44 | ❌ | — / — / ✅ / ❌ |
+| `components/MonitoringCharts.tsx` | 40 | ❌ | ❌ / ✅ / ❌ / ❌ |
+| `components/CommandPalette.tsx` | 16 | ❌ | — / ✅ / — / ❌ |
+| `components/ToastContainer.tsx` | 16 | ❌ | — / — / — / ❌ |
+| `App.tsx` | 9 | ❌ | — / — / — / ❌ |
+| `components/ExecConsole.tsx` | 9 | ❌ | — / — / ✅ / ❌ |
+| `components/ErrorBoundary.tsx` | 7 | ❌ | — / — / ✅ / ❌ |
 | `components/FileManager.tsx` | **0** | ✅ | ✅ / ✅ / ✅ / ✅ |
 | `components/TransferQueue.tsx` | **0** | ✅ | ✅ / ✅ / ✅ / ✅ |
+| `pages/ScreenPopoutPage.tsx` | 1 | ❌ | — / — / ❌ / ❌ |
 | `pages/AiPage.tsx` | **0** | ❌ | ❌ / ✅ / ❌ / ❌ |
 | `pages/AuditPage.tsx` | **0** | ✅ | ✅ / ✅ / ✅ / ✅ |
 | `pages/DevicesPage.tsx` | **0** | ✅ | ✅ / ✅ / ✅ / ✅ |
 | `pages/DeviceWorkspacePage.tsx` | **0** | ✅ | — / ✅ / ✅ / ❌ |
 | `pages/HelpPage.tsx` | **0** | ✅ | ❌ / ✅ / ✅ / ❌ |
 | `pages/LoginPage.tsx` | **0** | ❌ | ✅ / — / ✅ / ❌ |
-| `pages/NotificationsPage.tsx` | **0** | ✅ | ✅ / ✅ / ❌ / ✅ |
+| `pages/NotificationsPage.tsx` | **0** | ✅ | ✅ / ✅ / ✅ / ✅ |
 | `pages/SessionsPage.tsx` | **0** | ✅ | ✅ / ✅ / ✅ / ✅ |
 | `pages/SettingsPage.tsx` | **0** | ✅ | ✅ / — / ✅ / ✅ |
-| `pages/SetupPage.tsx` | **0** | ❌ | ✅ / — / ✅ / ❌ |
+| `pages/SetupPage.tsx` | **0** | ✅ | ✅ / — / ✅ / ❌ |
 | `pages/UsersPage.tsx` | **0** | ✅ | ✅ / ✅ / ✅ / ✅ |
 
 **نطاق الاستثناء:** `AiChatPanel` و`ScreenViewer` سطحان تفاعليان بقرار مكتوب (`docs/ADR-R6-INTERACTIVE-SURFACES-AR.md`): الكروم يدخل البوابة، وألوان المحتوى تُثبَّت في قائمة استثناء صريحة. `LoginPage` سطح علامة يستهلك CSS خاصاً به.\n\n**معيار الخروج:** صفر صنف صريح في كل ملف يُعلن «محوَّلاً»، وليس صفراً في المجموع فقط. الملفات المتبقية أعلاه هي قائمة العمل الحقيقية لـR6.
 
-**ملاحظة:** `DevicesPage` على المكتبة لكن بقي فيها 12 صنفاً داخل نافذتي `WolModal` و`AgentInstallModal` اليدويتين — بند 4 في قائمة R6.
+**ملاحظة (مُحدَّثة 2026-10-29):** `DevicesPage` صارت صفراً بعد تحويل `WolModal` و`AgentInstallModal` إلى `Modal` المشترك (الشريحة 15)، وكذلك `HelpPage` بعد تحويل نافذة About وسحب فروع `isLight`. لم يبق في قائمة «صفر صنف صريح» من الشاشات إلا `AiChatPanel` و`ScreenViewer` بقرار مكتوب، و`LoginPage` بسطح CSS خاص، و`OverviewPage` (856 حرفاً عربياً مباشراً، لم تُمس بعد).
 
 ---
 

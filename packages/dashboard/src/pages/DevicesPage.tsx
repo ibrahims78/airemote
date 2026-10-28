@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
-import { Monitor, Plus, Copy, Trash2, Check, X, ExternalLink, Terminal, BookOpen, Laptop, Zap, Loader2, Ban, Power } from 'lucide-react'
+import { Monitor, Plus, Copy, Trash2, Check, X, ExternalLink, Terminal, Laptop, Zap, Loader2, Ban, Power } from 'lucide-react'
 import { useDeviceStore } from '../store/deviceStore'
-import { Alert, Badge, Button, Card, CardBody, EmptyState, Input, SkeletonRows } from '../components/ui'
+import { Alert, Badge, Button, Card, CardBody, EmptyState, Field, Input, Modal, SkeletonRows } from '../components/ui'
 import { clsx } from 'clsx'
 import { Link, useNavigate } from 'react-router-dom'
 import type { Device } from '@airemote/shared'
@@ -43,64 +43,52 @@ function WolModal({ device, token, onClose }: { device: Device; token: string; o
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="glass rounded-2xl w-full max-w-sm">
-        <div className="flex items-center justify-between p-5 border-b border-line">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-warning/15 flex items-center justify-center">
-              <Zap size={16} className="text-warning" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-ink">Wake-on-LAN</h3>
-              <p className="text-xs text-muted mt-0.5">{device.name}</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="text-muted hover:text-ink transition-colors"><X size={18} /></button>
-        </div>
-
-        <form onSubmit={handleSend} className="p-5 space-y-4">
-          <div>
-            <label className="block text-xs text-muted mb-1.5">MAC Address</label>
-            <input
-              value={mac} onChange={e => setMac(e.target.value)}
-              placeholder="AA:BB:CC:DD:EE:FF"
-              dir="ltr"
-              className="w-full bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder:text-muted/70 font-mono focus:outline-none focus:border-warning/50"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-muted mb-1.5">Broadcast IP <span className="text-muted/70">({t('wol_optional')})</span></label>
-            <input
-              value={broadcast} onChange={e => setBroadcast(e.target.value)}
-              placeholder="255.255.255.255"
-              dir="ltr"
-              className="w-full bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder:text-muted/70 font-mono focus:outline-none focus:border-warning/50"
-            />
-          </div>
-
-          <div className="rounded-lg border border-line bg-surface2 px-3 py-2 text-[11px] leading-5 text-muted">
-            {t('wol_hint')}
-          </div>
-
-          {result && (
-            <div className={clsx(
-              'text-xs px-3 py-2 rounded-lg',
-              result.ok ? 'bg-success/10 text-success border border-success/20' : 'bg-danger/10 text-danger border border-danger/20'
-            )}>
-              {result.msg}
-            </div>
-          )}
-
-          <button
-            type="submit" disabled={sending || !mac.trim()}
-            className="w-full flex items-center justify-center gap-2 bg-warning/15 hover:bg-warning/20 disabled:opacity-40 disabled:cursor-not-allowed text-warning text-sm font-medium py-2.5 rounded-lg transition-colors border border-warning/30"
-          >
-            {sending ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
-            {sending ? t('wol_sending') : t('wol_send')}
-          </button>
-        </form>
-      </div>
-    </div>
+    <Modal
+      open
+      onClose={onClose}
+      title="Wake-on-LAN"
+      description={device.name}
+      size="sm"
+      footer={<>
+        <Button onClick={onClose}>{t('cancel')}</Button>
+        <Button
+          variant="primary"
+          type="submit"
+          form="wol-form"
+          loading={sending}
+          disabled={!mac.trim()}
+          icon={<Zap size={14} />}
+        >
+          {sending ? t('wol_sending') : t('wol_send')}
+        </Button>
+      </>}
+    >
+      <form id="wol-form" onSubmit={handleSend} className="space-y-3">
+        <Field label="MAC Address" htmlFor="wol-mac">
+          <Input
+            id="wol-mac"
+            autoFocus
+            value={mac}
+            onChange={e => setMac(e.target.value)}
+            placeholder="AA:BB:CC:DD:EE:FF"
+            dir="ltr"
+            className="font-mono"
+          />
+        </Field>
+        <Field label={`Broadcast IP (${t('wol_optional')})`} htmlFor="wol-broadcast">
+          <Input
+            id="wol-broadcast"
+            value={broadcast}
+            onChange={e => setBroadcast(e.target.value)}
+            placeholder="255.255.255.255"
+            dir="ltr"
+            className="font-mono"
+          />
+        </Field>
+        <Alert tone="info">{t('wol_hint')}</Alert>
+        {result && <Alert tone={result.ok ? 'success' : 'danger'}>{result.msg}</Alert>}
+      </form>
+    </Modal>
   )
 }
 
@@ -152,140 +140,80 @@ AIREMOTE_LOG_LEVEL=info`
   }
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="glass rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-auto">
-        <div className="flex items-center justify-between p-5 border-b border-line">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center">
-              <BookOpen size={16} className="text-primary" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-ink">Agent - {device.name}</h3>
-              {addresses.length > 0 && (
-                <p className="text-[10px] text-muted font-mono mt-0.5" dir="ltr">{addresses.join('  ·  ')}</p>
-              )}
-              <p className="text-xs text-muted mt-0.5">{t('tab_terminal')}</p>
-            </div>
-          </div>
-          <button onClick={onClose} className="text-muted hover:text-ink transition-colors">
-            <X size={18} />
-          </button>
-        </div>
+    <Modal
+      open
+      onClose={onClose}
+      title={`Agent — ${device.name}`}
+      description={t('tab_terminal')}
+      size="lg"
+      footer={<Button variant="primary" onClick={onClose}>{t('close')}</Button>}
+    >
+      <div className="max-h-[62vh] space-y-3 overflow-y-auto pe-1">
+        {addresses.length > 0 && (
+          <p className="font-mono text-[10px] text-muted" dir="ltr">{addresses.join('  ·  ')}</p>
+        )}
 
-        <div className="p-5 space-y-4">
-          {/* Windows Agent — highlighted box */}
-          <div className="bg-brand-teal/5 border border-brand-teal/25 rounded-xl p-4 space-y-3">
-            <div className="flex items-center gap-2 mb-1">
-              <Laptop size={15} className="text-brand-teal" />
-              <span className="text-sm font-semibold text-brand-teal">Windows Agent (Desktop App)</span>
+        {/* Windows agent — the primary path */}
+        <Card className="border-primary/25 bg-primary/5">
+          <CardBody className="space-y-3">
+            <div className="flex items-center gap-2">
+              <Laptop size={15} className="text-primary" />
+              <span className="text-[12px] font-semibold text-ink">Windows Agent (Desktop App)</span>
             </div>
 
-            {/* WS URL */}
             <div>
-              <label className="block text-xs text-muted mb-1.5">① Server URL</label>
-              <div className="flex items-center gap-2 bg-canvas rounded-lg p-2.5 border border-brand-teal/30">
-                <code className="text-xs font-mono text-brand-teal flex-1 break-all" dir="ltr">{wsUrl}</code>
-                <button
+              <p className="mb-1 text-[11px] text-muted">① Server URL</p>
+              <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-canvas px-2.5 py-2">
+                <code className="min-w-0 flex-1 break-all font-mono text-[11px] text-primary" dir="ltr">{wsUrl}</code>
+                <Button
+                  size="sm" variant="ghost" aria-label={t('copy_server_url')}
                   onClick={() => copy('wsurl', wsUrl)}
-                  className="text-muted hover:text-brand-teal p-1.5 transition-colors flex-shrink-0"
-                >
-                  {copied === 'wsurl' ? <Check size={13} className="text-success" /> : <Copy size={13} />}
-                </button>
+                  icon={copied === 'wsurl' ? <Check size={13} className="text-success" /> : <Copy size={13} />}
+                />
               </div>
             </div>
 
-            {/* Token */}
             <div>
-              <label className="block text-xs text-muted mb-1.5">② Device Token</label>
-              <div className="flex items-center gap-2 bg-canvas rounded-lg p-2.5 border border-line">
-                <code className="text-xs font-mono text-ink flex-1 break-all" dir="ltr">{device.token}</code>
-                <button
+              <p className="mb-1 text-[11px] text-muted">② Device Token</p>
+              <div className="flex items-center gap-2 rounded-lg border border-line bg-canvas px-2.5 py-2">
+                <code className="min-w-0 flex-1 break-all font-mono text-[11px] text-ink" dir="ltr">{device.token}</code>
+                <Button
+                  size="sm" variant="ghost" aria-label={t('copy_device_token')}
                   onClick={() => copy('token', device.token)}
-                  className="text-muted hover:text-ink p-1.5 transition-colors flex-shrink-0"
-                >
-                  {copied === 'token' ? <Check size={13} className="text-success" /> : <Copy size={13} />}
-                </button>
+                  icon={copied === 'token' ? <Check size={13} className="text-success" /> : <Copy size={13} />}
+                />
               </div>
             </div>
 
-            <p className="text-xs text-muted">
-              {t('agent_install_hint')}
-            </p>
-          </div>
+            <p className="text-[11px] leading-5 text-muted">{t('agent_install_hint')}</p>
+          </CardBody>
+        </Card>
 
-          {/* Linux/macOS */}
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-5 h-5 rounded-full bg-primary text-primary-fg text-xs flex items-center justify-center font-bold">2</div>
-              <span className="text-sm font-medium text-ink">Linux / macOS</span>
+        {[
+          { key: 'linux', label: 'Linux / macOS', text: scripts.linux },
+          { key: 'docker', label: 'Docker', text: scripts.docker },
+          { key: 'env', label: '.env', text: scripts.env },
+        ].map(({ key, label, text }) => (
+          <div key={key}>
+            <div className="mb-1.5 flex items-center justify-between gap-2">
+              <span className="text-[12px] font-medium text-ink">{label}</span>
+              <Button
+                size="sm" variant="ghost" aria-label={`${t('copy')} ${label}`}
+                onClick={() => copy(key, text)}
+                icon={copied === key ? <Check size={12} className="text-success" /> : <Copy size={12} />}
+              />
             </div>
-            <div className="relative">
-              <pre className="bg-[#0a0f1e] rounded-lg p-3 text-xs font-mono text-ink/90 overflow-x-auto border border-line leading-relaxed">
-                {scripts.linux}
-              </pre>
-              <button
-                onClick={() => copy('linux', scripts.linux)}
-                className="absolute top-2 end-2 p-1.5 text-muted hover:text-ink bg-surface2 rounded-md transition-colors"
-              >
-                {copied === 'linux' ? <Check size={12} className="text-success" /> : <Copy size={12} />}
-              </button>
-            </div>
+            <pre className="overflow-x-auto rounded-lg border border-line bg-code p-3 font-mono text-[11px] leading-relaxed text-ink/90" dir="ltr">
+              {text}
+            </pre>
           </div>
+        ))}
 
-          {/* Docker */}
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs text-muted ms-7">Docker:</span>
-            </div>
-            <div className="relative">
-              <pre className="bg-[#0a0f1e] rounded-lg p-3 text-xs font-mono text-ink/90 overflow-x-auto border border-line leading-relaxed">
-                {scripts.docker}
-              </pre>
-              <button
-                onClick={() => copy('docker', scripts.docker)}
-                className="absolute top-2 end-2 p-1.5 text-muted hover:text-ink bg-surface2 rounded-md transition-colors"
-              >
-                {copied === 'docker' ? <Check size={12} className="text-success" /> : <Copy size={12} />}
-              </button>
-            </div>
-          </div>
-
-          {/* Env file */}
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-5 h-5 rounded-full bg-primary text-primary-fg text-xs flex items-center justify-center font-bold">3</div>
-              <span className="text-sm font-medium text-ink"><code className="text-brand-teal">.env</code></span>
-            </div>
-            <div className="relative">
-              <pre className="bg-[#0a0f1e] rounded-lg p-3 text-xs font-mono text-ink/90 overflow-x-auto border border-line">
-                {scripts.env}
-              </pre>
-              <button
-                onClick={() => copy('env', scripts.env)}
-                className="absolute top-2 end-2 p-1.5 text-muted hover:text-ink bg-surface2 rounded-md transition-colors"
-              >
-                {copied === 'env' ? <Check size={12} className="text-success" /> : <Copy size={12} />}
-              </button>
-            </div>
-          </div>
-
-          <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 text-xs text-muted space-y-1">
-            <p className="text-primary font-medium mb-2">{t('device_online')} ✓</p>
-            <p>• {t('tab_commands')}: {t('execute')}</p>
-            <p>• SSH Terminal: {t('connect')}</p>
-          </div>
-        </div>
-
-        <div className="px-5 pb-5">
-          <button
-            onClick={onClose}
-            className="w-full bg-primary text-primary-fg hover:brightness-110 text-sm font-medium py-2.5 rounded-lg transition-colors"
-          >
-            {t('close')}
-          </button>
-        </div>
+        <Alert tone="info" title={t('device_online')}>
+          {t('tab_commands')}: {t('execute')} · SSH Terminal: {t('connect')}
+        </Alert>
       </div>
-    </div>
+    </Modal>
   )
 }
 
@@ -455,7 +383,7 @@ export function DevicesPage() {
                     <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                       <button
                         onClick={() => setInstallDevice(d)}
-                        className="p-1.5 text-muted/70 hover:text-brand-teal transition-colors rounded"
+                        className="p-1.5 text-muted/70 hover:text-primary transition-colors rounded"
                         title="Agent" aria-label="Agent install"
                       >
                         <Terminal size={13} />

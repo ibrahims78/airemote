@@ -21,6 +21,8 @@ export default {
         warning: 'rgb(var(--warning) / <alpha-value>)',
         danger:  'rgb(var(--danger) / <alpha-value>)',
         info:    'rgb(var(--info) / <alpha-value>)',
+        overlay: 'rgb(var(--overlay) / <alpha-value>)',
+        code:    'rgb(var(--code) / <alpha-value>)',
         navy: {
           900: '#0F172A',
           800: '#1E293B',

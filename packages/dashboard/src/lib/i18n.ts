@@ -105,6 +105,10 @@ const T = {
     notif_every_min: 'كل',
     notif_min: 'دقيقة',
     notif_all_devices: 'جميع الأجهزة',
+    notif_load_failed: 'تعذّر تحميل التنبيهات',
+    notif_rules_load_failed: 'تعذّر تحميل قواعد التنبيه',
+    copy_server_url: 'نسخ عنوان السيرفر',
+    copy_device_token: 'نسخ رمز الجهاز',
     time_now: 'الآن',
 
     wol_sending: 'جارٍ الإرسال...',
@@ -225,6 +229,10 @@ const T = {
     notif_every_min: 'Every',
     notif_min: 'min',
     notif_all_devices: 'All devices',
+    notif_load_failed: 'Could not load notifications',
+    notif_rules_load_failed: 'Could not load alert rules',
+    copy_server_url: 'Copy server URL',
+    copy_device_token: 'Copy device token',
     time_now: 'Just now',
 
     wol_sending: 'Sending...',
