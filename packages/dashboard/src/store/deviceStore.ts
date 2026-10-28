@@ -6,6 +6,7 @@ interface DeviceState {
   devices: Device[]
   statsMap: Record<string, DeviceStats>
   loading: boolean
+  error: string | null
   fetchDevices: () => Promise<void>
   updateDeviceStatus: (id: string, status: DeviceStatus, tunnelLayer?: TunnelLayer) => void
   updateDeviceInfo: (id: string, info: Device['info']) => void
@@ -18,6 +19,7 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
   devices: [],
   statsMap: {},
   loading: false,
+  error: null,
 
   fetchDevices: async () => {
     set({ loading: true })

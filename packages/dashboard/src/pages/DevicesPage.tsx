@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Monitor, Plus, Copy, Trash2, Check, X, ExternalLink, Terminal, BookOpen, Laptop, Zap, Loader2, Ban, Power } from 'lucide-react'
 import { useDeviceStore } from '../store/deviceStore'
+import { Alert, Badge, Button, Card, CardBody, EmptyState, Input, SkeletonRows } from '../components/ui'
 import { clsx } from 'clsx'
 import { Link, useNavigate } from 'react-router-dom'
 import type { Device } from '@airemote/shared'
@@ -44,47 +45,47 @@ function WolModal({ device, token, onClose }: { device: Device; token: string; o
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="glass rounded-2xl w-full max-w-sm">
-        <div className="flex items-center justify-between p-5 border-b border-slate-700/50">
+        <div className="flex items-center justify-between p-5 border-b border-line">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-amber-500/15 flex items-center justify-center">
               <Zap size={16} className="text-amber-400" />
             </div>
             <div>
-              <h3 className="font-semibold text-white">Wake-on-LAN</h3>
-              <p className="text-xs text-slate-400 mt-0.5">{device.name}</p>
+              <h3 className="font-semibold text-ink">Wake-on-LAN</h3>
+              <p className="text-xs text-muted mt-0.5">{device.name}</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-300 transition-colors"><X size={18} /></button>
+          <button onClick={onClose} className="text-muted hover:text-ink transition-colors"><X size={18} /></button>
         </div>
 
         <form onSubmit={handleSend} className="p-5 space-y-4">
           <div>
-            <label className="block text-xs text-slate-400 mb-1.5">MAC Address</label>
+            <label className="block text-xs text-muted mb-1.5">MAC Address</label>
             <input
               value={mac} onChange={e => setMac(e.target.value)}
               placeholder="AA:BB:CC:DD:EE:FF"
               dir="ltr"
-              className="w-full bg-navy-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 font-mono focus:outline-none focus:border-amber-500/60"
+              className="w-full bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder:text-muted/70 font-mono focus:outline-none focus:border-amber-500/60"
             />
           </div>
           <div>
-            <label className="block text-xs text-slate-400 mb-1.5">Broadcast IP <span className="text-slate-600">({t('wol_optional')})</span></label>
+            <label className="block text-xs text-muted mb-1.5">Broadcast IP <span className="text-muted/70">({t('wol_optional')})</span></label>
             <input
               value={broadcast} onChange={e => setBroadcast(e.target.value)}
               placeholder="255.255.255.255"
               dir="ltr"
-              className="w-full bg-navy-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 font-mono focus:outline-none focus:border-amber-500/60"
+              className="w-full bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder:text-muted/70 font-mono focus:outline-none focus:border-amber-500/60"
             />
           </div>
 
-          <div className="rounded-lg border border-slate-700/50 bg-slate-800/30 px-3 py-2 text-[11px] leading-5 text-slate-400">
+          <div className="rounded-lg border border-line bg-surface2 px-3 py-2 text-[11px] leading-5 text-muted">
             {t('wol_hint')}
           </div>
 
           {result && (
             <div className={clsx(
               'text-xs px-3 py-2 rounded-lg',
-              result.ok ? 'bg-emerald-400/10 text-emerald-400 border border-emerald-400/20' : 'bg-red-400/10 text-red-400 border border-red-400/20'
+              result.ok ? 'bg-success/10 text-success border border-success/20' : 'bg-danger/10 text-danger border border-danger/20'
             )}>
               {result.msg}
             </div>
@@ -153,20 +154,20 @@ AIREMOTE_LOG_LEVEL=info`
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
       <div className="glass rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-auto">
-        <div className="flex items-center justify-between p-5 border-b border-slate-700/50">
+        <div className="flex items-center justify-between p-5 border-b border-line">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-brand-blue/15 flex items-center justify-center">
-              <BookOpen size={16} className="text-brand-blue" />
+            <div className="w-9 h-9 rounded-xl bg-primary/15 flex items-center justify-center">
+              <BookOpen size={16} className="text-primary" />
             </div>
             <div>
-              <h3 className="font-semibold text-white">Agent - {device.name}</h3>
+              <h3 className="font-semibold text-ink">Agent - {device.name}</h3>
               {addresses.length > 0 && (
-                <p className="text-[10px] text-slate-500 font-mono mt-0.5" dir="ltr">{addresses.join('  ·  ')}</p>
+                <p className="text-[10px] text-muted font-mono mt-0.5" dir="ltr">{addresses.join('  ·  ')}</p>
               )}
-              <p className="text-xs text-slate-400 mt-0.5">{t('tab_terminal')}</p>
+              <p className="text-xs text-muted mt-0.5">{t('tab_terminal')}</p>
             </div>
           </div>
-          <button onClick={onClose} className="text-slate-500 hover:text-slate-300 transition-colors">
+          <button onClick={onClose} className="text-muted hover:text-ink transition-colors">
             <X size={18} />
           </button>
         </div>
@@ -181,33 +182,33 @@ AIREMOTE_LOG_LEVEL=info`
 
             {/* WS URL */}
             <div>
-              <label className="block text-xs text-slate-500 mb-1.5">① Server URL</label>
-              <div className="flex items-center gap-2 bg-navy-900 rounded-lg p-2.5 border border-brand-teal/30">
+              <label className="block text-xs text-muted mb-1.5">① Server URL</label>
+              <div className="flex items-center gap-2 bg-canvas rounded-lg p-2.5 border border-brand-teal/30">
                 <code className="text-xs font-mono text-brand-teal flex-1 break-all" dir="ltr">{wsUrl}</code>
                 <button
                   onClick={() => copy('wsurl', wsUrl)}
-                  className="text-slate-400 hover:text-brand-teal p-1.5 transition-colors flex-shrink-0"
+                  className="text-muted hover:text-brand-teal p-1.5 transition-colors flex-shrink-0"
                 >
-                  {copied === 'wsurl' ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+                  {copied === 'wsurl' ? <Check size={13} className="text-success" /> : <Copy size={13} />}
                 </button>
               </div>
             </div>
 
             {/* Token */}
             <div>
-              <label className="block text-xs text-slate-500 mb-1.5">② Device Token</label>
-              <div className="flex items-center gap-2 bg-navy-900 rounded-lg p-2.5 border border-slate-700/50">
-                <code className="text-xs font-mono text-slate-300 flex-1 break-all" dir="ltr">{device.token}</code>
+              <label className="block text-xs text-muted mb-1.5">② Device Token</label>
+              <div className="flex items-center gap-2 bg-canvas rounded-lg p-2.5 border border-line">
+                <code className="text-xs font-mono text-ink flex-1 break-all" dir="ltr">{device.token}</code>
                 <button
                   onClick={() => copy('token', device.token)}
-                  className="text-slate-400 hover:text-white p-1.5 transition-colors flex-shrink-0"
+                  className="text-muted hover:text-ink p-1.5 transition-colors flex-shrink-0"
                 >
-                  {copied === 'token' ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+                  {copied === 'token' ? <Check size={13} className="text-success" /> : <Copy size={13} />}
                 </button>
               </div>
             </div>
 
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-muted">
               {t('agent_install_hint')}
             </p>
           </div>
@@ -215,18 +216,18 @@ AIREMOTE_LOG_LEVEL=info`
           {/* Linux/macOS */}
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-5 h-5 rounded-full bg-brand-blue text-white text-xs flex items-center justify-center font-bold">2</div>
-              <span className="text-sm font-medium text-slate-200">Linux / macOS</span>
+              <div className="w-5 h-5 rounded-full bg-primary text-primary-fg text-xs flex items-center justify-center font-bold">2</div>
+              <span className="text-sm font-medium text-ink">Linux / macOS</span>
             </div>
             <div className="relative">
-              <pre className="bg-[#0a0f1e] rounded-lg p-3 text-xs font-mono text-slate-300 overflow-x-auto border border-slate-700/50 leading-relaxed">
+              <pre className="bg-[#0a0f1e] rounded-lg p-3 text-xs font-mono text-slate-300 overflow-x-auto border border-line leading-relaxed">
                 {scripts.linux}
               </pre>
               <button
                 onClick={() => copy('linux', scripts.linux)}
-                className="absolute top-2 end-2 p-1.5 text-slate-500 hover:text-white bg-navy-800 rounded-md transition-colors"
+                className="absolute top-2 end-2 p-1.5 text-muted hover:text-ink bg-surface2 rounded-md transition-colors"
               >
-                {copied === 'linux' ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                {copied === 'linux' ? <Check size={12} className="text-success" /> : <Copy size={12} />}
               </button>
             </div>
           </div>
@@ -234,17 +235,17 @@ AIREMOTE_LOG_LEVEL=info`
           {/* Docker */}
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-xs text-slate-500 ms-7">Docker:</span>
+              <span className="text-xs text-muted ms-7">Docker:</span>
             </div>
             <div className="relative">
-              <pre className="bg-[#0a0f1e] rounded-lg p-3 text-xs font-mono text-slate-300 overflow-x-auto border border-slate-700/50 leading-relaxed">
+              <pre className="bg-[#0a0f1e] rounded-lg p-3 text-xs font-mono text-slate-300 overflow-x-auto border border-line leading-relaxed">
                 {scripts.docker}
               </pre>
               <button
                 onClick={() => copy('docker', scripts.docker)}
-                className="absolute top-2 end-2 p-1.5 text-slate-500 hover:text-white bg-navy-800 rounded-md transition-colors"
+                className="absolute top-2 end-2 p-1.5 text-muted hover:text-ink bg-surface2 rounded-md transition-colors"
               >
-                {copied === 'docker' ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                {copied === 'docker' ? <Check size={12} className="text-success" /> : <Copy size={12} />}
               </button>
             </div>
           </div>
@@ -252,24 +253,24 @@ AIREMOTE_LOG_LEVEL=info`
           {/* Env file */}
           <div>
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-5 h-5 rounded-full bg-brand-blue text-white text-xs flex items-center justify-center font-bold">3</div>
-              <span className="text-sm font-medium text-slate-200"><code className="text-brand-teal">.env</code></span>
+              <div className="w-5 h-5 rounded-full bg-primary text-primary-fg text-xs flex items-center justify-center font-bold">3</div>
+              <span className="text-sm font-medium text-ink"><code className="text-brand-teal">.env</code></span>
             </div>
             <div className="relative">
-              <pre className="bg-[#0a0f1e] rounded-lg p-3 text-xs font-mono text-slate-300 overflow-x-auto border border-slate-700/50">
+              <pre className="bg-[#0a0f1e] rounded-lg p-3 text-xs font-mono text-slate-300 overflow-x-auto border border-line">
                 {scripts.env}
               </pre>
               <button
                 onClick={() => copy('env', scripts.env)}
-                className="absolute top-2 end-2 p-1.5 text-slate-500 hover:text-white bg-navy-800 rounded-md transition-colors"
+                className="absolute top-2 end-2 p-1.5 text-muted hover:text-ink bg-surface2 rounded-md transition-colors"
               >
-                {copied === 'env' ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                {copied === 'env' ? <Check size={12} className="text-success" /> : <Copy size={12} />}
               </button>
             </div>
           </div>
 
-          <div className="bg-brand-blue/5 border border-brand-blue/20 rounded-xl p-4 text-xs text-slate-400 space-y-1">
-            <p className="text-brand-blue font-medium mb-2">{t('device_online')} ✓</p>
+          <div className="bg-primary/5 border border-primary/20 rounded-xl p-4 text-xs text-muted space-y-1">
+            <p className="text-primary font-medium mb-2">{t('device_online')} ✓</p>
             <p>• {t('tab_commands')}: {t('execute')}</p>
             <p>• SSH Terminal: {t('connect')}</p>
           </div>
@@ -278,7 +279,7 @@ AIREMOTE_LOG_LEVEL=info`
         <div className="px-5 pb-5">
           <button
             onClick={onClose}
-            className="w-full bg-brand-blue hover:bg-blue-500 text-white text-sm font-medium py-2.5 rounded-lg transition-colors"
+            className="w-full bg-primary text-primary-fg hover:brightness-110 text-sm font-medium py-2.5 rounded-lg transition-colors"
           >
             {t('close')}
           </button>
@@ -316,7 +317,7 @@ export function DevicesPage() {
       setConnBusyId(null)
     }
   }
-  const { devices, loading, fetchDevices, addDevice, deleteDevice } = useDeviceStore()
+  const { devices, loading, error, fetchDevices, addDevice, deleteDevice } = useDeviceStore()
   const [showAdd, setShowAdd] = useState(false)
   const [newName, setNewName] = useState('')
   const [adding, setAdding] = useState(false)
@@ -355,127 +356,106 @@ export function DevicesPage() {
         <WolModal device={wolDevice} token={token} onClose={() => setWolDevice(null)} />
       )}
 
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-5 flex items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl font-bold text-white">{t('devices_title')}</h2>
-          <p className="text-slate-400 text-sm mt-1">
-            {devices.length} {t('devices')} · <span className="text-emerald-400">{online} {t('online')}</span>
+          <h2 className="text-xl font-bold text-ink">{t('devices_title')}</h2>
+          <p className="mt-1 text-sm text-muted">
+            {devices.length} {t('devices')} · <span className="text-success">{online} {t('online')}</span>
           </p>
         </div>
-        <button
-          onClick={() => setShowAdd(true)}
-          className="flex items-center gap-2 bg-brand-blue hover:bg-blue-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-        >
-          <Plus size={15} />
+        <Button variant="primary" size="md" icon={<Plus size={15} />} onClick={() => setShowAdd(true)}>
           {t('add_device_btn')}
-        </button>
+        </Button>
       </div>
 
+      {error && <Alert tone="danger" className="mb-4" title="تعذّر تحميل الأجهزة">{error}</Alert>}
+
       {showAdd && (
-        <div className="glass rounded-xl p-4 mb-4 animate-fade-in">
-          <h3 className="font-medium text-slate-200 mb-3">{t('add_device')}</h3>
-          <form onSubmit={handleAdd} className="flex gap-3">
-            <input
-              autoFocus type="text" value={newName}
-              onChange={e => setNewName(e.target.value)}
-              placeholder={t('device_name')}
-              className="flex-1 bg-navy-900 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-100 placeholder-slate-500 focus:outline-none focus:border-brand-blue"
-            />
-            <button type="submit" disabled={adding} className="bg-brand-blue hover:bg-blue-500 disabled:opacity-50 text-white text-sm px-4 py-2 rounded-lg transition-colors">
-              {adding ? '...' : t('add')}
-            </button>
-            <button type="button" onClick={() => setShowAdd(false)} className="text-slate-500 hover:text-slate-300 px-2">
-              <X size={16} />
-            </button>
-          </form>
-        </div>
+        <Card className="mb-4">
+          <CardBody>
+            <h3 className="mb-3 text-[13px] font-medium text-ink">{t('add_device')}</h3>
+            <form onSubmit={handleAdd} className="flex items-center gap-2">
+              <Input
+                autoFocus type="text" value={newName}
+                onChange={e => setNewName(e.target.value)}
+                placeholder={t('device_name')}
+                aria-label={t('device_name')}
+                className="flex-1"
+              />
+              <Button type="submit" variant="primary" size="md" loading={adding}>{t('add')}</Button>
+              <Button variant="ghost" size="md" aria-label="إغلاق" icon={<X size={16} />} onClick={() => setShowAdd(false)} />
+            </form>
+          </CardBody>
+        </Card>
       )}
 
       {loading && (
-        <div className="glass rounded-xl overflow-hidden animate-fade-in">
-          <div className="p-4 space-y-3">
-            {[0, 1, 2].map(i => (
-              <div key={i} className="flex items-center gap-4 py-2">
-                <div className="w-9 h-9 rounded-lg bg-slate-700/25 animate-pulse" style={{ animationDelay: (i * 120) + 'ms' }} />
-                <div className="flex-1 space-y-2">
-                  <div className="h-3.5 w-40 rounded bg-slate-700/25 animate-pulse" style={{ animationDelay: (i * 120) + 'ms' }} />
-                  <div className="h-2.5 w-24 rounded bg-slate-700/20 animate-pulse" style={{ animationDelay: (i * 120 + 60) + 'ms' }} />
-                </div>
-                <div className="h-6 w-16 rounded-full bg-slate-700/20 animate-pulse" style={{ animationDelay: (i * 120) + 'ms' }} />
-              </div>
-            ))}
-          </div>
-        </div>
+        <Card>
+          <CardBody><SkeletonRows rows={5} /></CardBody>
+        </Card>
       )}
 
-      {!loading && (
-        <div className="glass rounded-xl overflow-hidden">
+      {!loading && devices.length === 0 && (
+        <Card>
+          <EmptyState
+            icon={<Monitor size={26} />}
+            title={t('no_devices_yet')}
+            description={t('no_devices_desc')}
+            action={<Button variant="primary" size="md" icon={<Plus size={14} />} onClick={() => setShowAdd(true)}>{t('add_device_btn')}</Button>}
+          />
+        </Card>
+      )}
+
+      {!loading && devices.length > 0 && (
+        <div className="overflow-hidden rounded-xl border border-line bg-surface">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-700/50">
-                <th className="text-start text-xs text-slate-500 font-medium px-4 py-3">{t('devices')}</th>
-                <th className="text-start text-xs text-slate-500 font-medium px-4 py-3">{t('platform')}</th>
-                <th className="text-start text-xs text-slate-500 font-medium px-4 py-3">{t('stat_connected')}</th>
-                <th className="text-start text-xs text-slate-500 font-medium px-4 py-3">{t('hostname')}</th>
-                <th className="text-start text-xs text-slate-500 font-medium px-4 py-3">{t('last_seen')}</th>
+              <tr className="border-b border-line">
+                <th className="px-4 py-3 text-start text-xs font-medium text-muted">{t('devices')}</th>
+                <th className="px-4 py-3 text-start text-xs font-medium text-muted">{t('platform')}</th>
+                <th className="px-4 py-3 text-start text-xs font-medium text-muted">{t('stat_connected')}</th>
+                <th className="px-4 py-3 text-start text-xs font-medium text-muted">{t('hostname')}</th>
+                <th className="px-4 py-3 text-start text-xs font-medium text-muted">{t('last_seen')}</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody>
-              {devices.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="text-center text-slate-500 py-14">
-                    <Monitor size={32} className="mx-auto mb-3 text-slate-700" />
-                    <p className="text-slate-400 mb-1">{t('no_devices_yet')}</p>
-                    <p className="text-xs text-slate-600 mb-4">{t('no_devices_desc')}</p>
-                    <button
-                      onClick={() => setShowAdd(true)}
-                      className="inline-flex items-center gap-2 bg-brand-blue hover:bg-blue-500 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors"
-                    >
-                      <Plus size={14} /> {t('add_device_btn')}
-                    </button>
-                  </td>
-                </tr>
-              )}
               {devices.map(d => (
-                <tr key={d.id} className="border-b border-slate-700/30 hover:bg-slate-700/20 transition-colors group cursor-pointer"
+                <tr key={d.id} className="border-b border-line/60 hover:bg-surface2 transition-colors group cursor-pointer"
                 onClick={(e) => { if ((e.target as HTMLElement).closest('button,a')) return; navigate(`/devices/${d.id}`) }}>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
-                      <div className={clsx('w-7 h-7 rounded-lg flex items-center justify-center', d.status === 'online' ? 'bg-brand-blue/15' : 'bg-slate-700/50')}>
-                        <Monitor size={13} className={d.status === 'online' ? 'text-brand-blue' : 'text-slate-500'} />
+                      <div className={clsx('w-7 h-7 rounded-lg flex items-center justify-center', d.status === 'online' ? 'bg-primary/15' : 'bg-surface2')}>
+                        <Monitor size={13} className={d.status === 'online' ? 'text-primary' : 'text-muted'} />
                       </div>
                       <div>
-                        <div className="font-medium text-slate-100">{d.name}</div>
-                        <div className="text-xs text-slate-600 font-mono">{d.id.slice(0, 8)}...</div>
+                        <div className="font-medium text-ink">{d.name}</div>
+                        <div className="text-xs text-muted/70 font-mono">{d.id.slice(0, 8)}...</div>
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-slate-400 text-xs">
+                  <td className="px-4 py-3 text-muted text-xs">
                     {d.info?.platform || '—'} {d.info?.arch || ''}
                   </td>
                   <td className="px-4 py-3">
-                    <span className={clsx(
-                      'inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full',
-                      d.status === 'online' ? 'bg-emerald-400/10 text-emerald-400' : 'bg-slate-700/50 text-slate-500'
-                    )}>
-                      <span className={clsx('w-1.5 h-1.5 rounded-full', d.status === 'online' ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500')} />
+                    <Badge tone={d.status === 'online' ? 'success' : d.status === 'blocked' ? 'danger' : 'neutral'}>
+                      <span className={clsx('h-1.5 w-1.5 rounded-full', d.status === 'online' ? 'animate-pulse bg-success' : 'bg-muted')} />
                       {d.status === 'online' ? t('online') : d.status === 'blocked' ? 'محجوب' : t('offline')}
-                    </span>
+                    </Badge>
                   </td>
-                  <td className="px-4 py-3 text-xs text-slate-500 font-mono">{d.info?.hostname || '—'}
+                  <td className="px-4 py-3 text-xs text-muted font-mono">{d.info?.hostname || '—'}
                     {(d as unknown as { remoteIp?: string }).remoteIp && (
-                      <div className="text-[10px] text-slate-600">{String((d as unknown as { remoteIp?: string }).remoteIp).replace('::ffff:', '')}</div>
+                      <div className="text-[10px] text-muted/70">{String((d as unknown as { remoteIp?: string }).remoteIp).replace('::ffff:', '')}</div>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-xs text-slate-500">
+                  <td className="px-4 py-3 text-xs text-muted">
                     {d.lastSeen ? new Date(d.lastSeen).toLocaleString() : '—'}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                       <button
                         onClick={() => setInstallDevice(d)}
-                        className="p-1.5 text-slate-600 hover:text-brand-teal transition-colors rounded"
+                        className="p-1.5 text-muted/70 hover:text-brand-teal transition-colors rounded"
                         title="Agent" aria-label="Agent install"
                       >
                         <Terminal size={13} />
@@ -484,7 +464,7 @@ export function DevicesPage() {
                       <button
                         onClick={() => connAction(d.id, d.status === 'blocked' ? 'unblock' : 'block')}
                         disabled={connBusyId === d.id}
-                        className={clsx('p-1.5 transition-colors rounded disabled:opacity-40 disabled:cursor-wait', d.status === 'blocked' ? 'text-emerald-400 hover:text-emerald-300' : 'text-slate-600 hover:text-red-400')}
+                        className={clsx('p-1.5 transition-colors rounded disabled:opacity-40 disabled:cursor-wait', d.status === 'blocked' ? 'text-success hover:text-success' : 'text-muted/70 hover:text-danger')}
                         title={d.status === 'blocked' ? 'Unblock device' : 'Block device'} aria-label={d.status === 'blocked' ? 'Unblock device' : 'Block device'}
                       >
                         {connBusyId === d.id ? <Loader2 size={13} className="animate-spin" /> : d.status === 'blocked' ? <Check size={13} /> : <Power size={13} />}
@@ -493,7 +473,7 @@ export function DevicesPage() {
                       {d.status === 'offline' && (
                         <button
                           onClick={() => setWolDevice(d)}
-                          className="p-1.5 text-slate-600 hover:text-amber-400 transition-colors rounded"
+                          className="p-1.5 text-muted/70 hover:text-amber-400 transition-colors rounded"
                           title="Wake-on-LAN" aria-label="Wake-on-LAN"
                         >
                           <Zap size={13} />
@@ -501,7 +481,7 @@ export function DevicesPage() {
                       )}
                       <Link
                         to={`/devices/${d.id}`}
-                        className="p-1.5 text-slate-600 hover:text-brand-blue transition-colors rounded"
+                        className="p-1.5 text-muted/70 hover:text-primary transition-colors rounded"
                         title={t('tab_overview')} aria-label={t('tab_overview')}
                       >
                         <ExternalLink size={13} />
@@ -509,7 +489,7 @@ export function DevicesPage() {
                       {isAdmin && (
                         <button
                           onClick={() => handleDelete(d.id, d.name)}
-                          className="p-1.5 text-slate-600 hover:text-red-400 transition-colors rounded"
+                          className="p-1.5 text-muted/70 hover:text-danger transition-colors rounded"
                           title={t('delete')} aria-label={t('delete')}
                         >
                           <Trash2 size={13} />
