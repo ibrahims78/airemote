@@ -2140,6 +2140,28 @@ async function start(config) {
   await fastify.register(frateLimit, { global: false, max: 200, timeWindow: '1 minute' })
   await fastify.register(fws)
 
+  // v3.8.12 / R2 — حارس موحّد للعمليات المدمِّرة على الأجهزة.
+  // المشكلة: كل مسارات fs/* وcontrol/block/unblock/disconnect وحذف الجهاز كانت
+  // تكتفي بالملكية، فمشاهد يملك جهازاً يستطيع حذفه أو التحكم به — خلافاً لسياسة
+  // الأدوار المعلنة (viewer للقراءة فقط، manager يشغّل). الحارس هنا فقط يمنع
+  // دوراً أقل من manager عند وجود رمز صالح؛ غياب الرمز يترك الرد 401 للمسار.
+  fastify.addHook('onRequest', async (req, reply) => {
+    const method = req.method
+    if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return
+    const url = String(req.url || '').split('?')[0]
+    const destructive =
+      /^\/api\/devices\/[^/]+\/(fs(\/|$)|control$|block$|unblock$|disconnect$)/.test(url) ||
+      (method === 'DELETE' && /^\/api\/devices\/[^/]+$/.test(url))
+    if (!destructive) return
+    const token = extractBearer(req)
+    if (!token) return
+    let payload = null
+    try { payload = verifyToken(token) } catch { return }
+    if (!atLeast(payload.role, 'manager')) {
+      reply.code(403).send({ error: 'Manager role required for device operations', code: 'role_too_low' })
+    }
+  })
+
   // ── v3.4.0 harden + perf: security headers (HTML) + Brotli/Gzip + ETag + cache ──
   fastify.addHook('onSend', async (req, reply, payload) => {
     try {

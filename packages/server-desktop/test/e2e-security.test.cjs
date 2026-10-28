@@ -65,6 +65,10 @@ async function main() {
   dbc.prepare('INSERT INTO users (id, email, name, role, password_hash) VALUES (?,?,?,?,?)').run(adminId, 'admin@sec', 'Admin', 'admin', hash)
   dbc.prepare('INSERT INTO users (id, email, name, role, password_hash) VALUES (?,?,?,?,?)').run(viewerId, 'viewer@sec', 'Viewer', 'viewer', hash)
   dbc.prepare('INSERT INTO devices (id, name, token, owner_id) VALUES (?,?,?,?)').run(devId, 'sec-device', crypto.randomUUID(), adminId)
+  const devV = crypto.randomUUID()
+  const devA2 = crypto.randomUUID()
+  dbc.prepare('INSERT INTO devices (id, name, token, owner_id) VALUES (?,?,?,?)').run(devV, 'viewer-device', crypto.randomUUID(), viewerId)
+  dbc.prepare('INSERT INTO devices (id, name, token, owner_id) VALUES (?,?,?,?)').run(devA2, 'admin-device-2', crypto.randomUUID(), adminId)
   dbc.close()
 
   const adminTok = jwt.sign({ userId: adminId, email: 'admin@sec', role: 'admin' }, SECRET, { expiresIn: '1h' })
@@ -159,6 +163,32 @@ async function main() {
   check('F2. viewer denied /api/users', usersAsViewer.status === 403 || usersAsViewer.status === 401, 'status=' + usersAsViewer.status)
   const auditAsAdmin = await fetch(BASE + '/api/audit', { headers: H(adminTok) })
   check('G1. admin allowed /api/audit', auditAsAdmin.status === 200, 'status=' + auditAsAdmin.status)
+
+  // ── J. role matrix: viewer owns a device but must not operate it ───────────
+  const jDelete = await fetch(BASE + '/api/devices/' + devV, { method: 'DELETE', headers: H(viewerTok) })
+  check('J1. viewer cannot delete own device', jDelete.status === 403, 'status=' + jDelete.status)
+  const jBlock = await fetch(BASE + '/api/devices/' + devV + '/block', { method: 'POST', headers: H(viewerTok) })
+  check('J2. viewer cannot block own device', jBlock.status === 403, 'status=' + jBlock.status)
+  const jFs = await fetch(BASE + '/api/devices/' + devV + '/fs/delete', {
+    method: 'POST', headers: H(viewerTok), body: JSON.stringify({ path: 'C:/x' }),
+  })
+  check('J3. viewer cannot delete files', jFs.status === 403, 'status=' + jFs.status)
+  const jCtl = await fetch(BASE + '/api/devices/' + devV + '/control', {
+    method: 'POST', headers: H(viewerTok), body: JSON.stringify({ action: 'click' }),
+  })
+  check('J4. viewer cannot send control input', jCtl.status === 403, 'status=' + jCtl.status)
+  const jList = await fetch(BASE + '/api/devices/' + devV + '/fs/list?path=C%3A%2F', { headers: H(viewerTok) })
+  const jListBody = await jList.text()
+  const jDev = await fetch(BASE + '/api/devices', { headers: H(viewerTok) })
+  const jDevBody = await jDev.json().catch(() => null)
+  const seesOwn = Array.isArray(jDevBody) && jDevBody.some((d) => d.id === devV)
+  check('J5. viewer is not role-blocked from reading (403 must not be role_too_low)',
+    !(jList.status === 403 && /role_too_low|Manager role/.test(jListBody)),
+    'status=' + jList.status + ' body=' + jListBody.slice(0, 60) + ' seesOwn=' + seesOwn)
+
+  // admin must still pass the guard (not 403)
+  const aDel = await fetch(BASE + '/api/devices/' + devA2, { method: 'DELETE', headers: H(adminTok) })
+  check('J6. admin passes the destructive guard', aDel.status !== 403, 'status=' + aDel.status)
 
   // ── H. audit rows ──────────────────────────────────────────────────────────
   const db2 = new Database(dbPath)
