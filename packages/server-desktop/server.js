@@ -409,6 +409,19 @@ function ensureDeviceAccessSchema() {
       );
       CREATE INDEX IF NOT EXISTS idx_devperm_device ON device_permissions(device_id);
       CREATE INDEX IF NOT EXISTS idx_devperm_user   ON device_permissions(user_id);
+      -- R4: رمز جلسة Relay أحادي الاستخدام لكل طرف، صلاحية قصيرة.
+      CREATE TABLE IF NOT EXISTS session_tokens (
+        token_hash        TEXT PRIMARY KEY,
+        session_id        TEXT NOT NULL,
+        device_id         TEXT NOT NULL,
+        requester_user_id TEXT NOT NULL DEFAULT '',
+        capabilities      TEXT NOT NULL DEFAULT '[]',
+        access            TEXT NOT NULL DEFAULT 'control',
+        expires_at        TEXT NOT NULL,
+        consumed_at       TEXT,
+        created_at        TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+      CREATE INDEX IF NOT EXISTS idx_session_tokens_session ON session_tokens(session_id);
     `)
     return true
   } catch (e) {
@@ -1201,6 +1214,52 @@ function handleAgentWs(socket) {
 
     if (!registered) { socket.close(); return }
 
+    // ── R4 — Relay: قرار الطرف الهدف، ثم hello وتمرير الحزم ──────────────────
+    if (type === 'session:accept' || type === 'session:deny') {
+      const s = relayGet(payload.sessionId)
+      if (!s || s.target.deviceId !== deviceId) {
+        sendJson(socket, { type: 'session:error', payload: { sessionId: payload.sessionId, code: 'not_target' } })
+        return
+      }
+      const res = relayDecide(s, type === 'session:accept', payload.reason, 'device:' + String(deviceId).slice(0, 8))
+      if (!res.ok) {
+        sendJson(socket, { type: 'session:error', payload: { sessionId: payload.sessionId, code: res.code, state: res.state } })
+      } else {
+        sendJson(socket, { type: 'session:decision_result', payload: { sessionId: s.id, state: res.state, tokenExpiresAt: res.tokenExpiresAt || null } })
+      }
+      return
+    }
+
+    if (type === 'relay:hello') {
+      const s = relayGet(payload.sessionId)
+      const res = relayHello(s, deviceId, payload.token)
+      if (!res.ok) {
+        sendJson(socket, { type: 'session:error', payload: { sessionId: payload.sessionId, code: res.code, state: res.state } })
+        return
+      }
+      const peerId = s.requester.deviceId === deviceId ? s.target.deviceId : s.requester.deviceId
+      sendJson(socket, { type: 'session:ready', payload: { sessionId: s.id, access: s.access, channels: RELAY_CHANNELS.slice(), peerDeviceId: peerId, peerOnline: agentSockets.has(peerId) } })
+      return
+    }
+
+    if (type === 'relay:data') {
+      const s = relayGet(payload.sessionId)
+      const res = relayForward(s, deviceId, String(payload.channel || 'control'), payload.data)
+      if (!res.ok) sendJson(socket, { type: 'session:error', payload: { sessionId: payload.sessionId, code: res.code } })
+      return
+    }
+
+    if (type === 'session:close' || type === 'relay:close') {
+      const s = relayGet(payload.sessionId)
+      if (!s || (s.requester.deviceId !== deviceId && s.target.deviceId !== deviceId)) {
+        sendJson(socket, { type: 'session:error', payload: { sessionId: payload.sessionId, code: 'not_party' } })
+        return
+      }
+      relayCloseSession(s, payload.reason || 'user')
+      return
+    }
+
+
     if (type === 'agent:capabilities_update') {
       try {
         if (payload.capabilities) db.prepare("UPDATE devices SET capabilities=? WHERE id=?").run(JSON.stringify(payload.capabilities), deviceId)
@@ -1434,12 +1493,225 @@ function handleAgentWs(socket) {
         serverLogger?.warn('agent', `disconnected name="${rec ? rec.deviceName : String(deviceId).slice(0, 8)}" after=${up}s`)
       } catch {}
       agentSockets.delete(deviceId); markDeviceOffline(deviceId); fireOfflineAlerts(deviceId)
+      // R4 — انقطاع الشبكة يغلق جلسات Relay الخاصة بالجهاز بسبب مسجّل.
+      try { relayCloseForDevice(deviceId, 'network') } catch {}
     }
   })
   socket.on('error', () => {})
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// R4 — جلسات وكيل‑بوكيل عبر Relay (سيرفر وسيط، بلا منفذ وارد)
+// ─────────────────────────────────────────────────────────────────────────────
+// آلة الحالة: requested → accepted → active → closed، ومسارات رفض/انتهاء:
+// requested → denied | expired. لا انتقال ضمني: كل انتقال يمرّ بدالة واحدة.
+const RELAY_MAX_SESSIONS   = Math.max(1, parseInt(process.env.RELAY_MAX_SESSIONS || '20', 10) || 20)
+const RELAY_OFFER_TTL_MS   = Math.max(5000, parseInt(process.env.RELAY_OFFER_TTL_MS || '60000', 10) || 60000)
+const RELAY_TOKEN_TTL_MS   = Math.max(5000, parseInt(process.env.RELAY_TOKEN_TTL_MS || '90000', 10) || 90000)
+const RELAY_SESSION_KBPS   = Math.max(16, parseInt(process.env.RELAY_SESSION_KBPS || '2048', 10) || 2048)
+const RELAY_CHANNELS       = ['screen', 'control', 'files', 'chat']
+const RELAY_ACCESS_CAPABILITY = { view: null, control: 'control', files: 'files' }
+const RELAY_ACTIVE_STATES  = ['requested', 'accepted', 'active']
+const relaySessions = new Map()   // sessionId → session object (ذاكرة؛ الحالة الدائمة في sessions/audit_log)
+
+function relayGet(sessionId) { return sessionId ? (relaySessions.get(String(sessionId)) || null) : null }
+
+function relayActiveCount() {
+  let n = 0
+  for (const s of relaySessions.values()) if (RELAY_ACTIVE_STATES.includes(s.state)) n++
+  return n
+}
+
+function relaySendToDevice(deviceId, obj) {
+  if (!deviceId) return false
+  const rec = agentSockets.get(deviceId)
+  if (!rec || !rec.ws || rec.ws.readyState !== 1) return false
+  try { sendJson(rec.ws, obj); return true } catch { return false }
+}
+
+function relayBroadcastState(session) {
+  try {
+    broadcastToClients({
+      type: 'session:state',
+      payload: {
+        sessionId: session.id, state: session.state, access: session.access,
+        targetDeviceId: session.target.deviceId, targetName: session.target.name,
+        requesterDeviceId: session.requester.deviceId, requesterName: session.requester.name,
+        reason: session.reason || null, createdAt: session.createdAt,
+      },
+    })
+  } catch {}
+}
+
+function relayPruneLater(session, ms) {
+  const t = setTimeout(() => { if (relaySessions.get(session.id) === session) relaySessions.delete(session.id) }, ms)
+  if (t.unref) t.unref()
+}
+
+// إغلاق واحد لكل الأسباب: طرف، مهلة، شبكة، أو سياسة.
+function relayCloseSession(session, reason, actorUserId) {
+  if (!session || session.state === 'closed') return false
+  const wasEstablished = session.state === 'active'
+  const wasPending = session.state === 'requested' || session.state === 'accepted'
+  session.state = 'closed'
+  session.closedAt = Date.now()
+  session.reason = String(reason || 'user')
+  if (session.offerTimer) { clearTimeout(session.offerTimer); session.offerTimer = null }
+  if (wasEstablished || wasPending) {
+    relaySendToDevice(session.requester.deviceId, { type: 'session:close', payload: { sessionId: session.id, reason: session.reason } })
+    relaySendToDevice(session.target.deviceId, { type: 'session:close', payload: { sessionId: session.id, reason: session.reason } })
+  }
+  if (wasEstablished) {
+    try {
+      db.prepare("UPDATE sessions SET ended_at=datetime('now'), duration_sec=CAST((julianday('now')-julianday(started_at))*86400 AS INTEGER), metadata=? WHERE id=?")
+        .run(JSON.stringify({ state: 'closed', reason: session.reason, access: session.access, bytesIn: session.bytesIn, bytesOut: session.bytesOut }), session.id)
+    } catch {}
+    dbLogAudit({
+      userId: actorUserId || session.requester.userId || '', userEmail: session.requester.email || '',
+      deviceId: session.target.deviceId, action: 'session_closed',
+      details: { sessionId: session.id, reason: session.reason, durationMs: session.closedAt - (session.acceptedAt || session.createdAt), bytesIn: session.bytesIn, bytesOut: session.bytesOut },
+      ipAddress: null,
+    })
+  }
+  relayBroadcastState(session)
+  relayPruneLater(session, 5 * 60 * 1000)
+  return true
+}
+
+function relayIssueToken(session) {
+  const raw = crypto.randomBytes(32).toString('hex')
+  const hash = crypto.createHash('sha256').update(raw).digest('hex')
+  const expiresAt = new Date(Date.now() + RELAY_TOKEN_TTL_MS).toISOString()
+  try {
+    db.prepare('INSERT INTO session_tokens (token_hash, session_id, device_id, requester_user_id, capabilities, access, expires_at) VALUES (?,?,?,?,?,?,?)')
+      .run(hash, session.id, session.target.deviceId, session.requester.userId || '', JSON.stringify(session.capabilities), session.access, expiresAt)
+  } catch {}
+  session.tokenHash = hash
+  session.tokenExpiresAt = expiresAt
+  session.tokenUses = {}
+  return raw
+}
+
+// قرار الطرف الهدف: accept يصدر الرمز وينقل الحالة إلى active، وdeny يغلق الطلب.
+function relayDecide(session, accept, reason, decider) {
+  if (!session) return { ok: false, code: 'unknown_session' }
+  if (session.state !== 'requested') return { ok: false, code: 'not_pending', state: session.state }
+  if (session.offerTimer) { clearTimeout(session.offerTimer); session.offerTimer = null }
+  if (!accept) {
+    session.state = 'denied'
+    session.reason = String(reason || 'denied')
+    relaySendToDevice(session.requester.deviceId, { type: 'session:denied', payload: { sessionId: session.id, reason: session.reason } })
+    dbLogAudit({
+      userId: session.requester.userId || '', userEmail: session.requester.email || '',
+      deviceId: session.target.deviceId, action: 'session_denied',
+      details: { sessionId: session.id, reason: session.reason, decider: decider || null }, ipAddress: null,
+    })
+    relayBroadcastState(session)
+    relayPruneLater(session, 60000)
+    return { ok: true, state: 'denied', reason: session.reason }
+  }
+  const token = relayIssueToken(session)
+  session.state = 'active'
+  session.acceptedAt = Date.now()
+  try {
+    db.prepare('INSERT INTO sessions (id, device_id, user_id, type, metadata) VALUES (?,?,?,?,?)')
+      .run(session.id, session.target.deviceId, session.requester.userId || '', 'relay', JSON.stringify({ access: session.access, requesterDeviceId: session.requester.deviceId, state: 'active' }))
+  } catch {}
+  const payload = {
+    sessionId: session.id, access: session.access, token, tokenExpiresAt: session.tokenExpiresAt,
+    requesterDeviceId: session.requester.deviceId, targetDeviceId: session.target.deviceId, channels: RELAY_CHANNELS.slice(),
+  }
+  relaySendToDevice(session.target.deviceId, { type: 'session:token', payload })
+  relaySendToDevice(session.requester.deviceId, { type: 'session:token', payload })
+  dbLogAudit({
+    userId: session.requester.userId || '', userEmail: session.requester.email || '',
+    deviceId: session.target.deviceId, action: 'session_accepted',
+    details: { sessionId: session.id, access: session.access, decider: decider || null }, ipAddress: null,
+  })
+  relayBroadcastState(session)
+  return { ok: true, state: 'active', token, tokenExpiresAt: session.tokenExpiresAt }
+}
+
+// hello: يربط المقبس بالجلسة. الرمز يُستهلك مرة واحدة لكل طرف، ويُرفض من أي طرف ثالث.
+function relayHello(session, deviceId, rawToken) {
+  if (!session) return { ok: false, code: 'unknown_session' }
+  if (session.state !== 'active') return { ok: false, code: 'not_active', state: session.state }
+  if (deviceId !== session.requester.deviceId && deviceId !== session.target.deviceId) return { ok: false, code: 'not_party' }
+  if (session.tokenUses && session.tokenUses[deviceId]) {
+    return { ok: true, rejoin: true }
+  }
+  const raw = String(rawToken || '')
+  if (!raw) return { ok: false, code: 'token_required' }
+  const hash = crypto.createHash('sha256').update(raw).digest('hex')
+  if (hash !== session.tokenHash) {
+    dbLogAudit({ userId: session.requester.userId || '', userEmail: session.requester.email || '', deviceId: session.target.deviceId, action: 'session_token_rejected', details: { sessionId: session.id, reason: 'mismatch', by: deviceId }, ipAddress: null })
+    return { ok: false, code: 'bad_token' }
+  }
+  if (!session.tokenExpiresAt || new Date(session.tokenExpiresAt).getTime() < Date.now()) {
+    dbLogAudit({ userId: session.requester.userId || '', userEmail: session.requester.email || '', deviceId: session.target.deviceId, action: 'session_token_rejected', details: { sessionId: session.id, reason: 'expired', by: deviceId }, ipAddress: null })
+    return { ok: false, code: 'token_expired' }
+  }
+  const uses = Object.keys(session.tokenUses || {})
+  if (uses.length >= 2 && !session.tokenUses[deviceId]) {
+    dbLogAudit({ userId: session.requester.userId || '', userEmail: session.requester.email || '', deviceId: session.target.deviceId, action: 'session_token_rejected', details: { sessionId: session.id, reason: 'consumed', by: deviceId }, ipAddress: null })
+    return { ok: false, code: 'token_consumed' }
+  }
+  session.tokenUses = session.tokenUses || {}
+  session.tokenUses[deviceId] = Date.now()
+  try { db.prepare('UPDATE session_tokens SET consumed_at=? WHERE token_hash=? AND consumed_at IS NULL').run(new Date().toISOString(), hash) } catch {}
+  return { ok: true, firstUse: true }
+}
+
+// حارس نطاق لكل جلسة: نافذة ثانية متحركة.
+function relayChargeBandwidth(session, bytes) {
+  const now = Date.now()
+  if (now - session.windowStart >= 1000) { session.windowStart = now; session.windowBytes = 0 }
+  session.windowBytes += bytes
+  if (session.windowBytes > RELAY_SESSION_KBPS * 1024) {
+    session.droppedBytes = (session.droppedBytes || 0) + bytes
+    if (now - (session.throttleAt || 0) > 1000) {
+      session.throttleAt = now
+      relaySendToDevice(session.requester.deviceId, { type: 'session:throttled', payload: { sessionId: session.id, limitKbps: RELAY_SESSION_KBPS } })
+      relaySendToDevice(session.target.deviceId, { type: 'session:throttled', payload: { sessionId: session.id, limitKbps: RELAY_SESSION_KBPS } })
+    }
+    return false
+  }
+  return true
+}
+
+function relayForward(session, fromDeviceId, channel, data) {
+  if (!session || session.state !== 'active') return { ok: false, code: 'not_active' }
+  const isRequester = fromDeviceId === session.requester.deviceId
+  const isTarget = fromDeviceId === session.target.deviceId
+  if (!isRequester && !isTarget) return { ok: false, code: 'not_party' }
+  if (!session.tokenUses || !session.tokenUses[fromDeviceId]) return { ok: false, code: 'hello_required' }
+  if (!RELAY_CHANNELS.includes(channel)) return { ok: false, code: 'bad_channel' }
+  const text = typeof data === 'string' ? data : JSON.stringify(data == null ? null : data)
+  const bytes = Buffer.byteLength(text, 'utf8')
+  if (!relayChargeBandwidth(session, bytes)) return { ok: false, code: 'throttled' }
+  const toDeviceId = isRequester ? session.target.deviceId : session.requester.deviceId
+  if (isRequester) session.bytesIn += bytes; else session.bytesOut += bytes
+  const delivered = relaySendToDevice(toDeviceId, {
+    type: 'relay:data',
+    payload: { sessionId: session.id, channel, from: fromDeviceId, data },
+    timestamp: Date.now(),
+  })
+  if (!delivered) { session.droppedBytes = (session.droppedBytes || 0) + bytes; return { ok: false, code: 'peer_offline' } }
+  return { ok: true, delivered: true, bytes }
+}
+
+
+function relayCloseForDevice(deviceId, reason) {
+  if (!deviceId) return 0
+  let n = 0
+  for (const s of relaySessions.values()) {
+    if (s.state === 'closed') continue
+    if (s.requester.deviceId === deviceId || s.target.deviceId === deviceId) {
+      if (relayCloseSession(s, reason)) n++
+    }
+  }
+  return n
+}
 // 10. WebSocket — Dashboard Client
 // ─────────────────────────────────────────────────────────────────────────────
 function handleClientWs(socket, user) {
@@ -4428,7 +4700,143 @@ if ($target -eq $null) { 'name-not-found' } else {
     } catch (e) { return reply.code(500).send({ ok: false, error: e.message }) }
   })
 
-  // ── WebSockets ────────────────────────────────────────────────────────────
+  // ── v3.8.12 / R4 — جلسات وكيل‑بوكيل عبر Relay ──────────────────────────────
+  fastify.post('/api/relay/request', { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } }, async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    const body = req.body || {}
+    const access = String(body.access || 'control')
+    if (!Object.prototype.hasOwnProperty.call(RELAY_ACCESS_CAPABILITY, access)) {
+      return reply.code(400).send({ error: 'access غير مدعوم', code: 'bad_access', allowed: Object.keys(RELAY_ACCESS_CAPABILITY) })
+    }
+    let target = null
+    if (body.targetDeviceId) target = db.prepare('SELECT * FROM devices WHERE id=?').get(String(body.targetDeviceId))
+    else if (body.targetCode) target = deviceByCode(String(body.targetCode))
+    if (!target) return reply.code(404).send({ error: 'لا يوجد جهاز بهذا المعرّف', code: 'unknown_device' })
+
+    // الخطوة 2 في §4.2: الصلاحية تُفحص قبل أي إشعار للطرف الهدف.
+    const capability = RELAY_ACCESS_CAPABILITY[access]
+    const allowed = capability ? hasDeviceCapability(p, target.id, capability) : canAccessDevice(p, target.id)
+    if (!allowed) {
+      dbLogAudit({ userId: p.userId, userEmail: p.email, deviceId: target.id, action: 'session_policy_denied', details: { access }, ipAddress: req.ip })
+      return reply.code(403).send({ error: 'غير مصرح بهذا النوع من الوصول لهذا الجهاز', code: 'session_policy_denied' })
+    }
+    if (!agentSockets.has(target.id)) {
+      return reply.code(503).send({ error: 'الجهاز الهدف غير متصل', code: 'target_offline' })
+    }
+    // سياسة التعارض: جلسة واحدة لكل جهاز (منع، لا انتظار ولا استبدال).
+    for (const s of relaySessions.values()) {
+      if (s.target.deviceId === target.id && RELAY_ACTIVE_STATES.includes(s.state)) {
+        dbLogAudit({ userId: p.userId, userEmail: p.email, deviceId: target.id, action: 'session_conflict', details: { sessionId: s.id, state: s.state }, ipAddress: req.ip })
+        return reply.code(409).send({ error: 'يوجد جلسة قائمة أو معلّقة على هذا الجهاز', code: 'session_conflict', sessionId: s.id, state: s.state })
+      }
+    }
+    const active = relayActiveCount()
+    if (active >= RELAY_MAX_SESSIONS) {
+      dbLogAudit({ userId: p.userId, userEmail: p.email, deviceId: target.id, action: 'session_capacity_rejected', details: { active, max: RELAY_MAX_SESSIONS }, ipAddress: req.ip })
+      return reply.code(503).send({ error: 'سعة Relay ممتلئة', code: 'relay_capacity', active, max: RELAY_MAX_SESSIONS })
+    }
+
+    const id = uuidv4()
+    const requesterDeviceId = body.requesterDeviceId ? String(body.requesterDeviceId) : null
+    let requesterName = p.email || 'user'
+    if (requesterDeviceId) {
+      const rd = db.prepare('SELECT name FROM devices WHERE id=?').get(requesterDeviceId)
+      if (rd) requesterName = rd.name
+    }
+    const session = {
+      id, state: 'requested', access,
+      capabilities: capability ? [capability] : ['control', 'files', 'record'],
+      requester: { userId: p.userId, email: p.email || '', deviceId: requesterDeviceId, name: requesterName },
+      target: { deviceId: target.id, name: target.name, ownerId: target.owner_id },
+      createdAt: Date.now(), acceptedAt: null, closedAt: null, reason: null,
+      bytesIn: 0, bytesOut: 0, droppedBytes: 0,
+      tokenHash: null, tokenExpiresAt: null, tokenUses: {},
+      offerTimer: null, throttleAt: 0, windowStart: Date.now(), windowBytes: 0,
+    }
+    relaySessions.set(id, session)
+
+    const offerSent = relaySendToDevice(target.id, {
+      type: 'session:offer',
+      payload: {
+        sessionId: id, access,
+        requester: { name: requesterName, email: p.email || '', userId: p.userId, deviceId: requesterDeviceId },
+        target: { deviceId: target.id, name: target.name },
+        expiresInMs: RELAY_OFFER_TTL_MS,
+        channels: RELAY_CHANNELS.slice(),
+      },
+    })
+    if (!offerSent) { relaySessions.delete(id); return reply.code(503).send({ error: 'الجهاز الهدف غير متصل', code: 'target_offline' }) }
+
+    session.offerTimer = setTimeout(() => {
+      if (session.state !== 'requested') return
+      session.state = 'expired'
+      session.reason = 'timeout'
+      session.offerTimer = null
+      relaySendToDevice(session.requester.deviceId, { type: 'session:expired', payload: { sessionId: id, reason: 'timeout' } })
+      relaySendToDevice(session.target.deviceId, { type: 'session:expired', payload: { sessionId: id, reason: 'timeout' } })
+      dbLogAudit({ userId: session.requester.userId, userEmail: session.requester.email, deviceId: session.target.deviceId, action: 'session_expired', details: { sessionId: id }, ipAddress: null })
+      relayBroadcastState(session)
+      relayPruneLater(session, 60000)
+    }, RELAY_OFFER_TTL_MS)
+    if (session.offerTimer && session.offerTimer.unref) session.offerTimer.unref()
+
+    dbLogAudit({ userId: p.userId, userEmail: p.email, deviceId: target.id, action: 'session_requested', details: { sessionId: id, access, requesterDeviceId }, ipAddress: req.ip })
+    relayBroadcastState(session)
+    return reply.code(201).send({ ok: true, sessionId: id, state: 'requested', access, target: { id: target.id, name: target.name }, expiresInMs: RELAY_OFFER_TTL_MS })
+  })
+
+  fastify.post('/api/relay/:id/decision', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    const s = relayGet(req.params.id)
+    if (!s) return reply.code(404).send({ error: 'لا توجد جلسة بهذا المعرّف', code: 'unknown_session' })
+    if (!isDeviceOwnerOrAdmin(p, s.target.deviceId)) return reply.code(403).send({ error: 'قرار الجلسة لمالك الجهاز الهدف فقط', code: 'owner_required' })
+    const accept = (req.body || {}).accept === true
+    const res = relayDecide(s, accept, (req.body || {}).reason, 'user:' + String(p.userId).slice(0, 8))
+    if (!res.ok) return reply.code(409).send({ error: 'الجلسة ليست بانتظار قرار', code: res.code, state: res.state })
+    return { ok: true, sessionId: s.id, state: res.state }
+  })
+
+  fastify.get('/api/relay/sessions', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    const rows = []
+    for (const s of relaySessions.values()) {
+      if (p.role !== 'admin' && s.requester.userId !== p.userId && s.target.ownerId !== p.userId) continue
+      rows.push({
+        id: s.id, state: s.state, access: s.access,
+        requesterDeviceId: s.requester.deviceId, requesterName: s.requester.name,
+        targetDeviceId: s.target.deviceId, targetName: s.target.name,
+        createdAt: s.createdAt, acceptedAt: s.acceptedAt, closedAt: s.closedAt, reason: s.reason,
+        bytesIn: s.bytesIn, bytesOut: s.bytesOut,
+      })
+    }
+    return { active: relayActiveCount(), max: RELAY_MAX_SESSIONS, sessions: rows }
+  })
+
+  fastify.get('/api/relay/:id', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    const s = relayGet(req.params.id)
+    if (!s) return reply.code(404).send({ error: 'لا توجد جلسة بهذا المعرّف', code: 'unknown_session' })
+    if (!canAccessDevice(p, s.target.deviceId) && s.requester.userId !== p.userId) return reply.code(403).send({ error: 'Forbidden' })
+    return {
+      id: s.id, state: s.state, access: s.access, reason: s.reason,
+      requester: { userId: s.requester.userId, name: s.requester.name, deviceId: s.requester.deviceId },
+      target: { deviceId: s.target.deviceId, name: s.target.name },
+      createdAt: s.createdAt, acceptedAt: s.acceptedAt, closedAt: s.closedAt,
+      bytesIn: s.bytesIn, bytesOut: s.bytesOut, droppedBytes: s.droppedBytes || 0,
+      peerOnline: agentSockets.has(s.requester.deviceId || '') || agentSockets.has(s.target.deviceId),
+    }
+  })
+
+  fastify.post('/api/relay/:id/close', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    const s = relayGet(req.params.id)
+    if (!s) return reply.code(404).send({ error: 'لا توجد جلسة بهذا المعرّف', code: 'unknown_session' })
+    const isParty = s.requester.userId === p.userId || s.requester.deviceId === p.userId
+    if (!isParty && !canAccessDevice(p, s.target.deviceId)) return reply.code(403).send({ error: 'Forbidden' })
+    relayCloseSession(s, (req.body || {}).reason || 'user', p.userId)
+    return { ok: true, sessionId: s.id, state: s.state }
+  })
+
   fastify.register(async (app) => {
     app.get('/ws', { websocket: true }, (socket, request) => {
       const q = request.query || {}
