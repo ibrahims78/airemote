@@ -1,0 +1,58 @@
+{
+  "tool": "scripts/perf/measure.cjs",
+  "schema": 1,
+  "measuredAt": "2026-10-28T06:11:21.409Z",
+  "mode": "idle",
+  "durationSec": 15,
+  "server": {
+    "version": "3.8.11",
+    "port": 3001,
+    "tls": true
+  },
+  "device": {
+    "name": "WIN10-VM",
+    "id": "b42175d0-d0c9-428d-ab94-4e66dff56af3",
+    "agentVersion": "3.8.7",
+    "platform": "windows"
+  },
+  "station": {
+    "host": "127.0.0.1",
+    "port": "3001",
+    "requestedFps": 18,
+    "quality": 60,
+    "maxWidth": 1600,
+    "binary": true
+  },
+  "windows": {
+    "warmupMs": 1500,
+    "sampleFrames": 18,
+    "sampleBytes": 3126309
+  },
+  "metrics": {
+    "fps": 1.2,
+    "kbps": 203.5,
+    "avgFrameKB": 169.61,
+    "frameGapP50ms": 1337,
+    "frameGapP95ms": 1577,
+    "fullFrameRatio": 1.056,
+    "firstFrameMs": 974,
+    "payload": {
+      "webp": 3,
+      "jpeg": 20
+    },
+    "dimsSeen": [
+      "1600x676 ×11",
+      "1472x622 ×2",
+      "1344x568 ×2",
+      "1216x514 ×1",
+      "1280x541 ×1",
+      "1408x595 ×1",
+      "1536x649 ×1",
+      "376x113 ×1",
+      "216x105 ×1",
+      "200x89 ×1",
+      "232x65 ×1"
+    ]
+  },
+  "verdict": null
+}

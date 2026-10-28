@@ -1,0 +1,68 @@
+{
+  "tool": "scripts/perf/measure.cjs",
+  "schema": 1,
+  "measuredAt": "2026-10-28T06:11:41.981Z",
+  "mode": "active",
+  "durationSec": 15,
+  "server": {
+    "version": "3.8.11",
+    "port": 3001,
+    "tls": true
+  },
+  "device": {
+    "name": "WIN10-VM",
+    "id": "b42175d0-d0c9-428d-ab94-4e66dff56af3",
+    "agentVersion": "3.8.7",
+    "platform": "windows"
+  },
+  "station": {
+    "host": "127.0.0.1",
+    "port": "3001",
+    "requestedFps": 18,
+    "quality": 60,
+    "maxWidth": 1600,
+    "binary": true
+  },
+  "windows": {
+    "warmupMs": 1500,
+    "sampleFrames": 107,
+    "sampleBytes": 4381317
+  },
+  "metrics": {
+    "fps": 7.13,
+    "kbps": 285.2,
+    "avgFrameKB": 39.99,
+    "frameGapP50ms": 81,
+    "frameGapP95ms": 591,
+    "fullFrameRatio": 0.187,
+    "firstFrameMs": 2,
+    "payload": {
+      "webp": 9,
+      "jpeg": 110
+    },
+    "dimsSeen": [
+      "504x120 ×13",
+      "1600x676 ×12",
+      "504x88 ×12",
+      "128x120 ×10",
+      "128x128 ×10",
+      "504x113 ×9",
+      "504x121 ×8",
+      "504x64 ×7",
+      "504x153 ×7",
+      "504x105 ×7",
+      "128x121 ×6",
+      "504x152 ×5",
+      "504x81 ×3",
+      "1472x622 ×2",
+      "1344x568 ×2",
+      "384x56 ×1",
+      "504x89 ×1",
+      "1216x514 ×1",
+      "1280x541 ×1",
+      "1408x595 ×1",
+      "1536x649 ×1"
+    ]
+  },
+  "verdict": null
+}

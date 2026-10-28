@@ -1,34 +1,182 @@
 name: CI
 
+# المرحلة R0 — خط أساس CI
+# ما يُشغَّل هنا مُثبت محلياً قبل إضافته (2026-10-28): 5 خطوات بناء/typecheck + 3 اختبارات + بناء اللوحة.
+# مبدأ: لا نُضيف خطوة إلى CI قبل أن نُثبتها محلياً — وإلا صار الأحمر ضجيجاً.
+
 on:
   push:
     branches: ["**"]
   pull_request:
+  workflow_dispatch:
+    inputs:
+      build_installer:
+        description: "بناء حزمة التثبيت (بطيء — يدوي)"
+        type: boolean
+        default: false
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: pwsh
 
 jobs:
+  # ── 1) الفحص الساكن والبناء والاختبارات السريعة (إلزامي) ──────────────────
   verify:
+    name: Static · Build · Unit & API E2E
     runs-on: windows-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
+          cache: "pnpm"
+
       - name: Install
         run: pnpm install --frozen-lockfile --ignore-scripts
-      - name: Typecheck
-        run: |
-          pnpm --filter @airemote/shared build
-          pnpm --filter @airemote/ai-engine build
-          pnpm --filter @airemote/server typecheck
-          pnpm --filter @airemote/agent typecheck
-          pnpm --filter @airemote/dashboard typecheck
-      - name: Tests
-        run: |
-          node packages/server/test/registry-race.test.cjs
-          node packages/server/test/e2e-connection.test.cjs
-          node packages/server/test/e2e-authz.test.cjs
+
+      - name: Static import check
+        run: node scripts/check-imports.js
+
+      - name: Build shared
+        run: pnpm --filter @airemote/shared build
+
+      - name: Build ai-engine
+        run: pnpm --filter @airemote/ai-engine build
+
+      - name: Typecheck server
+        run: pnpm --filter @airemote/server typecheck
+
+      - name: Build server
+        run: pnpm --filter @airemote/server build
+
+      - name: Typecheck agent
+        run: pnpm --filter @airemote/agent typecheck
+
+      - name: Typecheck dashboard
+        run: pnpm --filter @airemote/dashboard typecheck
+
+      - name: Unit — registry race
+        run: node packages/server/test/registry-race.test.cjs
+
+      - name: E2E — web server connection
+        run: node packages/server/test/e2e-connection.test.cjs
+
+      - name: E2E — device authorization
+        run: node packages/server/test/e2e-authz.test.cjs
+
       - name: Build dashboard
         run: pnpm --filter @airemote/dashboard build
+
+      - name: Upload dashboard build
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboard-dist
+          path: packages/dashboard/dist
+          retention-days: 7
+          if-no-files-found: error
+
+  # ── 2) اختبارات سطح المكتب (Electron) — تجريبية وغير معطِّلة ──────────────
+# سبب الوسم experimental: اختبارات Electron تحتاج ثنائي Electron داخل server-desktop،
+# ولم تُثبت بعد على runners. أُثبتت محلياً 11/11 في 2026-10-28 (outputs/verify-2026-10-28/r0-gate/verify.log).
+# تُرقّى إلى إلزامية بعد نجاحين متتاليين على runner — قائمة الترقية في docs/CI.md.
+  desktop-e2e:
+    name: Desktop (Electron) E2E — experimental
+    runs-on: windows-latest
+    timeout-minutes: 25
+    continue-on-error: true
+    needs: verify
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install (with scripts — Electron binary)
+        run: pnpm install --frozen-lockfile
+
+      - name: Ensure Electron binary
+        run: node packages/server-desktop/node_modules/electron/install.js
+        continue-on-error: true
+
+      - name: E2E — desktop control
+        run: "./packages/server-desktop/node_modules/electron/dist/electron.exe packages/server-desktop/test/e2e-screen-control.test.cjs"
+        env:
+          ELECTRON_RUN_AS_NODE: "1"
+
+      - name: E2E — desktop late viewer
+        run: "./packages/server-desktop/node_modules/electron/dist/electron.exe packages/server-desktop/test/e2e-screen-join.test.cjs"
+        env:
+          ELECTRON_RUN_AS_NODE: "1"
+
+  # ── 3) بناء المثبّت — يدوي فقط (بطيء) ────────────────────────────────────
+  installer:
+    name: Installer (manual)
+    runs-on: windows-latest
+    timeout-minutes: 45
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.build_installer }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # ffmpeg.exe و cloudflared.exe مستثنيان من Git (وسائط ثقيلة).
+      # بدل أن يفشل المثبّت بضجيج، نفحصهما ونعلن السبب بوضوح.
+      - name: Preflight — required binaries
+        id: preflight
+        run: |
+          $missing = @()
+          if (-not (Test-Path 'packages/server-desktop/bin/ffmpeg.exe'))    { $missing += 'ffmpeg.exe' }
+          if (-not (Test-Path 'packages/server-desktop/bin/cloudflared.exe')) { $missing += 'cloudflared.exe' }
+          if ($missing.Count -gt 0) {
+            Write-Host "::warning::تخطّي بناء المثبّت — ثنائيات مفقودة: $($missing -join ', ')"
+            "ready=false" >> $env:GITHUB_OUTPUT
+          } else {
+            "ready=true" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Build server bundle
+        if: steps.preflight.outputs.ready == 'true'
+        run: pnpm --filter @airemote/server build
+
+      - name: Build dashboard
+        if: steps.preflight.outputs.ready == 'true'
+        run: pnpm --filter @airemote/dashboard build
+
+      - name: Build Windows installer
+        if: steps.preflight.outputs.ready == 'true'
+        run: pnpm --filter airemote-server-desktop build:win:nodownload
+
+      - name: Upload installer
+        if: steps.preflight.outputs.ready == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-installer
+          path: releases/server-windows/*.exe
+          retention-days: 14
+          if-no-files-found: warn
