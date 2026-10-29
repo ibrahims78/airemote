@@ -69,3 +69,6 @@ outputs/**/*.png
 outputs/**/*.jpg
 outputs/**/*.mp4
 outputs/**/*.zip
+
+# generated test frames
+outputs/**/rec-long/frames/
