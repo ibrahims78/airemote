@@ -312,7 +312,7 @@ export function NotificationsPage({ embedded = false }: { embedded?: boolean } =
                     </div>
                     <p className="mt-1 text-xs leading-relaxed text-muted">{notif.message}</p>
                     {notif.device_id && (
-                      <p className="mt-1 font-mono text-[10px] text-muted/70" dir="ltr">{notif.device_id}</p>
+                      <p className="mt-1 font-mono text-[10px] text-muted" dir="ltr">{notif.device_id}</p>
                     )}
                   </div>
                   {!notif.read && <div className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary" />}

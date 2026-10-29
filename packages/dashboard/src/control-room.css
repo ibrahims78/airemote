@@ -803,7 +803,7 @@
 
 html.light .app-workspace { background: #f8fbfc; border-color: #dbe5ea; }
 html.light .app-workspace-avatar { background: #e8f2f5; border-color: #c6d6de; }
-html.light .app-nav-label { color: #7a8f9c; }
+html.light .app-nav-label { color: #546b7b; }
 html.light .app-nav-item { color: #304957; }
 html.light .app-nav-item:hover { background: rgba(15,118,110,.06); color: #14212b; }
 html.light .app-nav-item.is-active { background: rgba(15,118,110,.08); border-color: rgba(15,118,110,.16); color: #0b3d3a; }
@@ -1005,11 +1005,11 @@ html.light .cr-metric-value { color: #14212b; }
 .cr-settings-section-body { padding: 14px; }
 .cr-settings-section .glass { background: transparent; border: 0; box-shadow: none; }
 html.light .cr-settings-tab:hover { background: rgba(15,118,110,.05); }
-html.light .cr-settings-tab.is-active { background: rgba(15,118,110,.07); color: #0f766e; }
+html.light .cr-settings-tab.is-active { background: rgba(15,118,110,.07); color: #0b5f57; }
 html.light .cr-settings-section-head { background: #f8fbfc; }
 html.light .cr-settings-section-icon { background: #eef5f7; }
 html.light .cr-page-title { color: #14212b; }
-html.light .cr-page-subtitle { color: #607887; }
+html.light .cr-page-subtitle { color: #4f6474; }
 
 
 /* ── Custom titlebar / top navigation ─────────────────────────────────── */
@@ -1067,7 +1067,7 @@ html.light .cr-page-subtitle { color: #607887; }
 .app-user-btn:hover { background: rgba(255,255,255,.045); border-color: var(--cr-line); }
 .app-user-avatar {
   width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
-  background: linear-gradient(135deg, #7c5cff, #2f7cf6); color: #fff;
+  background: linear-gradient(135deg, #5b47cf, #1d5ec8); color: #fff;
   font-size: 9px; font-weight: 700;
 }
 .app-user-name { max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1177,6 +1177,10 @@ html.light {
   --cr-teal: #0f766e;
   --cr-teal-soft: rgba(15, 118, 110, .08);
 }
+html.light {
+  --cr-muted: #4f6474;
+  --cr-muted-2: #546b7b;
+}
 html.light .app-shell { background: #edf3f5 !important; color: #14212b; }
 html.light .app-rail { background: #f8fbfc !important; border-color: #dbe5ea !important; }
 html.light .app-topbar { background: rgba(248, 251, 252, .9) !important; border-color: #dbe5ea !important; }
@@ -1195,9 +1199,9 @@ html.light .cr-metric-foot,
 html.light .cr-device-title span,
 html.light .cr-device-meta,
 html.light .cr-ai-head span,
-html.light .cr-ai-label { color: #6f8493; }
+html.light .cr-ai-label { color: #4f6474; }
 html.light .cr-metric-value { color: #14212b; }
-html.light .cr-kicker { color: #748896; }
+html.light .cr-kicker { color: #546b7b; }
 html.light .cr-live-stage { border-color: #dbe5ea; background: #f3f8f9; }
 html.light .cr-live-stage-copy strong { color: #19333b; }
 html.light .cr-live-empty { background: #f8fbfc; border-color: #dbe5ea; }
@@ -1207,7 +1211,7 @@ html.light .cr-ai-suggestion { color: #617887; border-color: #e5eef1; }
 html.light .cr-session-row { border-color: #e7eff2; }
 html.light .cr-session-copy strong { color: #304957; }
 html.light .cr-session-copy span,
-html.light .cr-session-state { color: #7b909d; }
+html.light .cr-session-state { color: #566c7a; }
 
 @media (max-width: 1180px) {
   .cr-layout { grid-template-columns: 1fr; }
@@ -1915,7 +1919,7 @@ html.light .cr-overview-status span { background: #ffffff; border-color: #dbe5ea
 html.light .cr-overview-status b { color: #304957; }
 html.light .cr-overview-live { background: #ffffff; border-color: #dbe5ea; color: #607887; }
 html.light .cr-ai-compose input { background: #f8fbfc; border-color: #dbe5ea; color: #14212b; }
-html.light .cr-ai-compose input::placeholder { color: #6f8493; }
+html.light .cr-ai-compose input::placeholder { color: #4f6474; }
 html.light .cr-ai-compose button { background: rgba(15, 118, 110, .08); border-color: rgba(15, 118, 110, .2); color: #0f766e; }
 html.light .login-shell {
   background:
@@ -1937,8 +1941,8 @@ html.light .login-kicker { color: #0f766e; }
 html.light .login-input-wrap input,
 html.light .login-totp-input { background: #f8fbfc; border-color: #dbe5ea; color: #14212b; }
 html.light .login-input-wrap input::placeholder { color: #8da4b4; }
-html.light .login-form-foot { border-color: #e7eff2; color: #7b909d; }
-html.light .login-form-meta { color: #7b909d; }
+html.light .login-form-foot { border-color: #e7eff2; color: #566c7a; }
+html.light .login-form-meta { color: #566c7a; }
 html.light .login-form-meta button { color: #0f766e; }
 
 @media (max-width: 900px) {

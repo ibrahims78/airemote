@@ -368,7 +368,7 @@ export function SettingsPage() {
                       setAi({ aiProvider: prov, aiModel: sv?.model || MODELS[prov]?.[0] || '', aiApiKey: sv?.apiKey || '', ollamaUrl: sv?.baseUrl || '' })
                       setValidateState('idle')
                     }}
-                    className="h-9 w-full rounded-lg border border-line bg-surface px-3 text-[13px] text-ink placeholder:text-muted/70 outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25"
+                    className="h-9 w-full rounded-lg border border-line bg-surface px-3 text-[13px] text-ink placeholder:text-muted outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25"
                     dir="ltr"
                   >
                     <option value="openai">OpenAI</option>
@@ -382,7 +382,7 @@ export function SettingsPage() {
                   <select
                     value={ai.aiModel}
                     onChange={e => { setAi(p => ({ ...p, aiModel: e.target.value })); setValidateState('idle') }}
-                    className="h-9 w-full rounded-lg border border-line bg-surface px-3 text-[13px] text-ink placeholder:text-muted/70 outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25"
+                    className="h-9 w-full rounded-lg border border-line bg-surface px-3 text-[13px] text-ink placeholder:text-muted outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25"
                     dir="ltr"
                   >
                     {availableModels.map(m => <option key={m} value={m}>{m}</option>)}
@@ -401,7 +401,7 @@ export function SettingsPage() {
                       value={ai.aiApiKey}
                       onChange={e => { setAi(p => ({ ...p, aiApiKey: e.target.value })); setValidateState('idle') }}
                       placeholder={ai.aiProvider === 'openai' ? 'sk-...' : ai.aiProvider === 'zai' ? 'Z.ai API key' : 'AI...'}
-                      className="h-9 w-full rounded-lg border border-line bg-surface px-3 text-[13px] text-ink placeholder:text-muted/70 outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25 font-mono pe-10"
+                      className="h-9 w-full rounded-lg border border-line bg-surface px-3 text-[13px] text-ink placeholder:text-muted outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25 font-mono pe-10"
                       dir="ltr"
                     />
                     <button type="button" onClick={() => setShowKey(s => !s)} className="absolute end-3 top-1/2 -translate-y-1/2 text-muted hover:text-ink/90 transition-colors">
@@ -417,7 +417,7 @@ export function SettingsPage() {
                     value={ai.ollamaUrl}
                     onChange={e => { setAi(p => ({ ...p, ollamaUrl: e.target.value })); setValidateState('idle') }}
                     placeholder="http://localhost:11434"
-                    className="h-9 w-full rounded-lg border border-line bg-surface px-3 text-[13px] text-ink placeholder:text-muted/70 outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25 font-mono"
+                    className="h-9 w-full rounded-lg border border-line bg-surface px-3 text-[13px] text-ink placeholder:text-muted outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25 font-mono"
                     dir="ltr"
                   />
                 </div>
@@ -431,7 +431,7 @@ export function SettingsPage() {
                     value={ai.ollamaUrl}
                     onChange={e => { setAi(p => ({ ...p, ollamaUrl: e.target.value })); setValidateState('idle') }}
                     placeholder={ai.aiProvider === 'zai' ? 'https://api.z.ai/api/paas/v4' : 'https://api.openai.com'}
-                    className="h-9 w-full rounded-lg border border-line bg-surface px-3 text-[13px] text-ink placeholder:text-muted/70 outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25 font-mono"
+                    className="h-9 w-full rounded-lg border border-line bg-surface px-3 text-[13px] text-ink placeholder:text-muted outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25 font-mono"
                     dir="ltr"
                   />
                 </div>
@@ -478,7 +478,7 @@ export function SettingsPage() {
                     value={telegramToken}
                     onChange={e => setTelegramToken(e.target.value)}
                     placeholder="1234567890:ABCdefGHI..."
-                    className="h-9 w-full rounded-lg border border-line bg-surface px-3 text-[13px] text-ink placeholder:text-muted/70 outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25 font-mono"
+                    className="h-9 w-full rounded-lg border border-line bg-surface px-3 text-[13px] text-ink placeholder:text-muted outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25 font-mono"
                     dir="ltr"
                   />
                 </div>
@@ -489,7 +489,7 @@ export function SettingsPage() {
                     value={telegramChatId}
                     onChange={e => setTelegramChatId(e.target.value)}
                     placeholder="1029428155"
-                    className="h-9 w-full rounded-lg border border-line bg-surface px-3 text-[13px] text-ink placeholder:text-muted/70 outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25 font-mono"
+                    className="h-9 w-full rounded-lg border border-line bg-surface px-3 text-[13px] text-ink placeholder:text-muted outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25 font-mono"
                     dir="ltr"
                   />
                 </div>

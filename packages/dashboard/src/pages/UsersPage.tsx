@@ -128,7 +128,7 @@ function PasswordModal({ user, onClose }: { user: User; onClose: () => void }) {
             <input
               type="password" value={password} onChange={e => setPassword(e.target.value)}
               placeholder={t('password_min')} required
-              className="w-full bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder:text-muted/70 focus:outline-none focus:border-primary"
+              className="w-full bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink placeholder:text-muted focus:outline-none focus:border-primary"
             />
           </div>
           <div>
@@ -137,7 +137,7 @@ function PasswordModal({ user, onClose }: { user: User; onClose: () => void }) {
               type="password" value={confirm} onChange={e => setConfirm(e.target.value)}
               placeholder={t('password_confirm')} required
               className={clsx(
-                'w-full bg-canvas border rounded-lg px-3 py-2 text-sm text-ink placeholder:text-muted/70 focus:outline-none transition-colors',
+                'w-full bg-canvas border rounded-lg px-3 py-2 text-sm text-ink placeholder:text-muted focus:outline-none transition-colors',
                 confirm && password !== confirm ? 'border-danger/60 focus:border-danger' : 'border-line focus:border-primary'
               )}
             />
@@ -287,7 +287,7 @@ export function UsersPage({ embedded = false }: { embedded?: boolean } = {}) {
                 <tr key={u.id} className="border-b border-line/60 hover:bg-surface2 group transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/80 to-info flex items-center justify-center text-xs font-bold text-primary-fg flex-shrink-0">
+                      <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-xs font-bold text-primary-fg flex-shrink-0">
                         {u.name.charAt(0).toUpperCase()}
                       </div>
                       <div>

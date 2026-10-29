@@ -358,7 +358,7 @@ export function DevicesPage() {
                       </div>
                       <div>
                         <div className="font-medium text-ink">{d.name}</div>
-                        <div className="text-xs text-muted/70 font-mono">{d.id.slice(0, 8)}...</div>
+                        <div className="text-xs text-muted font-mono">{d.id.slice(0, 8)}...</div>
                       </div>
                     </div>
                   </td>
@@ -373,7 +373,7 @@ export function DevicesPage() {
                   </td>
                   <td className="px-4 py-3 text-xs text-muted font-mono">{d.info?.hostname || '—'}
                     {(d as unknown as { remoteIp?: string }).remoteIp && (
-                      <div className="text-[10px] text-muted/70">{String((d as unknown as { remoteIp?: string }).remoteIp).replace('::ffff:', '')}</div>
+                      <div className="text-[10px] text-muted">{String((d as unknown as { remoteIp?: string }).remoteIp).replace('::ffff:', '')}</div>
                     )}
                   </td>
                   <td className="px-4 py-3 text-xs text-muted">

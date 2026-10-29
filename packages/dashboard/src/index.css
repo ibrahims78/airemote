@@ -177,7 +177,7 @@ html.light textarea {
   color: #0f172a !important;
 }
 html.light input::placeholder,
-html.light textarea::placeholder { color: #94a3b8 !important; }
+html.light textarea::placeholder { color: rgb(var(--muted)) !important; }
 html.light input:focus,
 html.light select:focus,
 html.light textarea:focus { border-color: #3b82f6 !important; }

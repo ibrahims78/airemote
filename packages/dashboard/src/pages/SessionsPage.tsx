@@ -207,12 +207,12 @@ export function SessionsPage({ embedded = false }: { embedded?: boolean } = {}) 
             className={clsx(
               'flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg font-medium transition-all border',
               filter === f.key
-                ? 'bg-primary/15 text-primary border-primary/30'
+                ? 'bg-primary/5 text-primary border-primary/30'
                 : 'bg-surface2 text-muted hover:text-ink border-transparent hover:border-line'
             )}
           >
             {f.label}
-            <span className={clsx('text-[10px] px-1.5 py-0.5 rounded-full', filter === f.key ? 'bg-primary/20' : 'bg-line')}>{f.count}</span>
+            <span className={clsx('text-[10px] px-1.5 py-0.5 rounded-full', filter === f.key ? 'bg-primary text-primary-fg' : 'bg-line text-ink')}>{f.count}</span>
           </button>
         ))}
       </div>
@@ -260,7 +260,7 @@ export function SessionsPage({ embedded = false }: { embedded?: boolean } = {}) 
                             <span className="text-xs text-muted font-mono">{formatDuration(s.durationSec)}</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-xs text-muted/70 font-mono" dir="ltr">{s.ipAddress || '—'}</td>
+                        <td className="px-4 py-3 text-xs text-muted font-mono" dir="ltr">{s.ipAddress || '—'}</td>
                         <td className="px-4 py-3">
                           <span className={clsx('text-[10px] px-2 py-0.5 rounded-full', isActive ? 'bg-success/10 text-success' : 'bg-surface2 text-muted')}>
                             {isActive ? '●' : '○'}
