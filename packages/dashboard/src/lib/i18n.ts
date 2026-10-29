@@ -180,6 +180,14 @@ const T = {
     ov_last_seen_prefix: 'آخر ظهور:',
     ov_load_failed: 'تعذّر تحميل بيانات الأجهزة',
     ov_retry: 'إعادة المحاولة',
+    mon_cpu: 'المعالج',
+    mon_ram: 'الذاكرة',
+    mon_disk: 'القرص',
+    mon_net: 'الشبكة',
+    mon_up: 'رفع',
+    mon_down: 'تنزيل',
+    mon_waiting: 'في انتظار بيانات المراقبة...',
+    mon_no_net: 'لا يوجد نشاط شبكة',
   },
   en: {
     overview: 'Overview', devices: 'Devices', ai_assistant: 'AI Assistant',
@@ -359,6 +367,14 @@ const T = {
     ov_last_seen_prefix: 'Last seen:',
     ov_load_failed: 'Could not load devices',
     ov_retry: 'Retry',
+    mon_cpu: 'CPU',
+    mon_ram: 'Memory',
+    mon_disk: 'Disk',
+    mon_net: 'Network',
+    mon_up: 'Up',
+    mon_down: 'Down',
+    mon_waiting: 'Waiting for monitoring data...',
+    mon_no_net: 'No network activity',
   }
 } as const
 
