@@ -124,6 +124,12 @@ public class AgentService extends Service {
     private int audioSeq = 0;
     private volatile int streamFps = 8;
     private volatile int capW = 0, capH = 0;
+    // v3.8.22 - MediaProjection mirrors the display content below the status bar/cutout,
+    // leaving a solid black band at the top of every frame (measured 72px on TKL4 at
+    // 720x1600 = 4.5% of the height). It is cropped at the source so the live view, the
+    // recording and the bandwidth all lose it; touch input adds it back.
+    private volatile int streamTopInset = 0;
+    private volatile boolean insetChecked = false;
     private volatile int lastDownX = -1, lastDownY = -1;
     private final java.util.List<Long> ctrlAuthAttempts = new java.util.ArrayList<>();
 
@@ -1471,6 +1477,7 @@ public class AgentService extends Service {
                     DisplayMetrics dm = getResources().getDisplayMetrics();
                     fullW = dm.widthPixels; fullH = dm.heightPixels; dpi = dm.densityDpi;
                     capW = fullW; capH = fullH;
+                    insetChecked = false;
                     MediaProjectionManager mgr = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
                     ensureProjectionForeground();
                     projection = mgr.getMediaProjection(CaptureHolder.resultCode, CaptureHolder.data);
@@ -1527,6 +1534,7 @@ public class AgentService extends Service {
                             fullW = curW; fullH = curH; dpi = curDpi;
                             activeW = fullW; activeH = fullH; activeDpi = dpi;
                             capW = fullW; capH = fullH;
+                            insetChecked = false;
                             if (oldReader != null) oldReader.close();
                             if (scaled != null) { scaled.recycle(); scaled = null; }
                             // The Canvas is bound to one Bitmap. After a rotation it still
@@ -1545,8 +1553,9 @@ public class AgentService extends Service {
                     if (image == null) { Thread.sleep(30); continue; }
                     try {
                         float fscale = Math.min(1f, streamMaxWidth / (float) fullW);
+                        int visH = Math.max(1, fullH - streamTopInset);
                         int fw = Math.max(320, Math.round(fullW * fscale));
-                        int fh = Math.max(240, Math.round(fullH * fscale));
+                        int fh = Math.max(240, Math.round(visH * fscale));
                         if (scaled == null || scaled.getWidth() != fw || scaled.getHeight() != fh) {
                             if (scaled != null) scaled.recycle();
                             scaled = Bitmap.createBitmap(fw, fh, Bitmap.Config.ARGB_8888);
@@ -1560,8 +1569,12 @@ public class AgentService extends Service {
                         Bitmap bmp = frameBitmap(fullW, fullH, rowPadding, pixelStride);
                         buffer.rewind();
                         bmp.copyPixelsFromBuffer(buffer);
+                        if (!insetChecked) {
+                            streamTopInset = detectTopInset(bmp);
+                            insetChecked = true;
+                        }
                         if (scaleCanvas == null) scaleCanvas = new android.graphics.Canvas(scaled);
-                        android.graphics.Rect src = new android.graphics.Rect(0, 0, fullW, fullH);
+                        android.graphics.Rect src = new android.graphics.Rect(0, streamTopInset, fullW, fullH);
                         android.graphics.Rect dst = new android.graphics.Rect(0, 0, fw, fh);
                         scaleCanvas.drawBitmap(bmp, src, dst, null);
                         // v3.8.3 - send only the changed rectangle when the diff is small.
@@ -1950,13 +1963,67 @@ public class AgentService extends Service {
         if (sid.isEmpty() || sid.equals(streamSessionId)) stopScreenStreamRaw();
     }
 
+    /** Status-bar height in pixels, raised to the display cutout on API 30+. */
+    private int candidateTopInset() {
+        int inset = 0;
+        try {
+            int id = getResources().getIdentifier("status_bar_height", "dimen", "android");
+            if (id > 0) inset = getResources().getDimensionPixelSize(id);
+        } catch (Exception ignore) { }
+        if (Build.VERSION.SDK_INT >= 30) {
+            try {
+                android.view.WindowManager wm = (android.view.WindowManager) getSystemService(WINDOW_SERVICE);
+                if (wm != null) {
+                    android.view.WindowInsets wi = wm.getCurrentWindowMetrics().getWindowInsets();
+                    android.view.DisplayCutout cut = wi.getDisplayCutout();
+                    if (cut != null) inset = Math.max(inset, cut.getSafeInsetTop());
+                }
+            } catch (Exception ignore) { }
+        }
+        return Math.max(0, inset);
+    }
+
+    /**
+     * Returns the inset to crop only when the top rows really are black. A device that
+     * mirrors a visible status bar (clock, battery) keeps its full frame instead of
+     * losing it to a blind crop.
+     */
+    private int detectTopInset(Bitmap frame) {
+        int candidate = candidateTopInset();
+        if (frame == null || candidate <= 0) return 0;
+        int w = frame.getWidth(), h = frame.getHeight();
+        if (candidate >= h / 4) return 0;
+        int stepY = Math.max(1, candidate / 8);
+        int stepX = Math.max(1, w / 24);
+        int sampled = 0, dark = 0;
+        try {
+            for (int y = 0; y < candidate; y += stepY) {
+                for (int x = 0; x < w; x += stepX) {
+                    int c = frame.getPixel(x, y);
+                    int lum = (((c >> 16) & 0xff) + ((c >> 8) & 0xff) + (c & 0xff)) / 3;
+                    sampled++;
+                    if (lum < 20) dark++;
+                }
+            }
+        } catch (Exception ignore) {
+            return 0;
+        }
+        if (sampled == 0) return 0;
+        boolean mostlyBlack = dark >= (int) (sampled * 0.9);
+        MainActivity.log("top inset check: candidate=" + candidate + " dark=" + dark + "/" + sampled
+                + " crop=" + (mostlyBlack ? candidate : 0));
+        return mostlyBlack ? candidate : 0;
+    }
+
     private void handleScreenMouse(JSONObject payload) {
         try {
             String t = payload.optString("type", "");
             double rx = payload.optDouble("x", 0.0), ry = payload.optDouble("y", 0.0);
             DisplayMetrics dm = getResources().getDisplayMetrics();
             int mw = capW > 0 ? capW : dm.widthPixels, mh = capH > 0 ? capH : dm.heightPixels;
-            int px = (int) Math.round(rx * mw), py = (int) Math.round(ry * mh);
+            int inset = streamTopInset;
+            int px = (int) Math.round(rx * mw);
+            int py = inset + (int) Math.round(ry * Math.max(1, mh - inset));
             JSONObject act = new JSONObject();
             if (t.equals("click")) { act.put("action", "click"); act.put("x", px); act.put("y", py); }
             else if (t.equals("dblclick")) { act.put("action", "dclick"); act.put("x", px); act.put("y", py); }
