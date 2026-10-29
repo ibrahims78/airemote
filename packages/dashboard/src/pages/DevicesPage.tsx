@@ -162,7 +162,7 @@ AIREMOTE_LOG_LEVEL=info`
             </div>
 
             <div>
-              <p className="mb-1 text-[11px] text-muted">① Server URL</p>
+              <p className="mb-1 text-[11px] text-muted">Server URL</p>
               <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-canvas px-2.5 py-2">
                 <code className="min-w-0 flex-1 break-all font-mono text-[11px] text-primary" dir="ltr">{wsUrl}</code>
                 <Button
@@ -174,7 +174,7 @@ AIREMOTE_LOG_LEVEL=info`
             </div>
 
             <div>
-              <p className="mb-1 text-[11px] text-muted">② Device Token</p>
+              <p className="mb-1 text-[11px] text-muted">Device Token</p>
               <div className="flex items-center gap-2 rounded-lg border border-line bg-canvas px-2.5 py-2">
                 <code className="min-w-0 flex-1 break-all font-mono text-[11px] text-ink" dir="ltr">{device.token}</code>
                 <Button
