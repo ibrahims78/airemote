@@ -2647,6 +2647,33 @@ function exportRecordingMp4(r, dir) {
         audio = Buffer.concat([pad, audio])
         try { serverLogger && serverLogger.info('recording', 'audio padded ' + (-offsetSec).toFixed(2) + 's') } catch {}
       }
+      // v3.8.19 - the PCM track was measured as lagging the picture by ~0.5s: the
+      // agent starts the audio pipeline after the first frames and buffers chunks
+      // before sending, so its head is late. Drop that head (or prepend silence if a
+      // negative value is configured). Tunable without a rebuild through
+      // %APPDATA%\AiRemote-Server\av-offset.json  →  {"trimMs": 500}
+      let leadMs = 500
+      try {
+        const cfgPath = path.join(path.dirname(_config.dbPath || '.'), 'av-offset.json')
+        if (fs.existsSync(cfgPath)) {
+          const cfg = JSON.parse(fs.readFileSync(cfgPath, 'utf8'))
+          if (cfg && Number.isFinite(cfg.trimMs)) leadMs = cfg.trimMs
+        }
+      } catch {}
+      if (Number.isFinite(parseInt(process.env.AIREMOTE_AV_TRIM_MS || '', 10))) {
+        leadMs = parseInt(process.env.AIREMOTE_AV_TRIM_MS, 10)
+      }
+      leadMs = Math.max(-2000, Math.min(2000, leadMs))
+      if (leadMs > 0) {
+        const cut = Math.min(audio.length, Math.round((leadMs / 1000) * BYTES_PER_SEC))
+        audio = audio.subarray(cut)
+        try { serverLogger && serverLogger.info('recording', 'audio advanced ' + leadMs + 'ms') } catch {}
+      } else if (leadMs < 0) {
+        const pad = Buffer.alloc(Math.round((-leadMs / 1000) * BYTES_PER_SEC))
+        audio = Buffer.concat([pad, audio])
+        try { serverLogger && serverLogger.info('recording', 'audio delayed ' + (-leadMs) + 'ms') } catch {}
+      }
+
       const wantBytes = Math.max(0, Math.round(videoSec * BYTES_PER_SEC))
       if (audio.length < wantBytes) audio = Buffer.concat([audio, Buffer.alloc(wantBytes - audio.length)])
       else if (audio.length > wantBytes + BYTES_PER_SEC) audio = audio.subarray(0, wantBytes)
@@ -2758,7 +2785,7 @@ let TLS_CERT_PATH = null
 
 const AGENT_VERSION = '3.8.7'   // agent artifact version (downloads)
 let serverLogger = null   // set in start(); lets WS handlers write to the app log
-const SERVER_VERSION = '3.8.18'  // server build version (/health)
+const SERVER_VERSION = '3.8.19'  // server build version (/health)
 
 async function start(config) {
   if (started) return
