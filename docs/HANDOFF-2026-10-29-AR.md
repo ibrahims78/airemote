@@ -124,7 +124,7 @@ node scripts\shot-modal.js 'Agent install' 'outputs\agent.png' light
 | المحاكي | LDPlayer: `D:\LDPlayer\LDPlayer9\adb.exe`، السيريال `127.0.0.1:5555` |
 | جسر الأندرويد | `python %APPDATA%\AiRemote\android-bridge-local.py` (3101→3001) + `adb reverse tcp:3101 tcp:3101` |
 | ffmpeg | مضمَّن في المثبّت؛ للتطوير `packages/server-desktop/bin/ffmpeg.exe` (مستثنى من git) |
-| آخر حزمة مبنية | `releases/server-windows/AiRemote-Server-Setup-v3.8.11-x64.exe` (115.6MB) — يلزم 3.8.13 |
+| آخر حزمة مبنية | `releases/server-windows/AiRemote-Server-Setup-v3.8.13-x64.exe` (121.2MB) + الوكيل 3.8.13 (76.4MB) — **غير مثبَّتة** (`outputs/verify-2026-10-29/r6-release/`) |
 
 **قيد بيئي مؤكد:** `better-sqlite3` مبني لـElectron (`NODE_MODULE_VERSION 119`)، فأي تشغيل لـ`server.js` بـ`node` العادي يفشل. استخدم `ELECTRON_RUN_AS_NODE=1` + `electron.exe`، أو اختبارات `e2e-*` التي تفعل ذلك بنفسها.
 
