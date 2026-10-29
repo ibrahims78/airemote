@@ -9,6 +9,10 @@
 
 ### 0.1 قيد التنفيذ
 
+**R7/Electron 44 — تحقيق منجَز ومانع واحد:** Electron 44.3.0 متاح محلياً (tgz + win32-x64.zip في offline-build-tools)، لكن better-sqlite3 9.6.0 بلا prebuilds (build/ فقط) وبصمة ABI 119 لـElectron 28، وVS2019 BuildTools بلا C++ (لا cl.exe/MSBuild/vcvarsall). لذلك الترقية تتطلب تركيب حزمة Desktop development with C++ أو إزالة الاعتماد على better-sqlite3.
+
+
+
 **3.8.22 — شريط أندرويد الأسود (مُثبت بالقياس):** كان البث يحمل شريطاً أسود 72px (4.5% من 1600px) لأن VirtualDisplay يُبنى بأبعاد نافذة التطبيق. الإصلاح: قياس الإزاحة من status_bar_height/DisplayCutout، وقصّها **فقط إذا كانت سوداء فعلاً** (عيّنات ≥90%)، من المصدر قبل الترميز، مع إضافة الإزاحة لإحداثيات اللمس. الدليل: الإطار 720×1600 → **720×1528** وأول صف محتوى. APK vc20 في releases/android-agent.
 
 
