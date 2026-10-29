@@ -71,27 +71,27 @@ export function CommandPalette({ isRtl, onClose, onNavigate, onToggleTheme, onTo
 
   return (
     <div className="fixed inset-0 z-[120] flex items-start justify-center pt-[15vh] p-4" dir={isRtl ? 'rtl' : 'ltr'}>
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-lg rounded-2xl border border-slate-600/50 bg-navy-800 shadow-2xl overflow-hidden animate-fade-in">
-        <div className="flex items-center gap-2.5 px-4 py-3 border-b border-slate-700/50">
-          <Search size={15} className="text-slate-500 flex-shrink-0" />
+      <div className="absolute inset-0 bg-overlay/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-lg rounded-2xl border border-line bg-surface shadow-2xl overflow-hidden animate-fade-in">
+        <div className="flex items-center gap-2.5 px-4 py-3 border-b border-line">
+          <Search size={15} className="text-muted flex-shrink-0" />
           <input
             ref={inputRef} value={q} onChange={e => setQ(e.target.value)} onKeyDown={onKey}
             placeholder={isRtl ? 'اكتب أمراً أو ابحث عن صفحة…' : 'Type a command or search…'}
-            className="flex-1 bg-transparent outline-none text-sm text-slate-100 placeholder-slate-500"
+            className="flex-1 bg-transparent outline-none text-sm text-ink placeholder:text-muted"
           />
-          <kbd className="text-[10px] text-slate-500 border border-slate-600/60 rounded px-1.5 py-0.5 font-mono">ESC</kbd>
+          <kbd className="text-[10px] text-muted border border-line rounded px-1.5 py-0.5 font-mono">ESC</kbd>
         </div>
         <div className="max-h-[46vh] overflow-y-auto py-1.5">
           {filtered.length === 0 && (
-            <div className="text-center text-xs text-slate-500 py-6">{isRtl ? 'لا نتائج' : 'No results'}</div>
+            <div className="text-center text-xs text-muted py-6">{isRtl ? 'لا نتائج' : 'No results'}</div>
           )}
           {filtered.map((c, i) => (
             <button
               key={c.id} onClick={() => runAt(i)} onMouseEnter={() => setSel(i)}
               className={clsx(
                 'w-full flex items-center gap-3 px-4 py-2.5 text-sm transition-colors',
-                i === sel ? 'bg-brand-blue/15 text-brand-blue' : 'text-slate-300 hover:bg-slate-700/30'
+                i === sel ? 'bg-primary/15 text-primary' : 'text-ink hover:bg-surface2'
               )}
             >
               <c.icon size={15} className="flex-shrink-0 opacity-80" />
@@ -100,7 +100,7 @@ export function CommandPalette({ isRtl, onClose, onNavigate, onToggleTheme, onTo
             </button>
           ))}
         </div>
-        <div className="px-4 py-2 border-t border-slate-700/50 text-[10px] text-slate-500 flex items-center gap-3">
+        <div className="px-4 py-2 border-t border-line text-[10px] text-muted flex items-center gap-3">
           <span>↑↓ {isRtl ? 'تنقل' : 'navigate'}</span>
           <span>Enter {isRtl ? 'تشغيل' : 'run'}</span>
           <span className="flex-1" />

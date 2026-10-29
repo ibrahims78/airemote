@@ -25,13 +25,13 @@ import { applyTheme, applyLang } from './store/uiStore'
 function PageLoader() {
   return (
     <div className="p-6 space-y-4 animate-fade-in">
-      <div className="h-7 w-48 rounded-lg bg-slate-700/30 animate-pulse" />
+      <div className="h-7 w-48 rounded-lg bg-line/60 animate-pulse" />
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {[0, 1, 2].map(i => (
-          <div key={i} className="h-28 rounded-xl bg-slate-700/20 animate-pulse" style={{ animationDelay: (i * 120) + 'ms' }} />
+          <div key={i} className="h-28 rounded-xl bg-line/40 animate-pulse" style={{ animationDelay: (i * 120) + 'ms' }} />
         ))}
       </div>
-      <div className="h-40 rounded-xl bg-slate-700/20 animate-pulse" />
+      <div className="h-40 rounded-xl bg-line/40 animate-pulse" />
     </div>
   )
 }
@@ -64,15 +64,15 @@ export default function App() {
 
   if (setupRequired === null) {
     return (
-      <div className="min-h-screen bg-navy-900 flex items-center justify-center">
+      <div className="min-h-screen bg-canvas flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-brand-blue to-brand-teal flex items-center justify-center shadow-lg shadow-brand-blue/20">
+          <div className="w-12 h-12 rounded-xl bg-primary flex items-center justify-center shadow-lg shadow-primary/20">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
             </svg>
           </div>
-          <div className="flex items-center gap-2.5 text-slate-400 text-sm">
-            <div className="w-4 h-4 border-2 border-brand-blue border-t-transparent rounded-full animate-spin" />
+          <div className="flex items-center gap-2.5 text-muted text-sm">
+            <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
             <span>Loading AiRemote...</span>
           </div>
         </div>

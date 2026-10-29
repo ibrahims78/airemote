@@ -38,7 +38,7 @@ export function ScreenPopoutPage() {
 
   if (!deviceId) return null
   return (
-    <div className="fixed inset-0 bg-black">
+    <div className="fixed inset-0 bg-code">
       <ScreenViewer deviceId={deviceId} deviceName={name || deviceId} popout />
     </div>
   )

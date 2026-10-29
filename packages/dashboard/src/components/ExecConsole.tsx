@@ -34,16 +34,16 @@ export function ExecConsole({ deviceId }: { deviceId: string }) {
           onChange={e => setCmd(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') run() }}
           placeholder="أدخل أمر shell للجهاز (مثال: getprop ro.product.model)"
-          className="flex-1 bg-slate-900/70 border border-slate-700/60 rounded-lg px-3 py-2 text-sm text-slate-200 font-mono outline-none focus:border-brand-blue/60"
+          className="flex-1 bg-code border border-line rounded-lg px-3 py-2 text-sm text-ink font-mono outline-none focus:border-primary/60"
           dir="ltr"
         />
         <button
           onClick={run}
           disabled={busy || !cmd.trim()}
-          className="px-4 py-2 rounded-lg bg-brand-blue hover:bg-blue-500 disabled:opacity-40 text-white text-sm font-medium"
+          className="px-4 py-2 rounded-lg bg-primary hover:brightness-110 disabled:opacity-40 text-primary-fg text-sm font-medium"
         >{busy ? '...' : 'تنفيذ'}</button>
       </div>
-      <pre className="flex-1 overflow-auto bg-black/60 border border-slate-800 rounded-lg p-3 text-[12px] leading-5 text-emerald-300 font-mono whitespace-pre-wrap" dir="ltr">
+      <pre className="flex-1 overflow-auto bg-code border border-line rounded-lg p-3 text-[12px] leading-5 text-success font-mono whitespace-pre-wrap" dir="ltr">
         {out || 'الطرفية تعمل عبر تنفيذ أوامر الوكيل (بدون SSH). اكتب أمراً بالأعلى.'}
       </pre>
     </div>
