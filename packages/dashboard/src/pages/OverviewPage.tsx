@@ -1,17 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
 import {
   Activity, AlertCircle, ArrowUpRight, ChevronDown, ChevronRight, ChevronUp, Cpu,
-  History, Monitor, MonitorPlay, Play, Plus, Send, Settings, Sparkles,
+  History, Monitor, MonitorPlay, Play, Send, Settings, Sparkles,
   Wifi
 } from 'lucide-react'
 import { useDeviceStore } from '../store/deviceStore'
-import { useUIStore } from '../store/uiStore'
 import { useT } from '../lib/i18n'
 import { clsx } from 'clsx'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
 import type { Device } from '@airemote/shared'
 import { LivePreviewBoard } from '../components/LivePreviewBoard'
+import { Alert, Badge, Button, Card, EmptyState, Skeleton, SkeletonRows } from '../components/ui'
 
 interface Session {
   id: string
@@ -36,6 +36,15 @@ const SESSION_TYPE_LABELS: Record<string, string> = {
   rdp: 'RDP',
   screen: 'SCREEN',
 }
+
+/**
+ * Links that must look like a primary action. Kept here (not in Button) because
+ * Button renders a <button>, and nesting it inside <Link> is invalid HTML.
+ */
+const PRIMARY_LINK =
+  'inline-flex h-7 items-center justify-center gap-1.5 rounded-lg bg-primary px-2.5 text-[12px] font-medium ' +
+  'text-primary-fg transition-colors hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 ' +
+  'focus-visible:ring-primary/60 focus-visible:ring-offset-1 focus-visible:ring-offset-canvas'
 
 function formatDuration(sec?: number) {
   if (!sec) return '—'
@@ -70,6 +79,7 @@ function DeviceCard({ device, activeStream, viewLabel, streamLabel }: {
   streamLabel: string
 }) {
   const { statsMap } = useDeviceStore()
+  const T = useT()
   const stats = statsMap[device.id] || device.stats
   const isOnline = device.status === 'online'
   const cpu = stats?.cpuPercent ?? 0
@@ -113,7 +123,9 @@ function DeviceCard({ device, activeStream, viewLabel, streamLabel }: {
         </div>
       ) : (
         <div className="cr-device-empty">
-          {isOnline ? <span>بانتظار بيانات الجهاز…</span> : <span>آخر ظهور: {formatLastSeen(device.lastSeen) || '—'}</span>}
+          {isOnline
+            ? <span>{T('ov_waiting_stats')}</span>
+            : <span>{T('ov_last_seen_prefix')} {formatLastSeen(device.lastSeen) || '—'}</span>}
         </div>
       )}
 
@@ -132,8 +144,7 @@ function DeviceCard({ device, activeStream, viewLabel, streamLabel }: {
 }
 
 export function OverviewPage() {
-  const { devices, loading, fetchDevices, statsMap } = useDeviceStore()
-  const { lang } = useUIStore()
+  const { devices, loading, error, fetchDevices, statsMap } = useDeviceStore()
   const T = useT()
   const navigate = useNavigate()
   const [aiPrompt, setAiPrompt] = useState('')
@@ -141,10 +152,8 @@ export function OverviewPage() {
   const [sessionsOpen, setSessionsOpen] = useState(false)
   const [sessions, setSessions] = useState<Session[]>([])
   const [sessionsLoading, setSessionsLoading] = useState(true)
+  const [sessionsError, setSessionsError] = useState(false)
   const [activeScreens, setActiveScreens] = useState<Record<string, ActiveScreen>>({})
-
-  const isRtl = lang === 'ar'
-  const tr = (ar: string, en: string) => isRtl ? ar : en
 
   const onlineDevices = devices.filter(d => d.status === 'online')
   const online = onlineDevices.length
@@ -183,8 +192,8 @@ export function OverviewPage() {
     const timer = setInterval(loadActive, 10_000)
 
     api.get('/api/sessions?limit=6')
-      .then(r => setSessions(r.data || []))
-      .catch(() => {})
+      .then(r => { setSessions(r.data || []); setSessionsError(false) })
+      .catch(() => setSessionsError(true))
       .finally(() => setSessionsLoading(false))
 
     return () => clearInterval(timer)
@@ -204,80 +213,86 @@ export function OverviewPage() {
 
   return (
     <div className="cr-page">
-      <section className="cr-overview-head" aria-label={tr('غرفة العمليات', 'Operations room')}>
+      <section className="cr-overview-head" aria-label={T('ov_room')}>
         <div className="cr-overview-copy">
-          <span className="cr-eyebrow"><span /> {tr('غرفة العمليات', 'OPERATIONS ROOM')}</span>
-          <h1>{tr('شاشتك ومساعدك في مساحة واحدة.', 'Your screen and copilot in one workspace.')}</h1>
-          <p>{tr('راقب أجهزتك، ابدأ البث فوراً، واسأل المساعد الذكي عن ما تراه على الشاشة دون مغادرة السياق.', 'Monitor your devices, start streaming instantly, and ask the AI copilot about what is on screen without leaving context.')}</p>
+          <span className="cr-eyebrow"><span /> {T('ov_room_upper')}</span>
+          <h1>{T('ov_hero_title')}</h1>
+          <p>{T('ov_hero_desc')}</p>
         </div>
         <div className="cr-overview-actions">
-          <Link to="/devices" className="cr-btn"><Monitor size={12} /> {tr('الأجهزة', 'Devices')}</Link>
+          <Link to="/devices" className="cr-btn"><Monitor size={12} /> {T('devices')}</Link>
           <button type="button" className="cr-btn is-primary" onClick={() => {
             const device = primaryDevice || onlineDevices[0]
             if (device) openLive(device.id)
             else navigate('/devices')
-          }}><Play size={12} /> {tr('بدء البث الحي', 'Start live stream')}</button>
-          <Link to="/settings" className="cr-btn"><Settings size={12} /> {tr('الإعدادات', 'Settings')}</Link>
+          }}><Play size={12} /> {T('ov_start_stream')}</button>
+          <Link to="/settings" className="cr-btn"><Settings size={12} /> {T('settings')}</Link>
         </div>
       </section>
 
-      <section className="cr-metrics" aria-label={tr('مؤشرات التشغيل', 'Operations metrics')}>
-        <Link to="/devices" className="cr-metric cr-metric-ok is-clickable" title={tr('فتح قائمة الأجهزة', 'Open devices')}>
+      {error && (
+        <Alert tone="danger" title={T('ov_load_failed')} className="mb-3">
+          <Button size="sm" variant="secondary" onClick={() => fetchDevices()}>{T('ov_retry')}</Button>
+        </Alert>
+      )}
+
+      <section className="cr-metrics" aria-label={T('ov_metrics_aria')}>
+        <Link to="/devices" className="cr-metric cr-metric-ok is-clickable" title={T('ov_open_devices')}>
           <div className="cr-metric-top">
-            <div className="cr-metric-label"><Wifi size={13} /> {tr('أجهزة متصلة', 'Connected')}</div>
+            <div className="cr-metric-label"><Wifi size={13} /> {T('ov_connected')}</div>
             <ArrowUpRight size={12} className="cr-metric-arrow" />
           </div>
           <div className="cr-metric-value">{online}<small> / {devices.length}</small></div>
           <div className="cr-metric-foot">
             <i />
-            {offline > 0 ? `${offline} ${tr('غير متصل', 'offline')}` : tr('كل الأجهزة متصلة', 'All devices online')}
+            {offline > 0 ? `${offline} ${T('ov_offline_word')}` : T('ov_all_online')}
           </div>
           <div className="cr-metric-bar"><span style={{ width: `${devices.length ? Math.round(online / devices.length * 100) : 0}%` }} /></div>
         </Link>
 
-        <Link to="/settings?tab=sessions" className="cr-metric is-clickable" title={tr('فتح الجلسات', 'Open sessions')}>
+        <Link to="/settings?tab=sessions" className="cr-metric is-clickable" title={T('ov_open_sessions')}>
           <div className="cr-metric-top">
-            <div className="cr-metric-label"><MonitorPlay size={13} /> {tr('جلسات بث', 'Live sessions')}</div>
+            <div className="cr-metric-label"><MonitorPlay size={13} /> {T('ov_live_sessions')}</div>
             <ArrowUpRight size={12} className="cr-metric-arrow" />
           </div>
           <div className="cr-metric-value">{liveEntries.length}</div>
           <div className="cr-metric-foot">
             <i className={liveEntries.length > 0 ? 'is-on' : ''} />
             {liveEntries.length > 0
-              ? `${liveViewers} ${tr('مشاهد', 'viewer(s)')} · ${primaryDevice?.name || tr('بث نشط', 'active')}`
-              : tr('لا يوجد بث نشط', 'No active stream')}
+              ? `${liveViewers} ${T('ov_viewers')} · ${primaryDevice?.name || T('ov_active_stream')}`
+              : T('ov_no_active_stream')}
           </div>
           <div className="cr-metric-bar"><span style={{ width: `${Math.min(100, liveEntries.length * 25)}%` }} /></div>
         </Link>
 
-        <Link to="/devices" className={clsx('cr-metric is-clickable', alerts > 0 && 'cr-metric-warn')} title={tr('فتح الأجهزة لمراجعة الموارد', 'Open devices to review resources')}>
+        <Link to="/devices" className={clsx('cr-metric is-clickable', alerts > 0 && 'cr-metric-warn')} title={T('ov_open_devices_resources')}>
           <div className="cr-metric-top">
-            <div className="cr-metric-label"><AlertCircle size={13} /> {tr('تحتاج انتباهاً', 'Needs attention')}</div>
+            <div className="cr-metric-label"><AlertCircle size={13} /> {T('ov_needs_attention')}</div>
             <ArrowUpRight size={12} className="cr-metric-arrow" />
           </div>
           <div className="cr-metric-value">{alerts}</div>
           <div className="cr-metric-foot">
             <i className={alerts > 0 ? 'is-warn' : ''} />
             {monitoredDevices.length === 0
-              ? tr('لا توجد بيانات موارد', 'No resource data')
+              ? T('ov_no_resource_data')
               : alerts > 0
-                ? `${alerts} ${tr('بموارد مرتفعة', 'high resource')}`
-                : tr('كل الموارد طبيعية', 'Resources normal')}
+                ? `${alerts} ${T('ov_high_resource')}`
+                : T('ov_resources_normal')}
           </div>
           <div className="cr-metric-bar"><span style={{ width: `${online ? Math.min(100, alerts / online * 100) : 0}%` }} /></div>
         </Link>
 
-        <Link to="/devices" className="cr-metric is-clickable" title={tr('مراقبة موارد الأجهزة', 'Monitor device resources')}>
+        <Link to="/devices" className="cr-metric is-clickable" title={T('ov_monitor_resources')}>
           <div className="cr-metric-top">
-            <div className="cr-metric-label"><Cpu size={13} /> {tr('متوسط CPU', 'Average CPU')}</div>
+            <div className="cr-metric-label"><Cpu size={13} /> {T('stat_avg_cpu')}</div>
             <ArrowUpRight size={12} className="cr-metric-arrow" />
           </div>
           <div className="cr-metric-value">{monitoredDevices.length ? avgCpu : '—'}<small>{monitoredDevices.length ? '%' : ''}</small></div>
           <div className="cr-metric-foot">
             <i />
             {online === 0
-              ? tr('لا توجد أجهزة متصلة', 'No online devices')
-              : `${monitoredDevices.length}/${online} ${tr('يرسل بيانات', 'reporting')}`}
+              ? T('ov_no_online')
+              : `${monitoredDevices.length}/${online} ${T('ov_reporting')}`}
           </div>
           <div className="cr-metric-bar"><span style={{ width: `${monitoredDevices.length ? Math.min(100, avgCpu) : 0}%` }} /></div>
         </Link>
@@ -285,57 +300,68 @@ export function OverviewPage() {
 
       <div className="cr-layout">
         <div className="cr-main">
-          <section className="cr-card cr-live-card">
+          <Card className="cr-live-card">
             <div className="cr-card-head">
               <div>
-                <span className="cr-kicker"><i className="cr-pulse" /> {tr('البث المباشر', 'Live screens')}</span>
-                <h2>{primaryDevice?.name || tr('اختر جهازاً وابدأ البث', 'Choose a device and start streaming')}</h2>
+                <span className="cr-kicker"><i className="cr-pulse" /> {T('ov_live_screens')}</span>
+                <h2>{primaryDevice?.name || T('ov_choose_device_stream')}</h2>
               </div>
-              <span className={clsx('cr-badge', (primaryLive || onlineDevices.length > 0) && 'is-live')}>
+              <Badge tone={primaryLive ? 'success' : onlineDevices.length ? 'info' : 'neutral'}>
                 {primaryLive ? 'LIVE' : onlineDevices.length ? 'READY' : 'STANDBY'}
-              </span>
+              </Badge>
             </div>
 
             {devices.length === 0 ? (
-              <div className="cr-live-empty">
-                <div className="cr-live-empty-icon"><Monitor size={22} /></div>
-                <div>
-                  <strong>{tr('الشاشة جاهزة عندما تكون مستعداً.', 'Your screen is ready when you are.')}</strong>
-                  <p>{tr('اختر جهازاً متصلاً وابدأ البث من بطاقته.', 'Pick an online device and start a stream from its card.')}</p>
-                </div>
-                <Link to="/devices" className="cr-btn">{tr('اختيار جهاز', 'Choose a device')} <ChevronRight size={13} /></Link>
-              </div>
+              <EmptyState
+                className="py-10"
+                icon={<Monitor size={22} />}
+                title={T('ov_screen_ready')}
+                description={T('ov_pick_online')}
+                action={<Link to="/devices" className={PRIMARY_LINK}>{T('ov_choose_device')} <ChevronRight size={13} /></Link>}
+              />
             ) : (
               <LivePreviewBoard devices={devices} activeScreens={activeScreens} onOpen={openLive} />
             )}
-          </section>
+          </Card>
 
           <section className="cr-section">
             <div className="cr-section-head">
               <div>
-                <span className="cr-kicker">{tr('الأسطول', 'Fleet')}</span>
-                <h2>{tr('أجهزتك', 'Your devices')}</h2>
+                <span className="cr-kicker">{T('ov_fleet')}</span>
+                <h2>{T('ov_your_devices')}</h2>
               </div>
               <div className="cr-section-actions">
                 <Link to="/devices" className="cr-text-link">{T('view_all')} <ChevronRight size={12} /></Link>
                 <button type="button" className="cr-collapse-btn" onClick={() => setFleetOpen(v => !v)} aria-expanded={fleetOpen}>
                   {fleetOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                  {fleetOpen ? tr('إخفاء', 'Hide') : tr('إظهار', 'Show')}
+                  {fleetOpen ? T('ov_hide') : T('ov_show')}
                 </button>
               </div>
             </div>
 
             {fleetOpen && (loading ? (
               <div className="cr-device-grid">
-                {[0, 1, 2].map(i => <div className="cr-device cr-skeleton" key={i} />)}
+                {[0, 1, 2].map(i => <Skeleton key={i} className="h-[141px] rounded-xl" />)}
               </div>
+            ) : error && devices.length === 0 ? (
+              <Card>
+                <EmptyState
+                  className="py-8"
+                  icon={<AlertCircle size={24} />}
+                  title={T('ov_load_failed')}
+                  action={<Button size="sm" variant="secondary" onClick={() => fetchDevices()}>{T('ov_retry')}</Button>}
+                />
+              </Card>
             ) : devices.length === 0 ? (
-              <div className="cr-empty">
-                <Monitor size={28} />
-                <strong>{T('no_devices_yet')}</strong>
-                <p>{T('no_devices_desc')}</p>
-                <Link to="/devices" className="cr-btn is-primary"><Monitor size={13} /> {tr('الأجهزة', 'Devices')}</Link>
-              </div>
+              <Card>
+                <EmptyState
+                  className="py-8"
+                  icon={<Monitor size={28} />}
+                  title={T('no_devices_yet')}
+                  description={T('no_devices_desc')}
+                  action={<Link to="/devices" className={PRIMARY_LINK}><Monitor size={13} /> {T('devices')}</Link>}
+                />
+              </Card>
             ) : (
               <div className="cr-device-grid">
                 {devices.map(device => (
@@ -343,32 +369,34 @@ export function OverviewPage() {
                     key={device.id}
                     device={device}
                     activeStream={activeScreens[device.id]}
-                    viewLabel={tr('فتح', 'Open')}
-                    streamLabel={tr('بث', 'Stream')}
+                    viewLabel={T('ov_open')}
+                    streamLabel={T('ov_stream')}
                   />
                 ))}
               </div>
             ))}
           </section>
 
-          <section className="cr-card cr-recent">
+          <Card className="cr-recent">
             <div className="cr-section-head">
               <div>
-                <span className="cr-kicker">{tr('السجل', 'Activity')}</span>
+                <span className="cr-kicker">{T('ov_activity')}</span>
                 <h2>{T('recent_sessions')}</h2>
               </div>
               <div className="cr-section-actions">
                 <Link to="/settings?tab=sessions" className="cr-text-link">{T('view_all')} <ChevronRight size={12} /></Link>
                 <button type="button" className="cr-collapse-btn" onClick={() => setSessionsOpen(v => !v)} aria-expanded={sessionsOpen}>
                   {sessionsOpen ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                  {sessionsOpen ? tr('إخفاء', 'Hide') : tr('إظهار', 'Show')}
+                  {sessionsOpen ? T('ov_hide') : T('ov_show')}
                 </button>
               </div>
             </div>
             {sessionsOpen && (sessionsLoading ? (
-              <div className="cr-recent-loading"><span className="cr-spinner" /> {T('loading')}</div>
+              <SkeletonRows rows={3} className="py-2" />
+            ) : sessionsError ? (
+              <Alert tone="danger" title={T('ov_load_failed')} className="mt-2" />
             ) : sessions.length === 0 ? (
-              <div className="cr-recent-empty">{T('no_sessions_yet')}</div>
+              <EmptyState className="py-6" icon={<History size={20} />} title={T('no_sessions_yet')} />
             ) : (
               <div className="cr-session-list">
                 {sessions.map(session => {
@@ -389,7 +417,7 @@ export function OverviewPage() {
                 })}
               </div>
             ))}
-          </section>
+          </Card>
         </div>
 
         <aside className="cr-ai">
@@ -397,40 +425,40 @@ export function OverviewPage() {
             <div className="cr-ai-mark"><Sparkles size={15} /></div>
             <div>
               <strong>{T('ai_assistant')}</strong>
-              <span>{aiContext ? `${tr('السياق:', 'Context:')} ${aiContext.name}` : tr('جاهز للمساعدة', 'Ready to help')}</span>
+              <span>{aiContext ? `${T('ov_context')} ${aiContext.name}` : T('ov_ready_help')}</span>
             </div>
             <span className="cr-ai-ctx">CTX</span>
           </div>
 
           <div className="cr-ai-body">
-            <p className="cr-ai-label">{tr('ماذا تريد أن تفعل؟', 'What do you want to do?')}</p>
+            <p className="cr-ai-label">{T('ov_what_to_do')}</p>
             <div className="cr-ai-prompt">
               {aiContext
-                ? tr(`افتح مساحة ${aiContext.name} وتحقق من حالة الاتصال والموارد.`, `Open ${aiContext.name} and check connectivity and resources.`)
-                : tr('أضف جهازاً أولاً ثم اسألني عن حالته.', 'Add your first device, then ask me about its health.')}
+                ? T('ov_prompt_open_space').replace('{name}', aiContext.name)
+                : T('ov_add_device_first')}
             </div>
 
             <div className="cr-ai-suggestions">
-              <Link to={`/ai?prompt=${encodeURIComponent(tr('تحقق من صحة الاتصال والموارد للجهاز الحالي', 'Check current device connectivity and resources'))}`} className="cr-ai-suggestion"><span>01</span> {tr('تحقق من صحة الاتصال', 'Check connection health')} <ChevronRight size={12} /></Link>
-              <Link to={`/ai?prompt=${encodeURIComponent(tr('افتح آخر تطبيق على الجهاز الحالي', 'Open the last app on the current device'))}`} className="cr-ai-suggestion"><span>02</span> {tr('افتح آخر تطبيق على الجهاز', 'Open the last app on the device')} <ChevronRight size={12} /></Link>
-              <Link to={`/ai?prompt=${encodeURIComponent(tr('لخّص أحدث الجلسات', 'Summarize recent sessions'))}`} className="cr-ai-suggestion"><span>03</span> {tr('لخّص أحدث جلسات', 'Summarize recent sessions')} <ChevronRight size={12} /></Link>
+              <Link to={`/ai?prompt=${encodeURIComponent(T('ov_prompt_check_health'))}`} className="cr-ai-suggestion"><span>01</span> {T('ov_check_health')} <ChevronRight size={12} /></Link>
+              <Link to={`/ai?prompt=${encodeURIComponent(T('ov_prompt_open_app'))}`} className="cr-ai-suggestion"><span>02</span> {T('ov_open_last_app')} <ChevronRight size={12} /></Link>
+              <Link to={`/ai?prompt=${encodeURIComponent(T('ov_prompt_summarize'))}`} className="cr-ai-suggestion"><span>03</span> {T('ov_summarize')} <ChevronRight size={12} /></Link>
             </div>
 
             <form className="cr-ai-compose" onSubmit={submitAiPrompt}>
               <input
                 value={aiPrompt}
                 onChange={event => setAiPrompt(event.target.value)}
-                placeholder={tr('اسأل عن الشاشة أو الجهاز…', 'Ask about your screen or device…')}
-                aria-label={tr('سؤال للمساعد الذكي', 'Ask the AI copilot')}
+                placeholder={T('ov_ask_placeholder')}
+                aria-label={T('ov_ask_aria')}
               />
-              <button type="submit" disabled={!aiPrompt.trim()} aria-label={tr('إرسال السؤال', 'Send question')}>
+              <button type="submit" disabled={!aiPrompt.trim()} aria-label={T('ov_send_question')}>
                 <Send size={13} />
               </button>
             </form>
           </div>
 
           <div className="cr-ai-note">
-            <Sparkles size={11} /> {tr('كل إجراء حساس يطلب تأكيداً قبل التنفيذ.', 'Sensitive actions require confirmation.')}
+            <Sparkles size={11} /> {T('ov_sensitive_note')}
           </div>
         </aside>
       </div>

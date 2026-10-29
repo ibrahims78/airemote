@@ -25,9 +25,9 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
     set({ loading: true })
     try {
       const res = await api.get('/api/devices')
-      set({ devices: res.data, loading: false })
+      set({ devices: res.data, loading: false, error: null })
     } catch {
-      set({ loading: false })
+      set({ loading: false, error: 'load_failed' })
     }
   },
 
