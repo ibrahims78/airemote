@@ -2121,9 +2121,19 @@ function handleScreenWs(socket, request, user) {
       case 'screen:record_start': {
         const recId = uuidv4()
         const nowIso = new Date().toISOString()
-        const maxFrames = Math.min(Math.max(parseInt(payload.maxFrames) || 600, 30), 7200)
+        // v3.8.14 - 0 means "no frame cap": long sessions are limited by disk, not RAM.
+        const maxFrames = Math.min(Math.max(parseInt(payload.maxFrames) || 0, 0), 200000)
         db.prepare("INSERT INTO recordings (id, device_id, user_id, name, started_at) VALUES (?,?,?,?,?)").run(recId, deviceId, user.userId, 'تسجيل شاشة ' + nowIso.slice(0, 19), nowIso)
-        screenRecorders.set(deviceId, { recId, userId: user.userId, frames: [], audio: [], bytes: 0, audioBytes: 0, maxFrames, startedAt: Date.now() })
+        // v3.8.14 - frames are streamed to disk as they arrive. Holding them in RAM
+        // capped a long recording at ~250MB and silently froze the picture while the
+        // timer kept running, so the MP4 came out at 1fps or never at all.
+        const recFrameDir = path.join(path.dirname(_config.dbPath || '.'), 'recordings', 'frames-' + recId)
+        try { fs.mkdirSync(recFrameDir, { recursive: true }) } catch {}
+        screenRecorders.set(deviceId, {
+          recId, userId: user.userId, frames: [], frameFiles: [], frameDir: recFrameDir,
+          audio: [], bytes: 0, audioBytes: 0, maxFrames, startedAt: Date.now(),
+          writeChain: Promise.resolve(), capped: false
+        })
         // v3.8.3 - recordings need complete frames, so turn delta encoding off while recording
         const recAgentStart = agentSockets.get(deviceId)
         if (recAgentStart) sendJson(recAgentStart.ws, { type: 'server:screen_set_delta', payload: { delta: false }, timestamp: Date.now() })
@@ -2136,11 +2146,18 @@ function handleScreenWs(socket, request, user) {
         break
       }
       case 'screen:record_stop': {
-        const meta = finalizeScreenRecording(deviceId)
+        const stopping = screenRecorders.get(deviceId)
+        const stopRecId = stopping ? stopping.recId : null
         const recAgentStop = agentSockets.get(deviceId)
         if (recAgentStop) sendJson(recAgentStop.ws, { type: 'server:screen_set_delta', payload: { delta: true }, timestamp: Date.now() })
         if (recAgentStop) sendJson(recAgentStop.ws, { type: 'server:audio_control', payload: { enabled: false }, timestamp: Date.now() })
-        sendJson(socket, { type: 'screen:record_status', payload: { recording: false, meta } })
+        // v3.8.14 - flush frames, then mux; the reply must not wait for ffmpeg.
+        if (stopRecId) muxingRecordings.add(stopRecId)
+        sendJson(socket, {
+          type: 'screen:record_status',
+          payload: { recording: false, meta: { sessionId: stopRecId, mp4Pending: true, capped: !!(stopping && stopping.capped) } }
+        })
+        finalizeScreenRecording(deviceId).catch(() => {})
         break
       }
       case 'screen:ping':
@@ -2414,7 +2431,10 @@ function buildAiMemory(userId, deviceId, currentConvId) {
   } catch { return '' }
 }
 // — v3.2.2 server-side screen recording (JPEG frames → ZIP) —
-const screenRecorders = new Map()   // deviceId → { recId, userId, frames, bytes, maxFrames, startedAt }
+const screenRecorders = new Map()   // deviceId → { recId, userId, frameFiles, frameDir, bytes, maxFrames, startedAt }
+// v3.8.14 - recordings whose MP4 is still being muxed: the download route answers 202
+// instead of silently handing out the ZIP while ffmpeg is working.
+const muxingRecordings = new Set()
 function crc32(buf) {
   if (!crc32.table) { crc32.table = []; for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; crc32.table[n] = c >>> 0 } }
   let crc = 0xFFFFFFFF
@@ -2457,10 +2477,24 @@ function recordScreenFrame(deviceId, jpegBuf) {
   try {
     const r = screenRecorders.get(deviceId)
     if (!r || !jpegBuf || !jpegBuf.length) return
-    if (r.frames.length >= r.maxFrames) return
-    if (r.bytes > 250 * 1024 * 1024) return
-    r.frames.push(Buffer.from(jpegBuf))
-    r.bytes += jpegBuf.length
+    if (r.capped) return
+    const n = (r.frameFiles || []).length
+    if (r.maxFrames && n >= r.maxFrames) {
+      r.capped = true
+      try { serverLogger && serverLogger.warn('recording', 'frame cap reached rec=' + String(r.recId).slice(0, 8) + ' frames=' + n) } catch {}
+      return
+    }
+    const buf = Buffer.from(jpegBuf)
+    const isWebp = buf.length > 12 && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP'
+    const isJpeg = buf.length > 3 && buf[0] === 0xFF && buf[1] === 0xD8
+    const name = 'frame-' + String(n).padStart(6, '0') + (isWebp ? '.webp' : (isJpeg ? '.jpg' : '.bin'))
+    if (!r.frameFiles) r.frameFiles = []
+    r.frameFiles.push({ name, size: buf.length })
+    r.bytes = (r.bytes || 0) + buf.length
+    const dir = r.frameDir
+    r.writeChain = (r.writeChain || Promise.resolve())
+      .then(() => fs.promises.writeFile(path.join(dir, name), buf))
+      .catch(() => {})
   } catch {}
 }
 // v3.8.8 - a recording should be a video, not a folder of stills. The ZIP stays as the
@@ -2480,9 +2514,13 @@ function findFfmpeg() {
 
 function exportRecordingMp4(r, dir) {
   const ff = findFfmpeg()
-  if (!ff) return
-  const frames = r.frames || []
-  if (!frames.length) return
+  const frames = r.frameFiles || []
+  if (!ff || !frames.length) {
+    muxingRecordings.delete(r.recId)
+    try { if (r.frameDir) fs.rmSync(r.frameDir, { recursive: true, force: true }) } catch {}
+    try { serverLogger && serverLogger.warn('recording', 'mp4 skipped ' + String(r.recId).slice(0, 8) + (ff ? ' (no frames)' : ' (ffmpeg missing)')) } catch {}
+    return
+  }
   const tmp = path.join(dir, 'tmp-' + r.recId)
   try {
     fs.mkdirSync(tmp, { recursive: true })
@@ -2494,15 +2532,14 @@ function exportRecordingMp4(r, dir) {
     // JPEG when WebP is slow). Writing them all with the first frame's extension
     // made ffmpeg stop at the first mismatch (a 9s clip became 1s), so every frame
     // keeps its real extension and the concat demuxer carries the timing.
+    // v3.8.14 - frames already live in r.frameDir (written while recording), so the
+    // muxer only writes the concat list: no second full copy of the session in RAM.
     const list = ['ffconcat version 1.0']
     for (let i = 0; i < frames.length; i++) {
-      const buf = frames[i]
-      const isWebp = buf.length > 12 && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP'
-      const isJpeg = buf.length > 3 && buf[0] === 0xFF && buf[1] === 0xD8
-      const name = 'frame-' + String(i).padStart(5, '0') + (isWebp ? '.webp' : (isJpeg ? '.jpg' : '.bin'))
-      fs.writeFileSync(path.join(tmp, name), buf)
-      if (name.endsWith('.bin')) continue
-      list.push("file '" + name + "'")
+      const name = frames[i].name
+      if (!name || name.endsWith('.bin')) continue
+      try { fs.accessSync(path.join(r.frameDir, name)) } catch { continue }
+      list.push("file '" + path.join(r.frameDir, name).replace(/\\/g, '/') + "'")
       list.push('duration ' + perFrame.toFixed(4))
     }
     if (list.length <= 1) return
@@ -2536,37 +2573,55 @@ function exportRecordingMp4(r, dir) {
           try { serverLogger && serverLogger.warn('recording', 'ffmpeg exit ' + code + ' ' + err.replace(/\s+/g, ' ').slice(0, 300)) } catch {}
         }
       } catch {}
+      muxingRecordings.delete(r.recId)
       try { fs.rmSync(tmp, { recursive: true, force: true }) } catch {}
+      try { if (r.frameDir) fs.rmSync(r.frameDir, { recursive: true, force: true }) } catch {}
     })
   } catch (e) {
+    muxingRecordings.delete(r.recId)
     try { fs.rmSync(tmp, { recursive: true, force: true }) } catch {}
     try { serverLogger && serverLogger.warn('recording', 'mp4 export failed: ' + e.message) } catch {}
   }
 }
 
-function finalizeScreenRecording(deviceId) {
+async function finalizeScreenRecording(deviceId) {
   const r = screenRecorders.get(deviceId)
   if (!r) return null
   screenRecorders.delete(deviceId)
   try {
     const dir = path.join(path.dirname(_config.dbPath || '.'), 'recordings')
     if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true })
-    const zipPath = path.join(dir, r.recId + '.zip')
-    // v3.8.2 - frames may be WebP (flags bit2) instead of JPEG; pick the right extension
-    const entries = r.frames.map((buf, i) => {
-      const isWebp = buf.length > 12 && buf.toString('ascii', 0, 4) === 'RIFF' && buf.toString('ascii', 8, 12) === 'WEBP'
-      return { name: 'frame-' + String(i).padStart(5, '0') + (isWebp ? '.webp' : '.jpg'), data: buf }
-    })
-    if (r.audio && r.audio.length) entries.push({ name: r.audioFormat === 'pcm16' ? 'audio.pcm' : 'audio.webm', data: Buffer.concat(r.audio) })
-    if (!entries.length) entries.push({ name: 'README.txt', data: Buffer.from('No frames captured', 'utf8') })
-    fs.writeFileSync(zipPath, buildZipStore(entries))
-    const sizeMb = fs.statSync(zipPath).size / 1024 / 1024
+    // wait for the last frame writes to land before anything reads the folder
+    try { await (r.writeChain || Promise.resolve()) } catch {}
+    const frameFiles = r.frameFiles || []
     const endedAt = new Date().toISOString()
     const durationSec = Math.max(0, Math.floor((Date.now() - r.startedAt) / 1000))
+    // v3.8.14 - the ZIP stays the lossless fallback for short sessions; a long session
+    // is served as MP4 only, because assembling thousands of frames into one in-memory
+    // archive was what pushed the process over its heap limit (and blocked the loop).
+    const keepZip = frameFiles.length > 0 && frameFiles.length <= 500
+    let zipPath = null
+    if (keepZip) {
+      const entries = []
+      for (const f of frameFiles) {
+        try { entries.push({ name: f.name, data: await fs.promises.readFile(path.join(r.frameDir, f.name)) }) } catch {}
+      }
+      if (r.audio && r.audio.length) entries.push({ name: r.audioFormat === 'pcm16' ? 'audio.pcm' : 'audio.webm', data: Buffer.concat(r.audio) })
+      if (entries.length) {
+        zipPath = path.join(dir, r.recId + '.zip')
+        await fs.promises.writeFile(zipPath, buildZipStore(entries))
+      }
+    } else if (frameFiles.length === 0) {
+      zipPath = path.join(dir, r.recId + '.zip')
+      await fs.promises.writeFile(zipPath, buildZipStore([{ name: 'README.txt', data: Buffer.from('No frames captured', 'utf8') }]))
+    }
+    const sizeMb = zipPath ? fs.statSync(zipPath).size / 1024 / 1024 : 0
     db.prepare("UPDATE recordings SET ended_at=?, file_path=?, size_mb=? WHERE id=?").run(endedAt, zipPath, sizeMb, r.recId)
-    try { exportRecordingMp4(r, dir) } catch {}
-    return { sessionId: r.recId, frames: r.frames.length, audioChunks: (r.audio || []).length, sizeMB: sizeMb, durationSec, endedAt }
+    try { serverLogger && serverLogger.info('recording', 'stop rec=' + String(r.recId).slice(0, 8) + ' frames=' + frameFiles.length + ' seconds=' + durationSec + ' zip=' + (zipPath ? 'yes' : 'no')) } catch {}
+    try { exportRecordingMp4(r, dir) } catch (e) { muxingRecordings.delete(r.recId) }
+    return { sessionId: r.recId, frames: frameFiles.length, audioChunks: (r.audio || []).length, sizeMB: sizeMb, durationSec, endedAt, mp4Pending: true, capped: !!r.capped }
   } catch (e) {
+    muxingRecordings.delete(r.recId)
     try { db.prepare("UPDATE recordings SET ended_at=? WHERE id=?").run(new Date().toISOString(), r.recId) } catch {}
     return { sessionId: r.recId, error: e.message }
   }
@@ -4678,6 +4733,15 @@ if ($target -eq $null) { 'name-not-found' } else {
     const rec = db.prepare("SELECT * FROM recordings WHERE id=?").get(req.params.id)
     if (!rec) return reply.code(404).send({ error: 'Not found' })
     if (p.role !== 'admin' && rec.user_id !== p.userId) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا التسجيل' })
+    // v3.8.14 - do not hand out the ZIP while the MP4 is still being muxed.
+    if (muxingRecordings.has(rec.id)) {
+      const pendingMp4 = path.join(path.dirname(_config.dbPath || '.'), 'recordings', rec.id + '.mp4')
+      if (!fs.existsSync(pendingMp4)) {
+        reply.header('Retry-After', '3')
+        reply.header('X-Video-State', 'muxing')
+        return reply.code(202).send({ state: 'muxing', recording: rec.id })
+      }
+    }
     if (!rec.file_path || !fs.existsSync(rec.file_path)) return reply.code(404).send({ error: 'Recording file not found' })
     // v3.8.8 - serve the muxed MP4 when the exporter finished, the ZIP otherwise.
     let filePath = rec.file_path
@@ -4690,6 +4754,23 @@ if ($target -eq $null) { 'name-not-found' } else {
     reply.header('Content-Disposition', 'attachment; filename="recording-' + String(rec.id).slice(0, 8) + (isMp4 ? '.mp4' : '.zip') + '"')
     return fs.createReadStream(filePath)
   })
+  // v3.8.14 - light status probe so the viewer waits for the MP4 without
+  // downloading the whole ZIP on every poll (which is what made long recordings
+  // look like they never produced a video).
+  fastify.get('/api/recordings/:id/status', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    const rec = db.prepare("SELECT * FROM recordings WHERE id=?").get(req.params.id)
+    if (!rec) return reply.code(404).send({ error: 'Not found' })
+    if (p.role !== 'admin' && rec.user_id !== p.userId) return reply.code(403).send({ error: 'Forbidden' })
+    const dir = path.join(path.dirname(_config.dbPath || '.'), 'recordings')
+    const mp4Path = path.join(dir, rec.id + '.mp4')
+    let state = 'missing'
+    if (fs.existsSync(mp4Path)) state = 'mp4'
+    else if (muxingRecordings.has(rec.id)) state = 'muxing'
+    else if (rec.file_path && fs.existsSync(rec.file_path)) state = 'zip'
+    return { id: rec.id, state, endedAt: rec.ended_at, sizeMb: rec.size_mb || 0 }
+  })
+
   // ── GitHub Releases ───────────────────────────────────────────────────────
   const REPO_ROOT    = path.resolve(__dirname, '../..')
   const RELEASES_DIR = path.join(REPO_ROOT, 'releases')

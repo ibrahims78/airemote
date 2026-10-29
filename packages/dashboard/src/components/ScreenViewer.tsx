@@ -120,11 +120,14 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
   //   fit    = largest size that keeps the aspect ratio (no cropping)
   //   fill   = cover the viewport (no black edges at any aspect, crops overflow)
   //   actual = 1:1 pixels
+  // v3.8.14 - the standalone window opens edge-to-edge: with 'fit' a maximised
+  // popout on a differently-shaped screen showed black bands. 'fill' covers the
+  // viewport and crops the overflow; the user can still pick 'fit' per device.
   const [fitMode,        setFitMode]        = useState<'fit' | 'fill' | 'actual'>(() => {
     try {
       const v = localStorage.getItem('airemote.screen.fit')
-      return (v === 'fill' || v === 'actual') ? v : 'fit'
-    } catch { return 'fit' }
+      return (v === 'fill' || v === 'actual' || v === 'fit') ? v : (popout ? 'fill' : 'fit')
+    } catch { return popout ? 'fill' : 'fit' }
   })
   const [canvasBox,      setCanvasBox]      = useState<{ w: number; h: number } | null>(null)
   const [popoutHint,     setPopoutHint]     = useState(!!popout)
@@ -1080,7 +1083,8 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
 
   // ── T008: Server-side recording ───────────────────────────────────────────
   const startServerRecording = () => {
-    sendWs({ type: 'screen:record_start', payload: { maxFrames: 600 } })
+    // v3.8.14 - no frame cap: a long session is bounded by disk, not by 600 frames
+    sendWs({ type: 'screen:record_start', payload: { maxFrames: 0 } })
     setSvrRecording(true)
   }
   const stopServerRecording = () => {
@@ -1093,16 +1097,27 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
   const downloadServerRecording = async () => {
     if (!svrRecMeta?.sessionId) return
     setMp4State('preparing')
-    let r: Response | null = null
-    for (let i = 0; i < 30; i++) {
-      r = await fetch(`/api/recordings/${svrRecMeta.sessionId}/download`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
-      if (!r.ok) { await new Promise(res => setTimeout(res, 1000)); continue }
-      if ((r.headers.get('content-type') || '').startsWith('video/mp4')) break
-      await new Promise(res => setTimeout(res, 1200))
+    // v3.8.14 - wait on the cheap status probe instead of re-downloading the ZIP.
+    // Long sessions need minutes of x264, so the budget is 15 min, not 36 s.
+    let state = 'muxing'
+    for (let i = 0; i < 600; i++) {
+      try {
+        const sr = await fetch(`/api/recordings/${svrRecMeta.sessionId}/status`, {
+          headers: { Authorization: `Bearer ${token}` }
+        })
+        if (sr.ok) {
+          const js = await sr.json()
+          state = js.state || 'missing'
+          if (state === 'mp4' || state === 'zip' || state === 'missing') break
+        }
+      } catch {}
+      await new Promise(res => setTimeout(res, 1500))
     }
-    if (!r || !r.ok) { setMp4State('idle'); return }
+    if (state === 'missing') { setMp4State('idle'); return }
+    const r = await fetch(`/api/recordings/${svrRecMeta.sessionId}/download`, {
+      headers: { Authorization: `Bearer ${token}` }
+    })
+    if (!r.ok) { setMp4State('idle'); return }
     const blob = await r.blob()
     const isMp4 = (r.headers.get('content-type') || '').startsWith('video/mp4')
     setMp4State('ready')
