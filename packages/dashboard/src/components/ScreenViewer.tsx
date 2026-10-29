@@ -32,6 +32,8 @@ import {
 import { clsx } from 'clsx'
 import { createPortal } from 'react-dom'
 import { api } from '../lib/api'
+import { useT } from '../lib/i18n'
+import type { TKey } from '../lib/i18n'
 import { useAuthStore } from '../store/authStore'
 
 interface Props {
@@ -50,7 +52,7 @@ interface MonitorInfo {
 }
 
 interface QualityPreset {
-  label: string; fps: number; quality: number; maxWidth: number
+  id: string; labelKey: TKey; fps: number; quality: number; maxWidth: number
 }
 
 interface ChatMessage {
@@ -69,11 +71,11 @@ interface RecordingMeta {
 
 // maxWidth controls the agent-side resize — smaller = less bandwidth + faster encode
 const QUALITY_PRESETS: QualityPreset[] = [
-  { label: 'توفير',        fps: 12, quality: 55, maxWidth: 1280 },
-  { label: 'متوازن',       fps: 20, quality: 70, maxWidth: 1600 },
-  { label: 'دقة عالية',    fps: 25, quality: 78, maxWidth: 1920 },
-  { label: 'ممتاز',        fps: 30, quality: 72, maxWidth: 1920 },
-  { label: 'سلاسة قصوى',   fps: 30, quality: 60, maxWidth: 1600 }
+  { id: 'saver',    labelKey: 'viewer_q_saver',     fps: 12, quality: 55, maxWidth: 1280 },
+  { id: 'balanced', labelKey: 'viewer_q_balanced',  fps: 20, quality: 70, maxWidth: 1600 },
+  { id: 'high',     labelKey: 'viewer_q_high',      fps: 25, quality: 78, maxWidth: 1920 },
+  { id: 'best',     labelKey: 'viewer_q_excellent', fps: 30, quality: 72, maxWidth: 1920 },
+  { id: 'smooth',   labelKey: 'viewer_q_smooth',    fps: 30, quality: 60, maxWidth: 1600 }
 ]
 
 const IDLE_TIMEOUT_MS = 5 * 60 * 1000
@@ -85,6 +87,7 @@ function fmtBytes(bytes: number): string {
 }
 
 export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
+  const tr = useT()
   const { token, user } = useAuthStore()
   const canvasRef     = useRef<HTMLCanvasElement>(null)
   const wsRef         = useRef<WebSocket | null>(null)
@@ -596,7 +599,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
             if (msg.payload?.ok === false && msg.payload?.reason) {
               const reason = String(msg.payload.reason)
               setRotateNotice(reason === 'write-settings-not-granted'
-                ? 'لتفعيل التدوير: امنح التطبيق «تعديل إعدادات النظام» من إعدادات الجهاز.'
+                ? tr('viewer_rotate_grant')
                 : reason)
               setTimeout(() => setRotateNotice(null), 6000)
             }
@@ -609,17 +612,17 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
             if (msg.payload?.ok === false) {
               const reason = String(msg.payload?.reason || '')
               setRotateNotice(reason === 'write-settings-not-granted'
-                ? 'لتدوير الشاشة: امنح التطبيق «تعديل إعدادات النظام» من إعدادات الجهاز.'
-                : reason || 'تعذر تدوير الشاشة')
+                ? tr('viewer_rotate_grant_short')
+                : reason || tr('viewer_rotate_failed'))
               setTimeout(() => setRotateNotice(null), 6000)
             } else {
               setRotateNotice(null)
             }
             break
           case 'screen:error':
-            setStatus('error'); setErrorMsg(msg.payload?.message || 'خطأ غير معروف'); break
+            setStatus('error'); setErrorMsg(msg.payload?.message || tr('viewer_unknown_error')); break
           case 'screen:unavailable':
-            setStatus('unavailable'); setErrorMsg(msg.payload?.message || 'مشاركة الشاشة غير متاحة'); break
+            setStatus('unavailable'); setErrorMsg(msg.payload?.message || tr('viewer_share_unavailable')); break
           case 'screen:closed':
             setStatus('disconnected')
             // Auto-reconnect unless the user explicitly clicked Stop
@@ -660,7 +663,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
             setControlEnabled(false); setKeyboardMode(false)
             if (pwActiveRef.current) {
               setPwBusy(false)
-              setPwError(msg.payload?.reason === 'bad_password' ? 'كلمة السر غير صحيحة — حاول مجدداً' : msg.payload?.reason === 'rate_limited' ? 'محاولات كثيرة — انتظر دقيقة' : 'تم رفض الطلب')
+              setPwError(msg.payload?.reason === 'bad_password' ? tr('viewer_pw_wrong') : msg.payload?.reason === 'rate_limited' ? tr('viewer_pw_rate_limited') : tr('viewer_pw_denied'))
             }
             break
 
@@ -722,7 +725,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
         }
       }
     }
-    ws.onerror = () => { setStatus('error'); setErrorMsg('فشل الاتصال عبر WebSocket') }
+    ws.onerror = () => { setStatus('error'); setErrorMsg(tr('viewer_ws_failed')) }
   }, [deviceId, token, drawFrame, startFpsCounter, startBwCounter, sendWs, startStaleWatchdog])
 
   // ── Mount / unmount ───────────────────────────────────────────────────────
@@ -890,7 +893,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
     else if (latency > 180) newFps = Math.max(5,  Math.min(target, p.fps - 2))
     else if (latency <  70) newFps = Math.min(target, p.fps + 2)
     if (newFps !== p.fps) {
-      const adj = { ...p, label: `تكيفي (${newFps}fps)`, fps: newFps }
+      const adj = { ...p, label: tr('viewer_adaptive_fps', { fps: newFps }), fps: newFps }
       setPreset(adj)
       // Reset seq so frames from the restarted capture loop are not dropped.
       lastSeqRef.current = -1
@@ -1157,7 +1160,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
     if (permissionTimerRef.current) clearTimeout(permissionTimerRef.current)
     permissionTimerRef.current = setTimeout(() => {
       setPermissionState(p => (p === 'requesting' ? 'idle' : p))
-      if (pwActiveRef.current) { setPwBusy(false); setPwError('انتهت المهلة — حاول مجدداً') }
+      if (pwActiveRef.current) { setPwBusy(false); setPwError(tr('viewer_timeout_retry')) }
     }, 60000)
   }, [sendWs])
 
@@ -1282,7 +1285,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
             </div>
             <div className="text-center">
               <p className="text-base font-semibold text-ink">{deviceName}</p>
-              <p className="text-xs text-muted mt-1">مشاركة الشاشة</p>
+              <p className="text-xs text-muted mt-1">{tr('viewer_share_screen')}</p>
             </div>
           </div>
 
@@ -1291,11 +1294,11 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
             className="flex items-center gap-2.5 px-6 py-3 rounded-xl bg-info hover:bg-info/90 active:scale-95 transition-all text-ink font-medium text-sm shadow-lg shadow-info/20"
           >
             <PlayCircle size={18} />
-            بدء مشاركة الشاشة
+            {tr('viewer_start_share')}
           </button>
 
           <p className="text-xs text-muted max-w-xs text-center">
-            سيتم الاتصال بالجهاز البعيد وبدء البث عند الضغط على الزر
+            {tr('viewer_start_share_desc')}
           </p>
         </div>
       )}
@@ -1313,7 +1316,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
 
       {popout && started && popoutHint && status === 'streaming' && (
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[70] px-4 py-2 rounded-full bg-overlay/60 text-[11px] text-ink backdrop-blur-sm select-none pointer-events-none">
-          Esc للخروج من ملء الشاشة · حرّك الفأرة إلى أعلى الشاشة لإظهار الأدوات
+          {tr('viewer_fullscreen_hint')}
         </div>
       )}
 
@@ -1337,7 +1340,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
             status === 'streaming' && 'is-live',
             status === 'connecting' && 'is-buffering'
           )}
-          title={status === 'streaming' ? 'البث مباشر — افتح البث المستقل' : 'غير متصل'}
+          title={status === 'streaming' ? tr('viewer_live_open_popout') : tr('viewer_offline')}
         >
           <i className="cr-live-signal-dot" />
         </button>
@@ -1345,18 +1348,18 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
         {/* v3.8.9 — one obvious control for how the remote desktop fits */}
         {status === 'streaming' && (
           <div className="flex items-center gap-0.5 rounded-lg border border-line bg-surface/70 p-0.5 shrink-0"
-               role="group" aria-label="طريقة عرض شاشة الجهاز">
+               role="group" aria-label={tr('viewer_display_mode')}>
             <Scaling size={12} className="text-muted mx-1" />
             {([
-              { id: 'fit',    label: 'ملاءمة', hint: 'سطح المكتب كاملاً داخل النافذة' },
-              { id: 'fill',   label: 'ملء',    hint: 'ملء النافذة بالكامل (يُقصّ ما يزيد)' },
-              { id: 'actual', label: '1:1',    hint: 'بكسل مقابل بكسل' },
+              { id: 'fit',    label: tr('viewer_fit'), hint: tr('viewer_fit_hint') },
+              { id: 'fill',   label: tr('viewer_fill'),    hint: tr('viewer_fill_hint') },
+              { id: 'actual', label: '1:1',    hint: tr('viewer_actual_hint') },
             ] as const).map((o) => (
               <button
                 key={o.id}
                 type="button"
                 onClick={() => { setFitMode(o.id); try { localStorage.setItem('airemote.screen.fit', o.id) } catch {} }}
-                title={o.hint + (o.id === 'fit' ? ' — الافتراضي' : '')}
+                title={o.hint + (o.id === 'fit' ? tr('viewer_default_suffix') : '')}
                 aria-pressed={fitMode === o.id}
                 className={clsx('px-2 py-0.5 rounded-md text-[11px] leading-5 transition-colors',
                   fitMode === o.id
@@ -1391,25 +1394,25 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
         {remoteIsAndroid && status === 'streaming' && (
           <div className="flex items-center gap-1 shrink-0">
             <button onClick={() => sendWs({ type: 'screen:key_event', payload: { type: 'press', key: 'Escape' } })}
-              disabled={!controlEnabled} title="رجوع"
+              disabled={!controlEnabled} title={tr('viewer_back')}
               className="flex items-center gap-1 px-1.5 py-1 rounded text-ink hover:text-ink hover:bg-surface2 disabled:opacity-40 transition-colors">
-              <Undo2 size={11} /><span className="hidden 2xl:inline text-[10px]">رجوع</span>
+              <Undo2 size={11} /><span className="hidden 2xl:inline text-[10px]">{tr('viewer_back')}</span>
             </button>
             <button onClick={() => sendWs({ type: 'screen:key_event', payload: { type: 'press', key: 'Home' } })}
-              disabled={!controlEnabled} title="الرئيسية"
+              disabled={!controlEnabled} title={tr('viewer_home')}
               className="flex items-center gap-1 px-1.5 py-1 rounded text-ink hover:text-ink hover:bg-surface2 disabled:opacity-40 transition-colors">
-              <Home size={11} /><span className="hidden 2xl:inline text-[10px]">الرئيسية</span>
+              <Home size={11} /><span className="hidden 2xl:inline text-[10px]">{tr('viewer_home')}</span>
             </button>
             <button onClick={() => sendWs({ type: 'screen:key_event', payload: { type: 'press', key: 'Meta' } })}
-              disabled={!controlEnabled} title="التطبيقات المفتوحة"
+              disabled={!controlEnabled} title={tr('viewer_open_apps')}
               className="flex items-center gap-1 px-1.5 py-1 rounded text-ink hover:text-ink hover:bg-surface2 disabled:opacity-40 transition-colors">
-              <Layers size={11} /><span className="hidden 2xl:inline text-[10px]">التطبيقات</span>
+              <Layers size={11} /><span className="hidden 2xl:inline text-[10px]">{tr('viewer_apps')}</span>
             </button>
             <button
               onClick={() => sendWs({ type: 'screen:rotate', payload: {} })}
-              title="تدوير شاشة الجهاز 90 درجة"
+              title={tr('viewer_rotate_90')}
               className="flex items-center gap-1 px-1.5 py-1 rounded text-ink hover:text-ink hover:bg-surface2 disabled:opacity-40 transition-colors">
-              <RotateCw size={11} /><span className="hidden 2xl:inline text-[10px]">تدوير</span>
+              <RotateCw size={11} /><span className="hidden 2xl:inline text-[10px]">{tr('viewer_rotate')}</span>
             </button>
             <button
               onClick={() => {
@@ -1417,26 +1420,26 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
                 setAutoRotate(next)
                 sendWs({ type: 'screen:rotate_auto', payload: { enabled: next } })
               }}
-              title={autoRotate ? 'التدوير التلقائي مفعّل — اضغط للتعطيل' : 'التدوير التلقائي متوقف — اضغط للتفعيل'}
+              title={autoRotate ? tr('viewer_autorotate_on') : tr('viewer_autorotate_off')}
               className={clsx('flex items-center gap-1 px-1.5 py-1 rounded transition-colors disabled:opacity-40',
                 autoRotate ? 'text-success bg-success/100/10 hover:bg-success/100/20' : 'text-ink hover:text-ink hover:bg-surface2')}>
               <RefreshCw size={11} />
-              <span className="hidden 2xl:inline text-[10px]">تلقائي</span>
+              <span className="hidden 2xl:inline text-[10px]">{tr('viewer_auto')}</span>
             </button>
             <button
               onClick={() => setShowBrightness(v => !v)}
-              title="التحكم في سطوع شاشة الجهاز (0–255)"
+              title={tr('viewer_brightness_title')}
               className={clsx('flex items-center gap-1 px-1.5 py-1 rounded transition-colors',
                 showBrightness ? 'text-warning bg-warning/100/15' : 'text-ink hover:text-ink hover:bg-surface2')}>
-              <Sun size={11} /><span className="hidden xl:inline text-[10px]">السطوع</span>
+              <Sun size={11} /><span className="hidden xl:inline text-[10px]">{tr('viewer_brightness')}</span>
             </button>
             {showBrightness && createPortal(
               <div className="fixed inset-0 z-[120] flex items-center justify-center bg-overlay/55 p-4" onClick={() => setShowBrightness(false)}>
                 <div className="w-full max-w-sm rounded-2xl border border-line bg-canvas p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <div className="text-sm font-bold text-ink">سطوع شاشة Android</div>
-                      <div className="text-[11px] text-muted mt-1">تحكم يدوي من 0 إلى 255 دون إطفاء الشاشة</div>
+                      <div className="text-sm font-bold text-ink">{tr('viewer_android_brightness')}</div>
+                      <div className="text-[11px] text-muted mt-1">{tr('viewer_brightness_desc')}</div>
                     </div>
                     <div className="text-2xl font-bold text-warning">{brightness}</div>
                   </div>
@@ -1454,7 +1457,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
                   <div className="flex justify-end mt-4">
                     <button onClick={() => setShowBrightness(false)}
                       className="px-4 py-2 rounded-lg bg-surface2 text-ink text-xs hover:bg-line">
-                      إغلاق
+                      {tr('viewer_close')}
                     </button>
                   </div>
                 </div>
@@ -1473,16 +1476,16 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
           {/* v3.5 — standalone viewer window */}
           {!popout && status === 'streaming' && (
             <button onClick={() => window.open('/view/' + deviceId, '_blank', 'width=1400,height=900')}
-              title="فتح البث في نافذة مستقلة — لعرض عدة أجهزة معاً"
+              title={tr('viewer_popout_title')}
               className="flex items-center gap-1 px-2 py-1 rounded text-xs text-muted hover:text-ink hover:bg-surface2 transition-colors">
-              <ExternalLink size={12}/> نافذة مستقلة
+              <ExternalLink size={12}/> {tr('viewer_popout')}
             </button>
           )}
 
           {/* T006: Chat button */}
           {status === 'streaming' && (
             <button onClick={openChat}
-              title="دردشة أثناء الجلسة"
+              title={tr('viewer_chat_during_session')}
               className={clsx('relative flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors',
                 chatOpen ? 'bg-info/20 text-info' : 'text-muted hover:text-ink hover:bg-surface2'
               )}>
@@ -1506,18 +1509,18 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
                           if (next) ensurePcmContext(16000)
                           sendWs({ type: 'screen:audio_control', payload: { enabled: next } })
                         }}
-                        title={audioEnabled ? 'إيقاف صوت الجهاز' : 'تشغيل صوت الجهاز'}
+                        title={audioEnabled ? tr('viewer_audio_off') : tr('viewer_audio_on')}
                         className={clsx('flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors',
                           audioEnabled ? 'bg-primary/100/20 text-primary' : 'text-muted hover:text-ink hover:bg-surface2')}>
                         {audioEnabled ? <Volume2 size={12}/> : <VolumeX size={12}/>}
-                        <span className="hidden xl:inline">{audioEnabled ? 'صوت الجهاز' : 'تشغيل الصوت'}</span>
+                        <span className="hidden xl:inline">{audioEnabled ? tr('viewer_device_audio') : tr('viewer_play_audio')}</span>
                       </button>
                     )}
                     {audioNotice && (
                       <span className="text-[10px] text-warning max-w-[220px] truncate" title={audioNotice}>{audioNotice}</span>
                     )}
             <button onClick={recording ? stopRecording : startRecording}
-              title={recording ? `إيقاف التسجيل (${fmt(recDuration)})` : 'تسجيل الجلسة كفيديو WebM'}
+              title={recording ? tr('viewer_stop_recording_time', { t: fmt(recDuration) }) : tr('viewer_record_webm')}
               className={clsx('flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors',
                 recording ? 'bg-danger/100/20 text-danger hover:bg-danger/100/30' : 'text-muted hover:text-ink hover:bg-surface2'
               )}>
@@ -1530,24 +1533,24 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
           {status === 'streaming' && (
             svrRecMeta && !svrRecording ? (
               <button onClick={downloadServerRecording} disabled={mp4State === 'preparing'}
-                title="تنزيل الفيديو (MP4 بصوت) — يُجهَّز تلقائياً بعد الإيقاف"
+                title={tr('viewer_download_mp4_hint')}
                 className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-success/100/20 text-success hover:bg-success/100/30 disabled:opacity-60 transition-colors">
-                {mp4State === 'preparing' ? <><Loader2 size={11} className="animate-spin"/> جارٍ التجهيز</> : <><Download size={11}/> تحميل MP4</>}
+                {mp4State === 'preparing' ? <><Loader2 size={11} className="animate-spin"/> {tr('viewer_preparing')}</> : <><Download size={11}/> {tr('viewer_download_mp4')}</>}
               </button>
             ) : (
               <button onClick={svrRecording ? stopServerRecording : startServerRecording}
-                title={svrRecording ? 'إيقاف التسجيل (فيديو + صوت)' : 'تسجيل الجلسة: فيديو MP4 بصوت + نسخة ZIP'}
+                title={svrRecording ? tr('viewer_stop_recording_av') : tr('viewer_record_mp4_zip')}
                 className={clsx('flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors',
                   svrRecording ? 'bg-warning/20 text-warning hover:bg-warning/30' : 'text-muted hover:text-ink hover:bg-surface2'
                 )}>
-                {svrRecording ? <><Circle size={8} className="fill-warning animate-pulse"/> خادم</> : <Activity size={12}/>}
+                {svrRecording ? <><Circle size={8} className="fill-warning animate-pulse"/> {tr('viewer_server')}</> : <Activity size={12}/>}
               </button>
             )
           )}
 
           {/* Privacy (Windows agent only; Android has its own screen-off control) */}
           {status === 'streaming' && !remoteIsAndroid && (
-            <button onClick={togglePrivacy} title={privacyOn ? 'إلغاء وضع الخصوصية (إعادة شاشة الجهاز البعيد)' : 'تفعيل وضع الخصوصية (تعتم شاشة الجهاز البعيد)'}
+            <button onClick={togglePrivacy} title={privacyOn ? tr('viewer_privacy_off') : tr('viewer_privacy_on')}
               className={clsx('p-1.5 rounded transition-colors', privacyOn ? 'bg-primary/20 text-primary' : 'text-muted hover:text-ink hover:bg-surface2')}>
               {privacyOn ? <Eye size={13}/> : <EyeOff size={13}/>}
             </button>
@@ -1557,25 +1560,25 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
           {status === 'streaming' && (
             <div className="relative">
               <button onClick={() => { setShowClipboard(s => !s); if (!showClipboard) readRemoteClipboard() }}
-                title="مزامنة الحافظة"
+                title={tr('viewer_clipboard_sync')}
                 className={clsx('p-1.5 rounded transition-colors', showClipboard ? 'bg-info/20 text-info' : 'text-muted hover:text-ink hover:bg-surface2')}>
                 <Clipboard size={13}/>
               </button>
               {showClipboard && (
                 <div className="absolute top-full right-0 mt-1 bg-surface border border-line rounded-lg shadow-xl z-30 w-72" onClick={e => e.stopPropagation()}>
                   <div className="px-3 py-2 text-xs text-muted border-b border-line flex items-center justify-between">
-                    <span>مزامنة الحافظة</span>
+                    <span>{tr('viewer_clipboard_sync')}</span>
                     <button onClick={() => setShowClipboard(false)} className="text-muted hover:text-muted text-base leading-none">✕</button>
                   </div>
                   <div className="p-3 space-y-2">
-                    <textarea value={clipboardText} onChange={e => setClipboardText(e.target.value)} placeholder="نص الحافظة..."
+                    <textarea value={clipboardText} onChange={e => setClipboardText(e.target.value)} placeholder={tr('viewer_clipboard_placeholder')}
                       className="w-full h-20 bg-surface/50 border border-line rounded text-xs text-ink p-2 resize-none font-mono"/>
                     <div className="flex gap-2">
                       <button onClick={copyToLocal} className="flex-1 flex items-center justify-center gap-1 text-xs py-1.5 bg-surface2 hover:bg-surface2 rounded text-ink transition-colors">
-                        <Clipboard size={10}/> نسخ محلياً
+                        <Clipboard size={10}/> {tr('viewer_copy_local')}
                       </button>
                       <button onClick={writeRemoteClipboard} className="flex-1 flex items-center justify-center gap-1 text-xs py-1.5 bg-info/20 hover:bg-info/30 rounded text-info transition-colors">
-                        <ClipboardPaste size={10}/> إرسال للجهاز
+                        <ClipboardPaste size={10}/> {tr('viewer_send_to_device')}
                       </button>
                     </div>
                   </div>
@@ -1587,19 +1590,19 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
           {/* Monitor selector */}
           {status === 'streaming' && monitors.length > 1 && (
             <div className="relative">
-              <button onClick={() => setShowMonitors(s => !s)} title="اختيار الشاشة"
+              <button onClick={() => setShowMonitors(s => !s)} title={tr('viewer_pick_monitor')}
                 className={clsx('flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors', showMonitors ? 'bg-info/20 text-info' : 'text-muted hover:text-ink hover:bg-surface2')}>
-                <Tv2 size={12}/> <span>شاشة {selectedMonitor+1}</span> <ChevronDown size={10}/>
+                <Tv2 size={12}/> <span>{tr('viewer_monitor_n', { n: selectedMonitor + 1 })}</span> <ChevronDown size={10}/>
               </button>
               {showMonitors && (
                 <div className="absolute top-full right-0 mt-1 bg-surface border border-line rounded-lg shadow-xl z-30 min-w-[190px]" onClick={e => e.stopPropagation()}>
-                  <div className="px-3 py-2 text-xs text-muted border-b border-line">اختر الشاشة</div>
+                  <div className="px-3 py-2 text-xs text-muted border-b border-line">{tr('viewer_select_monitor')}</div>
                   {monitors.map(mon => (
                     <button key={mon.id} onClick={() => selectMonitor(mon.id)}
                       className={clsx('w-full text-left px-3 py-2 text-xs hover:bg-surface2 transition-colors flex items-center justify-between gap-2', selectedMonitor === mon.id ? 'text-info' : 'text-ink')}>
-                      <span>{mon.name || `شاشة ${mon.id+1}`}</span>
+                      <span>{mon.name || tr('viewer_monitor_n', { n: mon.id + 1 })}</span>
                       <span className="text-muted font-mono text-[10px]">{mon.width}×{mon.height}</span>
-                      {mon.primary && <span className="text-[9px] bg-success/20 text-success px-1 rounded">رئيسية</span>}
+                      {mon.primary && <span className="text-[9px] bg-success/20 text-success px-1 rounded">{tr('viewer_primary')}</span>}
                     </button>
                   ))}
                 </div>
@@ -1610,7 +1613,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
           {/* Control toggle */}
           {status === 'streaming' && (
             <button onClick={requestControl}
-              title={controlEnabled ? 'إيقاف التحكم' : permissionState === 'requesting' ? 'جارٍ طلب الإذن...' : 'تفعيل التحكم عن بُعد'}
+              title={controlEnabled ? tr('viewer_control_stop') : permissionState === 'requesting' ? tr('viewer_requesting_perm') : tr('viewer_control_enable')}
               disabled={permissionState === 'requesting'}
               className={clsx('flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors',
                 controlEnabled               ? 'bg-success/100/20 text-success hover:bg-success/100/30' :
@@ -1618,15 +1621,15 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
                 'text-muted hover:text-ink hover:bg-surface2'
               )}>
               {permissionState === 'requesting'
-                ? <><Loader2 size={11} className="animate-spin"/> طلب الإذن...</>
-                : controlEnabled ? <><Mouse size={12}/> متحكم</> : <><Shield size={12}/> تحكم</>
+                ? <><Loader2 size={11} className="animate-spin"/> {tr('viewer_requesting_perm_short')}</>
+                : controlEnabled ? <><Mouse size={12}/> {tr('viewer_controlling')}</> : <><Shield size={12}/> {tr('viewer_control')}</>
               }
             </button>
           )}
 
           {/* Keyboard mode */}
           {status === 'streaming' && controlEnabled && (
-            <button onClick={() => setKeyboardMode(k => !k)} title={keyboardMode ? 'إيقاف وضع الكيبورد' : 'تفعيل الكيبورد'}
+            <button onClick={() => setKeyboardMode(k => !k)} title={keyboardMode ? tr('viewer_keyboard_off') : tr('viewer_keyboard_on')}
               className={clsx('p-1.5 rounded transition-colors', keyboardMode ? 'bg-warning/100/20 text-warning' : 'text-muted hover:text-ink hover:bg-surface2')}>
               <Keyboard size={13}/>
             </button>
@@ -1646,7 +1649,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
                 setShowSettings(true)
               }}
               className="p-1.5 rounded text-muted hover:text-ink hover:bg-surface2 transition-colors"
-              title="إعدادات الجودة">
+              title={tr('viewer_quality_settings')}>
               <Settings2 size={13}/>
             </button>
             {showSettings && qualityPos && createPortal(
@@ -1655,20 +1658,20 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
                      style={{ top: qualityPos.top, left: qualityPos.left, width: 268, maxHeight: 'min(72vh, 460px)', overflowY: 'auto',
                               background: '#0b1622', borderColor: 'rgba(148,163,184,0.35)', color: '#e2e8f0' }}
                      onClick={e => e.stopPropagation()}>
-                <div className="px-3 py-2 text-xs text-muted border-b border-line">الجودة / الدقة</div>
-                <button onClick={() => applyPreset({ label: 'أصلية', fps: preset.fps, quality: Math.max(72, preset.quality), maxWidth: Math.max(640, resolution.w || 1920) })}
+                <div className="px-3 py-2 text-xs text-muted border-b border-line">{tr('viewer_quality_resolution')}</div>
+                <button onClick={() => applyPreset({ id: 'original', labelKey: 'viewer_quality_original', fps: preset.fps, quality: Math.max(72, preset.quality), maxWidth: Math.max(640, resolution.w || 1920) })}
                   className="w-full text-left px-3 py-2 text-xs hover:bg-surface2 transition-colors flex items-center justify-between text-ink">
-                  <span>أصلية — بلا تصغير</span>
+                  <span>{tr('viewer_original_no_scale')}</span>
                   <span className="font-mono text-[10px] text-muted">{resolution.w || '?'}px</span>
                 </button>
                 {QUALITY_PRESETS.map(p => (
-                  <button key={p.label} onClick={() => applyPreset(p)}
+                  <button key={p.id} onClick={() => applyPreset(p)}
                     className={clsx('w-full text-left px-3 py-2 text-xs hover:bg-surface2 transition-colors flex items-center justify-between',
-                      !adaptiveMode && preset.label === p.label ? 'text-info' : 'text-ink'
+                      !adaptiveMode && preset.id === p.id ? 'text-info' : 'text-ink'
                     )}>
                     <span className="flex items-center gap-1.5">
                       {p.fps === 30 && <Zap size={9} className="text-warning"/>}
-                      {p.label}
+                      {tr(p.labelKey)}
                     </span>
                     <span className="text-muted font-mono text-[10px]">{p.fps}fps · q{p.quality} · {p.maxWidth}px</span>
                   </button>
@@ -1678,8 +1681,8 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
                     className={clsx('w-full text-left text-xs flex items-center gap-2 py-0.5',
                       adaptiveMode ? 'text-info' : 'text-muted hover:text-ink'
                     )}>
-                    <Zap size={10}/> جودة تكيفية تلقائية
-                    {adaptiveMode && <span className="ml-auto text-[9px] bg-info/20 text-info px-1.5 py-0.5 rounded-full">مفعّل</span>}
+                    <Zap size={10}/> {tr('viewer_adaptive_quality')}
+                    {adaptiveMode && <span className="ml-auto text-[9px] bg-info/20 text-info px-1.5 py-0.5 rounded-full">{tr('viewer_on')}</span>}
                   </button>
                   {/* T001: delta stats */}
                   {frameStats.total > 0 && (
@@ -1695,22 +1698,22 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
           </div>
 
           {viewerCount > 1 && (
-            <div title={`${viewerCount} مشاهدون نشطون`}
+            <div title={tr('viewer_viewers_active', { n: viewerCount })}
               className="flex items-center gap-1 px-2 py-0.5 rounded bg-info/20 text-info text-[11px] font-medium select-none">
               <Eye size={10}/>{viewerCount}
             </div>
           )}
-          <button onClick={refreshStream} className="p-1.5 rounded text-muted hover:text-ink hover:bg-surface2 transition-colors" title="إعادة الاتصال"><RefreshCw size={13}/></button>
+          <button onClick={refreshStream} className="p-1.5 rounded text-muted hover:text-ink hover:bg-surface2 transition-colors" title={tr('viewer_reconnect')}><RefreshCw size={13}/></button>
           <button onClick={() => stopStream()}
-            title="إيقاف البث"
+            title={tr('viewer_stop_stream')}
             className="flex items-center gap-1.5 px-2 py-1 rounded text-danger hover:text-danger hover:bg-danger/100/15 transition-colors text-[11px] font-medium">
             <Square size={12} className="fill-current"/>
-            <span>إيقاف</span>
+            <span>{tr('viewer_stop')}</span>
           </button>
-          <button onClick={() => setPinned(v => !v)} className={clsx('p-1.5 rounded transition-colors', pinned ? 'bg-warning/100/20 text-warning' : 'text-muted hover:text-ink hover:bg-surface2')} title={pinned ? 'إلغاء تثبيت الأدوات' : 'تثبيت الأدوات'}>
+          <button onClick={() => setPinned(v => !v)} className={clsx('p-1.5 rounded transition-colors', pinned ? 'bg-warning/100/20 text-warning' : 'text-muted hover:text-ink hover:bg-surface2')} title={pinned ? tr('viewer_unpin_toolbar') : tr('viewer_pin_toolbar')}>
             {pinned ? <Pin size={13}/> : <PinOff size={13}/>}
           </button>
-          <button onClick={() => setFullscreen(f => !f)} className="p-1.5 rounded text-muted hover:text-ink hover:bg-surface2 transition-colors" title={fullscreen ? 'إنهاء ملء الشاشة' : 'ملء الشاشة'}>
+          <button onClick={() => setFullscreen(f => !f)} className="p-1.5 rounded text-muted hover:text-ink hover:bg-surface2 transition-colors" title={fullscreen ? tr('viewer_exit_fullscreen') : tr('viewer_fullscreen')}>
             {fullscreen ? <Minimize2 size={13}/> : <Maximize2 size={13}/>}
           </button>
         </div>
@@ -1751,8 +1754,8 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
         {/* v3.3.0: custom cursor overlay disabled - the remote frames already include the real cursor (single-cursor UX) */}
         {screenLocked && status === 'streaming' && (
           <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 max-w-[92%] bg-warning/100/20 border border-warning/50 text-ink text-xs px-4 py-2 rounded-xl shadow-lg pointer-events-none text-center leading-6">
-            شاشة الجهاز مقفلة — البث قد يظهر أسود حتى يُفتح القفل من الجهاز.
-            {screenLockSecure ? ' القفل الآمن لا يمكن تجاوزه من التطبيق.' : ''}
+            {tr('viewer_locked_note')}
+            {screenLockSecure ? tr('viewer_secure_lock_note') : ''}
           </div>
         )}
 
@@ -1777,14 +1780,14 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
         {/* Control watermark */}
         {!popout && status === 'streaming' && controlEnabled && (
           <div className="absolute top-2 right-2 flex items-center gap-1 bg-success/100/20 border border-success/30 text-success text-[10px] px-2 py-1 rounded-full pointer-events-none">
-            <Mouse size={9}/> {user?.name || 'User'} يتحكم
+            <Mouse size={9}/> {tr('viewer_controlling_by', { name: user?.name || 'User' })}
           </div>
         )}
 
         {/* Adaptive mode badge */}
         {!popout && adaptiveMode && status === 'streaming' && (
           <div className="absolute top-2 left-2 flex items-center gap-1 bg-info/20 border border-info/30 text-info text-[10px] px-2 py-1 rounded-full pointer-events-none">
-            <Zap size={8} className="fill-info"/> تكيفي · {preset.fps}fps
+            <Zap size={8} className="fill-info"/> {tr('viewer_adaptive')} · {preset.fps}fps
           </div>
         )}
 
@@ -1807,7 +1810,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
         {/* Privacy overlay */}
         {privacyOn && status === 'streaming' && (
           <div className="absolute bottom-2 left-3 flex items-center gap-1.5 bg-primary/20 border border-primary/40 text-primary text-[10px] px-2.5 py-1 rounded-full pointer-events-none z-10">
-            <EyeOff size={10}/> الخصوصية مفعّلة — شاشة الجهاز البعيد معتمة
+            <EyeOff size={10}/> {tr('viewer_privacy_badge')}
           </div>
         )}
 
@@ -1815,8 +1818,8 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
         {dragOver && (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-info/15 border-2 border-info/60 border-dashed z-20 pointer-events-none rounded-b-xl">
             <Upload size={40} className="text-info mb-3"/>
-            <p className="text-info text-sm font-semibold">أفلت الملف لرفعه إلى سطح المكتب</p>
-            <p className="text-ink0 text-xs mt-1">سيُحفظ في مجلد Desktop</p>
+            <p className="text-info text-sm font-semibold">{tr('viewer_drop_file')}</p>
+            <p className="text-ink0 text-xs mt-1">{tr('viewer_drop_saved')}</p>
           </div>
         )}
 
@@ -1824,8 +1827,8 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
         {uploadProgress !== null && (
           <div className="absolute bottom-14 left-1/2 -translate-x-1/2 flex items-center gap-2.5 bg-canvas/95 border border-line text-xs px-4 py-2.5 rounded-xl shadow-xl z-30 min-w-[240px]">
             {uploadProgress === 100
-              ? <><CheckCircle2 size={15} className="text-success shrink-0"/><span className="text-success">تم رفع {uploadFileName} ✓</span></>
-              : <><Loader2 size={14} className="text-info animate-spin shrink-0"/><span className="text-ink truncate max-w-[190px]">جارٍ رفع {uploadFileName}...</span></>
+              ? <><CheckCircle2 size={15} className="text-success shrink-0"/><span className="text-success">{tr('viewer_upload_done', { name: uploadFileName })}</span></>
+              : <><Loader2 size={14} className="text-info animate-spin shrink-0"/><span className="text-ink truncate max-w-[190px]">{tr('viewer_uploading', { name: uploadFileName })}...</span></>
             }
           </div>
         )}
@@ -1834,29 +1837,29 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
         {!popout && showHint && (
           <div className={clsx('absolute bottom-10 left-1/2 -translate-x-1/2 text-xs px-3 py-1.5 rounded-full pointer-events-none transition-all',
             controlEnabled ? 'bg-success/100/20 text-success border border-success/30' : 'bg-surface2/80 text-ink')}>
-            {controlEnabled ? '✅ التحكم مفعّل — حرّك الماوس على الشاشة' : '⏸ التحكم موقوف'}
+            {controlEnabled ? tr('viewer_control_badge_on') : tr('viewer_control_badge_off')}
           </div>
         )}
 
         {/* Awaiting remote approval */}
         {permissionState === 'requesting' && (
           <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-warning/100/25 border border-warning/50 text-warning text-xs px-4 py-2 rounded-xl pointer-events-none z-50 shadow-lg">
-            بانتظار موافقة الجهاز البعيد… اضغط «سماح» على نافذة الوكيل هناك
+            {tr('viewer_waiting_approval')}
           </div>
         )}
 
         {/* Keyboard banner */}
         {!popout && keyboardMode && controlEnabled && status === 'streaming' && (
           <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-warning/100/20 border border-warning/30 text-warning text-xs px-3 py-1.5 rounded-full pointer-events-none">
-            <Keyboard size={11}/> وضع الكيبورد — جميع المفاتيح تُرسل للجهاز البعيد
+            <Keyboard size={11}/> {tr('viewer_keyboard_badge')}
           </div>
         )}
 
         {/* Status overlay (connecting / error / disconnected) */}
         {status !== 'streaming' && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 pointer-events-none">
-            {status === 'connecting'   && <><Loader2 size={28} className="text-info animate-spin"/><p className="text-muted text-sm">جارٍ الاتصال...</p></>}
-            {status === 'disconnected' && <><WifiOff size={28} className="text-muted"/><p className="text-muted text-sm">انقطع الاتصال</p></>}
+            {status === 'connecting'   && <><Loader2 size={28} className="text-info animate-spin"/><p className="text-muted text-sm">{tr('viewer_connecting')}</p></>}
+            {status === 'disconnected' && <><WifiOff size={28} className="text-muted"/><p className="text-muted text-sm">{tr('viewer_disconnected')}</p></>}
             {status === 'error'        && <><WifiOff size={28} className="text-danger"/><p className="text-danger text-sm">{errorMsg}</p></>}
             {status === 'unavailable'  && <><AlertTriangle size={28} className="text-warning"/><p className="text-warning text-sm text-center px-8">{errorMsg}</p></>}
           </div>
@@ -1869,16 +1872,16 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
             <div className="bg-canvas border border-line rounded-2xl shadow-2xl w-[330px] p-5">
               <div className="flex items-center gap-2 mb-3">
                 <Shield size={15} className="text-success"/>
-                <span className="text-sm font-semibold text-ink">التحكم بكلمة سر</span>
+                <span className="text-sm font-semibold text-ink">{tr('viewer_pw_control')}</span>
               </div>
-              <p className="text-xs text-muted mb-3">هذا الجهاز يتطلب كلمة سر للتحكم — أدخلها للمتابعة.</p>
+              <p className="text-xs text-muted mb-3">{tr('viewer_pw_desc')}</p>
               <input
                 type="password"
                 autoFocus
                 value={pwInput}
                 onChange={e => setPwInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') submitPw(); if (e.key === 'Escape') { pwActiveRef.current = false; setPwModal(false) } }}
-                placeholder="كلمة السر..."
+                placeholder={tr('viewer_pw_placeholder')}
                 className="w-full bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:border-success/60"
                 dir="ltr"
               />
@@ -1887,11 +1890,11 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
                 <button onClick={submitPw} disabled={pwBusy || !pwInput.trim()}
                   className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium py-2 rounded-lg bg-success/100/15 border border-success/30 text-success hover:bg-success/100/25 disabled:opacity-40 transition-colors">
                   {pwBusy ? <Loader2 size={12} className="animate-spin"/> : <Shield size={12}/>}
-                  {pwBusy ? 'جارٍ التحقق...' : 'إرسال الطلب'}
+                  {pwBusy ? tr('viewer_pw_verifying') : tr('viewer_pw_send')}
                 </button>
                 <button onClick={() => { pwActiveRef.current = false; setPwModal(false) }}
                   className="px-3 py-2 text-xs rounded-lg text-muted hover:text-ink hover:bg-surface2/70 transition-colors">
-                  إلغاء
+                  {tr('viewer_cancel')}
                 </button>
               </div>
             </div>
@@ -1910,7 +1913,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
                 <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: 'rgba(56,189,248,0.15)' }}>
                   <MessageSquare size={11} className="text-info"/>
                 </div>
-                <span className="text-xs font-semibold text-ink tracking-wide">دردشة الجلسة</span>
+                <span className="text-xs font-semibold text-ink tracking-wide">{tr('viewer_session_chat')}</span>
                 {chatMessages.length > 0 && (
                   <span className="text-[10px] text-muted">{chatMessages.length}</span>
                 )}
@@ -1931,7 +1934,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
               {chatMessages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full gap-2 opacity-40">
                   <MessageSquare size={22} className="text-muted"/>
-                  <p className="text-muted text-xs">لا توجد رسائل بعد</p>
+                  <p className="text-muted text-xs">{tr('viewer_no_messages')}</p>
                 </div>
               ) : chatMessages.map((m, i) => (
                 <div key={i} className={clsx('flex flex-col gap-1', m.sender === 'viewer' ? 'items-end' : 'items-start')}>
@@ -1940,9 +1943,9 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
                       'w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold',
                       m.sender === 'viewer' ? 'bg-info/25 text-info' : 'bg-line text-muted'
                     )}>
-                      {m.sender === 'viewer' ? 'أ' : 'ج'}
+                      {m.sender === 'viewer' ? tr('viewer_avatar_you') : tr('viewer_avatar_device')}
                     </div>
-                    <span>{m.sender === 'viewer' ? 'أنت' : 'الجهاز'}</span>
+                    <span>{m.sender === 'viewer' ? tr('viewer_you') : tr('viewer_device')}</span>
                     <span className="opacity-50">
                       {new Date(m.ts).toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit', hour12: false })}
                     </span>
@@ -1970,7 +1973,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
                 value={chatInput}
                 onChange={e => setChatInput(e.target.value)}
                 onKeyDown={handleChatKey}
-                placeholder="اكتب رسالة..."
+                placeholder={tr('viewer_chat_placeholder')}
                 className="flex-1 rounded-xl px-3 py-2 text-xs text-ink placeholder:text-muted outline-none transition-all"
                 style={{
                   background: 'rgba(30,41,59,0.7)',
