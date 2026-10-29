@@ -809,7 +809,7 @@ html.light .app-nav-item:hover { background: rgba(15,118,110,.06); color: #14212
 html.light .app-nav-item.is-active { background: rgba(15,118,110,.08); border-color: rgba(15,118,110,.16); color: #0b3d3a; }
 html.light .app-nav-badge { background: #e6eef2; color: #4c6170; }
 html.light .app-rail-status, html.light .app-rail-user { border-color: #dbe5ea; }
-html.light .app-rail-status-row b, html.light .app-rail-status-sub { color: #607887; }
+html.light .app-rail-status-row b, html.light .app-rail-status-sub { color: #4f6474; }
 
 
 /* ── Live preview (Overview) ───────────────────────────────────────────── */
@@ -875,8 +875,8 @@ html.light .cr-live-preview-top { background: rgba(248,251,252,.88); border-colo
 html.light .cr-live-preview-top b { color: #14212b; }
 html.light .cr-live-preview-meta span { background: rgba(248,251,252,.9); border-color: #dbe5ea; color: #304957; }
 html.light .cr-live-preview-meta b { color: #14212b; }
-html.light .cr-live-preview-empty strong { color: #14212b; }
-html.light .cr-live-preview-empty p { color: #607887; }
+html.light .cr-live-preview-empty strong { color: #e7eff6; }
+html.light .cr-live-preview-empty p { color: #a9bcc9; }
 
 
 /* ── Live board: device picker, multi-view, size ───────────────────────── */
@@ -1172,7 +1172,7 @@ html.light {
   --cr-line-strong: #c6d6de;
   --cr-text: #14212b;
   --cr-text-2: #304957;
-  --cr-muted: #607887;
+  --cr-muted: #4f6474;
   --cr-muted-2: #647d8b;
   --cr-teal: #0f766e;
   --cr-teal-soft: rgba(15, 118, 110, .08);
@@ -1182,6 +1182,11 @@ html.light {
   --cr-muted-2: #546b7b;
 }
 html.light .app-shell { background: #edf3f5 !important; color: #14212b; }
+html.light .cr-btn.is-primary { color: #ffffff; }
+html.light .cr-live-size-btn.is-active { color: #ffffff; }
+html.light .cr-live-tool-btn { background: #ffffff; border-color: #dbe5ea; color: #304957; }
+html.light .cr-live-preview-top .cr-live-signal { color: #3f5262; }
+html.light .cr-ai-suggestion { color: #4f6474; }
 html.light .app-rail { background: #f8fbfc !important; border-color: #dbe5ea !important; }
 html.light .app-topbar { background: rgba(248, 251, 252, .9) !important; border-color: #dbe5ea !important; }
 html.light .app-content { background: #edf3f5 !important; }
@@ -1207,7 +1212,7 @@ html.light .cr-live-stage-copy strong { color: #19333b; }
 html.light .cr-live-empty { background: #f8fbfc; border-color: #dbe5ea; }
 html.light .cr-ai { background: linear-gradient(180deg, rgba(15, 118, 110, .04), #ffffff); border-color: #cce4e2; }
 html.light .cr-ai-prompt { background: #f8fbfc; border-color: #dbe5ea; color: #304957; }
-html.light .cr-ai-suggestion { color: #617887; border-color: #e5eef1; }
+html.light .cr-ai-suggestion { color: #4f6474; border-color: #e5eef1; }
 html.light .cr-session-row { border-color: #e7eff2; }
 html.light .cr-session-copy strong { color: #304957; }
 html.light .cr-session-copy span,
@@ -1381,7 +1386,7 @@ html.light .app-content .bg-navy-800\/90 {
   background-color: #ffffff !important;
 }
 
-html.light .app-content .text-slate-400 { color: #607887 !important; }
+html.light .app-content .text-slate-400 { color: #4f6474 !important; }
 html.light .app-content .text-slate-500 { color: #708896 !important; }
 html.light .app-content h2.text-xl { color: #14212b; }
 
@@ -1914,10 +1919,10 @@ html.light .app-content h2.text-xl { color: #14212b; }
 
 /* login light theme */
 html.light .cr-overview-head h1 { color: #14212b; }
-html.light .cr-overview-head p { color: #607887; }
-html.light .cr-overview-status span { background: #ffffff; border-color: #dbe5ea; color: #607887; }
+html.light .cr-overview-head p { color: #4f6474; }
+html.light .cr-overview-status span { background: #ffffff; border-color: #dbe5ea; color: #4f6474; }
 html.light .cr-overview-status b { color: #304957; }
-html.light .cr-overview-live { background: #ffffff; border-color: #dbe5ea; color: #607887; }
+html.light .cr-overview-live { background: #ffffff; border-color: #dbe5ea; color: #4f6474; }
 html.light .cr-ai-compose input { background: #f8fbfc; border-color: #dbe5ea; color: #14212b; }
 html.light .cr-ai-compose input::placeholder { color: #4f6474; }
 html.light .cr-ai-compose button { background: rgba(15, 118, 110, .08); border-color: rgba(15, 118, 110, .2); color: #0f766e; }
@@ -1930,7 +1935,7 @@ html.light .login-shell {
 }
 html.light .login-topbar { background: rgba(255, 255, 255, .72); border-color: #dbe5ea; }
 html.light .login-lockup strong { color: #14212b; }
-html.light .login-top-actions button { color: #607887; }
+html.light .login-top-actions button { color: #4f6474; }
 html.light .login-top-actions button:hover { color: #14212b; background: rgba(15, 118, 110, .06); }
 html.light .login-card { background: #ffffff; border-color: #dbe5ea; box-shadow: 0 24px 70px rgba(20, 40, 50, .15); }
 html.light .login-form-panel { background: #ffffff; }
@@ -2066,7 +2071,7 @@ html.light .login-form-meta button { color: #0f766e; }
   cursor: pointer;
 }
 .cr-collapse-btn:hover { color: var(--cr-text); border-color: var(--cr-line-strong); background: rgba(255,255,255,.04); }
-html.light .cr-collapse-btn { background: #fff; border-color: #dbe5ea; color: #607887; }
+html.light .cr-collapse-btn { background: #fff; border-color: #dbe5ea; color: #4f6474; }
 
 .login-topbar button, .login-topbar a, .login-topbar input { -webkit-app-region: no-drag; }
 .login-preferences { display: flex; align-items: center; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(125,152,174,.12); }
@@ -2099,8 +2104,8 @@ html.light .login-preferences button:hover { color: #14212b; background: #f1f6f8
 .ai-page-cancel:hover { color: var(--cr-text); border-color: var(--cr-line-strong); }
 html.light .ai-page-head { background: #fff; border-color: #dbe5ea; }
 html.light .ai-page-title-row h2 { color: #14212b; }
-html.light .ai-page-head-main p { color: #607887; }
-html.light .ai-page-online, html.light .ai-page-cancel { background: #fff; border-color: #dbe5ea; color: #607887; }
+html.light .ai-page-head-main p { color: #4f6474; }
+html.light .ai-page-online, html.light .ai-page-cancel { background: #fff; border-color: #dbe5ea; color: #4f6474; }
 
 /* ── Login: short-viewport fit (2026-10-26) ────────────────────────────────
    The card had no height bound, so on the app's 1000x660 window the form footer
