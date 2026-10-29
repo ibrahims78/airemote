@@ -2137,6 +2137,22 @@ function handleScreenWs(socket, request, user) {
         // v3.8.3 - recordings need complete frames, so turn delta encoding off while recording
         const recAgentStart = agentSockets.get(deviceId)
         if (recAgentStart) sendJson(recAgentStart.ws, { type: 'server:screen_set_delta', payload: { delta: false }, timestamp: Date.now() })
+        // v3.8.18 - the desktop agent has no screen_set_delta handler and keeps sending
+        // region deltas, which the recorder skips ("full frames only"), so a 90s clip
+        // stored 31 frames and the video collapsed to 25s while audio ran 90s. The agent
+        // does honour force_keyframe, so ask for a full frame at capture cadence.
+        try {
+          const recKf = agentSockets.get(deviceId)
+          if (recKf) {
+            const entry = screenRecorders.get(deviceId)
+            if (entry) {
+              entry.keyframeTimer = setInterval(() => {
+                try { if (recKf.ws && recKf.ws.readyState === 1) sendJson(recKf.ws, { type: 'server:force_keyframe', payload: {}, timestamp: Date.now() }) } catch {}
+              }, 120)
+              sendJson(recKf.ws, { type: 'server:force_keyframe', payload: {}, timestamp: Date.now() })
+            }
+          }
+        } catch {}
         // v3.8.8 - a recording without sound is half a recording: ask the agent for PCM
         // audio for the duration of the recording (16 kHz mono, same path as live listen).
         // NB: no sessionId here — the agent compares it with the STREAM session and
@@ -2152,6 +2168,7 @@ function handleScreenWs(socket, request, user) {
         if (recAgentStop) sendJson(recAgentStop.ws, { type: 'server:screen_set_delta', payload: { delta: true }, timestamp: Date.now() })
         if (recAgentStop) sendJson(recAgentStop.ws, { type: 'server:audio_control', payload: { enabled: false }, timestamp: Date.now() })
         // v3.8.14 - flush frames, then mux; the reply must not wait for ffmpeg.
+        if (stopping && stopping.keyframeTimer) { try { clearInterval(stopping.keyframeTimer) } catch {} }
         if (stopRecId) muxingRecordings.add(stopRecId)
         sendJson(socket, {
           type: 'screen:record_status',
@@ -2468,6 +2485,7 @@ function recordAudioChunk(deviceId, buf, format = 'webm') {
     if (!r || !buf || !buf.length) return
     if ((r.audioBytes || 0) > 64 * 1024 * 1024) return
     if (!r.audio) r.audio = []
+    if (!r.audioStartTs) r.audioStartTs = Date.now()
     if (!r.audioFormat) r.audioFormat = format
     r.audio.push(Buffer.from(buf))
     r.audioBytes = (r.audioBytes || 0) + buf.length
@@ -2489,7 +2507,7 @@ function recordScreenFrame(deviceId, jpegBuf) {
     const isJpeg = buf.length > 3 && buf[0] === 0xFF && buf[1] === 0xD8
     const name = 'frame-' + String(n).padStart(6, '0') + (isWebp ? '.webp' : (isJpeg ? '.jpg' : '.bin'))
     if (!r.frameFiles) r.frameFiles = []
-    r.frameFiles.push({ name, size: buf.length })
+    r.frameFiles.push({ name, size: buf.length, ts: Date.now() })
     r.bytes = (r.bytes || 0) + buf.length
     const dir = r.frameDir
     r.writeChain = (r.writeChain || Promise.resolve())
@@ -2577,25 +2595,70 @@ function exportRecordingMp4(r, dir) {
     fps = Math.min(30, Math.max(1, Math.round(frames.length / durationSec)))
     perFrame = 1 / fps
 
+    // v3.8.17 - A/V sync: every frame carries its arrival time, so each concat entry gets
+    // the real gap that followed it instead of a uniform 1/fps. A uniform grid drifted
+    // from the PCM clock whenever the agent delivered frames in bursts.
+    const useTs = frames.length > 2 && frames[0].ts && frames[frames.length - 1].ts
+    const deltas = []
+    if (useTs) {
+      for (let i = 0; i < frames.length - 1; i++) {
+        const dt = (frames[i + 1].ts - frames[i].ts) / 1000
+        deltas.push(Math.min(10.0, Math.max(0.01, dt)))
+      }
+      deltas.sort((a, b) => a - b)
+    }
+    const medianDelta = deltas.length ? deltas[Math.floor(deltas.length / 2)] : perFrame
+
     const list = ['ffconcat version 1.0']
     for (let i = 0; i < frames.length; i++) {
       const name = frames[i].name
       if (!name || name.endsWith('.bin')) continue
       try { fs.accessSync(path.join(r.frameDir, name)) } catch { continue }
       list.push("file '" + path.join(r.frameDir, name).replace(/\\/g, '/') + "'")
-      list.push('duration ' + perFrame.toFixed(4))
+      let dur = perFrame
+      if (useTs) {
+        const next = frames[i + 1]
+        dur = next && next.ts ? Math.min(10.0, Math.max(0.01, (next.ts - frames[i].ts) / 1000)) : medianDelta
+      }
+      list.push('duration ' + dur.toFixed(4))
     }
-    if (list.length <= 1) return
-    list.push("file '" + list[list.length - 2].replace(/^file '/, '').replace(/'$/, '') + "'")   // hold the last frame
+    if (list.length <= 1) { muxingRecordings.delete(r.recId); return }
+    const lastFile = list[list.length - 2].replace(/^file '/, '').replace(/'$/, '')
+    list.push("file '" + lastFile + "'")
+    list.push('duration ' + medianDelta.toFixed(4))   // hold the last frame
     fs.writeFileSync(path.join(tmp, 'list.txt'), list.join('\n'), 'utf8')
 
-    const audio = (r.audio && r.audio.length) ? Buffer.concat(r.audio) : null
-    if (audio && audio.length) fs.writeFileSync(path.join(tmp, 'audio.pcm'), audio)
+    let audio = (r.audio && r.audio.length) ? Buffer.concat(r.audio) : null
+    const RATE = 16000, BYTES_PER_SEC = RATE * 2   // s16le mono
+    const firstTs = frames[0].ts || r.startedAt
+    const lastTs = frames[frames.length - 1].ts || firstTs
+    const videoSec = list.slice(1).filter(x => x.startsWith("duration ")).reduce((acc, x) => acc + parseFloat(x.slice(9)), 0) || ((lastTs - firstTs) / 1000 + medianDelta)
+    if (audio && audio.length) {
+      // v3.8.17 - the PCM track starts when audio_control was enabled, which can be
+      // before or after the first frame. Trim or pad so both streams start together;
+      // then pad the tail so -shortest cannot chop the picture.
+      const offsetSec = r.audioStartTs ? (firstTs - r.audioStartTs) / 1000 : 0
+      if (offsetSec > 0.05) {
+        const skip = Math.min(audio.length, Math.round(offsetSec * BYTES_PER_SEC))
+        audio = audio.subarray(skip)
+        try { serverLogger && serverLogger.info('recording', 'audio trimmed ' + offsetSec.toFixed(2) + 's') } catch {}
+      } else if (offsetSec < -0.05) {
+        const pad = Buffer.alloc(Math.round(-offsetSec * BYTES_PER_SEC))
+        audio = Buffer.concat([pad, audio])
+        try { serverLogger && serverLogger.info('recording', 'audio padded ' + (-offsetSec).toFixed(2) + 's') } catch {}
+      }
+      const wantBytes = Math.max(0, Math.round(videoSec * BYTES_PER_SEC))
+      if (audio.length < wantBytes) audio = Buffer.concat([audio, Buffer.alloc(wantBytes - audio.length)])
+      else if (audio.length > wantBytes + BYTES_PER_SEC) audio = audio.subarray(0, wantBytes)
+      fs.writeFileSync(path.join(tmp, 'audio.pcm'), audio)
+      try { serverLogger && serverLogger.info('recording', 'av align video=' + videoSec.toFixed(2) + 's audio=' + (audio.length / BYTES_PER_SEC).toFixed(2) + 's') } catch {}
+    }
 
     const out = path.join(dir, r.recId + '.mp4')
     const args = ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0', '-i', path.join(tmp, 'list.txt')]
     if (audio && audio.length) args.push('-f', 's16le', '-ar', '16000', '-ac', '1', '-i', path.join(tmp, 'audio.pcm'))
-    args.push('-vsync', 'cfr', '-r', String(fps), '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-pix_fmt', 'yuv420p')
+    args.push('-vsync', 'cfr', '-r', String(fps), '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2',
+      '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-pix_fmt', 'yuv420p')
     if (audio && audio.length) args.push('-c:a', 'aac', '-b:a', '128k', '-shortest')
     args.push('-movflags', '+faststart', out)
 
@@ -2695,7 +2758,7 @@ let TLS_CERT_PATH = null
 
 const AGENT_VERSION = '3.8.7'   // agent artifact version (downloads)
 let serverLogger = null   // set in start(); lets WS handlers write to the app log
-const SERVER_VERSION = '3.8.16'  // server build version (/health)
+const SERVER_VERSION = '3.8.18'  // server build version (/health)
 
 async function start(config) {
   if (started) return
