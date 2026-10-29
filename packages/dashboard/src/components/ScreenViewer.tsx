@@ -72,7 +72,7 @@ interface RecordingMeta {
 // maxWidth controls the agent-side resize — smaller = less bandwidth + faster encode
 const QUALITY_PRESETS: QualityPreset[] = [
   { id: 'saver',    labelKey: 'viewer_q_saver',     fps: 12, quality: 55, maxWidth: 1280 },
-  { id: 'balanced', labelKey: 'viewer_q_balanced',  fps: 20, quality: 70, maxWidth: 1600 },
+  { id: 'balanced', labelKey: 'viewer_q_balanced',  fps: 20, quality: 72, maxWidth: 1920 },
   { id: 'high',     labelKey: 'viewer_q_high',      fps: 25, quality: 78, maxWidth: 1920 },
   { id: 'best',     labelKey: 'viewer_q_excellent', fps: 30, quality: 72, maxWidth: 1920 },
   { id: 'smooth',   labelKey: 'viewer_q_smooth',    fps: 30, quality: 60, maxWidth: 1600 }
@@ -1658,7 +1658,36 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
                      style={{ top: qualityPos.top, left: qualityPos.left, width: 268, maxHeight: 'min(72vh, 460px)', overflowY: 'auto',
                               background: '#0b1622', borderColor: 'rgba(148,163,184,0.35)', color: '#e2e8f0' }}
                      onClick={e => e.stopPropagation()}>
-                <div className="px-3 py-2 text-xs text-muted border-b border-line">{tr('viewer_quality_resolution')}</div>
+                <div className="px-3 py-2 border-b border-line">
+                  <label className="block text-[10px] uppercase tracking-wider text-muted mb-1.5">
+                    {tr('viewer_quality_resolution')}
+                  </label>
+                  <select
+                    value={String(preset.maxWidth >= (resolution.w || 99999) ? 0 : preset.maxWidth)}
+                    onChange={e => {
+                      const v = Number(e.target.value)
+                      const maxWidth = v === 0 ? Math.max(640, resolution.w || 1920) : v
+                      applyPreset({
+                        id: 'res-' + v,
+                        labelKey: preset.labelKey,
+                        fps: preset.fps,
+                        quality: Math.max(preset.quality, v >= 1920 || v === 0 ? 78 : preset.quality),
+                        maxWidth
+                      })
+                      try { localStorage.setItem('airemote.screen.res', String(v)) } catch {}
+                    }}
+                    className="w-full text-xs rounded-lg px-2 py-1.5 bg-surface2 text-ink border border-line outline-none focus:border-primary">
+                    <option value="854">480p · 854 px</option>
+                    <option value="1280">720p · 1280 px</option>
+                    <option value="1600">900p · 1600 px</option>
+                    <option value="1920">1080p · 1920 px</option>
+                    <option value="2560">1440p · 2560 px</option>
+                    <option value="0">{tr('viewer_quality_original')} · {resolution.w || '?'} px</option>
+                  </select>
+                  <p className="text-[10px] text-muted mt-1">
+                    {preset.maxWidth}px · {preset.fps}fps · q{preset.quality}
+                  </p>
+                </div>
                 <button onClick={() => applyPreset({ id: 'original', labelKey: 'viewer_quality_original', fps: preset.fps, quality: Math.max(72, preset.quality), maxWidth: Math.max(640, resolution.w || 1920) })}
                   className="w-full text-left px-3 py-2 text-xs hover:bg-surface2 transition-colors flex items-center justify-between text-ink">
                   <span>{tr('viewer_original_no_scale')}</span>
@@ -1722,7 +1751,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
 
 
       {/* ── Canvas area ── */}
-      {started && <div ref={canvasAreaRef} className={clsx('flex-1 min-h-0 relative flex items-center justify-center bg-canvas', fitMode === 'actual' ? 'overflow-auto' : 'overflow-hidden', popout && 'pt-14')}
+      {started && <div ref={canvasAreaRef} className={clsx('flex-1 min-h-0 relative flex items-center justify-center bg-canvas', fitMode === 'actual' ? 'overflow-auto' : 'overflow-hidden', popout && pinned && 'pt-14')}
         onClick={() => { setShowSettings(false); setShowMonitors(false); setShowClipboard(false) }}>
 
         <canvas ref={canvasRef}
