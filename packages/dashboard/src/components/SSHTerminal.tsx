@@ -256,36 +256,36 @@ export function SSHTerminal({ config, deviceId, onClose }: Props) {
 
   // ── Status badge ──────────────────────────────────────────────────────────
   const statusBadge = {
-    idle:       { icon: <WifiOff size={10} />, label: 'Disconnected', cls: 'text-slate-500 bg-slate-700/40 border-slate-700/50' },
-    connecting: { icon: <div className="w-2.5 h-2.5 rounded-full bg-yellow-400 animate-pulse" />, label: 'Connecting…', cls: 'text-yellow-400 bg-yellow-400/10 border-yellow-500/25' },
-    connected:  { icon: <Wifi size={10} />, label: 'Connected',    cls: 'text-emerald-400 bg-emerald-400/10 border-emerald-500/25' },
-    error:      { icon: <AlertTriangle size={10} />, label: 'Error', cls: 'text-red-400 bg-red-400/10 border-red-500/25' },
-    closed:     { icon: <WifiOff size={10} />, label: 'Closed',     cls: 'text-slate-500 bg-slate-700/40 border-slate-700/50' },
+    idle:       { icon: <WifiOff size={10} />, label: 'Disconnected', cls: 'text-muted bg-surface2 border-line' },
+    connecting: { icon: <div className="w-2.5 h-2.5 rounded-full bg-warning animate-pulse" />, label: 'Connecting…', cls: 'text-warning bg-warning/10 border-warning/30' },
+    connected:  { icon: <Wifi size={10} />, label: 'Connected',    cls: 'text-success bg-success/10 border-success/30' },
+    error:      { icon: <AlertTriangle size={10} />, label: 'Error', cls: 'text-danger bg-danger/10 border-danger/30' },
+    closed:     { icon: <WifiOff size={10} />, label: 'Closed',     cls: 'text-muted bg-surface2 border-line' },
   }[status]
 
   const isLight = theme === 'light'
 
   return (
     <div className={clsx(
-      'flex flex-col rounded-xl overflow-hidden border border-slate-700/50 transition-colors',
-      isLight ? 'bg-white' : 'bg-[#0d1117]',
+      'flex flex-col rounded-xl overflow-hidden border border-line transition-colors',
+      'bg-code',
       fullscreen ? 'fixed inset-4 z-50 shadow-2xl' : 'h-full'
     )}>
 
       {/* ── Title bar ──────────────────────────────────────────────────────── */}
       <div className={clsx(
-        'flex items-center justify-between px-4 py-2.5 border-b border-slate-700/50 flex-shrink-0',
-        'bg-navy-800'
+        'flex items-center justify-between px-4 py-2.5 border-b border-line flex-shrink-0',
+        'bg-surface'
       )}>
         <div className="flex items-center gap-2.5">
           {/* Traffic lights */}
           <div className="flex gap-1.5">
-            <div className="w-3 h-3 rounded-full bg-red-400/75"    />
-            <div className="w-3 h-3 rounded-full bg-yellow-400/75" />
-            <div className="w-3 h-3 rounded-full bg-green-400/75"  />
+            <div className="w-3 h-3 rounded-full bg-danger/70"    />
+            <div className="w-3 h-3 rounded-full bg-warning/70" />
+            <div className="w-3 h-3 rounded-full bg-success/70"  />
           </div>
-          <TermIcon size={12} className="text-brand-teal opacity-80" />
-          <span className="text-xs text-slate-300 font-mono truncate max-w-[220px]" dir="ltr">
+          <TermIcon size={12} className="text-primary opacity-80" />
+          <span className="text-xs text-ink font-mono truncate max-w-[220px]" dir="ltr">
             {config ? `${config.username}@${config.host}:${config.port}` : 'SSH Terminal'}
           </span>
         </div>
@@ -303,23 +303,23 @@ export function SSHTerminal({ config, deviceId, onClose }: Props) {
           {/* Action buttons */}
           {(status === 'error' || status === 'closed') && (
             <button onClick={retry} title="Retry"
-              className="p-1.5 text-slate-500 hover:text-sky-400 hover:bg-sky-400/10 rounded-md transition-colors">
+              className="p-1.5 text-muted hover:text-info hover:bg-info/10 rounded-md transition-colors">
               <RotateCcw size={12} />
             </button>
           )}
           {status === 'connected' && (
             <button onClick={disconnect} title="Disconnect"
-              className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-md transition-colors">
-              <CheckCircle2 size={12} className="text-emerald-400" />
+              className="p-1.5 text-muted hover:text-danger hover:bg-danger/10 rounded-md transition-colors">
+              <CheckCircle2 size={12} className="text-success" />
             </button>
           )}
           <button onClick={() => setFullscreen(f => !f)} title={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
-            className="p-1.5 text-slate-500 hover:text-slate-300 hover:bg-slate-700/40 rounded-md transition-colors">
+            className="p-1.5 text-muted hover:text-ink hover:bg-surface2 rounded-md transition-colors">
             {fullscreen ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
           </button>
           {onClose && (
             <button onClick={onClose} title="Close"
-              className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-md transition-colors">
+              className="p-1.5 text-muted hover:text-danger hover:bg-danger/10 rounded-md transition-colors">
               <X size={12} />
             </button>
           )}
@@ -328,13 +328,13 @@ export function SSHTerminal({ config, deviceId, onClose }: Props) {
 
       {/* ── Error banner ─────────────────────────────────────────────────── */}
       {status === 'error' && errorMsg && (
-        <div className="flex items-center justify-between gap-3 px-4 py-2 bg-red-500/10 border-b border-red-500/20 flex-shrink-0">
-          <span className="text-xs text-red-400 flex items-center gap-1.5">
+        <div className="flex items-center justify-between gap-3 px-4 py-2 bg-danger/10 border-b border-danger/25 flex-shrink-0">
+          <span className="text-xs text-danger flex items-center gap-1.5">
             <AlertTriangle size={12} className="flex-shrink-0" />
             {errorMsg}
           </span>
           <button onClick={retry}
-            className="text-xs text-sky-400 hover:text-sky-300 hover:underline whitespace-nowrap flex-shrink-0">
+            className="text-xs text-info hover:text-info hover:underline whitespace-nowrap flex-shrink-0">
             إعادة المحاولة
           </button>
         </div>
@@ -350,7 +350,7 @@ export function SSHTerminal({ config, deviceId, onClose }: Props) {
         dir="ltr"
         className={clsx(
           'flex-1 overflow-hidden',
-          isLight ? 'p-2 bg-white' : 'p-2 bg-[#0d1117]'
+          'p-2 bg-code'
         )}
         style={{ minHeight: 0 }}
       />

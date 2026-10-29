@@ -258,31 +258,31 @@ export function PTYTerminal({ deviceId, deviceName, onClose }: Props) {
   const isLight = theme === 'light'
 
   const statusBadge = {
-    idle:       { icon: <WifiOff size={10} />, label: 'Disconnected', cls: 'text-slate-500 bg-slate-700/40 border-slate-700/50' },
-    connecting: { icon: <div className="w-2.5 h-2.5 rounded-full bg-yellow-400 animate-pulse" />, label: 'Connecting…', cls: 'text-yellow-400 bg-yellow-400/10 border-yellow-500/25' },
-    connected:  { icon: <Wifi size={10} />, label: 'Connected', cls: 'text-emerald-400 bg-emerald-400/10 border-emerald-500/25' },
-    error:      { icon: <AlertTriangle size={10} />, label: 'Error', cls: 'text-red-400 bg-red-400/10 border-red-500/25' },
-    closed:     { icon: <WifiOff size={10} />, label: 'Closed', cls: 'text-slate-500 bg-slate-700/40 border-slate-700/50' },
+    idle:       { icon: <WifiOff size={10} />, label: 'Disconnected', cls: 'text-muted bg-surface2 border-line' },
+    connecting: { icon: <div className="w-2.5 h-2.5 rounded-full bg-warning animate-pulse" />, label: 'Connecting…', cls: 'text-warning bg-warning/10 border-warning/30' },
+    connected:  { icon: <Wifi size={10} />, label: 'Connected', cls: 'text-success bg-success/10 border-success/30' },
+    error:      { icon: <AlertTriangle size={10} />, label: 'Error', cls: 'text-danger bg-danger/10 border-danger/30' },
+    closed:     { icon: <WifiOff size={10} />, label: 'Closed', cls: 'text-muted bg-surface2 border-line' },
   }[status]
 
   return (
     <div className={clsx(
-      'flex flex-col rounded-xl overflow-hidden border border-slate-700/50 transition-colors',
-      isLight ? 'bg-white' : 'bg-[#0d1117]',
+      'flex flex-col rounded-xl overflow-hidden border border-line transition-colors',
+      'bg-code',
       fullscreen ? 'fixed inset-4 z-50 shadow-2xl' : 'h-full'
     )}>
       {/* ── Title bar ─────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-navy-800 border-b border-slate-700/50 flex-shrink-0">
+      <div className="flex items-center justify-between px-4 py-2.5 bg-surface border-b border-line flex-shrink-0">
         <div className="flex items-center gap-2.5">
           <div className="flex gap-1.5">
-            <div className="w-3 h-3 rounded-full bg-red-400/75"    />
-            <div className="w-3 h-3 rounded-full bg-yellow-400/75" />
-            <div className="w-3 h-3 rounded-full bg-green-400/75"  />
+            <div className="w-3 h-3 rounded-full bg-danger/70"    />
+            <div className="w-3 h-3 rounded-full bg-warning/70" />
+            <div className="w-3 h-3 rounded-full bg-success/70"  />
           </div>
-          <span className="text-xs text-slate-300 font-mono truncate max-w-[180px]" dir="ltr">
+          <span className="text-xs text-ink font-mono truncate max-w-[180px]" dir="ltr">
             {deviceName || deviceId.slice(0, 12)} — Shell
           </span>
-          <span className="text-[10px] bg-brand-blue/15 text-brand-blue px-1.5 py-0.5 rounded font-mono border border-brand-blue/20">
+          <span className="text-[10px] bg-info/15 text-info px-1.5 py-0.5 rounded font-mono border border-info/30">
             PTY
           </span>
         </div>
@@ -292,20 +292,20 @@ export function PTYTerminal({ deviceId, deviceName, onClose }: Props) {
           <div className="relative">
             <button
               onClick={() => setShellOpen(o => !o)}
-              className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-200 bg-navy-900/60 px-2 py-1 rounded border border-slate-700/50 hover:border-slate-600 transition-colors"
+              className="flex items-center gap-1 text-xs text-muted hover:text-ink bg-canvas/70 px-2 py-1 rounded border border-line hover:border-line transition-colors"
             >
               <span className="font-mono">{shell}</span>
               <ChevronDown size={10} />
             </button>
             {shellOpen && (
-              <div className="absolute right-0 top-full mt-1 bg-navy-900 border border-slate-700/50 rounded-lg shadow-xl z-20 min-w-[110px] py-1">
+              <div className="absolute right-0 top-full mt-1 bg-canvas border border-line rounded-lg shadow-xl z-20 min-w-[110px] py-1">
                 {SHELLS.map(s => (
                   <button
                     key={s.value}
                     onClick={() => changeShell(s.value)}
                     className={clsx(
                       'w-full text-left px-3 py-1.5 text-xs transition-colors',
-                      shell === s.value ? 'text-brand-blue bg-brand-blue/10' : 'text-slate-300 hover:bg-slate-700/40'
+                      shell === s.value ? 'text-info bg-primary/10' : 'text-ink hover:bg-surface2'
                     )}
                   >
                     {s.label}
@@ -326,25 +326,25 @@ export function PTYTerminal({ deviceId, deviceName, onClose }: Props) {
 
           {(status === 'error' || status === 'closed') && (
             <button onClick={retry} title="Retry"
-              className="p-1.5 text-slate-500 hover:text-sky-400 hover:bg-sky-400/10 rounded-md transition-colors">
+              className="p-1.5 text-muted hover:text-info hover:bg-info/10 rounded-md transition-colors">
               <RotateCcw size={12} />
             </button>
           )}
 
           <button onClick={() => setFullscreen(f => !f)}
-            className="p-1.5 text-slate-500 hover:text-slate-300 hover:bg-slate-700/40 rounded-md transition-colors">
+            className="p-1.5 text-muted hover:text-ink hover:bg-surface2 rounded-md transition-colors">
             {fullscreen ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
           </button>
 
           {status === 'connected' && (
             <button onClick={disconnect}
-              className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-md transition-colors" title="Disconnect">
+              className="p-1.5 text-muted hover:text-danger hover:bg-danger/10 rounded-md transition-colors" title="Disconnect">
               <X size={12} />
             </button>
           )}
           {onClose && (
             <button onClick={onClose}
-              className="p-1.5 text-slate-500 hover:text-red-400 hover:bg-red-400/10 rounded-md transition-colors">
+              className="p-1.5 text-muted hover:text-danger hover:bg-danger/10 rounded-md transition-colors">
               <X size={12} />
             </button>
           )}
@@ -353,12 +353,12 @@ export function PTYTerminal({ deviceId, deviceName, onClose }: Props) {
 
       {/* ── Error banner ─────────────────────────────────────────────────── */}
       {status === 'error' && errorMsg && (
-        <div className="flex items-center justify-between gap-3 px-4 py-2 bg-red-500/10 border-b border-red-500/20 flex-shrink-0">
-          <span className="text-xs text-red-400 flex items-center gap-1.5">
+        <div className="flex items-center justify-between gap-3 px-4 py-2 bg-danger/10 border-b border-danger/25 flex-shrink-0">
+          <span className="text-xs text-danger flex items-center gap-1.5">
             <AlertTriangle size={12} className="flex-shrink-0" />
             {errorMsg}
           </span>
-          <button onClick={retry} className="text-xs text-sky-400 hover:underline whitespace-nowrap flex-shrink-0">
+          <button onClick={retry} className="text-xs text-info hover:underline whitespace-nowrap flex-shrink-0">
             إعادة المحاولة
           </button>
         </div>
@@ -372,7 +372,7 @@ export function PTYTerminal({ deviceId, deviceName, onClose }: Props) {
       <div
         ref={termRef}
         dir="ltr"
-        className={clsx('flex-1 overflow-hidden', isLight ? 'p-2 bg-white' : 'p-2 bg-[#0d1117]')}
+        className={clsx('flex-1 overflow-hidden', 'p-2 bg-code')}
         style={{ minHeight: 0 }}
       />
     </div>

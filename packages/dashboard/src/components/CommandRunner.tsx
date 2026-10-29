@@ -160,22 +160,22 @@ export function CommandRunner({ deviceId, deviceName, platform }: Props) {
   }
 
   return (
-    <div className="flex flex-col h-full bg-navy-900 rounded-xl border border-slate-700/50 overflow-hidden">
+    <div className="flex flex-col h-full bg-canvas rounded-xl border border-line overflow-hidden">
 
       {/* ── Title bar ─────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-4 py-2.5 bg-navy-800 border-b border-slate-700/50 flex-shrink-0">
+      <div className="flex items-center justify-between px-4 py-2.5 bg-surface border-b border-line flex-shrink-0">
         <div className="flex items-center gap-2.5">
           <div className="flex gap-1.5">
-            <div className="w-3 h-3 rounded-full bg-red-400/70"   />
-            <div className="w-3 h-3 rounded-full bg-yellow-400/70"/>
-            <div className="w-3 h-3 rounded-full bg-green-400/70" />
+            <div className="w-3 h-3 rounded-full bg-danger/70"   />
+            <div className="w-3 h-3 rounded-full bg-warning/70"/>
+            <div className="w-3 h-3 rounded-full bg-success/70" />
           </div>
-          <Terminal size={13} className="text-brand-teal opacity-80" />
-          <span className="text-xs text-slate-300 font-mono">
+          <Terminal size={13} className="text-primary opacity-80" />
+          <span className="text-xs text-ink font-mono">
             {deviceName}
           </span>
           {isWindows && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-blue-500/15 text-blue-400 border border-blue-500/25 font-mono leading-none">
+            <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-info/15 text-info border border-info/30 font-mono leading-none">
               Windows
             </span>
           )}
@@ -183,7 +183,7 @@ export function CommandRunner({ deviceId, deviceName, platform }: Props) {
         {history.length > 0 && (
           <button
             onClick={() => setHistory([])}
-            className="flex items-center gap-1 text-xs text-slate-500 hover:text-slate-300 transition-colors py-1 px-2 rounded hover:bg-slate-700/40"
+            className="flex items-center gap-1 text-xs text-muted hover:text-ink transition-colors py-1 px-2 rounded hover:bg-surface2"
           >
             <RotateCcw size={11} />
             <span>مسح</span>
@@ -192,14 +192,14 @@ export function CommandRunner({ deviceId, deviceName, platform }: Props) {
       </div>
 
       {/* ── Quick commands ────────────────────────────────────── */}
-      <div className="flex gap-1.5 px-3 py-2 border-b border-slate-700/30 flex-shrink-0 overflow-x-auto scrollbar-thin">
+      <div className="flex gap-1.5 px-3 py-2 border-b border-line flex-shrink-0 overflow-x-auto scrollbar-thin">
         {QUICK_COMMANDS.map(q => (
           <button
             key={q.cmd}
             onClick={() => execute(q.cmd)}
             disabled={running}
             title={q.cmd}
-            className="flex-shrink-0 text-[11px] px-2.5 py-1 rounded-md bg-slate-700/30 hover:bg-slate-700/60 text-slate-400 hover:text-slate-200 border border-slate-700/50 hover:border-slate-600 transition-all disabled:opacity-40 disabled:cursor-not-allowed font-medium"
+            className="flex-shrink-0 text-[11px] px-2.5 py-1 rounded-md bg-surface2 hover:bg-surface2 text-muted hover:text-ink border border-line hover:border-line transition-all disabled:opacity-40 disabled:cursor-not-allowed font-medium"
           >
             {q.label}
           </button>
@@ -214,12 +214,12 @@ export function CommandRunner({ deviceId, deviceName, platform }: Props) {
       >
         {history.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center gap-3 select-none">
-            <div className="w-12 h-12 rounded-xl bg-slate-700/30 flex items-center justify-center border border-slate-700/50">
-              <Terminal size={22} className="text-slate-500" />
+            <div className="w-12 h-12 rounded-xl bg-surface2 flex items-center justify-center border border-line">
+              <Terminal size={22} className="text-muted" />
             </div>
             <div>
-              <p className="text-slate-400 text-sm font-sans">اكتب أمراً أو اختر من الاختصارات</p>
-              <p className="text-slate-600 text-[11px] mt-1 font-sans">تُنفَّذ الأوامر مباشرةً عبر Agent · بدون SSH</p>
+              <p className="text-muted text-sm font-sans">اكتب أمراً أو اختر من الاختصارات</p>
+              <p className="text-muted text-[11px] mt-1 font-sans">تُنفَّذ الأوامر مباشرةً عبر Agent · بدون SSH</p>
             </div>
           </div>
         )}
@@ -236,21 +236,21 @@ export function CommandRunner({ deviceId, deviceName, platform }: Props) {
               className={clsx(
                 'rounded-lg border transition-colors',
                 entry.status === 'running'
-                  ? 'border-slate-700/40 bg-slate-700/10'
+                  ? 'border-line bg-surface2/60'
                   : entry.status === 'success'
-                  ? 'border-slate-700/40 bg-slate-700/10'
+                  ? 'border-line bg-surface2/60'
                   : entry.status === 'error'
-                  ? 'border-red-500/20 bg-red-500/5'
-                  : 'border-orange-500/20 bg-orange-500/5'
+                  ? 'border-danger/30 bg-danger/10'
+                  : 'border-warning/25 bg-warning/10'
               )}
             >
               {/* Command line */}
-              <div className="flex items-center gap-2 px-3 py-2 border-b border-slate-700/20">
-                <ChevronRight size={11} className="text-brand-teal flex-shrink-0" />
-                <span className="text-brand-teal flex-1 truncate" title={entry.command}>
+              <div className="flex items-center gap-2 px-3 py-2 border-b border-line">
+                <ChevronRight size={11} className="text-primary flex-shrink-0" />
+                <span className="text-primary flex-1 truncate" title={entry.command}>
                   {entry.command}
                 </span>
-                <span className="flex items-center gap-1 text-slate-600 text-[10px] flex-shrink-0 ml-2">
+                <span className="flex items-center gap-1 text-muted text-[10px] flex-shrink-0 ml-2">
                   <Clock size={9} />
                   {entry.timestamp.toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                 </span>
@@ -259,25 +259,25 @@ export function CommandRunner({ deviceId, deviceName, platform }: Props) {
               {/* Status bar */}
               <div className="flex items-center justify-between px-3 py-1.5">
                 {entry.status === 'running' ? (
-                  <span className="flex items-center gap-1.5 text-slate-400 text-[11px]">
-                    <Loader2 size={11} className="animate-spin text-brand-teal" />
+                  <span className="flex items-center gap-1.5 text-muted text-[11px]">
+                    <Loader2 size={11} className="animate-spin text-primary" />
                     جاري التنفيذ...
                   </span>
                 ) : (
                   <span className={clsx(
                     'flex items-center gap-1.5 text-[11px] font-medium',
-                    entry.status === 'success' ? 'text-emerald-500' :
-                    entry.status === 'error'   ? 'text-red-400' : 'text-orange-400'
+                    entry.status === 'success' ? 'text-success' :
+                    entry.status === 'error'   ? 'text-danger' : 'text-warning'
                   )}>
                     {entry.status === 'success' ? <CheckCircle2 size={11} /> :
                      entry.status === 'timeout' ? <AlertCircle size={11} /> : <XCircle size={11} />}
                     <span>
                       {entry.status === 'success' ? 'نجح' : entry.status === 'error' ? 'خطأ' : 'انتهت المهلة'}
                     </span>
-                    <span className="text-slate-600 font-normal">·</span>
-                    <span className="text-slate-500 font-normal">exit {entry.exitCode}</span>
-                    <span className="text-slate-600 font-normal">·</span>
-                    <span className="text-slate-500 font-normal">{formatDuration(entry.duration)}</span>
+                    <span className="text-muted font-normal">·</span>
+                    <span className="text-muted font-normal">exit {entry.exitCode}</span>
+                    <span className="text-muted font-normal">·</span>
+                    <span className="text-muted font-normal">{formatDuration(entry.duration)}</span>
                   </span>
                 )}
 
@@ -286,7 +286,7 @@ export function CommandRunner({ deviceId, deviceName, platform }: Props) {
                     {isLong && (
                       <button
                         onClick={() => toggleCollapse(entry.id)}
-                        className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-slate-300 px-1.5 py-0.5 rounded hover:bg-slate-700/40 transition-colors"
+                        className="flex items-center gap-1 text-[10px] text-muted hover:text-ink px-1.5 py-0.5 rounded hover:bg-surface2 transition-colors"
                       >
                         {entry.collapsed
                           ? <><ChevronDown size={10} /><span>{outputLines} سطر</span></>
@@ -299,8 +299,8 @@ export function CommandRunner({ deviceId, deviceName, platform }: Props) {
                       className={clsx(
                         'flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded transition-colors',
                         copied === entry.id
-                          ? 'text-emerald-400 bg-emerald-500/10'
-                          : 'text-slate-500 hover:text-slate-300 hover:bg-slate-700/40'
+                          ? 'text-success bg-success/15'
+                          : 'text-muted hover:text-ink hover:bg-surface2'
                       )}
                     >
                       <Copy size={10} />
@@ -313,19 +313,19 @@ export function CommandRunner({ deviceId, deviceName, platform }: Props) {
               {/* Output */}
               {entry.status !== 'running' && showOutput && (entry.stdout || entry.stderr) && (
                 <div className={clsx(
-                  'mx-3 mb-3 rounded-md overflow-hidden border border-slate-700/30',
+                  'mx-3 mb-3 rounded-md overflow-hidden border border-line',
                   isLong && 'max-h-72 overflow-y-auto'
                 )}>
                   {entry.stdout && (
-                    <pre className="px-3 py-2.5 text-slate-300 whitespace-pre-wrap break-all leading-relaxed bg-slate-800/30 text-[11px]">
+                    <pre className="px-3 py-2.5 text-ink whitespace-pre-wrap break-all leading-relaxed bg-surface/40 text-[11px]">
                       {entry.stdout}
                     </pre>
                   )}
                   {entry.stderr && (
                     <pre className={clsx(
                       'px-3 py-2.5 whitespace-pre-wrap break-all leading-relaxed text-[11px]',
-                      entry.stdout ? 'border-t border-red-500/20' : '',
-                      'text-red-400 bg-red-950/20'
+                      entry.stdout ? 'border-t border-danger/25' : '',
+                      'text-danger bg-danger/10'
                     )}>
                       {entry.stderr}
                     </pre>
@@ -336,7 +336,7 @@ export function CommandRunner({ deviceId, deviceName, platform }: Props) {
               {entry.status !== 'running' && isLong && entry.collapsed && (
                 <button
                   onClick={() => toggleCollapse(entry.id)}
-                  className="w-full text-center text-[10px] text-slate-500 hover:text-slate-300 py-1.5 border-t border-slate-700/20 hover:bg-slate-700/20 transition-colors"
+                  className="w-full text-center text-[10px] text-muted hover:text-ink py-1.5 border-t border-line hover:bg-surface2/70 transition-colors"
                 >
                   عرض {outputLines} سطر ▾
                 </button>
@@ -350,9 +350,9 @@ export function CommandRunner({ deviceId, deviceName, platform }: Props) {
       </div>
 
       {/* ── Input bar ─────────────────────────────────────────── */}
-      <div className="flex-shrink-0 border-t border-slate-700/50 bg-navy-800/60 px-3 py-2.5">
-        <div className="flex items-center gap-2 bg-slate-700/20 hover:bg-slate-700/30 border border-slate-700/50 hover:border-slate-600/60 focus-within:border-brand-teal/50 focus-within:bg-slate-700/25 rounded-lg px-3 py-2 transition-all">
-          <span className="text-brand-teal text-sm font-mono flex-shrink-0 select-none opacity-70">
+      <div className="flex-shrink-0 border-t border-line bg-surface/60 px-3 py-2.5">
+        <div className="flex items-center gap-2 bg-surface2/70 hover:bg-surface2 border border-line hover:border-line focus-within:border-primary/60 focus-within:bg-surface2/70 rounded-lg px-3 py-2 transition-all">
+          <span className="text-primary text-sm font-mono flex-shrink-0 select-none opacity-70">
             {isWindows ? '>' : '$'}
           </span>
           <input
@@ -365,7 +365,7 @@ export function CommandRunner({ deviceId, deviceName, platform }: Props) {
             placeholder={isWindows
               ? 'أدخل أمر Windows... (↑↓ للتاريخ)'
               : 'أدخل الأمر... (↑↓ للتاريخ)'}
-            className="flex-1 bg-transparent text-slate-200 text-xs font-mono placeholder-slate-600 focus:outline-none min-w-0"
+            className="flex-1 bg-transparent text-ink text-xs font-mono placeholder:text-muted focus:outline-none min-w-0"
             dir="ltr"
             spellCheck={false}
             autoCapitalize="none"
@@ -377,18 +377,18 @@ export function CommandRunner({ deviceId, deviceName, platform }: Props) {
             className={clsx(
               'flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-md transition-all',
               input.trim() && !running
-                ? 'bg-brand-teal/20 hover:bg-brand-teal/35 text-brand-teal'
-                : 'text-slate-600 cursor-not-allowed'
+                ? 'bg-primary/15 hover:bg-primary/25 text-primary'
+                : 'text-muted cursor-not-allowed'
             )}
             title="تنفيذ (Enter)"
           >
             {running
-              ? <Loader2 size={13} className="animate-spin text-brand-teal" />
+              ? <Loader2 size={13} className="animate-spin text-primary" />
               : <Play size={13} />
             }
           </button>
         </div>
-        <p className="text-[10px] text-slate-700 mt-1.5 px-1 select-none">
+        <p className="text-[10px] text-muted mt-1.5 px-1 select-none">
           {running ? 'جاري التنفيذ — انتظر...' : 'Enter للتنفيذ · ↑↓ للتنقل في التاريخ'}
         </p>
       </div>
