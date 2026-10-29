@@ -28,6 +28,7 @@
     "files": [
       "main.js",
       "preload.js",
+      "lib/**/*",
       "chat-preload.js",
       "chat-toast-preload.js",
       "renderer/**/*",
