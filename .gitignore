@@ -72,3 +72,5 @@ outputs/**/*.zip
 
 # generated test frames
 outputs/**/rec-long/frames/
+outputs/**/rec-long/list.txt
+
