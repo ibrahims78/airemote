@@ -7,6 +7,8 @@ import {
 import { clsx } from 'clsx'
 import { api } from '../lib/api'
 import { useUIStore } from '../store/uiStore'
+import { useT } from '../lib/i18n'
+import type { TKey } from '../lib/i18n'
 
 interface Message {
   role: 'user' | 'assistant' | 'system'
@@ -31,12 +33,19 @@ interface DeviceStatsMini {
   diskPercent?: number
 }
 
-const PROVIDERS = [
-  { value: 'openai',  label: 'OpenAI',   models: ['openai', 'openai-fast', 'gpt-6.1-sol', 'gpt-6-astra', 'gpt-6-sol', 'gpt-6-luna'] },
-  { value: 'gemini',  label: 'Google Gemini',    models: ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.5-pro'] },
-  { value: 'zai',     label: 'Z.ai (GLM)',      models: ['glm-4.7-flash', 'glm-4.5-flash', 'glm-4.6v-flash', 'glm-5.3-flash', 'glm-4.7', 'glm-5.3'] },
-  { value: 'ollama',  label: 'Ollama (محلي)',    models: ['qwen3', 'deepseek-r1', 'gemma3', 'llama3.3', 'phi4', 'gpt-oss'] }
+interface ProviderDef { value: string; label?: string; labelKey?: TKey; models: string[] }
+
+const PROVIDERS: ProviderDef[] = [
+  { value: 'openai',  label: 'OpenAI',        models: ['openai', 'openai-fast', 'gpt-6.1-sol', 'gpt-6-astra', 'gpt-6-sol', 'gpt-6-luna'] },
+  { value: 'gemini',  label: 'Google Gemini', models: ['gemini-3.8-flash', 'gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.5-pro'] },
+  { value: 'zai',     label: 'Z.ai (GLM)',    models: ['glm-4.7-flash', 'glm-4.5-flash', 'glm-4.6v-flash', 'glm-5.3-flash', 'glm-4.7', 'glm-5.3'] },
+  { value: 'ollama',  labelKey: 'chat_provider_ollama_local', models: ['qwen3', 'deepseek-r1', 'gemma3', 'llama3.3', 'phi4', 'gpt-oss'] },
 ]
+
+function providerLabel(p: ProviderDef | undefined, tr: (k: TKey) => string): string {
+  if (!p) return ''
+  return p.labelKey ? tr(p.labelKey) : (p.label ?? '')
+}
 
 const CONFIG_KEY = 'airemote-ai-config'
 
@@ -87,31 +96,22 @@ function getAuthToken(): string {
   } catch { return '' }
 }
 
-function buildSuggestions(stats: DeviceStatsMini | null, isAr: boolean): string[] {
+function buildSuggestions(stats: DeviceStatsMini | null): TKey[] {
   if (!stats) return []
-  const s: string[] = []
-  if ((stats.cpuPercent ?? 0) > 75)  s.push(isAr ? 'أظهر العمليات التي تستهلك أعلى CPU' : 'Show top CPU-consuming processes')
-  if ((stats.ramPercent ?? 0) > 80)  s.push(isAr ? 'فحص استخدام الذاكرة بالتفصيل'       : 'Check memory usage in detail')
-  if ((stats.diskPercent ?? 0) > 85) s.push(isAr ? 'اعرض أكبر الملفات لتحرير مساحة القرص' : 'Show largest files to free disk space')
+  const s: TKey[] = []
+  if ((stats.cpuPercent ?? 0) > 75)  s.push('chat_sugg_top_cpu')
+  if ((stats.ramPercent ?? 0) > 80)  s.push('chat_sugg_memory')
+  if ((stats.diskPercent ?? 0) > 85) s.push('chat_sugg_disk')
   return s.slice(0, 3)
 }
 
-const QUICK_PROMPTS_AR = [
-  'ما هي مواصفات هذا الجهاز؟',
-  'ما هي حالة الخادم حالياً؟',
-  'تحقق من استخدام الذاكرة والمعالج',
-  'اعرض آخر 20 سطر من السجلات',
-  'أظهر العمليات التي تستهلك أعلى CPU',
-  'التقط لقطة شاشة للجهاز الآن',
-]
-
-const QUICK_PROMPTS_EN = [
-  'What are the specs of this device?',
-  'What is the current server status?',
-  'Check memory and CPU usage',
-  'Show last 20 lines of logs',
-  'Show top CPU-consuming processes',
-  'Take a screenshot of this device now',
+const QUICK_PROMPT_KEYS: TKey[] = [
+  'chat_quick_specs',
+  'chat_quick_server',
+  'chat_quick_mem_cpu',
+  'chat_quick_logs',
+  'chat_sugg_top_cpu',
+  'chat_quick_screenshot',
 ]
 
 interface ContentPart {
@@ -145,13 +145,14 @@ function looksLikeControlLines(content: string): boolean {
 
 // v3.3.5 — compact progress note: renders execution feedback as a clean stage card
 function ProgressNote({ text, isLight }: { text: string; isLight: boolean }) {
+  const tr = useT()
   const [open, setOpen] = useState(false)
   const firstLine = (text.split('\n')[0] || '').replace(/^\[|\]$/g, '').slice(0, 70)
   return (
     <div data-progress-note="1" className={clsx('rounded-xl border px-3 py-1.5', isLight ? 'border-line bg-surface2' : 'border-line bg-code')}>
       <button onClick={() => setOpen(v => !v)} className="flex items-center gap-2 w-full text-start">
-        <span className={clsx('text-[11px] font-medium truncate', isLight ? 'text-muted' : 'text-ink')}>مرحلة عمل — {firstLine}</span>
-        <span className={clsx('text-[10px] ms-auto flex-shrink-0', 'text-muted')}>{open ? 'إخفاء' : 'التفاصيل'}</span>
+        <span className={clsx('text-[11px] font-medium truncate', isLight ? 'text-muted' : 'text-ink')}>{tr('chat_progress_stage', { stage: firstLine })}</span>
+        <span className={clsx('text-[10px] ms-auto flex-shrink-0', 'text-muted')}>{open ? tr('chat_hide') : tr('chat_details')}</span>
       </button>
       {open && <pre className={clsx('mt-1.5 text-[10px] whitespace-pre-wrap break-all rounded-lg p-2 max-h-64 overflow-y-auto', isLight ? 'bg-surface text-muted border border-line' : 'bg-code text-muted border border-line')}>{text}</pre>}
     </div>
@@ -160,6 +161,7 @@ function ProgressNote({ text, isLight }: { text: string; isLight: boolean }) {
 
 // v3.3.4 — fullscreen preview with zoom, before download
 function ImageLightbox({ url, onClose }: { url: string; onClose: () => void }) {
+  const tr = useT()
   const [zoom, setZoom]     = useState(1)
   const [offset, setOffset] = useState({ x: 0, y: 0 })
   const dragRef = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null)
@@ -179,10 +181,10 @@ function ImageLightbox({ url, onClose }: { url: string; onClose: () => void }) {
         <span className="font-mono w-12 text-center">{Math.round(zoom * 100)}%</span>
         <button onClick={() => setZoom(z => clamp(z + 0.25))} className="px-2 py-0.5 rounded hover:bg-surface/15 font-bold">+</button>
         <button onClick={() => { setZoom(1); setOffset({ x: 0, y: 0 }) }} className="px-2 py-0.5 rounded hover:bg-surface/15">1:1</button>
-        <a href={url} download="airemote-screenshot.jpg" className="px-2 py-0.5 rounded hover:bg-surface/15" onClick={e => e.stopPropagation()}>تنزيل</a>
-        <button onClick={onClose} className="px-2 py-0.5 rounded hover:bg-surface/15">إغلاق</button>
+        <a href={url} download="airemote-screenshot.jpg" className="px-2 py-0.5 rounded hover:bg-surface/15" onClick={e => e.stopPropagation()}>{tr('chat_download')}</a>
+        <button onClick={onClose} className="px-2 py-0.5 rounded hover:bg-surface/15">{tr('chat_close')}</button>
       </div>
-      <img src={url} draggable={false} alt="معاينة"
+      <img src={url} draggable={false} alt={tr('chat_preview')}
         className="max-h-[90vh] max-w-[94vw] rounded shadow-2xl"
         style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${zoom})`, transition: 'transform 0.12s ease-out', cursor: zoom > 1 ? 'grab' : 'zoom-in' }}
         onClick={e => e.stopPropagation()}
@@ -238,6 +240,7 @@ function ControlBlock({ deviceId, isLight, autoCapture, raw, onDone }: {
   raw?: string
   onDone?: (summary: string) => void
 }) {
+  const tr = useT()
   const lines = (raw || '').split('\n').map(s => s.trim()).filter(s => s && !s.startsWith('#'))
   const [steps, setSteps]     = useState<{ line: string; status: 'pending' | 'running' | 'ok' | 'error'; out: string; img?: string }[]>(() => lines.map(l => ({ line: l, status: 'pending' as const, out: '' })))
   const [running, setRunning] = useState(false)
@@ -259,18 +262,18 @@ function ControlBlock({ deviceId, isLight, autoCapture, raw, onDone }: {
           const resS = await fetch(`/api/devices/${deviceId}/screenshot`, { headers: token ? { Authorization: `Bearer ${token}` } : {} })
           if (!resS.ok) throw new Error('HTTP ' + resS.status)
           const url = URL.createObjectURL(await resS.blob())
-          setSteps(prev => { const n = [...prev]; n[i] = { ...n[i], status: 'ok', out: 'لقطة شاشة — عُرضت في المحادثة', img: url }; return n })
-          results.push('screenshot => OK (التقطت وستُعرض للمستخدم)')
+          setSteps(prev => { const n = [...prev]; n[i] = { ...n[i], status: 'ok', out: tr('chat_screenshot_shown'), img: url }; return n })
+          results.push(tr('chat_cmd_screenshot_ok'))
         } catch (eS) {
-          setSteps(prev => { const n = [...prev]; n[i] = { ...n[i], status: 'error', out: (eS as Error).message || 'فشل الالتقاط' }; return n })
-          results.push('screenshot => خطأ :: ' + ((eS as Error).message || ''))
+          setSteps(prev => { const n = [...prev]; n[i] = { ...n[i], status: 'error', out: (eS as Error).message || tr('chat_capture_failed') }; return n })
+          results.push(tr('chat_cmd_screenshot_err') + ((eS as Error).message || ''))
         }
         await new Promise(r => setTimeout(r, 260))
         continue
       }
       const body = parseControlLine(cmds[i])
       let out = '', ok = false
-      if (!body) { out = 'أمر غير معروف — المتاح: click x y | clickname نص | wait ثوانٍ | type نص | key مفتاح | focus عنوان | scroll N | drag x1 y1 x2 y2 | move x y | info' }
+      if (!body) { out = tr('chat_cmd_unknown') }
       else {
         try {
           const res = await fetch(`/api/devices/${deviceId}/control`, {
@@ -281,10 +284,10 @@ function ControlBlock({ deviceId, isLight, autoCapture, raw, onDone }: {
           const j = await res.json().catch(() => ({} as { ok?: boolean; stdout?: string; stderr?: string; error?: string }))
           ok  = res.ok && j.ok === true
           out = String(j.stdout || j.error || j.stderr || '').trim()
-        } catch (e) { out = (e as Error).message || 'فشل' }
+        } catch (e) { out = (e as Error).message || tr('chat_failed') }
       }
       setSteps(prev => { const n = [...prev]; n[i] = { ...n[i], status: ok ? 'ok' : 'error', out: out.slice(0, 700) }; return n })
-      results.push(cmds[i] + ' => ' + (ok ? 'OK' : 'خطأ') + (out ? ' :: ' + out.slice(0, 350) : ''))
+      results.push(cmds[i] + ' => ' + (ok ? 'OK' : tr('chat_error')) + (out ? ' :: ' + out.slice(0, 350) : ''))
       await new Promise(r => setTimeout(r, 260))
     }
     setRunning(false)
@@ -302,12 +305,12 @@ function ControlBlock({ deviceId, isLight, autoCapture, raw, onDone }: {
       )}>
         <div className="flex items-center gap-1.5">
           <MousePointer2 size={10} />
-          <span>تحكم بالجهاز — {lines.length} أوامر</span>
+          <span>{tr('chat_control_commands', { n: lines.length })}</span>
         </div>
         <button onClick={run} disabled={running || !deviceId}
           className={clsx('flex items-center gap-1 px-2 py-0.5 rounded transition-colors text-[10px] disabled:opacity-50',
             'bg-primary/15 text-primary hover:bg-primary/25')}>
-          {running ? <><Loader size={9} className="animate-spin" /> جاري...</> : <><Play size={9} /> {done ? 'إعادة التنفيذ' : 'تنفيذ'}</>}
+          {running ? <><Loader size={9} className="animate-spin" /> {tr('chat_working')}</> : <><Play size={9} /> {done ? tr('chat_rerun') : tr('chat_run')}</>}
         </button>
       </div>
       <div className={clsx('px-3 py-2 space-y-1', isLight ? 'bg-surface2' : 'bg-code')}>
@@ -320,7 +323,7 @@ function ControlBlock({ deviceId, isLight, autoCapture, raw, onDone }: {
             <div className="min-w-0 flex-1">
               <p className={clsx('font-mono text-[11px] whitespace-pre-wrap break-all', 'text-ink')} dir="ltr">{st.line}</p>
               {st.out && <p className={clsx('font-mono text-[10px] whitespace-pre-wrap break-all mt-0.5', st.status === 'error' ? ('text-danger') : ('text-muted'))}>{st.out}</p>}
-              {st.img && <img src={st.img} alt="لقطة تحقق" className="mt-1 rounded-lg border border-line max-h-72 object-contain" />}
+              {st.img && <img src={st.img} alt={tr('chat_verify_shot_alt')} className="mt-1 rounded-lg border border-line max-h-72 object-contain" />}
             </div>
           </div>
         ))}
@@ -331,6 +334,7 @@ function ControlBlock({ deviceId, isLight, autoCapture, raw, onDone }: {
 // v3.3.4 — desktop video recording: samples screenshots, encodes to WebM via MediaRecorder
 // v3.5 - AI can start a live screen stream on request
 function StreamBlock({ deviceId, isLight }: { deviceId?: string; isLight: boolean }) {
+  const tr = useT()
   const [opened, setOpened] = useState(false)
   function openStream() {
     if (!deviceId) return
@@ -345,16 +349,16 @@ function StreamBlock({ deviceId, isLight }: { deviceId?: string; isLight: boolea
           <Monitor size={16} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className={clsx('text-xs font-semibold', 'text-ink')}>بث الشاشة المباشر</p>
+          <p className={clsx('text-xs font-semibold', 'text-ink')}>{tr('chat_live_stream_title')}</p>
           <p className={clsx('text-[11px] mt-0.5', 'text-muted')}>
-            {opened ? 'تم فتح نافذة البث — يمكنك إغلاقها في أي وقت.' : 'افتح نافذة مستقلة تعرض شاشة الجهاز مباشرة.'}
+            {opened ? tr('chat_stream_opened') : tr('chat_stream_open_desc')}
           </p>
         </div>
         <button onClick={openStream} disabled={!deviceId}
           className={clsx('px-3 py-1.5 rounded-lg text-[11px] font-medium border transition-colors',
             isLight ? 'border-primary/40 text-primary hover:bg-primary/15' : 'border-primary/35 text-primary hover:bg-primary/10',
             !deviceId && 'opacity-50 cursor-not-allowed')}>
-          {opened ? 'فتح مرة أخرى' : 'بدء البث'}
+          {opened ? tr('chat_open_again') : tr('chat_start_stream')}
         </button>
       </div>
     </div>
@@ -367,6 +371,7 @@ function RecordBlock({ deviceId, isLight, autoCapture, raw }: {
   autoCapture?: boolean
   raw?: string
 }) {
+  const tr = useT()
   const [state, setState]       = useState<'idle' | 'recording' | 'done' | 'error'>('idle')
   const [progress, setProgress] = useState(0)
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
@@ -458,7 +463,7 @@ function RecordBlock({ deviceId, isLight, autoCapture, raw }: {
     }
     try {
       const first = await grab()
-      if (!first) throw new Error('تعذر بدء التسجيل — فشل التقاط أول إطار')
+      if (!first) throw new Error(tr('chat_rec_start_failed'))
       const bmp = await createImageBitmap(first)
       const sx = region ? Math.min(region.x, bmp.width - 1) : 0
       const sy = region ? Math.min(region.y, bmp.height - 1) : 0
@@ -512,21 +517,21 @@ function RecordBlock({ deviceId, isLight, autoCapture, raw }: {
       )}>
         <div className="flex items-center gap-1.5">
           <Video size={10} />
-          <span>تسجيل فيديو — {duration} ثانية{region ? ` (منطقة ${region.w}x${region.h})` : ''}</span>
+          <span>{tr('chat_rec_video_label', { s: duration })}{region ? tr('chat_rec_region', { w: region.w, h: region.h }) : ''}</span>
         </div>
         <div className="flex items-center gap-1">
           {videoUrl && (
-            <a href={videoUrl} download="airemote-recording.webm" title="تنزيل الفيديو" className={clsx('p-1 rounded transition-colors', isLight ? 'hover:bg-line' : 'hover:bg-surface2')}>
+            <a href={videoUrl} download="airemote-recording.webm" title={tr('chat_download_video')} className={clsx('p-1 rounded transition-colors', isLight ? 'hover:bg-line' : 'hover:bg-surface2')}>
               <Download size={10} />
             </a>
           )}
           {state === 'recording' ? (
             <button onClick={() => { stopRef.current = true }} className={clsx('flex items-center gap-1 px-2 py-0.5 rounded text-[10px]', isLight ? 'bg-danger/15 text-danger hover:bg-danger/20' : 'bg-danger/100/15 text-danger hover:bg-danger/100/25')}>
-              <Square size={9} /> إيقاف
+              <Square size={9} /> {tr('chat_stop')}
             </button>
           ) : (
             <button onClick={capture} disabled={!deviceId} className={clsx('flex items-center gap-1 px-2 py-0.5 rounded transition-colors text-[10px] disabled:opacity-50', 'bg-primary/15 text-primary hover:bg-primary/25')}>
-              <Video size={9} /> {state === 'done' || state === 'error' ? 'تسجيل جديد' : 'بدء التسجيل'}
+              <Video size={9} /> {state === 'done' || state === 'error' ? tr('chat_new_recording') : tr('chat_start_recording')}
             </button>
           )}
         </div>
@@ -536,7 +541,7 @@ function RecordBlock({ deviceId, isLight, autoCapture, raw }: {
           <div className={clsx('w-full h-1.5 rounded-full', isLight ? 'bg-line' : 'bg-surface2')}>
             <div className="h-full rounded-full bg-danger/100 transition-all" style={{ width: progress + '%' }} />
           </div>
-          <p className={clsx('text-[10px] mt-1.5', 'text-muted')}>جارٍ التسجيل... {progress}%</p>
+          <p className={clsx('text-[10px] mt-1.5', 'text-muted')}>{tr('chat_recording_progress', { p: progress })}</p>
         </div>
       )}
       {err && <p className={clsx('px-3 py-3 text-[11px]', 'text-danger')}>{err}</p>}
@@ -545,7 +550,7 @@ function RecordBlock({ deviceId, isLight, autoCapture, raw }: {
         <div className={clsx('flex items-center justify-center py-6', 'text-muted')}>
           <button onClick={capture} className={clsx('flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] border transition-colors',
             isLight ? 'border-line hover:border-primary/50 hover:text-primary' : 'border-line hover:border-primary hover:text-primary')}>
-            <Video size={11} /> ابدأ تسجيل الفيديو
+            <Video size={11} /> {tr('chat_start_video_recording')}
           </button>
         </div>
       )}
@@ -559,6 +564,7 @@ function ScreenshotBlock({ deviceId, isLight, autoCapture, caption }: {
   autoCapture?: boolean
   caption?: string
 }) {
+  const tr = useT()
   const [url, setUrl]         = useState<string | null>(null)
   const [err, setErr]         = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
@@ -597,40 +603,40 @@ function ScreenshotBlock({ deviceId, isLight, autoCapture, caption }: {
       )}>
         <div className="flex items-center gap-1.5">
           <Camera size={10} />
-          <span>لقطة شاشة من الجهاز</span>
+          <span>{tr('chat_shot_from_device')}</span>
         </div>
         <div className="flex items-center gap-1">
           {url && (
-            <button onClick={() => setLightbox(true)} title="معاينة وتكبير قبل التنزيل" className={clsx('p-1 rounded transition-colors', isLight ? 'hover:bg-line' : 'hover:bg-surface2')}>
+            <button onClick={() => setLightbox(true)} title={tr('chat_preview_zoom_before_download')} className={clsx('p-1 rounded transition-colors', isLight ? 'hover:bg-line' : 'hover:bg-surface2')}>
               <ZoomIn size={10} />
             </button>
           )}
           {url && (
-            <a href={url} download="airemote-screenshot.jpg" title="حفظ اللقطة" className={clsx('p-1 rounded transition-colors', isLight ? 'hover:bg-line' : 'hover:bg-surface2')}>
+            <a href={url} download="airemote-screenshot.jpg" title={tr('chat_save_shot')} className={clsx('p-1 rounded transition-colors', isLight ? 'hover:bg-line' : 'hover:bg-surface2')}>
               <Download size={10} />
             </a>
           )}
-          <button onClick={capture} disabled={loading || !deviceId} title="إعادة الالتقاط"
+          <button onClick={capture} disabled={loading || !deviceId} title={tr('chat_recapture')}
             className={clsx('flex items-center gap-1 px-2 py-0.5 rounded transition-colors text-[10px] disabled:opacity-50',
               'bg-primary/15 text-primary hover:bg-primary/25')}>
-            {loading ? <><Loader size={9} className="animate-spin" /> جاري...</> : <><RefreshCw size={9} /> التقاط</>}
+            {loading ? <><Loader size={9} className="animate-spin" /> {tr('chat_working')}</> : <><RefreshCw size={9} /> {tr('chat_capture')}</>}
           </button>
         </div>
       </div>
       {caption && <p className={clsx('px-3 pt-2 text-[11px]', 'text-muted')}>{caption}</p>}
       {err && <p className={clsx('px-3 py-3 text-[11px]', 'text-danger')}>{err}</p>}
-      {url && <img src={url} alt="لقطة شاشة الجهاز" className="w-full block cursor-zoom-in" title="انقر للمعاينة والتكبير" onClick={() => setLightbox(true)} />}
-      {url && <div className={clsx('px-3 py-1.5 text-[10px] border-t', 'border-line text-muted')}>انقر على الصورة للمعاينة والتكبير قبل التنزيل</div>}
+      {url && <img src={url} alt={tr('chat_device_screenshot')} className="w-full block cursor-zoom-in" title={tr('chat_click_to_preview')} onClick={() => setLightbox(true)} />}
+      {url && <div className={clsx('px-3 py-1.5 text-[10px] border-t', 'border-line text-muted')}>{tr('chat_click_image_preview')}</div>}
       {!url && !err && loading && (
         <div className={clsx('flex items-center justify-center py-8 text-[11px]', 'text-muted')}>
-          <Loader size={12} className="animate-spin me-2" /> يتم التقاط الشاشة من الجهاز...
+          <Loader size={12} className="animate-spin me-2" /> {tr('chat_capturing_from_device')}
         </div>
       )}
       {!url && !err && !loading && !autoCapture && (
         <div className={clsx('flex items-center justify-center py-6', 'text-muted')}>
           <button onClick={capture} className={clsx('flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] border transition-colors',
             isLight ? 'border-line hover:border-primary/50 hover:text-primary' : 'border-line hover:border-primary hover:text-primary')}>
-            <Camera size={11} /> التقاط لقطة الآن
+            <Camera size={11} /> {tr('chat_capture_now')}
           </button>
         </div>
       )}
@@ -650,6 +656,7 @@ function CodeBlock({ code, lang, deviceId, isLight, autoExecEnabled, onFeedback 
   autoExecEnabled?: boolean
   onFeedback?: (payload: { code: string; stdout: string; stderr: string; exitCode: number }) => void
 }) {
+  const tr = useT()
   const [copied,    setCopied]    = useState(false)
   const [executing, setExecuting] = useState(false)
   const [result,    setResult]    = useState<{ stdout: string; stderr: string; exitCode: number } | null>(null)
@@ -720,20 +727,20 @@ function CodeBlock({ code, lang, deviceId, isLight, autoExecEnabled, onFeedback 
           )}
         </div>
         <div className="flex items-center gap-1">
-          <button onClick={copy} title="نسخ"
+          <button onClick={copy} title={tr('chat_copy')}
             className={clsx('p-1 rounded transition-colors', isLight ? 'hover:bg-line' : 'hover:bg-surface2')}>
             {copied ? <Check size={10} className="text-success" /> : <Copy size={10} />}
           </button>
           {isExecutable && deviceId && (
             <button onClick={() => execute()} disabled={executing}
-              title="تنفيذ على الجهاز البعيد"
+              title={tr('chat_run_remote')}
               className={clsx(
                 'flex items-center gap-1 px-2 py-0.5 rounded transition-colors text-[10px] disabled:opacity-50',
                 'bg-primary/15 text-primary hover:bg-primary/25'
               )}>
               {executing
-                ? <><Loader size={9} className="animate-spin" /> جاري...</>
-                : <><Play size={9} /> تنفيذ</>}
+                ? <><Loader size={9} className="animate-spin" /> {tr('chat_working')}</>
+                : <><Play size={9} /> {tr('chat_run_now')}</>}
             </button>
           )}
         </div>
@@ -752,14 +759,14 @@ function CodeBlock({ code, lang, deviceId, isLight, autoExecEnabled, onFeedback 
         <div className={clsx('border-t px-3 py-2.5 text-[11px]', isLight ? 'border-warning/30 bg-warning/10 text-warning' : 'border-warning/20 bg-warning/100/10 text-warning')}>
           <div className="flex items-center gap-1.5 font-medium">
             <AlertCircle size={11} />
-            <span>{document.documentElement.lang === 'en' ? 'Dangerous command — explicit confirmation required before running.' : 'أمر خطير — يتطلب تأكيداً صريحاً قبل التنفيذ.'}</span>
+            <span>{tr('chat_danger_confirm')}</span>
           </div>
           <div className="flex items-center gap-2 mt-2">
             <button onClick={() => execute(true)} className="px-2.5 py-1 rounded bg-danger/100/90 hover:bg-danger/100 text-ink text-[10px] font-semibold transition-colors">
-              {document.documentElement.lang === 'en' ? 'Confirm run' : 'تأكيد التنفيذ'}
+              {tr('chat_confirm_run')}
             </button>
             <button onClick={() => setNeedConfirm(false)} className="px-2.5 py-1 rounded bg-line/70 hover:bg-line text-[10px] transition-colors">
-              {document.documentElement.lang === 'en' ? 'Cancel' : 'إلغاء'}
+              {tr('chat_cancel')}
             </button>
           </div>
         </div>
@@ -784,7 +791,7 @@ function CodeBlock({ code, lang, deviceId, isLight, autoExecEnabled, onFeedback 
                   onClick={() => onFeedback({ code, stdout: result.stdout, stderr: result.stderr, exitCode: result.exitCode })}
                   className="text-[10px] px-2 py-0.5 rounded bg-surface/10 hover:bg-surface/20 transition-colors"
                 >
-                  إرسال النتيجة للمساعد
+                  {tr('chat_send_result_to_ai')}
                 </button>
               )}
               <button onClick={() => setShowResult(v => !v)} className="opacity-60 hover:opacity-100 transition-opacity">
@@ -815,22 +822,21 @@ interface Props {
 }
 
 // v3.3.2 — translate common AI errors into clear, actionable text
-function translateAiError(msg: string, isAr: boolean): string {
+function translateAiError(msg: string, tr: (k: TKey) => string): string {
   if (/FREE_LIMIT|1 reply every 30 seconds|Retry after/i.test(msg)) {
-    return isAr ? 'المزود المجاني يسمح برد واحد كل ~30 ثانية — انتظر نصف دقيقة ثم أعد إرسال رسالتك.' : 'Free tier allows ~1 reply per 30s — wait ~30s and resend.'
+    return tr('chat_err_rate_limit')
   }
   const m = String(msg || '')
   if (/location is not supported/i.test(m)) {
-    return isAr
-      ? 'رفض Google الطلب بسبب القيد الجغرافي (موقع الخادم غير مدعوم).\nالحل: شغّل VPN على جهاز السيرفر ثم أعد الإرسال.'
-      : 'Google rejected the request due to region restrictions.\nFix: enable VPN on the server machine, then retry.'
+    return tr('chat_err_region')
   }
-  if (/AI not configured/i.test(m)) return isAr ? 'لم يُضبط مزوّد الذكاء الاصطناعي بعد — افتح الإعدادات وأدخل المفتاح.' : 'The AI provider is not configured yet.'
-  if (/fetch failed|ECONN|ENOTFOUND|ETIMEDOUT|network|Failed to fetch/i.test(m)) return isAr ? 'تعذّر الوصول إلى خدمة الذكاء الاصطناعي — تحقق من اتصال الإنترنت.' : 'Cannot reach the AI service — check connectivity.'
-  return m || (isAr ? 'حدث خطأ غير متوقع' : 'Unexpected error')
+  if (/AI not configured/i.test(m)) return tr('chat_err_no_provider')
+  if (/fetch failed|ECONN|ENOTFOUND|ETIMEDOUT|network|Failed to fetch/i.test(m)) return tr('chat_err_no_network')
+  return m || (tr('chat_err_unexpected'))
 }
 
 export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) {
+  const tr = useT()
   const isLight = useUIStore(s => s.theme === 'light')
   const isAr    = useUIStore(s => s.lang === 'ar')
 
@@ -1031,7 +1037,7 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
       })
 
       if (!res.ok) {
-        const errData = await res.json().catch(() => ({ error: isAr ? 'فشل الاتصال' : 'Connection failed' }))
+        const errData = await res.json().catch(() => ({ error: tr('chat_err_connection') }))
         throw new Error(errData.error || `HTTP ${res.status}`)
       }
 
@@ -1069,13 +1075,13 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
                 const next = [...prev]
                 const last = next[next.length - 1]
                 if (last && !String(last.content || '').trim()) {
-                  next[next.length - 1] = { ...last, streaming: false, error: true, content: 'لم يصل رد من النموذج — استخدم زر إعادة الإرسال على رسالتك أو أعد المحاولة.' }
+                  next[next.length - 1] = { ...last, streaming: false, error: true, content: tr('chat_err_no_reply') }
                 } else if (last) {
                   next[next.length - 1] = { ...last, streaming: false }
                 }
                 return next
               })
-              if (data.stats) setSuggestions(buildSuggestions(data.stats, isAr))
+              if (data.stats) setSuggestions(buildSuggestions(data.stats).map(k => tr(k)))
             }
           } catch (parseErr) {
             if ((parseErr as Error).name !== 'SyntaxError') throw parseErr
@@ -1090,11 +1096,11 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
         const lastIdx = next.length - 1
         if (next[lastIdx]?.streaming !== undefined) {
           next[lastIdx] = {
-            role: 'assistant', content: translateAiError(err.message, isAr),
+            role: 'assistant', content: translateAiError(err.message, tr),
             timestamp: new Date(), error: true, streaming: false
           }
         } else {
-          next.push({ role: 'assistant', content: translateAiError(err.message, isAr), timestamp: new Date(), error: true })
+          next.push({ role: 'assistant', content: translateAiError(err.message, tr), timestamp: new Date(), error: true })
         }
         return next
       })
@@ -1154,27 +1160,27 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
     if (!deviceId) return
     if (execChainRef.current >= 6) return
     execChainRef.current += 1
-    handleSend('[نتيجة تنفيذ تحكم على الجهاز]\n' + summary + '\nحلّل النتائج (خصوصاً مخرجات info) وأكمل المهمة بالخطوة التالية عبر كتل control أو أوامر powershell.', { fromExec: true })
+    handleSend(tr('chat_prompt_control_header') + summary + tr('chat_prompt_control_followup'), { fromExec: true })
   }
 
   // v3.3.4 — execution feedback loop: send command results back to the AI
   function handleExecFeedback(payload: { code: string; stdout: string; stderr: string; exitCode: number }) {
     if (!deviceId) return
     if (execChainRef.current >= 6) {
-      setMessages(prev => [...prev, { role: 'assistant', content: 'تم إيقاف التنفيذ التلقائي بعد 6 خطوات متتالية لحماية الجهاز — يمكنك المتابعة يدوياً.', timestamp: new Date() }])
+      setMessages(prev => [...prev, { role: 'assistant', content: tr('chat_autoexec_stopped'), timestamp: new Date() }])
       return
     }
     execChainRef.current += 1
     const fb = [
-      '[نتيجة تنفيذ أمر على الجهاز]',
-      'الأمر المنفذ:',
+      tr('chat_prompt_cmd_header'),
+      tr('chat_prompt_cmd_label'),
       '```',
       payload.code,
       '```',
-      'الناتج (stdout): ' + (payload.stdout ? payload.stdout.slice(0, 3000) : '(فارغ)'),
-      'الأخطاء (stderr): ' + (payload.stderr ? payload.stderr.slice(0, 1200) : '(لا يوجد)'),
-      'رمز الخروج: ' + payload.exitCode,
-      'حلّل النتيجة باختصار، وإن احتاجت المهمة خطوات إضافية فأرسل الأمر التالي مباشرة في كتلة كود واحدة.',
+      tr('chat_prompt_stdout') + (payload.stdout ? payload.stdout.slice(0, 3000) : tr('chat_empty_paren')),
+      tr('chat_prompt_stderr') + (payload.stderr ? payload.stderr.slice(0, 1200) : tr('chat_none_paren')),
+      tr('chat_prompt_exit_code') + payload.exitCode,
+      tr('chat_prompt_cmd_followup'),
     ].join('\n')
     void handleSend(fb, { fromExec: true })
   }
@@ -1192,7 +1198,7 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
   }
 
   async function clearHistory() {
-    if (!confirm('مسح كل محادثات هذا الجهاز نهائياً؟ (سيُنظَّف سجل الذكاء له أيضاً)')) return
+    if (!confirm(tr('chat_clear_confirm'))) return
     try {
       const params = new URLSearchParams()
       if (deviceId) params.set('deviceId', deviceId)
@@ -1301,21 +1307,21 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
           </div>
           <div>
             <h3 className={clsx('text-sm font-semibold', 'text-ink')}>
-              {isAr ? 'مساعد الذكاء' : 'AI Assistant'}
+              {tr('chat_ai_assistant')}
             </h3>
             <p className={clsx('text-[11px]', 'text-muted')}>
-              {selectedProvider?.label} · {config.model}
+              {providerLabel(selectedProvider, tr)} · {config.model}
             </p>
           </div>
           {deviceId && (
             <span className="text-[10px] bg-primary/10 text-primary border border-primary/25 px-2 py-0.5 rounded-full font-medium">
-              سياق الجهاز ✓
+              {tr('chat_device_context')}
             </span>
           )}
         </div>
         <div className="flex items-center gap-1">
           {/* Conversations history (v3.3.4) */}
-          <button onClick={toggleConvs} title="سجل المحادثات (آخر 10)"
+          <button onClick={toggleConvs} title={tr('chat_history_title')}
             className={clsx('p-1.5 rounded-lg transition-colors',
               showConvs ? 'bg-info/15 text-info'
                 : isLight ? 'text-muted hover:text-muted hover:bg-surface2' : 'text-muted hover:text-ink hover:bg-surface2/70')}>
@@ -1329,7 +1335,7 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
                 setAutoExec(v)
                 localStorage.setItem('airemote-ai-autoexec', String(v))
               }}
-              title={autoExec ? 'تنفيذ تلقائي: مفعّل — انقر للإيقاف' : 'تفعيل التنفيذ التلقائي للأوامر'}
+              title={autoExec ? tr('chat_autoexec_on') : tr('chat_autoexec_off')}
               className={clsx(
                 'p-1.5 rounded-lg transition-colors border text-[10px] flex items-center gap-1',
                 autoExec
@@ -1353,7 +1359,7 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
                   ? 'text-muted hover:text-muted hover:bg-surface2'
                   : 'text-muted hover:text-ink hover:bg-surface2/70'
             )}
-            title="إعدادات AI"
+            title={tr('chat_ai_settings')}
           >
             <Settings2 size={14} />
           </button>
@@ -1364,7 +1370,7 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
               'p-1.5 rounded-lg transition-colors disabled:opacity-30',
               'text-muted hover:text-danger hover:bg-danger/10'
             )}
-            title="مسح المحادثة"
+            title={tr('chat_clear_chat')}
           >
             <Trash2 size={14} />
           </button>
@@ -1375,14 +1381,14 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
         <div className={clsx('absolute top-14 z-30 w-80 max-h-[420px] overflow-y-auto rounded-xl border shadow-2xl', 'bg-surface border-line')} style={{ insetInlineEnd: 12 }}>
           <button onClick={startNewConv}
             className={clsx('w-full flex items-center gap-2 px-3 py-2.5 text-xs border-b transition-colors', isLight ? 'border-line text-primary hover:bg-primary/10' : 'border-line text-primary hover:bg-surface2/70')}>
-            <Plus size={12} /> محادثة جديدة
+            <Plus size={12} /> {tr('chat_new_conversation')}
           </button>
-          {deviceId && <div className={clsx('px-3 py-1.5 text-[10px]', 'text-muted')}>ذاكرة الذكاء: آخر 10 محادثات لهذا الجهاز</div>}
-          {convs.length === 0 && <p className={clsx('px-3 py-3 text-xs', 'text-muted')}>لا توجد محادثات سابقة بعد.</p>}
+          {deviceId && <div className={clsx('px-3 py-1.5 text-[10px]', 'text-muted')}>{tr('chat_memory_hint')}</div>}
+          {convs.length === 0 && <p className={clsx('px-3 py-3 text-xs', 'text-muted')}>{tr('chat_no_conversations')}</p>}
           {convs.map(cv => (
             <div key={cv.id} className={clsx('flex items-stretch border-b last:border-b-0', 'border-line', activeConvId === cv.id && ('bg-primary/10'))}>
               <button onClick={() => openConv(cv.id)} className={clsx('flex-1 min-w-0 text-start px-3 py-2 transition-colors', isLight ? 'hover:bg-surface2' : 'hover:bg-surface2/70')}>
-                <p className={clsx('text-xs truncate', 'text-ink')}>{cv.title || 'محادثة'}</p>
+                <p className={clsx('text-xs truncate', 'text-ink')}>{cv.title || tr('chat_conversation')}</p>
                 <p className={clsx('text-[10px] mt-0.5', 'text-muted')} dir="ltr">{String(cv.updated_at || '').slice(0, 16)}</p>
               </button>
               <button
@@ -1392,7 +1398,7 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
                   setConvs(prev => prev.filter(c => c.id !== cv.id))
                   if (activeConvId === cv.id) { skipReloadRef.current = true; setActiveConvId(undefined); setMessages([]) }
                 }}
-                title="حذف هذه المحادثة"
+                title={tr('chat_delete_conversation')}
                 className={clsx('px-2 transition-colors', isLight ? 'text-ink hover:text-danger hover:bg-danger/10' : 'text-muted hover:text-danger hover:bg-danger/10')}>
                 <Trash2 size={11} />
               </button>
@@ -1409,11 +1415,11 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
         )}>
           <div className="flex items-center gap-2 mb-1">
             <Key size={12} className={'text-muted'} />
-            <span className={clsx('text-xs font-medium', 'text-muted')}>إعدادات النموذج</span>
+            <span className={clsx('text-xs font-medium', 'text-muted')}>{tr('chat_model_settings')}</span>
           </div>
           <div className="grid grid-cols-2 gap-2.5">
             <div>
-              <label className={clsx('text-[11px] block mb-1', 'text-muted')}>المزود</label>
+              <label className={clsx('text-[11px] block mb-1', 'text-muted')}>{tr('chat_provider')}</label>
               <select
                 value={config.provider}
                 onChange={e => {
@@ -1426,11 +1432,11 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
                 }}
                 className={cfgFieldCls} dir="ltr"
               >
-                {PROVIDERS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                {PROVIDERS.map(p => <option key={p.value} value={p.value}>{providerLabel(p, tr)}</option>)}
               </select>
             </div>
             <div>
-              <label className={clsx('text-[11px] block mb-1', 'text-muted')}>النموذج</label>
+              <label className={clsx('text-[11px] block mb-1', 'text-muted')}>{tr('chat_model')}</label>
               <select
                 value={config.model}
                 onChange={e => saveConfig({ ...config, model: e.target.value })}
@@ -1464,10 +1470,10 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
                         : 'border-line text-muted hover:border-primary hover:text-primary'
               )}
             >
-              {validating  ? <><Loader size={10} className="animate-spin" /> جاري...</> :
-               validateOk === true  ? <><Wifi size={10} /> ناجح</> :
-               validateOk === false ? <><WifiOff size={10} /> فشل</> :
-               <><Wifi size={10} /> اختبار</>}
+              {validating  ? <><Loader size={10} className="animate-spin" /> {tr('chat_working')}</> :
+               validateOk === true  ? <><Wifi size={10} /> {tr('chat_validate_ok')}</> :
+               validateOk === false ? <><WifiOff size={10} /> {tr('chat_validate_fail')}</> :
+               <><Wifi size={10} /> {tr('chat_validate_test')}</>}
             </button>
             <button
               onClick={() => setShowConfig(false)}
@@ -1478,7 +1484,7 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
                   : 'bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20'
               )}
             >
-              <ChevronDown size={12} /> حفظ وإغلاق
+              <ChevronDown size={12} /> {tr('chat_save_close')}
             </button>
           </div>
         </div>
@@ -1508,25 +1514,25 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
                   <Bot size={28} className={'text-primary'} />
                 </div>
                 <h3 className={clsx('text-base font-bold', 'text-ink')}>
-                  {isAr ? 'كيف يمكنني مساعدتك اليوم؟' : 'How can I help you today?'}
+                  {tr('chat_greeting_title')}
                 </h3>
                 <p className={clsx('text-xs leading-relaxed mt-1.5 max-w-md', 'text-muted')}>
                   {deviceId
-                    ? (isAr ? 'أنا متصل بهذا الجهاز ويمكنني قراءة حالته، تنفيذ الأوامر، أخذ لقطات شاشة، والتحكم به عند الحاجة.' : 'Connected to this device: read state, run commands, take screenshots, and control it.')
-                    : (isAr ? 'اسأل عن أي شيء يخص أجهزتك أو الشبكة أو الأخطاء — وإن أردت إجراءً فعلياً اختر جهازاً من القائمة الجانبية.' : 'Ask about your devices, network, or errors — pick a device to act on it.')}
+                    ? (tr('chat_greeting_connected'))
+                    : (tr('chat_greeting_disconnected'))}
                 </p>
                 <div className="flex flex-wrap items-center justify-center gap-1.5 mt-3">
-                  {[isAr ? 'تنفيذ أوامر' : 'Commands', isAr ? 'لقطات شاشة' : 'Screenshots', isAr ? 'تحكم بالماوس' : 'Mouse control', isAr ? 'مدير الملفات' : 'Files', isAr ? 'تحليل الأعطال' : 'Diagnostics'].map(c => (
+                  {[tr('chat_cap_commands'), tr('chat_cap_screenshots'), tr('chat_cap_mouse'), tr('chat_cap_files'), tr('chat_cap_diagnostics')].map(c => (
                     <span key={c} className={clsx('text-[10px] px-2 py-1 rounded-full border', isLight ? 'bg-surface border-line text-muted' : 'bg-surface/[0.03] border-line text-muted')}>{c}</span>
                   ))}
                 </div>
               </div>
 
               <p className={clsx('text-[11px] font-semibold uppercase tracking-wider mt-6 mb-2', 'text-muted')}>
-                {isAr ? 'اقتراحات سريعة' : 'Quick prompts'}
+                {tr('chat_quick_prompts_label')}
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {(isAr ? QUICK_PROMPTS_AR : QUICK_PROMPTS_EN).map((s, i) => (
+                {QUICK_PROMPT_KEYS.map(k => tr(k)).map((s, i) => (
                   <button
                     key={s}
                     onClick={() => { setInput(s); inputRef.current?.focus() }}
@@ -1605,13 +1611,13 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
                 <div className={clsx('mt-1 flex items-center gap-2 transition-opacity',
                   msg.role === 'user' ? 'justify-end text-ink/70' : ('text-muted'),
                   msg.streaming ? 'opacity-0 pointer-events-none' : 'opacity-0 group-hover:opacity-100')}>
-                  <button onClick={() => copyMessage(msg.content, i)} title={isAr ? 'نسخ' : 'Copy'} className="hover:opacity-80 transition-opacity flex items-center gap-0.5">
+                  <button onClick={() => copyMessage(msg.content, i)} title={tr('chat_copy')} className="hover:opacity-80 transition-opacity flex items-center gap-0.5">
                     {copiedIdx === i
-                      ? <><Check size={11} /><span className="text-[9px]">{isAr ? 'تم النسخ' : 'Copied'}</span></>
+                      ? <><Check size={11} /><span className="text-[9px]">{tr('chat_copied')}</span></>
                       : <Copy size={11} />}
                   </button>
                   {msg.role === 'user' && !/^\[(نتيجة تنفيذ|تم تنفيذ)/.test(msg.content || '') && (
-                    <button onClick={() => handleSend(msg.content)} disabled={loading} title={isAr ? 'إعادة إرسال الرسالة' : 'Resend'} className="hover:opacity-80 transition-opacity disabled:opacity-40">
+                    <button onClick={() => handleSend(msg.content)} disabled={loading} title={tr('chat_resend')} className="hover:opacity-80 transition-opacity disabled:opacity-40">
                       <RefreshCw size={11} />
                     </button>
                   )}
@@ -1649,7 +1655,7 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
         {/* Proactive suggestion chips */}
         {suggestions.length > 0 && !loading && (
           <div className="flex flex-wrap gap-1.5 pl-10 pr-2 pt-1">
-            <span className={clsx('text-[11px] w-full mb-0.5', 'text-muted')}>اقتراحات بناءً على حالة الجهاز:</span>
+            <span className={clsx('text-[11px] w-full mb-0.5', 'text-muted')}>{tr('chat_suggestions_from_state')}</span>
             {suggestions.map(s => (
               <button
                 key={s}
@@ -1677,7 +1683,7 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
         isLight ? 'border-line bg-surface2' : 'border-line'
       )}>
         {queueHint && (
-          <p className={clsx('text-[10px] mb-1.5', 'text-warning')}>الرد السابق ما زال قيد التوليد — انتظر قليلاً أو أوقفه بزر الإيقاف ثم أرسل.</p>
+          <p className={clsx('text-[10px] mb-1.5', 'text-warning')}>{tr('chat_stream_busy')}</p>
         )}
         <div className="flex gap-2 items-end">
           <textarea
@@ -1686,8 +1692,8 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKey}
             placeholder={deviceId
-              ? 'اسأل AI عن الجهاز أو اطلب تنفيذ أمر… (Enter للإرسال)'
-              : 'اكتب رسالتك… (Enter للإرسال، Shift+Enter لسطر جديد)'}
+              ? tr('chat_placeholder_device')
+              : tr('chat_placeholder_plain')}
             rows={1}
             className={inputCls}
             style={{ minHeight: '44px', maxHeight: '128px' }}
@@ -1695,7 +1701,7 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
           {loading ? (
             <button
               onClick={stopStreaming}
-              title="إيقاف الرد"
+              title={tr('chat_stop_reply')}
               className={clsx(
                 'p-3 rounded-2xl transition-all flex-shrink-0',
                 isLight
@@ -1719,8 +1725,8 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
           )}
         </div>
         <p className={clsx('text-[10px] mt-1.5 text-center', 'text-muted')}>
-          Enter للإرسال · Shift+Enter لسطر جديد
-          {autoExec && deviceId && <span className="text-warning mr-2">· تنفيذ تلقائي مفعّل ⚡</span>}
+          {tr('chat_input_hint')}
+          {autoExec && deviceId && <span className="text-warning mr-2">{tr('chat_autoexec_badge')}</span>}
         </p>
       </div>
     </div>
