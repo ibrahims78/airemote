@@ -1254,32 +1254,32 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div ref={containerRef} className={clsx(
-      'flex flex-col bg-black overflow-hidden',
+      'flex flex-col bg-code overflow-hidden',
       (fullscreen || popout) ? 'fixed inset-0 z-[100] rounded-none' : 'relative h-full rounded-xl'
     )}>
 
       {/* ── Start splash — shown before user initiates screen sharing ── */}
       {!started && (
-        <div className="flex flex-col items-center justify-center h-full gap-6 bg-navy-950 rounded-xl select-none">
+        <div className="flex flex-col items-center justify-center h-full gap-6 bg-canvas rounded-xl select-none">
           <div className="flex flex-col items-center gap-3">
-            <div className="w-20 h-20 rounded-2xl bg-brand-blue/10 border border-brand-blue/20 flex items-center justify-center">
-              <Tv2 size={36} className="text-brand-blue/70" />
+            <div className="w-20 h-20 rounded-2xl bg-info/10 border border-info/20 flex items-center justify-center">
+              <Tv2 size={36} className="text-info/70" />
             </div>
             <div className="text-center">
-              <p className="text-base font-semibold text-slate-200">{deviceName}</p>
-              <p className="text-xs text-slate-500 mt-1">مشاركة الشاشة</p>
+              <p className="text-base font-semibold text-ink">{deviceName}</p>
+              <p className="text-xs text-muted mt-1">مشاركة الشاشة</p>
             </div>
           </div>
 
           <button
             onClick={() => setStarted(true)}
-            className="flex items-center gap-2.5 px-6 py-3 rounded-xl bg-brand-blue hover:bg-brand-blue/90 active:scale-95 transition-all text-white font-medium text-sm shadow-lg shadow-brand-blue/20"
+            className="flex items-center gap-2.5 px-6 py-3 rounded-xl bg-info hover:bg-info/90 active:scale-95 transition-all text-ink font-medium text-sm shadow-lg shadow-info/20"
           >
             <PlayCircle size={18} />
             بدء مشاركة الشاشة
           </button>
 
-          <p className="text-xs text-slate-600 max-w-xs text-center">
+          <p className="text-xs text-muted max-w-xs text-center">
             سيتم الاتصال بالجهاز البعيد وبدء البث عند الضغط على الزر
           </p>
         </div>
@@ -1297,19 +1297,19 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
       )}
 
       {popout && started && popoutHint && status === 'streaming' && (
-        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[70] px-4 py-2 rounded-full bg-black/60 text-[11px] text-slate-200 backdrop-blur-sm select-none pointer-events-none">
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-[70] px-4 py-2 rounded-full bg-overlay/60 text-[11px] text-ink backdrop-blur-sm select-none pointer-events-none">
           Esc للخروج من ملء الشاشة · حرّك الفأرة إلى أعلى الشاشة لإظهار الأدوات
         </div>
       )}
 
       {/* ── Toolbar ── */}
       {started && <div onMouseEnter={revealControls} onMouseLeave={() => { if (!pinned) scheduleControlsHide(1000) }} className={clsx(
-        'flex items-center gap-2 px-3 py-2 bg-navy-900/95 backdrop-blur border border-slate-700/50 z-10 flex-wrap transition-all duration-200',
+        'flex items-center gap-2 px-3 py-2 bg-canvas/95 backdrop-blur border border-line z-10 flex-wrap transition-all duration-200',
         popout ? 'absolute top-2 left-1/2 -translate-x-1/2 w-auto max-w-[96%] rounded-xl shadow-2xl overflow-x-auto flex-nowrap whitespace-nowrap' : 'border-b',
         fullscreen && !controlsVisible && !pinned && !showSettings && 'opacity-0 -translate-y-2 pointer-events-none'
       )}>
-        <Monitor size={14} className="text-brand-blue shrink-0"/>
-        <span className="text-sm font-medium text-slate-200 truncate max-w-[100px]">{deviceName}</span>
+        <Monitor size={14} className="text-info shrink-0"/>
+        <span className="text-sm font-medium text-ink truncate max-w-[100px]">{deviceName}</span>
 
         <button
           type="button"
@@ -1329,9 +1329,9 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
 
         {/* v3.8.9 — one obvious control for how the remote desktop fits */}
         {status === 'streaming' && (
-          <div className="flex items-center gap-0.5 rounded-lg border border-slate-700/60 bg-slate-800/70 p-0.5 shrink-0"
+          <div className="flex items-center gap-0.5 rounded-lg border border-line bg-surface/70 p-0.5 shrink-0"
                role="group" aria-label="طريقة عرض شاشة الجهاز">
-            <Scaling size={12} className="text-slate-500 mx-1" />
+            <Scaling size={12} className="text-muted mx-1" />
             {([
               { id: 'fit',    label: 'ملاءمة', hint: 'سطح المكتب كاملاً داخل النافذة' },
               { id: 'fill',   label: 'ملء',    hint: 'ملء النافذة بالكامل (يُقصّ ما يزيد)' },
@@ -1345,8 +1345,8 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
                 aria-pressed={fitMode === o.id}
                 className={clsx('px-2 py-0.5 rounded-md text-[11px] leading-5 transition-colors',
                   fitMode === o.id
-                    ? 'bg-sky-500/20 text-sky-200 font-medium ring-1 ring-sky-400/40'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50')}
+                    ? 'bg-info/20 text-info font-medium ring-1 ring-info/40'
+                    : 'text-muted hover:text-ink hover:bg-surface2')}
               >
                 {o.label}
               </button>
@@ -1356,18 +1356,18 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
 
         {/* T001: Bandwidth meter + FPS + latency */}
         {status === 'streaming' && (
-          <span className="flex items-center gap-2 text-xs font-mono text-slate-500 shrink-0 tabular-nums">
+          <span className="flex items-center gap-2 text-xs font-mono text-muted shrink-0 tabular-nums">
             <span className="inline-block w-[4.4em] text-right">{fps}fps</span>
             <span className="inline-block w-[7.2em] text-right">{resolution.w}×{resolution.h}</span>
             {latency >= 0 && (
               <span className={clsx(
                 'inline-block w-[3.4em] text-right',
-                latency < 50  ? 'text-emerald-400' :
-                latency < 150 ? 'text-amber-400'   :
-                latency < 300 ? 'text-orange-400'  : 'text-red-400'
+                latency < 50  ? 'text-success' :
+                latency < 150 ? 'text-warning'   :
+                latency < 300 ? 'text-warning'  : 'text-danger'
               )}>{latency}ms</span>
             )}
-            <span className="inline-block w-[5.6em] text-right text-slate-600" title={`${frameStats.keyframes} keyframes / ${frameStats.total} total frames`}>
+            <span className="inline-block w-[5.6em] text-right text-muted" title={`${frameStats.keyframes} keyframes / ${frameStats.total} total frames`}>
               {bwDisplay > 0 ? fmtBytes(bwDisplay) : '—'}
             </span>
           </span>
@@ -1377,23 +1377,23 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
           <div className="flex items-center gap-1 shrink-0">
             <button onClick={() => sendWs({ type: 'screen:key_event', payload: { type: 'press', key: 'Escape' } })}
               disabled={!controlEnabled} title="رجوع"
-              className="flex items-center gap-1 px-1.5 py-1 rounded text-slate-300 hover:text-white hover:bg-slate-700/60 disabled:opacity-40 transition-colors">
+              className="flex items-center gap-1 px-1.5 py-1 rounded text-ink hover:text-ink hover:bg-surface2 disabled:opacity-40 transition-colors">
               <Undo2 size={11} /><span className="hidden 2xl:inline text-[10px]">رجوع</span>
             </button>
             <button onClick={() => sendWs({ type: 'screen:key_event', payload: { type: 'press', key: 'Home' } })}
               disabled={!controlEnabled} title="الرئيسية"
-              className="flex items-center gap-1 px-1.5 py-1 rounded text-slate-300 hover:text-white hover:bg-slate-700/60 disabled:opacity-40 transition-colors">
+              className="flex items-center gap-1 px-1.5 py-1 rounded text-ink hover:text-ink hover:bg-surface2 disabled:opacity-40 transition-colors">
               <Home size={11} /><span className="hidden 2xl:inline text-[10px]">الرئيسية</span>
             </button>
             <button onClick={() => sendWs({ type: 'screen:key_event', payload: { type: 'press', key: 'Meta' } })}
               disabled={!controlEnabled} title="التطبيقات المفتوحة"
-              className="flex items-center gap-1 px-1.5 py-1 rounded text-slate-300 hover:text-white hover:bg-slate-700/60 disabled:opacity-40 transition-colors">
+              className="flex items-center gap-1 px-1.5 py-1 rounded text-ink hover:text-ink hover:bg-surface2 disabled:opacity-40 transition-colors">
               <Layers size={11} /><span className="hidden 2xl:inline text-[10px]">التطبيقات</span>
             </button>
             <button
               onClick={() => sendWs({ type: 'screen:rotate', payload: {} })}
               title="تدوير شاشة الجهاز 90 درجة"
-              className="flex items-center gap-1 px-1.5 py-1 rounded text-slate-300 hover:text-white hover:bg-slate-700/60 disabled:opacity-40 transition-colors">
+              className="flex items-center gap-1 px-1.5 py-1 rounded text-ink hover:text-ink hover:bg-surface2 disabled:opacity-40 transition-colors">
               <RotateCw size={11} /><span className="hidden 2xl:inline text-[10px]">تدوير</span>
             </button>
             <button
@@ -1404,7 +1404,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
               }}
               title={autoRotate ? 'التدوير التلقائي مفعّل — اضغط للتعطيل' : 'التدوير التلقائي متوقف — اضغط للتفعيل'}
               className={clsx('flex items-center gap-1 px-1.5 py-1 rounded transition-colors disabled:opacity-40',
-                autoRotate ? 'text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20' : 'text-slate-300 hover:text-white hover:bg-slate-700/60')}>
+                autoRotate ? 'text-success bg-success/100/10 hover:bg-success/100/20' : 'text-ink hover:text-ink hover:bg-surface2')}>
               <RefreshCw size={11} />
               <span className="hidden 2xl:inline text-[10px]">تلقائي</span>
             </button>
@@ -1412,18 +1412,18 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
               onClick={() => setShowBrightness(v => !v)}
               title="التحكم في سطوع شاشة الجهاز (0–255)"
               className={clsx('flex items-center gap-1 px-1.5 py-1 rounded transition-colors',
-                showBrightness ? 'text-amber-300 bg-amber-500/15' : 'text-slate-300 hover:text-white hover:bg-slate-700/60')}>
+                showBrightness ? 'text-warning bg-warning/100/15' : 'text-ink hover:text-ink hover:bg-surface2')}>
               <Sun size={11} /><span className="hidden xl:inline text-[10px]">السطوع</span>
             </button>
             {showBrightness && createPortal(
-              <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/55 p-4" onClick={() => setShowBrightness(false)}>
-                <div className="w-full max-w-sm rounded-2xl border border-slate-600/60 bg-navy-900 p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+              <div className="fixed inset-0 z-[120] flex items-center justify-center bg-overlay/55 p-4" onClick={() => setShowBrightness(false)}>
+                <div className="w-full max-w-sm rounded-2xl border border-line bg-canvas p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <div className="text-sm font-bold text-white">سطوع شاشة Android</div>
-                      <div className="text-[11px] text-slate-400 mt-1">تحكم يدوي من 0 إلى 255 دون إطفاء الشاشة</div>
+                      <div className="text-sm font-bold text-ink">سطوع شاشة Android</div>
+                      <div className="text-[11px] text-muted mt-1">تحكم يدوي من 0 إلى 255 دون إطفاء الشاشة</div>
                     </div>
-                    <div className="text-2xl font-bold text-amber-300">{brightness}</div>
+                    <div className="text-2xl font-bold text-warning">{brightness}</div>
                   </div>
                   <input
                     type="range" min={0} max={255} step={1} value={brightness}
@@ -1432,13 +1432,13 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
                       setBrightness(value)
                       sendWs({ type: 'screen:brightness', payload: { value } })
                     }}
-                    className="w-full accent-amber-400"
+                    className="w-full accent-warning"
                     autoFocus
                   />
-                  <div className="flex justify-between text-[10px] text-slate-500 mt-2"><span>0</span><span>255</span></div>
+                  <div className="flex justify-between text-[10px] text-muted mt-2"><span>0</span><span>255</span></div>
                   <div className="flex justify-end mt-4">
                     <button onClick={() => setShowBrightness(false)}
-                      className="px-4 py-2 rounded-lg bg-slate-700/60 text-slate-200 text-xs hover:bg-slate-600">
+                      className="px-4 py-2 rounded-lg bg-surface2 text-ink text-xs hover:bg-line">
                       إغلاق
                     </button>
                   </div>
@@ -1447,7 +1447,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
               document.body
             )}
             {rotateNotice && (
-              <span className="text-[10px] text-amber-400 max-w-[180px] truncate" title={rotateNotice}>{rotateNotice}</span>
+              <span className="text-[10px] text-warning max-w-[180px] truncate" title={rotateNotice}>{rotateNotice}</span>
             )}
           </div>
         )}
@@ -1459,7 +1459,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
           {!popout && status === 'streaming' && (
             <button onClick={() => window.open('/view/' + deviceId, '_blank', 'width=1400,height=900')}
               title="فتح البث في نافذة مستقلة — لعرض عدة أجهزة معاً"
-              className="flex items-center gap-1 px-2 py-1 rounded text-xs text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 transition-colors">
+              className="flex items-center gap-1 px-2 py-1 rounded text-xs text-muted hover:text-ink hover:bg-surface2 transition-colors">
               <ExternalLink size={12}/> نافذة مستقلة
             </button>
           )}
@@ -1469,11 +1469,11 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
             <button onClick={openChat}
               title="دردشة أثناء الجلسة"
               className={clsx('relative flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors',
-                chatOpen ? 'bg-sky-500/20 text-sky-400' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                chatOpen ? 'bg-info/20 text-info' : 'text-muted hover:text-ink hover:bg-surface2'
               )}>
               <MessageSquare size={12}/>
               {unreadChat > 0 && !chatOpen && (
-                <span className="absolute -top-1 -right-1 bg-sky-500 text-white rounded-full w-3.5 h-3.5 flex items-center justify-center text-[9px] font-bold">
+                <span className="absolute -top-1 -right-1 bg-info text-primary-fg rounded-full w-3.5 h-3.5 flex items-center justify-center text-[9px] font-bold">
                   {unreadChat > 9 ? '9+' : unreadChat}
                 </span>
               )}
@@ -1493,20 +1493,20 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
                         }}
                         title={audioEnabled ? 'إيقاف صوت الجهاز' : 'تشغيل صوت الجهاز'}
                         className={clsx('flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors',
-                          audioEnabled ? 'bg-teal-500/20 text-teal-300' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50')}>
+                          audioEnabled ? 'bg-primary/100/20 text-primary' : 'text-muted hover:text-ink hover:bg-surface2')}>
                         {audioEnabled ? <Volume2 size={12}/> : <VolumeX size={12}/>}
                         <span className="hidden xl:inline">{audioEnabled ? 'صوت الجهاز' : 'تشغيل الصوت'}</span>
                       </button>
                     )}
                     {audioNotice && (
-                      <span className="text-[10px] text-amber-400 max-w-[220px] truncate" title={audioNotice}>{audioNotice}</span>
+                      <span className="text-[10px] text-warning max-w-[220px] truncate" title={audioNotice}>{audioNotice}</span>
                     )}
             <button onClick={recording ? stopRecording : startRecording}
               title={recording ? `إيقاف التسجيل (${fmt(recDuration)})` : 'تسجيل الجلسة كفيديو WebM'}
               className={clsx('flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors',
-                recording ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                recording ? 'bg-danger/100/20 text-danger hover:bg-danger/100/30' : 'text-muted hover:text-ink hover:bg-surface2'
               )}>
-              {recording ? <><Circle size={8} className="fill-red-400 animate-pulse"/> {fmt(recDuration)}</> : <Video size={12}/>}
+              {recording ? <><Circle size={8} className="fill-danger animate-pulse"/> {fmt(recDuration)}</> : <Video size={12}/>}
             </button>
             </>
           )}
@@ -1516,16 +1516,16 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
             svrRecMeta && !svrRecording ? (
               <button onClick={downloadServerRecording} disabled={mp4State === 'preparing'}
                 title="تنزيل الفيديو (MP4 بصوت) — يُجهَّز تلقائياً بعد الإيقاف"
-                className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 disabled:opacity-60 transition-colors">
+                className="flex items-center gap-1 px-2 py-1 rounded text-xs bg-success/100/20 text-success hover:bg-success/100/30 disabled:opacity-60 transition-colors">
                 {mp4State === 'preparing' ? <><Loader2 size={11} className="animate-spin"/> جارٍ التجهيز</> : <><Download size={11}/> تحميل MP4</>}
               </button>
             ) : (
               <button onClick={svrRecording ? stopServerRecording : startServerRecording}
                 title={svrRecording ? 'إيقاف التسجيل (فيديو + صوت)' : 'تسجيل الجلسة: فيديو MP4 بصوت + نسخة ZIP'}
                 className={clsx('flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors',
-                  svrRecording ? 'bg-orange-500/20 text-orange-400 hover:bg-orange-500/30' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                  svrRecording ? 'bg-warning/20 text-warning hover:bg-warning/30' : 'text-muted hover:text-ink hover:bg-surface2'
                 )}>
-                {svrRecording ? <><Circle size={8} className="fill-orange-400 animate-pulse"/> خادم</> : <Activity size={12}/>}
+                {svrRecording ? <><Circle size={8} className="fill-warning animate-pulse"/> خادم</> : <Activity size={12}/>}
               </button>
             )
           )}
@@ -1533,7 +1533,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
           {/* Privacy (Windows agent only; Android has its own screen-off control) */}
           {status === 'streaming' && !remoteIsAndroid && (
             <button onClick={togglePrivacy} title={privacyOn ? 'إلغاء وضع الخصوصية (إعادة شاشة الجهاز البعيد)' : 'تفعيل وضع الخصوصية (تعتم شاشة الجهاز البعيد)'}
-              className={clsx('p-1.5 rounded transition-colors', privacyOn ? 'bg-purple-500/20 text-purple-400' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50')}>
+              className={clsx('p-1.5 rounded transition-colors', privacyOn ? 'bg-primary/20 text-primary' : 'text-muted hover:text-ink hover:bg-surface2')}>
               {privacyOn ? <Eye size={13}/> : <EyeOff size={13}/>}
             </button>
           )}
@@ -1543,23 +1543,23 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
             <div className="relative">
               <button onClick={() => { setShowClipboard(s => !s); if (!showClipboard) readRemoteClipboard() }}
                 title="مزامنة الحافظة"
-                className={clsx('p-1.5 rounded transition-colors', showClipboard ? 'bg-sky-500/20 text-sky-400' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50')}>
+                className={clsx('p-1.5 rounded transition-colors', showClipboard ? 'bg-info/20 text-info' : 'text-muted hover:text-ink hover:bg-surface2')}>
                 <Clipboard size={13}/>
               </button>
               {showClipboard && (
-                <div className="absolute top-full right-0 mt-1 bg-navy-800 border border-slate-700/50 rounded-lg shadow-xl z-30 w-72" onClick={e => e.stopPropagation()}>
-                  <div className="px-3 py-2 text-xs text-slate-400 border-b border-slate-700/30 flex items-center justify-between">
+                <div className="absolute top-full right-0 mt-1 bg-surface border border-line rounded-lg shadow-xl z-30 w-72" onClick={e => e.stopPropagation()}>
+                  <div className="px-3 py-2 text-xs text-muted border-b border-line flex items-center justify-between">
                     <span>مزامنة الحافظة</span>
-                    <button onClick={() => setShowClipboard(false)} className="text-slate-600 hover:text-slate-400 text-base leading-none">✕</button>
+                    <button onClick={() => setShowClipboard(false)} className="text-muted hover:text-muted text-base leading-none">✕</button>
                   </div>
                   <div className="p-3 space-y-2">
                     <textarea value={clipboardText} onChange={e => setClipboardText(e.target.value)} placeholder="نص الحافظة..."
-                      className="w-full h-20 bg-slate-800/50 border border-slate-700/50 rounded text-xs text-slate-200 p-2 resize-none font-mono"/>
+                      className="w-full h-20 bg-surface/50 border border-line rounded text-xs text-ink p-2 resize-none font-mono"/>
                     <div className="flex gap-2">
-                      <button onClick={copyToLocal} className="flex-1 flex items-center justify-center gap-1 text-xs py-1.5 bg-slate-700/50 hover:bg-slate-700 rounded text-slate-300 transition-colors">
+                      <button onClick={copyToLocal} className="flex-1 flex items-center justify-center gap-1 text-xs py-1.5 bg-surface2 hover:bg-surface2 rounded text-ink transition-colors">
                         <Clipboard size={10}/> نسخ محلياً
                       </button>
-                      <button onClick={writeRemoteClipboard} className="flex-1 flex items-center justify-center gap-1 text-xs py-1.5 bg-brand-blue/20 hover:bg-brand-blue/30 rounded text-brand-blue transition-colors">
+                      <button onClick={writeRemoteClipboard} className="flex-1 flex items-center justify-center gap-1 text-xs py-1.5 bg-info/20 hover:bg-info/30 rounded text-info transition-colors">
                         <ClipboardPaste size={10}/> إرسال للجهاز
                       </button>
                     </div>
@@ -1573,18 +1573,18 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
           {status === 'streaming' && monitors.length > 1 && (
             <div className="relative">
               <button onClick={() => setShowMonitors(s => !s)} title="اختيار الشاشة"
-                className={clsx('flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors', showMonitors ? 'bg-sky-500/20 text-sky-400' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50')}>
+                className={clsx('flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors', showMonitors ? 'bg-info/20 text-info' : 'text-muted hover:text-ink hover:bg-surface2')}>
                 <Tv2 size={12}/> <span>شاشة {selectedMonitor+1}</span> <ChevronDown size={10}/>
               </button>
               {showMonitors && (
-                <div className="absolute top-full right-0 mt-1 bg-navy-800 border border-slate-700/50 rounded-lg shadow-xl z-30 min-w-[190px]" onClick={e => e.stopPropagation()}>
-                  <div className="px-3 py-2 text-xs text-slate-500 border-b border-slate-700/30">اختر الشاشة</div>
+                <div className="absolute top-full right-0 mt-1 bg-surface border border-line rounded-lg shadow-xl z-30 min-w-[190px]" onClick={e => e.stopPropagation()}>
+                  <div className="px-3 py-2 text-xs text-muted border-b border-line">اختر الشاشة</div>
                   {monitors.map(mon => (
                     <button key={mon.id} onClick={() => selectMonitor(mon.id)}
-                      className={clsx('w-full text-left px-3 py-2 text-xs hover:bg-slate-700/50 transition-colors flex items-center justify-between gap-2', selectedMonitor === mon.id ? 'text-brand-blue' : 'text-slate-300')}>
+                      className={clsx('w-full text-left px-3 py-2 text-xs hover:bg-surface2 transition-colors flex items-center justify-between gap-2', selectedMonitor === mon.id ? 'text-info' : 'text-ink')}>
                       <span>{mon.name || `شاشة ${mon.id+1}`}</span>
-                      <span className="text-slate-500 font-mono text-[10px]">{mon.width}×{mon.height}</span>
-                      {mon.primary && <span className="text-[9px] bg-emerald-400/20 text-emerald-400 px-1 rounded">رئيسية</span>}
+                      <span className="text-muted font-mono text-[10px]">{mon.width}×{mon.height}</span>
+                      {mon.primary && <span className="text-[9px] bg-success/20 text-success px-1 rounded">رئيسية</span>}
                     </button>
                   ))}
                 </div>
@@ -1598,9 +1598,9 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
               title={controlEnabled ? 'إيقاف التحكم' : permissionState === 'requesting' ? 'جارٍ طلب الإذن...' : 'تفعيل التحكم عن بُعد'}
               disabled={permissionState === 'requesting'}
               className={clsx('flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors',
-                controlEnabled               ? 'bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30' :
-                permissionState === 'requesting' ? 'bg-amber-500/20 text-amber-400 cursor-wait' :
-                'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                controlEnabled               ? 'bg-success/100/20 text-success hover:bg-success/100/30' :
+                permissionState === 'requesting' ? 'bg-warning/100/20 text-warning cursor-wait' :
+                'text-muted hover:text-ink hover:bg-surface2'
               )}>
               {permissionState === 'requesting'
                 ? <><Loader2 size={11} className="animate-spin"/> طلب الإذن...</>
@@ -1612,7 +1612,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
           {/* Keyboard mode */}
           {status === 'streaming' && controlEnabled && (
             <button onClick={() => setKeyboardMode(k => !k)} title={keyboardMode ? 'إيقاف وضع الكيبورد' : 'تفعيل الكيبورد'}
-              className={clsx('p-1.5 rounded transition-colors', keyboardMode ? 'bg-amber-500/20 text-amber-400' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50')}>
+              className={clsx('p-1.5 rounded transition-colors', keyboardMode ? 'bg-warning/100/20 text-warning' : 'text-muted hover:text-ink hover:bg-surface2')}>
               <Keyboard size={13}/>
             </button>
           )}
@@ -1630,7 +1630,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
                 setQualityPos({ top, left })
                 setShowSettings(true)
               }}
-              className="p-1.5 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 transition-colors"
+              className="p-1.5 rounded text-muted hover:text-ink hover:bg-surface2 transition-colors"
               title="إعدادات الجودة">
               <Settings2 size={13}/>
             </button>
@@ -1640,35 +1640,35 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
                      style={{ top: qualityPos.top, left: qualityPos.left, width: 268, maxHeight: 'min(72vh, 460px)', overflowY: 'auto',
                               background: '#0b1622', borderColor: 'rgba(148,163,184,0.35)', color: '#e2e8f0' }}
                      onClick={e => e.stopPropagation()}>
-                <div className="px-3 py-2 text-xs text-slate-500 border-b border-slate-700/30">الجودة / الدقة</div>
+                <div className="px-3 py-2 text-xs text-muted border-b border-line">الجودة / الدقة</div>
                 <button onClick={() => applyPreset({ label: 'أصلية', fps: preset.fps, quality: Math.max(72, preset.quality), maxWidth: Math.max(640, resolution.w || 1920) })}
-                  className="w-full text-left px-3 py-2 text-xs hover:bg-slate-700/50 transition-colors flex items-center justify-between text-slate-200">
+                  className="w-full text-left px-3 py-2 text-xs hover:bg-surface2 transition-colors flex items-center justify-between text-ink">
                   <span>أصلية — بلا تصغير</span>
-                  <span className="font-mono text-[10px] text-slate-500">{resolution.w || '?'}px</span>
+                  <span className="font-mono text-[10px] text-muted">{resolution.w || '?'}px</span>
                 </button>
                 {QUALITY_PRESETS.map(p => (
                   <button key={p.label} onClick={() => applyPreset(p)}
-                    className={clsx('w-full text-left px-3 py-2 text-xs hover:bg-slate-700/50 transition-colors flex items-center justify-between',
-                      !adaptiveMode && preset.label === p.label ? 'text-brand-blue' : 'text-slate-300'
+                    className={clsx('w-full text-left px-3 py-2 text-xs hover:bg-surface2 transition-colors flex items-center justify-between',
+                      !adaptiveMode && preset.label === p.label ? 'text-info' : 'text-ink'
                     )}>
                     <span className="flex items-center gap-1.5">
-                      {p.fps === 30 && <Zap size={9} className="text-yellow-400"/>}
+                      {p.fps === 30 && <Zap size={9} className="text-warning"/>}
                       {p.label}
                     </span>
-                    <span className="text-slate-500 font-mono text-[10px]">{p.fps}fps · q{p.quality} · {p.maxWidth}px</span>
+                    <span className="text-muted font-mono text-[10px]">{p.fps}fps · q{p.quality} · {p.maxWidth}px</span>
                   </button>
                 ))}
-                <div className="border-t border-slate-700/30 px-3 py-2 space-y-1.5">
+                <div className="border-t border-line px-3 py-2 space-y-1.5">
                   <button onClick={() => { setAdaptiveMode(a => !a); setShowSettings(false) }}
                     className={clsx('w-full text-left text-xs flex items-center gap-2 py-0.5',
-                      adaptiveMode ? 'text-sky-400' : 'text-slate-400 hover:text-slate-200'
+                      adaptiveMode ? 'text-info' : 'text-muted hover:text-ink'
                     )}>
                     <Zap size={10}/> جودة تكيفية تلقائية
-                    {adaptiveMode && <span className="ml-auto text-[9px] bg-sky-500/20 text-sky-400 px-1.5 py-0.5 rounded-full">مفعّل</span>}
+                    {adaptiveMode && <span className="ml-auto text-[9px] bg-info/20 text-info px-1.5 py-0.5 rounded-full">مفعّل</span>}
                   </button>
                   {/* T001: delta stats */}
                   {frameStats.total > 0 && (
-                    <div className="text-[10px] text-slate-600 font-mono pt-1 border-t border-slate-700/20">
+                    <div className="text-[10px] text-muted font-mono pt-1 border-t border-line/60">
                       {frameStats.keyframes} keyframe / {frameStats.total} frames
                       · {frameStats.total > 0 ? Math.round(frameStats.keyframes / frameStats.total * 100) : 0}% full
                     </div>
@@ -1681,21 +1681,21 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
 
           {viewerCount > 1 && (
             <div title={`${viewerCount} مشاهدون نشطون`}
-              className="flex items-center gap-1 px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 text-[11px] font-medium select-none">
+              className="flex items-center gap-1 px-2 py-0.5 rounded bg-info/20 text-info text-[11px] font-medium select-none">
               <Eye size={10}/>{viewerCount}
             </div>
           )}
-          <button onClick={refreshStream} className="p-1.5 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 transition-colors" title="إعادة الاتصال"><RefreshCw size={13}/></button>
+          <button onClick={refreshStream} className="p-1.5 rounded text-muted hover:text-ink hover:bg-surface2 transition-colors" title="إعادة الاتصال"><RefreshCw size={13}/></button>
           <button onClick={() => stopStream()}
             title="إيقاف البث"
-            className="flex items-center gap-1.5 px-2 py-1 rounded text-red-400 hover:text-red-300 hover:bg-red-500/15 transition-colors text-[11px] font-medium">
+            className="flex items-center gap-1.5 px-2 py-1 rounded text-danger hover:text-danger hover:bg-danger/100/15 transition-colors text-[11px] font-medium">
             <Square size={12} className="fill-current"/>
             <span>إيقاف</span>
           </button>
-          <button onClick={() => setPinned(v => !v)} className={clsx('p-1.5 rounded transition-colors', pinned ? 'bg-amber-500/20 text-amber-400' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50')} title={pinned ? 'إلغاء تثبيت الأدوات' : 'تثبيت الأدوات'}>
+          <button onClick={() => setPinned(v => !v)} className={clsx('p-1.5 rounded transition-colors', pinned ? 'bg-warning/100/20 text-warning' : 'text-muted hover:text-ink hover:bg-surface2')} title={pinned ? 'إلغاء تثبيت الأدوات' : 'تثبيت الأدوات'}>
             {pinned ? <Pin size={13}/> : <PinOff size={13}/>}
           </button>
-          <button onClick={() => setFullscreen(f => !f)} className="p-1.5 rounded text-slate-400 hover:text-slate-200 hover:bg-slate-700/50 transition-colors" title={fullscreen ? 'إنهاء ملء الشاشة' : 'ملء الشاشة'}>
+          <button onClick={() => setFullscreen(f => !f)} className="p-1.5 rounded text-muted hover:text-ink hover:bg-surface2 transition-colors" title={fullscreen ? 'إنهاء ملء الشاشة' : 'ملء الشاشة'}>
             {fullscreen ? <Minimize2 size={13}/> : <Maximize2 size={13}/>}
           </button>
         </div>
@@ -1704,14 +1704,14 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
 
 
       {/* ── Canvas area ── */}
-      {started && <div ref={canvasAreaRef} className={clsx('flex-1 min-h-0 relative flex items-center justify-center bg-slate-950', fitMode === 'actual' ? 'overflow-auto' : 'overflow-hidden', popout && 'pt-14')}
+      {started && <div ref={canvasAreaRef} className={clsx('flex-1 min-h-0 relative flex items-center justify-center bg-canvas', fitMode === 'actual' ? 'overflow-auto' : 'overflow-hidden', popout && 'pt-14')}
         onClick={() => { setShowSettings(false); setShowMonitors(false); setShowClipboard(false) }}>
 
         <canvas ref={canvasRef}
           className={clsx(
             'block shrink-0 transition-opacity duration-300',
             status === 'streaming' ? 'opacity-100' : 'opacity-20',
-            dragOver && 'ring-2 ring-sky-500/60 ring-dashed',
+            dragOver && 'ring-2 ring-info/60 ring-dashed',
             (status === 'streaming' && !controlsVisible && !pinned) ? 'cursor-none' : ''
           )}
           style={{
@@ -1735,7 +1735,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
         {/* ── Windows-style cursor overlay ── */}
         {/* v3.3.0: custom cursor overlay disabled - the remote frames already include the real cursor (single-cursor UX) */}
         {screenLocked && status === 'streaming' && (
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 max-w-[92%] bg-amber-500/20 border border-amber-400/50 text-amber-100 text-xs px-4 py-2 rounded-xl shadow-lg pointer-events-none text-center leading-6">
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 max-w-[92%] bg-warning/100/20 border border-warning/50 text-ink text-xs px-4 py-2 rounded-xl shadow-lg pointer-events-none text-center leading-6">
             شاشة الجهاز مقفلة — البث قد يظهر أسود حتى يُفتح القفل من الجهاز.
             {screenLockSecure ? ' القفل الآمن لا يمكن تجاوزه من التطبيق.' : ''}
           </div>
@@ -1761,56 +1761,56 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
 
         {/* Control watermark */}
         {!popout && status === 'streaming' && controlEnabled && (
-          <div className="absolute top-2 right-2 flex items-center gap-1 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 text-[10px] px-2 py-1 rounded-full pointer-events-none">
+          <div className="absolute top-2 right-2 flex items-center gap-1 bg-success/100/20 border border-success/30 text-success text-[10px] px-2 py-1 rounded-full pointer-events-none">
             <Mouse size={9}/> {user?.name || 'User'} يتحكم
           </div>
         )}
 
         {/* Adaptive mode badge */}
         {!popout && adaptiveMode && status === 'streaming' && (
-          <div className="absolute top-2 left-2 flex items-center gap-1 bg-sky-500/20 border border-sky-500/30 text-sky-400 text-[10px] px-2 py-1 rounded-full pointer-events-none">
-            <Zap size={8} className="fill-sky-400"/> تكيفي · {preset.fps}fps
+          <div className="absolute top-2 left-2 flex items-center gap-1 bg-info/20 border border-info/30 text-info text-[10px] px-2 py-1 rounded-full pointer-events-none">
+            <Zap size={8} className="fill-info"/> تكيفي · {preset.fps}fps
           </div>
         )}
 
         {/* Recording badge */}
         {recording && (
-          <div className={clsx('absolute flex items-center gap-1 bg-red-500/20 border border-red-500/30 text-red-400 text-[10px] px-2 py-1 rounded-full pointer-events-none',
+          <div className={clsx('absolute flex items-center gap-1 bg-danger/100/20 border border-danger/30 text-danger text-[10px] px-2 py-1 rounded-full pointer-events-none',
             adaptiveMode && status === 'streaming' ? 'top-8 left-2' : 'top-2 left-2')}>
-            <Circle size={8} className="fill-red-400 animate-pulse"/> WebM {fmt(recDuration)}
+            <Circle size={8} className="fill-danger animate-pulse"/> WebM {fmt(recDuration)}
           </div>
         )}
 
         {/* Server recording badge */}
         {svrRecording && (
-          <div className={clsx('absolute flex items-center gap-1 bg-orange-500/20 border border-orange-500/30 text-orange-400 text-[10px] px-2 py-1 rounded-full pointer-events-none',
+          <div className={clsx('absolute flex items-center gap-1 bg-warning/20 border border-warning/30 text-warning text-[10px] px-2 py-1 rounded-full pointer-events-none',
             recording ? 'top-8 left-16' : adaptiveMode ? 'top-8 left-2' : 'top-2 left-2')}>
-            <Circle size={8} className="fill-orange-400 animate-pulse"/> JPEG
+            <Circle size={8} className="fill-warning animate-pulse"/> JPEG
           </div>
         )}
 
         {/* Privacy overlay */}
         {privacyOn && status === 'streaming' && (
-          <div className="absolute bottom-2 left-3 flex items-center gap-1.5 bg-purple-500/20 border border-purple-500/40 text-purple-300 text-[10px] px-2.5 py-1 rounded-full pointer-events-none z-10">
+          <div className="absolute bottom-2 left-3 flex items-center gap-1.5 bg-primary/20 border border-primary/40 text-primary text-[10px] px-2.5 py-1 rounded-full pointer-events-none z-10">
             <EyeOff size={10}/> الخصوصية مفعّلة — شاشة الجهاز البعيد معتمة
           </div>
         )}
 
         {/* Drag & drop overlay */}
         {dragOver && (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-sky-950/85 border-2 border-sky-500/60 border-dashed z-20 pointer-events-none rounded-b-xl">
-            <Upload size={40} className="text-sky-400 mb-3"/>
-            <p className="text-sky-200 text-sm font-semibold">أفلت الملف لرفعه إلى سطح المكتب</p>
-            <p className="text-sky-500 text-xs mt-1">سيُحفظ في مجلد Desktop</p>
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-info/15 border-2 border-info/60 border-dashed z-20 pointer-events-none rounded-b-xl">
+            <Upload size={40} className="text-info mb-3"/>
+            <p className="text-info text-sm font-semibold">أفلت الملف لرفعه إلى سطح المكتب</p>
+            <p className="text-ink0 text-xs mt-1">سيُحفظ في مجلد Desktop</p>
           </div>
         )}
 
         {/* File upload progress */}
         {uploadProgress !== null && (
-          <div className="absolute bottom-14 left-1/2 -translate-x-1/2 flex items-center gap-2.5 bg-navy-900/95 border border-slate-700/50 text-xs px-4 py-2.5 rounded-xl shadow-xl z-30 min-w-[240px]">
+          <div className="absolute bottom-14 left-1/2 -translate-x-1/2 flex items-center gap-2.5 bg-canvas/95 border border-line text-xs px-4 py-2.5 rounded-xl shadow-xl z-30 min-w-[240px]">
             {uploadProgress === 100
-              ? <><CheckCircle2 size={15} className="text-emerald-400 shrink-0"/><span className="text-emerald-400">تم رفع {uploadFileName} ✓</span></>
-              : <><Loader2 size={14} className="text-sky-400 animate-spin shrink-0"/><span className="text-slate-300 truncate max-w-[190px]">جارٍ رفع {uploadFileName}...</span></>
+              ? <><CheckCircle2 size={15} className="text-success shrink-0"/><span className="text-success">تم رفع {uploadFileName} ✓</span></>
+              : <><Loader2 size={14} className="text-info animate-spin shrink-0"/><span className="text-ink truncate max-w-[190px]">جارٍ رفع {uploadFileName}...</span></>
             }
           </div>
         )}
@@ -1818,21 +1818,21 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
         {/* Control hint toast */}
         {!popout && showHint && (
           <div className={clsx('absolute bottom-10 left-1/2 -translate-x-1/2 text-xs px-3 py-1.5 rounded-full pointer-events-none transition-all',
-            controlEnabled ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-slate-700/80 text-slate-300')}>
+            controlEnabled ? 'bg-success/100/20 text-success border border-success/30' : 'bg-surface2/80 text-ink')}>
             {controlEnabled ? '✅ التحكم مفعّل — حرّك الماوس على الشاشة' : '⏸ التحكم موقوف'}
           </div>
         )}
 
         {/* Awaiting remote approval */}
         {permissionState === 'requesting' && (
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-amber-500/25 border border-amber-500/50 text-amber-200 text-xs px-4 py-2 rounded-xl pointer-events-none z-50 shadow-lg">
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 bg-warning/100/25 border border-warning/50 text-warning text-xs px-4 py-2 rounded-xl pointer-events-none z-50 shadow-lg">
             بانتظار موافقة الجهاز البعيد… اضغط «سماح» على نافذة الوكيل هناك
           </div>
         )}
 
         {/* Keyboard banner */}
         {!popout && keyboardMode && controlEnabled && status === 'streaming' && (
-          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-amber-500/20 border border-amber-500/30 text-amber-400 text-xs px-3 py-1.5 rounded-full pointer-events-none">
+          <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-1.5 bg-warning/100/20 border border-warning/30 text-warning text-xs px-3 py-1.5 rounded-full pointer-events-none">
             <Keyboard size={11}/> وضع الكيبورد — جميع المفاتيح تُرسل للجهاز البعيد
           </div>
         )}
@@ -1840,23 +1840,23 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
         {/* Status overlay (connecting / error / disconnected) */}
         {status !== 'streaming' && (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 pointer-events-none">
-            {status === 'connecting'   && <><Loader2 size={28} className="text-brand-blue animate-spin"/><p className="text-slate-400 text-sm">جارٍ الاتصال...</p></>}
-            {status === 'disconnected' && <><WifiOff size={28} className="text-slate-600"/><p className="text-slate-500 text-sm">انقطع الاتصال</p></>}
-            {status === 'error'        && <><WifiOff size={28} className="text-red-500"/><p className="text-red-400 text-sm">{errorMsg}</p></>}
-            {status === 'unavailable'  && <><AlertTriangle size={28} className="text-orange-500"/><p className="text-orange-400 text-sm text-center px-8">{errorMsg}</p></>}
+            {status === 'connecting'   && <><Loader2 size={28} className="text-info animate-spin"/><p className="text-muted text-sm">جارٍ الاتصال...</p></>}
+            {status === 'disconnected' && <><WifiOff size={28} className="text-muted"/><p className="text-muted text-sm">انقطع الاتصال</p></>}
+            {status === 'error'        && <><WifiOff size={28} className="text-danger"/><p className="text-danger text-sm">{errorMsg}</p></>}
+            {status === 'unavailable'  && <><AlertTriangle size={28} className="text-warning"/><p className="text-warning text-sm text-center px-8">{errorMsg}</p></>}
           </div>
         )}
 
         {/* ── T006: In-session chat panel ── */}
         {/* Password prompt — password-based control (v3.3.0) */}
         {pwModal && (
-          <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-40" onClick={e => e.stopPropagation()}>
-            <div className="bg-navy-900 border border-slate-700/60 rounded-2xl shadow-2xl w-[330px] p-5">
+          <div className="absolute inset-0 flex items-center justify-center bg-overlay/50 z-40" onClick={e => e.stopPropagation()}>
+            <div className="bg-canvas border border-line rounded-2xl shadow-2xl w-[330px] p-5">
               <div className="flex items-center gap-2 mb-3">
-                <Shield size={15} className="text-emerald-400"/>
-                <span className="text-sm font-semibold text-slate-200">التحكم بكلمة سر</span>
+                <Shield size={15} className="text-success"/>
+                <span className="text-sm font-semibold text-ink">التحكم بكلمة سر</span>
               </div>
-              <p className="text-xs text-slate-500 mb-3">هذا الجهاز يتطلب كلمة سر للتحكم — أدخلها للمتابعة.</p>
+              <p className="text-xs text-muted mb-3">هذا الجهاز يتطلب كلمة سر للتحكم — أدخلها للمتابعة.</p>
               <input
                 type="password"
                 autoFocus
@@ -1864,18 +1864,18 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
                 onChange={e => setPwInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') submitPw(); if (e.key === 'Escape') { pwActiveRef.current = false; setPwModal(false) } }}
                 placeholder="كلمة السر..."
-                className="w-full bg-navy-950 border border-slate-600 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-emerald-500/60"
+                className="w-full bg-canvas border border-line rounded-lg px-3 py-2 text-sm text-ink focus:outline-none focus:border-success/60"
                 dir="ltr"
               />
-              {pwError && <p className="text-xs text-red-400 mt-2">{pwError}</p>}
+              {pwError && <p className="text-xs text-danger mt-2">{pwError}</p>}
               <div className="flex gap-2 mt-4">
                 <button onClick={submitPw} disabled={pwBusy || !pwInput.trim()}
-                  className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium py-2 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/25 disabled:opacity-40 transition-colors">
+                  className="flex-1 flex items-center justify-center gap-1.5 text-xs font-medium py-2 rounded-lg bg-success/100/15 border border-success/30 text-success hover:bg-success/100/25 disabled:opacity-40 transition-colors">
                   {pwBusy ? <Loader2 size={12} className="animate-spin"/> : <Shield size={12}/>}
                   {pwBusy ? 'جارٍ التحقق...' : 'إرسال الطلب'}
                 </button>
                 <button onClick={() => { pwActiveRef.current = false; setPwModal(false) }}
-                  className="px-3 py-2 text-xs rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-700/40 transition-colors">
+                  className="px-3 py-2 text-xs rounded-lg text-muted hover:text-ink hover:bg-surface2/70 transition-colors">
                   إلغاء
                 </button>
               </div>
@@ -1893,16 +1893,16 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
             <div className="flex items-center justify-between px-4 py-2.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.03)' }}>
               <div className="flex items-center gap-2">
                 <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: 'rgba(56,189,248,0.15)' }}>
-                  <MessageSquare size={11} className="text-sky-400"/>
+                  <MessageSquare size={11} className="text-info"/>
                 </div>
-                <span className="text-xs font-semibold text-slate-200 tracking-wide">دردشة الجلسة</span>
+                <span className="text-xs font-semibold text-ink tracking-wide">دردشة الجلسة</span>
                 {chatMessages.length > 0 && (
-                  <span className="text-[10px] text-slate-500">{chatMessages.length}</span>
+                  <span className="text-[10px] text-muted">{chatMessages.length}</span>
                 )}
               </div>
               <button
                 onClick={() => setChatOpen(false)}
-                className="w-5 h-5 rounded-full flex items-center justify-center text-slate-500 hover:text-slate-300 transition-all"
+                className="w-5 h-5 rounded-full flex items-center justify-center text-muted hover:text-ink transition-all"
                 style={{ background: 'transparent' }}
                 onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
                 onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
@@ -1915,15 +1915,15 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
             <div className="flex-1 overflow-y-auto px-3 py-3 space-y-3 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-slate-700/50">
               {chatMessages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-full gap-2 opacity-40">
-                  <MessageSquare size={22} className="text-slate-500"/>
-                  <p className="text-slate-500 text-xs">لا توجد رسائل بعد</p>
+                  <MessageSquare size={22} className="text-muted"/>
+                  <p className="text-muted text-xs">لا توجد رسائل بعد</p>
                 </div>
               ) : chatMessages.map((m, i) => (
                 <div key={i} className={clsx('flex flex-col gap-1', m.sender === 'viewer' ? 'items-end' : 'items-start')}>
-                  <div className={clsx('flex items-center gap-1.5 text-[10px] text-slate-500', m.sender === 'viewer' ? 'flex-row-reverse' : 'flex-row')}>
+                  <div className={clsx('flex items-center gap-1.5 text-[10px] text-muted', m.sender === 'viewer' ? 'flex-row-reverse' : 'flex-row')}>
                     <div className={clsx(
                       'w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold',
-                      m.sender === 'viewer' ? 'bg-sky-500/25 text-sky-300' : 'bg-slate-600/60 text-slate-400'
+                      m.sender === 'viewer' ? 'bg-info/25 text-info' : 'bg-line text-muted'
                     )}>
                       {m.sender === 'viewer' ? 'أ' : 'ج'}
                     </div>
@@ -1935,8 +1935,8 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
                   <div className={clsx(
                     'max-w-[82%] text-xs leading-relaxed px-3 py-2 rounded-2xl',
                     m.sender === 'viewer'
-                      ? 'bg-sky-500/18 text-sky-50 rounded-tr-sm'
-                      : 'bg-slate-700/55 text-slate-200 rounded-tl-sm'
+                      ? 'bg-info/20 text-ink rounded-tr-sm'
+                      : 'bg-surface2 text-ink rounded-tl-sm'
                   )} style={{
                     border: m.sender === 'viewer'
                       ? '1px solid rgba(56,189,248,0.18)'
@@ -1956,7 +1956,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
                 onChange={e => setChatInput(e.target.value)}
                 onKeyDown={handleChatKey}
                 placeholder="اكتب رسالة..."
-                className="flex-1 rounded-xl px-3 py-2 text-xs text-slate-200 placeholder-slate-600 outline-none transition-all"
+                className="flex-1 rounded-xl px-3 py-2 text-xs text-ink placeholder:text-muted outline-none transition-all"
                 style={{
                   background: 'rgba(30,41,59,0.7)',
                   border: '1px solid rgba(100,116,139,0.3)',
@@ -1967,7 +1967,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
               <button
                 onClick={sendChat}
                 disabled={!chatInput.trim()}
-                className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center text-sky-400 transition-all disabled:opacity-25 disabled:cursor-not-allowed"
+                className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center text-info transition-all disabled:opacity-25 disabled:cursor-not-allowed"
                 style={{ background: 'rgba(56,189,248,0.15)', border: '1px solid rgba(56,189,248,0.2)' }}
                 onMouseEnter={e => { if (!e.currentTarget.disabled) { e.currentTarget.style.background = 'rgba(56,189,248,0.25)'; e.currentTarget.style.borderColor = 'rgba(56,189,248,0.4)' } }}
                 onMouseLeave={e => { e.currentTarget.style.background = 'rgba(56,189,248,0.15)'; e.currentTarget.style.borderColor = 'rgba(56,189,248,0.2)' }}

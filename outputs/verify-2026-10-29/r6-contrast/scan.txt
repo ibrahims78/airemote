@@ -1,166 +1,77 @@
 R6 — visual contrast matrix (WCAG 2.1 AA, computed styles)
 pages=devices,notifications,help,ai,setup,settings,sessions,users,audit | sizes=360x800,768x1024,1280x900,1920x1080 | themes=light,dark
 
-devices         360 light checked= 48 fail= 0 manual= 0 exempt=0 bytes=42886
-devices         360 dark  checked= 48 fail= 0 manual= 0 exempt=0 bytes=51644
-devices         768 light checked= 48 fail= 0 manual= 0 exempt=0 bytes=56621
-devices         768 dark  checked= 48 fail= 0 manual= 0 exempt=0 bytes=67753
-devices        1280 light checked= 55 fail= 0 manual= 0 exempt=0 bytes=58652
-devices        1280 dark  checked= 55 fail= 0 manual= 0 exempt=0 bytes=72416
-devices        1920 light checked= 55 fail= 0 manual= 0 exempt=0 bytes=62949
-devices        1920 dark  checked= 55 fail= 0 manual= 0 exempt=0 bytes=75004
-notifications   360 light checked=  9 fail= 0 manual= 0 exempt=0 bytes=18277
-notifications   360 dark  checked=  9 fail= 0 manual= 0 exempt=0 bytes=28866
-notifications   768 light checked=  9 fail= 0 manual= 0 exempt=0 bytes=21469
-notifications   768 dark  checked=  9 fail= 0 manual= 0 exempt=0 bytes=31563
-notifications  1280 light checked= 16 fail= 0 manual= 0 exempt=0 bytes=24915
-notifications  1280 dark  checked= 16 fail= 0 manual= 0 exempt=0 bytes=38678
-notifications  1920 light checked= 16 fail= 0 manual= 0 exempt=0 bytes=28258
-notifications  1920 dark  checked= 16 fail= 0 manual= 0 exempt=0 bytes=39131
-help            360 light checked=639 fail= 0 manual= 0 exempt=0 bytes=101489
-help            360 dark  checked=639 fail= 0 manual= 0 exempt=0 bytes=101260
-help            768 light checked=640 fail= 0 manual= 0 exempt=0 bytes=175023
-help            768 dark  checked=640 fail= 0 manual= 0 exempt=0 bytes=170773
-help           1280 light checked=676 fail= 0 manual= 0 exempt=0 bytes=217223
-help           1280 dark  checked=676 fail= 0 manual= 0 exempt=0 bytes=204780
-help           1920 light checked=676 fail= 0 manual= 0 exempt=0 bytes=285416
-help           1920 dark  checked=676 fail= 0 manual= 0 exempt=0 bytes=269223
-ai              360 light checked= 33 fail=13 manual= 0 exempt=0 bytes=28402
-ai              360 dark  checked= 33 fail= 7 manual= 0 exempt=0 bytes=34919
-ai              768 light checked= 35 fail=13 manual= 0 exempt=0 bytes=50832
-ai              768 dark  checked= 35 fail= 7 manual= 0 exempt=0 bytes=51979
-ai             1280 light checked= 42 fail=13 manual= 0 exempt=0 bytes=55277
-ai             1280 dark  checked= 42 fail= 7 manual= 0 exempt=0 bytes=58401
-ai             1920 light checked= 42 fail=13 manual= 0 exempt=0 bytes=60139
-ai             1920 dark  checked= 42 fail= 7 manual= 0 exempt=0 bytes=61219
-setup           360 light checked= 12 fail= 0 manual= 0 exempt=1 bytes=27845
-setup           360 dark  checked= 12 fail= 0 manual= 0 exempt=1 bytes=30421
-setup           768 light checked= 12 fail= 0 manual= 0 exempt=1 bytes=31105
-setup           768 dark  checked= 12 fail= 0 manual= 0 exempt=1 bytes=33529
-setup          1280 light checked= 12 fail= 0 manual= 0 exempt=1 bytes=32382
-setup          1280 dark  checked= 12 fail= 0 manual= 0 exempt=1 bytes=34791
-setup          1920 light checked= 12 fail= 0 manual= 0 exempt=1 bytes=36065
-setup          1920 dark  checked= 12 fail= 0 manual= 0 exempt=1 bytes=38544
-settings        360 light checked= 50 fail= 0 manual= 0 exempt=2 bytes=42648
-settings        360 dark  checked= 50 fail= 0 manual= 0 exempt=2 bytes=56932
-settings        768 light checked= 50 fail= 0 manual= 0 exempt=2 bytes=60754
-settings        768 dark  checked= 50 fail= 0 manual= 0 exempt=2 bytes=77068
-settings       1280 light checked= 57 fail= 0 manual= 0 exempt=2 bytes=60262
-settings       1280 dark  checked= 57 fail= 0 manual= 0 exempt=2 bytes=80867
-settings       1920 light checked= 57 fail= 0 manual= 0 exempt=2 bytes=75722
-settings       1920 dark  checked= 57 fail= 0 manual= 0 exempt=2 bytes=95237
-sessions        360 light checked= 81 fail= 0 manual= 0 exempt=0 bytes=34828
-sessions        360 dark  checked= 81 fail= 0 manual= 0 exempt=0 bytes=44110
-sessions        768 light checked= 81 fail= 0 manual= 0 exempt=0 bytes=63007
-sessions        768 dark  checked= 81 fail= 0 manual= 0 exempt=0 bytes=74616
-sessions       1280 light checked= 88 fail= 0 manual= 0 exempt=0 bytes=63274
-sessions       1280 dark  checked= 88 fail= 0 manual= 0 exempt=0 bytes=77827
-sessions       1920 light checked= 88 fail= 0 manual= 0 exempt=0 bytes=71634
-sessions       1920 dark  checked= 88 fail= 0 manual= 0 exempt=0 bytes=85214
-users           360 light checked= 20 fail= 0 manual= 0 exempt=0 bytes=23995
-users           360 dark  checked= 20 fail= 0 manual= 0 exempt=0 bytes=33333
-users           768 light checked= 20 fail= 0 manual= 0 exempt=0 bytes=27522
-users           768 dark  checked= 20 fail= 0 manual= 0 exempt=0 bytes=37754
-users          1280 light checked= 27 fail= 0 manual= 0 exempt=0 bytes=31107
-users          1280 dark  checked= 27 fail= 0 manual= 0 exempt=0 bytes=43887
-users          1920 light checked= 27 fail= 0 manual= 0 exempt=0 bytes=34542
-users          1920 dark  checked= 27 fail= 0 manual= 0 exempt=0 bytes=45354
-audit           360 light checked=133 fail= 0 manual= 0 exempt=0 bytes=47030
-audit           360 dark  checked=133 fail= 0 manual= 0 exempt=0 bytes=54642
-audit           768 light checked=175 fail= 0 manual= 0 exempt=0 bytes=69702
-audit           768 dark  checked=175 fail= 0 manual= 0 exempt=0 bytes=76207
-audit          1280 light checked=266 fail= 0 manual= 0 exempt=0 bytes=76377
-audit          1280 dark  checked=266 fail= 0 manual= 0 exempt=0 bytes=86197
-audit          1920 light checked=266 fail= 0 manual= 0 exempt=0 bytes=103101
-audit          1920 dark  checked=266 fail= 0 manual= 0 exempt=0 bytes=111974
+devices         360 light checked= 48 fail= 0 manual= 0 exempt=0 bytes=42760
+devices         360 dark  checked= 48 fail= 0 manual= 0 exempt=0 bytes=51499
+devices         768 light checked= 48 fail= 0 manual= 0 exempt=0 bytes=51742
+devices         768 dark  checked= 48 fail= 0 manual= 0 exempt=0 bytes=62714
+devices        1280 light checked= 55 fail= 0 manual= 0 exempt=0 bytes=53480
+devices        1280 dark  checked= 55 fail= 0 manual= 0 exempt=0 bytes=67254
+devices        1920 light checked= 55 fail= 0 manual= 0 exempt=0 bytes=57892
+devices        1920 dark  checked= 55 fail= 0 manual= 0 exempt=0 bytes=69997
+notifications   360 light checked=  9 fail= 0 manual= 0 exempt=0 bytes=18220
+notifications   360 dark  checked=  9 fail= 0 manual= 0 exempt=0 bytes=28764
+notifications   768 light checked=  9 fail= 0 manual= 0 exempt=0 bytes=21409
+notifications   768 dark  checked=  9 fail= 0 manual= 0 exempt=0 bytes=31475
+notifications  1280 light checked= 16 fail= 0 manual= 0 exempt=0 bytes=24849
+notifications  1280 dark  checked= 16 fail= 0 manual= 0 exempt=0 bytes=38596
+notifications  1920 light checked= 16 fail= 0 manual= 0 exempt=0 bytes=28193
+notifications  1920 dark  checked= 16 fail= 0 manual= 0 exempt=0 bytes=39051
+help            360 light checked=639 fail= 0 manual= 0 exempt=0 bytes=101359
+help            360 dark  checked=639 fail= 0 manual= 0 exempt=0 bytes=101086
+help            768 light checked=640 fail= 0 manual= 0 exempt=0 bytes=174857
+help            768 dark  checked=640 fail= 0 manual= 0 exempt=0 bytes=170589
+help           1280 light checked=676 fail= 0 manual= 0 exempt=0 bytes=217048
+help           1280 dark  checked=676 fail= 0 manual= 0 exempt=0 bytes=204563
+help           1920 light checked=676 fail= 0 manual= 0 exempt=0 bytes=285237
+help           1920 dark  checked=676 fail= 0 manual= 0 exempt=0 bytes=269018
+ai              360 light checked= 33 fail= 0 manual= 0 exempt=0 bytes=28173
+ai              360 dark  checked= 33 fail= 0 manual= 0 exempt=0 bytes=34989
+ai              768 light checked= 35 fail= 0 manual= 0 exempt=0 bytes=50348
+ai              768 dark  checked= 35 fail= 0 manual= 0 exempt=0 bytes=52314
+ai             1280 light checked= 42 fail= 0 manual= 0 exempt=0 bytes=54379
+ai             1280 dark  checked= 42 fail= 0 manual= 0 exempt=0 bytes=58899
+ai             1920 light checked= 42 fail= 0 manual= 0 exempt=0 bytes=59447
+ai             1920 dark  checked= 42 fail= 0 manual= 0 exempt=0 bytes=61043
+setup           360 light checked= 10 fail= 0 manual= 0 exempt=0 bytes=24079
+setup           360 dark  checked= 10 fail= 0 manual= 0 exempt=0 bytes=24079
+setup           768 light checked= 11 fail= 0 manual= 0 exempt=0 bytes=28869
+setup           768 dark  checked=  9 fail= 0 manual= 0 exempt=0 bytes=27438
+setup          1280 light checked=  9 fail= 0 manual= 0 exempt=0 bytes=28455
+setup          1280 dark  checked=  9 fail= 0 manual= 0 exempt=0 bytes=28455
+setup          1920 light checked= 11 fail= 0 manual= 0 exempt=0 bytes=33457
+setup          1920 dark  checked= 11 fail= 0 manual= 0 exempt=0 bytes=33457
+settings        360 light checked= 50 fail= 0 manual= 0 exempt=2 bytes=42593
+settings        360 dark  checked= 50 fail= 0 manual= 0 exempt=2 bytes=56846
+settings        768 light checked= 50 fail= 0 manual= 0 exempt=2 bytes=60700
+settings        768 dark  checked= 50 fail= 0 manual= 0 exempt=2 bytes=76984
+settings       1280 light checked= 57 fail= 0 manual= 0 exempt=2 bytes=60199
+settings       1280 dark  checked= 57 fail= 0 manual= 0 exempt=2 bytes=80787
+settings       1920 light checked= 57 fail= 0 manual= 0 exempt=2 bytes=75655
+settings       1920 dark  checked= 57 fail= 0 manual= 0 exempt=2 bytes=95156
+sessions        360 light checked= 81 fail= 0 manual= 0 exempt=0 bytes=34829
+sessions        360 dark  checked= 81 fail= 0 manual= 0 exempt=0 bytes=44059
+sessions        768 light checked= 81 fail= 0 manual= 0 exempt=0 bytes=63172
+sessions        768 dark  checked= 81 fail= 0 manual= 0 exempt=0 bytes=74875
+sessions       1280 light checked= 88 fail= 0 manual= 0 exempt=0 bytes=63594
+sessions       1280 dark  checked= 88 fail= 0 manual= 0 exempt=0 bytes=78387
+sessions       1920 light checked= 88 fail= 0 manual= 0 exempt=0 bytes=71933
+sessions       1920 dark  checked= 88 fail= 0 manual= 0 exempt=0 bytes=85638
+users           360 light checked= 20 fail= 0 manual= 0 exempt=0 bytes=23941
+users           360 dark  checked= 20 fail= 0 manual= 0 exempt=0 bytes=33244
+users           768 light checked= 20 fail= 0 manual= 0 exempt=0 bytes=27466
+users           768 dark  checked= 20 fail= 0 manual= 0 exempt=0 bytes=37668
+users          1280 light checked= 27 fail= 0 manual= 0 exempt=0 bytes=31043
+users          1280 dark  checked= 27 fail= 0 manual= 0 exempt=0 bytes=43806
+users          1920 light checked= 27 fail= 0 manual= 0 exempt=0 bytes=34476
+users          1920 dark  checked= 27 fail= 0 manual= 0 exempt=0 bytes=45275
+audit           360 light checked=109 fail= 0 manual= 0 exempt=0 bytes=46530
+audit           360 dark  checked=109 fail= 0 manual= 0 exempt=0 bytes=54376
+audit           768 light checked=143 fail= 0 manual= 0 exempt=0 bytes=73335
+audit           768 dark  checked=143 fail= 0 manual= 0 exempt=0 bytes=81024
+audit          1280 light checked=218 fail= 0 manual= 0 exempt=0 bytes=90630
+audit          1280 dark  checked=218 fail= 0 manual= 0 exempt=0 bytes=102020
+audit          1920 light checked=218 fail= 0 manual= 0 exempt=0 bytes=116900
+audit          1920 dark  checked=218 fail= 0 manual= 0 exempt=0 bytes=127133
 
-TOTAL failures: 80
-
---- ai 360 light ---
-   2.56 < 4.5  rgb(148,163,184) on rgb(255,255,255)  12px/400  "ما هي مواصفات هذا الجهاز؟"  span.text-[12px].leading-5.flex-1
-   2.56 < 4.5  rgb(148,163,184) on rgb(255,255,255)  12px/400  "ما هي حالة الخادم حالياً؟"  span.text-[12px].leading-5.flex-1
-   2.56 < 4.5  rgb(148,163,184) on rgb(255,255,255)  12px/400  "تحقق من استخدام الذاكرة والمعالج"  span.text-[12px].leading-5.flex-1
-   2.56 < 4.5  rgb(148,163,184) on rgb(255,255,255)  12px/400  "اعرض آخر 20 سطر من السجلات"  span.text-[12px].leading-5.flex-1
-   2.56 < 4.5  rgb(148,163,184) on rgb(255,255,255)  12px/400  "أظهر العمليات التي تستهلك أعلى CPU"  span.text-[12px].leading-5.flex-1
-   2.56 < 4.5  rgb(148,163,184) on rgb(255,255,255)  12px/400  "التقط لقطة شاشة للجهاز الآن"  span.text-[12px].leading-5.flex-1
-   3.32 < 4.5  rgb(112,136,150) on rgb(237,243,245)  11px/400  "OpenAI · gpt-4o"  p.text-[11px].text-slate-500
-   3.32 < 4.5  rgb(112,136,150) on rgb(237,243,245)  12px/400  "اسأل عن أي شيء يخص أجهزتك أو الشبكة أو الأخطاء — وإن أردت إجراءً فعليا"  p.text-xs.leading-relaxed.mt-1.5
-   3.72 < 4.5  rgb(112,136,150) on rgb(255,255,255)  10px/400  "تنفيذ أوامر"  span.text-[10px].px-2.py-1
-   3.72 < 4.5  rgb(112,136,150) on rgb(255,255,255)  10px/400  "لقطات شاشة"  span.text-[10px].px-2.py-1
-   3.72 < 4.5  rgb(112,136,150) on rgb(255,255,255)  10px/400  "تحكم بالماوس"  span.text-[10px].px-2.py-1
-   3.72 < 4.5  rgb(112,136,150) on rgb(255,255,255)  10px/400  "مدير الملفات"  span.text-[10px].px-2.py-1
-   3.72 < 4.5  rgb(112,136,150) on rgb(255,255,255)  10px/400  "تحليل الأعطال"  span.text-[10px].px-2.py-1
---- ai 360 dark ---
-   2.14 < 4.5  rgb(71,85,105) on rgb(17,34,50)  10px/400  "Enter للإرسال · Shift+Enter لسطر جديد"  p.text-[10px].mt-1.5.text-center
-   4.42 < 4.5  rgb(139,154,175) on rgb(39,52,71)  10px/700  "01"  span.w-6.h-6.rounded-lg
-   4.42 < 4.5  rgb(139,154,175) on rgb(39,52,71)  10px/700  "02"  span.w-6.h-6.rounded-lg
-   4.42 < 4.5  rgb(139,154,175) on rgb(39,52,71)  10px/700  "03"  span.w-6.h-6.rounded-lg
-   4.42 < 4.5  rgb(139,154,175) on rgb(39,52,71)  10px/700  "04"  span.w-6.h-6.rounded-lg
-   4.42 < 4.5  rgb(139,154,175) on rgb(39,52,71)  10px/700  "05"  span.w-6.h-6.rounded-lg
-   4.42 < 4.5  rgb(139,154,175) on rgb(39,52,71)  10px/700  "06"  span.w-6.h-6.rounded-lg
---- ai 768 light ---
-   2.56 < 4.5  rgb(148,163,184) on rgb(255,255,255)  12px/400  "ما هي مواصفات هذا الجهاز؟"  span.text-[12px].leading-5.flex-1
-   2.56 < 4.5  rgb(148,163,184) on rgb(255,255,255)  12px/400  "ما هي حالة الخادم حالياً؟"  span.text-[12px].leading-5.flex-1
-   2.56 < 4.5  rgb(148,163,184) on rgb(255,255,255)  12px/400  "تحقق من استخدام الذاكرة والمعالج"  span.text-[12px].leading-5.flex-1
-   2.56 < 4.5  rgb(148,163,184) on rgb(255,255,255)  12px/400  "اعرض آخر 20 سطر من السجلات"  span.text-[12px].leading-5.flex-1
-   2.56 < 4.5  rgb(148,163,184) on rgb(255,255,255)  12px/400  "أظهر العمليات التي تستهلك أعلى CPU"  span.text-[12px].leading-5.flex-1
-   2.56 < 4.5  rgb(148,163,184) on rgb(255,255,255)  12px/400  "التقط لقطة شاشة للجهاز الآن"  span.text-[12px].leading-5.flex-1
-   3.32 < 4.5  rgb(112,136,150) on rgb(237,243,245)  11px/400  "OpenAI · gpt-4o"  p.text-[11px].text-slate-500
-   3.32 < 4.5  rgb(112,136,150) on rgb(237,243,245)  12px/400  "اسأل عن أي شيء يخص أجهزتك أو الشبكة أو الأخطاء — وإن أردت إجراءً فعليا"  p.text-xs.leading-relaxed.mt-1.5
-   3.72 < 4.5  rgb(112,136,150) on rgb(255,255,255)  10px/400  "تنفيذ أوامر"  span.text-[10px].px-2.py-1
-   3.72 < 4.5  rgb(112,136,150) on rgb(255,255,255)  10px/400  "لقطات شاشة"  span.text-[10px].px-2.py-1
-   3.72 < 4.5  rgb(112,136,150) on rgb(255,255,255)  10px/400  "تحكم بالماوس"  span.text-[10px].px-2.py-1
-   3.72 < 4.5  rgb(112,136,150) on rgb(255,255,255)  10px/400  "مدير الملفات"  span.text-[10px].px-2.py-1
-   3.72 < 4.5  rgb(112,136,150) on rgb(255,255,255)  10px/400  "تحليل الأعطال"  span.text-[10px].px-2.py-1
---- ai 768 dark ---
-   2.14 < 4.5  rgb(71,85,105) on rgb(17,34,50)  10px/400  "Enter للإرسال · Shift+Enter لسطر جديد"  p.text-[10px].mt-1.5.text-center
-   4.42 < 4.5  rgb(139,154,175) on rgb(39,52,71)  10px/700  "01"  span.w-6.h-6.rounded-lg
-   4.42 < 4.5  rgb(139,154,175) on rgb(39,52,71)  10px/700  "02"  span.w-6.h-6.rounded-lg
-   4.42 < 4.5  rgb(139,154,175) on rgb(39,52,71)  10px/700  "03"  span.w-6.h-6.rounded-lg
-   4.42 < 4.5  rgb(139,154,175) on rgb(39,52,71)  10px/700  "04"  span.w-6.h-6.rounded-lg
-   4.42 < 4.5  rgb(139,154,175) on rgb(39,52,71)  10px/700  "05"  span.w-6.h-6.rounded-lg
-   4.42 < 4.5  rgb(139,154,175) on rgb(39,52,71)  10px/700  "06"  span.w-6.h-6.rounded-lg
---- ai 1280 light ---
-   2.56 < 4.5  rgb(148,163,184) on rgb(255,255,255)  12px/400  "ما هي مواصفات هذا الجهاز؟"  span.text-[12px].leading-5.flex-1
-   2.56 < 4.5  rgb(148,163,184) on rgb(255,255,255)  12px/400  "ما هي حالة الخادم حالياً؟"  span.text-[12px].leading-5.flex-1
-   2.56 < 4.5  rgb(148,163,184) on rgb(255,255,255)  12px/400  "تحقق من استخدام الذاكرة والمعالج"  span.text-[12px].leading-5.flex-1
-   2.56 < 4.5  rgb(148,163,184) on rgb(255,255,255)  12px/400  "اعرض آخر 20 سطر من السجلات"  span.text-[12px].leading-5.flex-1
-   2.56 < 4.5  rgb(148,163,184) on rgb(255,255,255)  12px/400  "أظهر العمليات التي تستهلك أعلى CPU"  span.text-[12px].leading-5.flex-1
-   2.56 < 4.5  rgb(148,163,184) on rgb(255,255,255)  12px/400  "التقط لقطة شاشة للجهاز الآن"  span.text-[12px].leading-5.flex-1
-   3.32 < 4.5  rgb(112,136,150) on rgb(237,243,245)  11px/400  "OpenAI · gpt-4o"  p.text-[11px].text-slate-500
-   3.32 < 4.5  rgb(112,136,150) on rgb(237,243,245)  12px/400  "اسأل عن أي شيء يخص أجهزتك أو الشبكة أو الأخطاء — وإن أردت إجراءً فعليا"  p.text-xs.leading-relaxed.mt-1.5
-   3.72 < 4.5  rgb(112,136,150) on rgb(255,255,255)  10px/400  "تنفيذ أوامر"  span.text-[10px].px-2.py-1
-   3.72 < 4.5  rgb(112,136,150) on rgb(255,255,255)  10px/400  "لقطات شاشة"  span.text-[10px].px-2.py-1
-   3.72 < 4.5  rgb(112,136,150) on rgb(255,255,255)  10px/400  "تحكم بالماوس"  span.text-[10px].px-2.py-1
-   3.72 < 4.5  rgb(112,136,150) on rgb(255,255,255)  10px/400  "مدير الملفات"  span.text-[10px].px-2.py-1
-   3.72 < 4.5  rgb(112,136,150) on rgb(255,255,255)  10px/400  "تحليل الأعطال"  span.text-[10px].px-2.py-1
---- ai 1280 dark ---
-   2.14 < 4.5  rgb(71,85,105) on rgb(17,34,50)  10px/400  "Enter للإرسال · Shift+Enter لسطر جديد"  p.text-[10px].mt-1.5.text-center
-   4.42 < 4.5  rgb(139,154,175) on rgb(39,52,71)  10px/700  "01"  span.w-6.h-6.rounded-lg
-   4.42 < 4.5  rgb(139,154,175) on rgb(39,52,71)  10px/700  "02"  span.w-6.h-6.rounded-lg
-   4.42 < 4.5  rgb(139,154,175) on rgb(39,52,71)  10px/700  "03"  span.w-6.h-6.rounded-lg
-   4.42 < 4.5  rgb(139,154,175) on rgb(39,52,71)  10px/700  "04"  span.w-6.h-6.rounded-lg
-   4.42 < 4.5  rgb(139,154,175) on rgb(39,52,71)  10px/700  "05"  span.w-6.h-6.rounded-lg
-   4.42 < 4.5  rgb(139,154,175) on rgb(39,52,71)  10px/700  "06"  span.w-6.h-6.rounded-lg
---- ai 1920 light ---
-   2.56 < 4.5  rgb(148,163,184) on rgb(255,255,255)  12px/400  "ما هي مواصفات هذا الجهاز؟"  span.text-[12px].leading-5.flex-1
-   2.56 < 4.5  rgb(148,163,184) on rgb(255,255,255)  12px/400  "ما هي حالة الخادم حالياً؟"  span.text-[12px].leading-5.flex-1
-   2.56 < 4.5  rgb(148,163,184) on rgb(255,255,255)  12px/400  "تحقق من استخدام الذاكرة والمعالج"  span.text-[12px].leading-5.flex-1
-   2.56 < 4.5  rgb(148,163,184) on rgb(255,255,255)  12px/400  "اعرض آخر 20 سطر من السجلات"  span.text-[12px].leading-5.flex-1
-   2.56 < 4.5  rgb(148,163,184) on rgb(255,255,255)  12px/400  "أظهر العمليات التي تستهلك أعلى CPU"  span.text-[12px].leading-5.flex-1
-   2.56 < 4.5  rgb(148,163,184) on rgb(255,255,255)  12px/400  "التقط لقطة شاشة للجهاز الآن"  span.text-[12px].leading-5.flex-1
-   3.32 < 4.5  rgb(112,136,150) on rgb(237,243,245)  11px/400  "OpenAI · gpt-4o"  p.text-[11px].text-slate-500
-   3.32 < 4.5  rgb(112,136,150) on rgb(237,243,245)  12px/400  "اسأل عن أي شيء يخص أجهزتك أو الشبكة أو الأخطاء — وإن أردت إجراءً فعليا"  p.text-xs.leading-relaxed.mt-1.5
-   3.72 < 4.5  rgb(112,136,150) on rgb(255,255,255)  10px/400  "تنفيذ أوامر"  span.text-[10px].px-2.py-1
-   3.72 < 4.5  rgb(112,136,150) on rgb(255,255,255)  10px/400  "لقطات شاشة"  span.text-[10px].px-2.py-1
-   3.72 < 4.5  rgb(112,136,150) on rgb(255,255,255)  10px/400  "تحكم بالماوس"  span.text-[10px].px-2.py-1
-   3.72 < 4.5  rgb(112,136,150) on rgb(255,255,255)  10px/400  "مدير الملفات"  span.text-[10px].px-2.py-1
-   3.72 < 4.5  rgb(112,136,150) on rgb(255,255,255)  10px/400  "تحليل الأعطال"  span.text-[10px].px-2.py-1
---- ai 1920 dark ---
-   2.14 < 4.5  rgb(71,85,105) on rgb(17,34,50)  10px/400  "Enter للإرسال · Shift+Enter لسطر جديد"  p.text-[10px].mt-1.5.text-center
-   4.42 < 4.5  rgb(139,154,175) on rgb(39,52,71)  10px/700  "01"  span.w-6.h-6.rounded-lg
-   4.42 < 4.5  rgb(139,154,175) on rgb(39,52,71)  10px/700  "02"  span.w-6.h-6.rounded-lg
-   4.42 < 4.5  rgb(139,154,175) on rgb(39,52,71)  10px/700  "03"  span.w-6.h-6.rounded-lg
-   4.42 < 4.5  rgb(139,154,175) on rgb(39,52,71)  10px/700  "04"  span.w-6.h-6.rounded-lg
-   4.42 < 4.5  rgb(139,154,175) on rgb(39,52,71)  10px/700  "05"  span.w-6.h-6.rounded-lg
-   4.42 < 4.5  rgb(139,154,175) on rgb(39,52,71)  10px/700  "06"  span.w-6.h-6.rounded-lg
+TOTAL failures: 0

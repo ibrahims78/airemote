@@ -148,12 +148,12 @@ function ProgressNote({ text, isLight }: { text: string; isLight: boolean }) {
   const [open, setOpen] = useState(false)
   const firstLine = (text.split('\n')[0] || '').replace(/^\[|\]$/g, '').slice(0, 70)
   return (
-    <div data-progress-note="1" className={clsx('rounded-xl border px-3 py-1.5', isLight ? 'border-slate-200 bg-slate-50' : 'border-slate-700/50 bg-slate-800/40')}>
+    <div data-progress-note="1" className={clsx('rounded-xl border px-3 py-1.5', isLight ? 'border-line bg-surface2' : 'border-line bg-code')}>
       <button onClick={() => setOpen(v => !v)} className="flex items-center gap-2 w-full text-start">
-        <span className={clsx('text-[11px] font-medium truncate', isLight ? 'text-slate-600' : 'text-slate-300')}>مرحلة عمل — {firstLine}</span>
-        <span className={clsx('text-[10px] ms-auto flex-shrink-0', isLight ? 'text-slate-400' : 'text-slate-500')}>{open ? 'إخفاء' : 'التفاصيل'}</span>
+        <span className={clsx('text-[11px] font-medium truncate', isLight ? 'text-muted' : 'text-ink')}>مرحلة عمل — {firstLine}</span>
+        <span className={clsx('text-[10px] ms-auto flex-shrink-0', 'text-muted')}>{open ? 'إخفاء' : 'التفاصيل'}</span>
       </button>
-      {open && <pre className={clsx('mt-1.5 text-[10px] whitespace-pre-wrap break-all rounded-lg p-2 max-h-64 overflow-y-auto', isLight ? 'bg-white text-slate-600 border border-slate-200' : 'bg-[#0d1117] text-slate-400 border border-slate-700/40')}>{text}</pre>}
+      {open && <pre className={clsx('mt-1.5 text-[10px] whitespace-pre-wrap break-all rounded-lg p-2 max-h-64 overflow-y-auto', isLight ? 'bg-surface text-muted border border-line' : 'bg-code text-muted border border-line')}>{text}</pre>}
     </div>
   )
 }
@@ -170,17 +170,17 @@ function ImageLightbox({ url, onClose }: { url: string; onClose: () => void }) {
   }, [onClose])
   const clamp = (z: number) => Math.min(8, Math.max(0.2, z))
   return (
-    <div className="fixed inset-0 z-[120] bg-black/85 flex items-center justify-center select-none"
+    <div className="fixed inset-0 z-[120] bg-overlay/85 flex items-center justify-center select-none"
       onClick={onClose}
       onWheel={e => { e.stopPropagation(); setZoom(z => clamp(z + (e.deltaY < 0 ? 0.25 : -0.25))) }}>
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[121] flex items-center gap-1.5 bg-black/70 text-white rounded-full px-3 py-1.5 text-xs"
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[121] flex items-center gap-1.5 bg-overlay/70 text-ink rounded-full px-3 py-1.5 text-xs"
         onClick={e => e.stopPropagation()}>
-        <button onClick={() => setZoom(z => clamp(z - 0.25))} className="px-2 py-0.5 rounded hover:bg-white/15 font-bold">-</button>
+        <button onClick={() => setZoom(z => clamp(z - 0.25))} className="px-2 py-0.5 rounded hover:bg-surface/15 font-bold">-</button>
         <span className="font-mono w-12 text-center">{Math.round(zoom * 100)}%</span>
-        <button onClick={() => setZoom(z => clamp(z + 0.25))} className="px-2 py-0.5 rounded hover:bg-white/15 font-bold">+</button>
-        <button onClick={() => { setZoom(1); setOffset({ x: 0, y: 0 }) }} className="px-2 py-0.5 rounded hover:bg-white/15">1:1</button>
-        <a href={url} download="airemote-screenshot.jpg" className="px-2 py-0.5 rounded hover:bg-white/15" onClick={e => e.stopPropagation()}>تنزيل</a>
-        <button onClick={onClose} className="px-2 py-0.5 rounded hover:bg-white/15">إغلاق</button>
+        <button onClick={() => setZoom(z => clamp(z + 0.25))} className="px-2 py-0.5 rounded hover:bg-surface/15 font-bold">+</button>
+        <button onClick={() => { setZoom(1); setOffset({ x: 0, y: 0 }) }} className="px-2 py-0.5 rounded hover:bg-surface/15">1:1</button>
+        <a href={url} download="airemote-screenshot.jpg" className="px-2 py-0.5 rounded hover:bg-surface/15" onClick={e => e.stopPropagation()}>تنزيل</a>
+        <button onClick={onClose} className="px-2 py-0.5 rounded hover:bg-surface/15">إغلاق</button>
       </div>
       <img src={url} draggable={false} alt="معاينة"
         className="max-h-[90vh] max-w-[94vw] rounded shadow-2xl"
@@ -295,10 +295,10 @@ function ControlBlock({ deviceId, isLight, autoCapture, raw, onDone }: {
   useEffect(() => { if (autoCapture && deviceId && !tried.current) { tried.current = true; run() } }, [autoCapture, deviceId, run])
 
   return (
-    <div className={clsx('rounded-xl overflow-hidden border my-1.5', isLight ? 'border-slate-200' : 'border-slate-700/60')}>
+    <div className={clsx('rounded-xl overflow-hidden border my-1.5', 'border-line')}>
       <div className={clsx(
         'flex items-center justify-between px-3 py-1.5 text-[11px] font-mono border-b',
-        isLight ? 'bg-slate-100 border-slate-200 text-slate-500' : 'bg-[#161b22] border-slate-700/60 text-slate-500'
+        isLight ? 'bg-surface2 border-line text-muted' : 'bg-code border-line text-muted'
       )}>
         <div className="flex items-center gap-1.5">
           <MousePointer2 size={10} />
@@ -306,21 +306,21 @@ function ControlBlock({ deviceId, isLight, autoCapture, raw, onDone }: {
         </div>
         <button onClick={run} disabled={running || !deviceId}
           className={clsx('flex items-center gap-1 px-2 py-0.5 rounded transition-colors text-[10px] disabled:opacity-50',
-            isLight ? 'bg-teal-100 text-teal-700 hover:bg-teal-200' : 'bg-brand-teal/15 text-brand-teal hover:bg-brand-teal/25')}>
+            'bg-primary/15 text-primary hover:bg-primary/25')}>
           {running ? <><Loader size={9} className="animate-spin" /> جاري...</> : <><Play size={9} /> {done ? 'إعادة التنفيذ' : 'تنفيذ'}</>}
         </button>
       </div>
-      <div className={clsx('px-3 py-2 space-y-1', isLight ? 'bg-slate-50' : 'bg-[#0d1117]')}>
+      <div className={clsx('px-3 py-2 space-y-1', isLight ? 'bg-surface2' : 'bg-code')}>
         {steps.map((st, i) => (
           <div key={i} className="flex items-start gap-2">
             <span className={clsx('mt-0.5 flex-shrink-0',
-              st.status === 'ok' ? 'text-emerald-500' : st.status === 'error' ? 'text-red-400' : st.status === 'running' ? 'text-amber-400' : isLight ? 'text-slate-300' : 'text-slate-600')}>
+              st.status === 'ok' ? 'text-success' : st.status === 'error' ? 'text-danger' : st.status === 'running' ? 'text-warning' : isLight ? 'text-ink' : 'text-muted')}>
               {st.status === 'running' ? <Loader size={10} className="animate-spin" /> : st.status === 'ok' ? <Check size={10} /> : st.status === 'error' ? <AlertCircle size={10} /> : <Square size={10} />}
             </span>
             <div className="min-w-0 flex-1">
-              <p className={clsx('font-mono text-[11px] whitespace-pre-wrap break-all', isLight ? 'text-slate-700' : 'text-slate-200')} dir="ltr">{st.line}</p>
-              {st.out && <p className={clsx('font-mono text-[10px] whitespace-pre-wrap break-all mt-0.5', st.status === 'error' ? (isLight ? 'text-red-600' : 'text-red-400') : (isLight ? 'text-slate-500' : 'text-slate-400'))}>{st.out}</p>}
-              {st.img && <img src={st.img} alt="لقطة تحقق" className="mt-1 rounded-lg border border-slate-700/40 max-h-72 object-contain" />}
+              <p className={clsx('font-mono text-[11px] whitespace-pre-wrap break-all', 'text-ink')} dir="ltr">{st.line}</p>
+              {st.out && <p className={clsx('font-mono text-[10px] whitespace-pre-wrap break-all mt-0.5', st.status === 'error' ? ('text-danger') : ('text-muted'))}>{st.out}</p>}
+              {st.img && <img src={st.img} alt="لقطة تحقق" className="mt-1 rounded-lg border border-line max-h-72 object-contain" />}
             </div>
           </div>
         ))}
@@ -339,20 +339,20 @@ function StreamBlock({ deviceId, isLight }: { deviceId?: string; isLight: boolea
     setOpened(true)
   }
   return (
-    <div className={clsx('my-2 rounded-xl border overflow-hidden', isLight ? 'border-teal-200 bg-teal-50/60' : 'border-brand-teal/25 bg-brand-teal/5')}>
+    <div className={clsx('my-2 rounded-xl border overflow-hidden', isLight ? 'border-primary/25 bg-primary/10' : 'border-primary/25 bg-primary/5')}>
       <div className="flex items-center gap-3 px-3 py-3">
-        <div className={clsx('w-9 h-9 rounded-lg grid place-items-center flex-shrink-0', isLight ? 'bg-teal-100 text-teal-700' : 'bg-brand-teal/15 text-brand-teal')}>
+        <div className={clsx('w-9 h-9 rounded-lg grid place-items-center flex-shrink-0', 'bg-primary/15 text-primary')}>
           <Monitor size={16} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className={clsx('text-xs font-semibold', isLight ? 'text-slate-800' : 'text-slate-100')}>بث الشاشة المباشر</p>
-          <p className={clsx('text-[11px] mt-0.5', isLight ? 'text-slate-500' : 'text-slate-400')}>
+          <p className={clsx('text-xs font-semibold', 'text-ink')}>بث الشاشة المباشر</p>
+          <p className={clsx('text-[11px] mt-0.5', 'text-muted')}>
             {opened ? 'تم فتح نافذة البث — يمكنك إغلاقها في أي وقت.' : 'افتح نافذة مستقلة تعرض شاشة الجهاز مباشرة.'}
           </p>
         </div>
         <button onClick={openStream} disabled={!deviceId}
           className={clsx('px-3 py-1.5 rounded-lg text-[11px] font-medium border transition-colors',
-            isLight ? 'border-teal-300 text-teal-700 hover:bg-teal-100' : 'border-brand-teal/35 text-brand-teal hover:bg-brand-teal/10',
+            isLight ? 'border-primary/40 text-primary hover:bg-primary/15' : 'border-primary/35 text-primary hover:bg-primary/10',
             !deviceId && 'opacity-50 cursor-not-allowed')}>
           {opened ? 'فتح مرة أخرى' : 'بدء البث'}
         </button>
@@ -505,10 +505,10 @@ function RecordBlock({ deviceId, isLight, autoCapture, raw }: {
   }, [autoCapture, deviceId, capture])
 
   return (
-    <div className={clsx('rounded-xl overflow-hidden border my-1.5', isLight ? 'border-slate-200' : 'border-slate-700/60')}>
+    <div className={clsx('rounded-xl overflow-hidden border my-1.5', 'border-line')}>
       <div className={clsx(
         'flex items-center justify-between px-3 py-1.5 text-[11px] font-mono border-b',
-        isLight ? 'bg-slate-100 border-slate-200 text-slate-500' : 'bg-[#161b22] border-slate-700/60 text-slate-500'
+        isLight ? 'bg-surface2 border-line text-muted' : 'bg-code border-line text-muted'
       )}>
         <div className="flex items-center gap-1.5">
           <Video size={10} />
@@ -516,16 +516,16 @@ function RecordBlock({ deviceId, isLight, autoCapture, raw }: {
         </div>
         <div className="flex items-center gap-1">
           {videoUrl && (
-            <a href={videoUrl} download="airemote-recording.webm" title="تنزيل الفيديو" className={clsx('p-1 rounded transition-colors', isLight ? 'hover:bg-slate-200' : 'hover:bg-slate-700/50')}>
+            <a href={videoUrl} download="airemote-recording.webm" title="تنزيل الفيديو" className={clsx('p-1 rounded transition-colors', isLight ? 'hover:bg-line' : 'hover:bg-surface2')}>
               <Download size={10} />
             </a>
           )}
           {state === 'recording' ? (
-            <button onClick={() => { stopRef.current = true }} className={clsx('flex items-center gap-1 px-2 py-0.5 rounded text-[10px]', isLight ? 'bg-red-100 text-red-700 hover:bg-red-200' : 'bg-red-500/15 text-red-400 hover:bg-red-500/25')}>
+            <button onClick={() => { stopRef.current = true }} className={clsx('flex items-center gap-1 px-2 py-0.5 rounded text-[10px]', isLight ? 'bg-danger/15 text-danger hover:bg-danger/20' : 'bg-danger/100/15 text-danger hover:bg-danger/100/25')}>
               <Square size={9} /> إيقاف
             </button>
           ) : (
-            <button onClick={capture} disabled={!deviceId} className={clsx('flex items-center gap-1 px-2 py-0.5 rounded transition-colors text-[10px] disabled:opacity-50', isLight ? 'bg-teal-100 text-teal-700 hover:bg-teal-200' : 'bg-brand-teal/15 text-brand-teal hover:bg-brand-teal/25')}>
+            <button onClick={capture} disabled={!deviceId} className={clsx('flex items-center gap-1 px-2 py-0.5 rounded transition-colors text-[10px] disabled:opacity-50', 'bg-primary/15 text-primary hover:bg-primary/25')}>
               <Video size={9} /> {state === 'done' || state === 'error' ? 'تسجيل جديد' : 'بدء التسجيل'}
             </button>
           )}
@@ -533,18 +533,18 @@ function RecordBlock({ deviceId, isLight, autoCapture, raw }: {
       </div>
       {state === 'recording' && (
         <div className="px-3 py-2">
-          <div className={clsx('w-full h-1.5 rounded-full', isLight ? 'bg-slate-200' : 'bg-slate-700/50')}>
-            <div className="h-full rounded-full bg-red-500 transition-all" style={{ width: progress + '%' }} />
+          <div className={clsx('w-full h-1.5 rounded-full', isLight ? 'bg-line' : 'bg-surface2')}>
+            <div className="h-full rounded-full bg-danger/100 transition-all" style={{ width: progress + '%' }} />
           </div>
-          <p className={clsx('text-[10px] mt-1.5', isLight ? 'text-slate-500' : 'text-slate-500')}>جارٍ التسجيل... {progress}%</p>
+          <p className={clsx('text-[10px] mt-1.5', 'text-muted')}>جارٍ التسجيل... {progress}%</p>
         </div>
       )}
-      {err && <p className={clsx('px-3 py-3 text-[11px]', isLight ? 'text-red-600' : 'text-red-400')}>{err}</p>}
-      {videoUrl && <video controls src={videoUrl} className="w-full block bg-black" />}
+      {err && <p className={clsx('px-3 py-3 text-[11px]', 'text-danger')}>{err}</p>}
+      {videoUrl && <video controls src={videoUrl} className="w-full block bg-code" />}
       {state === 'idle' && !autoCapture && (
-        <div className={clsx('flex items-center justify-center py-6', isLight ? 'text-slate-400' : 'text-slate-500')}>
+        <div className={clsx('flex items-center justify-center py-6', 'text-muted')}>
           <button onClick={capture} className={clsx('flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] border transition-colors',
-            isLight ? 'border-slate-300 hover:border-teal-400 hover:text-teal-600' : 'border-slate-600 hover:border-brand-teal hover:text-brand-teal')}>
+            isLight ? 'border-line hover:border-primary/50 hover:text-primary' : 'border-line hover:border-primary hover:text-primary')}>
             <Video size={11} /> ابدأ تسجيل الفيديو
           </button>
         </div>
@@ -590,10 +590,10 @@ function ScreenshotBlock({ deviceId, isLight, autoCapture, caption }: {
   }, [autoCapture, deviceId, capture])
 
   return (
-    <div className={clsx('rounded-xl overflow-hidden border my-1.5', isLight ? 'border-slate-200' : 'border-slate-700/60')}>
+    <div className={clsx('rounded-xl overflow-hidden border my-1.5', 'border-line')}>
       <div className={clsx(
         'flex items-center justify-between px-3 py-1.5 text-[11px] font-mono border-b',
-        isLight ? 'bg-slate-100 border-slate-200 text-slate-500' : 'bg-[#161b22] border-slate-700/60 text-slate-500'
+        isLight ? 'bg-surface2 border-line text-muted' : 'bg-code border-line text-muted'
       )}>
         <div className="flex items-center gap-1.5">
           <Camera size={10} />
@@ -601,35 +601,35 @@ function ScreenshotBlock({ deviceId, isLight, autoCapture, caption }: {
         </div>
         <div className="flex items-center gap-1">
           {url && (
-            <button onClick={() => setLightbox(true)} title="معاينة وتكبير قبل التنزيل" className={clsx('p-1 rounded transition-colors', isLight ? 'hover:bg-slate-200' : 'hover:bg-slate-700/50')}>
+            <button onClick={() => setLightbox(true)} title="معاينة وتكبير قبل التنزيل" className={clsx('p-1 rounded transition-colors', isLight ? 'hover:bg-line' : 'hover:bg-surface2')}>
               <ZoomIn size={10} />
             </button>
           )}
           {url && (
-            <a href={url} download="airemote-screenshot.jpg" title="حفظ اللقطة" className={clsx('p-1 rounded transition-colors', isLight ? 'hover:bg-slate-200' : 'hover:bg-slate-700/50')}>
+            <a href={url} download="airemote-screenshot.jpg" title="حفظ اللقطة" className={clsx('p-1 rounded transition-colors', isLight ? 'hover:bg-line' : 'hover:bg-surface2')}>
               <Download size={10} />
             </a>
           )}
           <button onClick={capture} disabled={loading || !deviceId} title="إعادة الالتقاط"
             className={clsx('flex items-center gap-1 px-2 py-0.5 rounded transition-colors text-[10px] disabled:opacity-50',
-              isLight ? 'bg-teal-100 text-teal-700 hover:bg-teal-200' : 'bg-brand-teal/15 text-brand-teal hover:bg-brand-teal/25')}>
+              'bg-primary/15 text-primary hover:bg-primary/25')}>
             {loading ? <><Loader size={9} className="animate-spin" /> جاري...</> : <><RefreshCw size={9} /> التقاط</>}
           </button>
         </div>
       </div>
-      {caption && <p className={clsx('px-3 pt-2 text-[11px]', isLight ? 'text-slate-500' : 'text-slate-400')}>{caption}</p>}
-      {err && <p className={clsx('px-3 py-3 text-[11px]', isLight ? 'text-red-600' : 'text-red-400')}>{err}</p>}
+      {caption && <p className={clsx('px-3 pt-2 text-[11px]', 'text-muted')}>{caption}</p>}
+      {err && <p className={clsx('px-3 py-3 text-[11px]', 'text-danger')}>{err}</p>}
       {url && <img src={url} alt="لقطة شاشة الجهاز" className="w-full block cursor-zoom-in" title="انقر للمعاينة والتكبير" onClick={() => setLightbox(true)} />}
-      {url && <div className={clsx('px-3 py-1.5 text-[10px] border-t', isLight ? 'border-slate-200 text-slate-400' : 'border-slate-700/50 text-slate-500')}>انقر على الصورة للمعاينة والتكبير قبل التنزيل</div>}
+      {url && <div className={clsx('px-3 py-1.5 text-[10px] border-t', 'border-line text-muted')}>انقر على الصورة للمعاينة والتكبير قبل التنزيل</div>}
       {!url && !err && loading && (
-        <div className={clsx('flex items-center justify-center py-8 text-[11px]', isLight ? 'text-slate-400' : 'text-slate-500')}>
+        <div className={clsx('flex items-center justify-center py-8 text-[11px]', 'text-muted')}>
           <Loader size={12} className="animate-spin me-2" /> يتم التقاط الشاشة من الجهاز...
         </div>
       )}
       {!url && !err && !loading && !autoCapture && (
-        <div className={clsx('flex items-center justify-center py-6', isLight ? 'text-slate-400' : 'text-slate-500')}>
+        <div className={clsx('flex items-center justify-center py-6', 'text-muted')}>
           <button onClick={capture} className={clsx('flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] border transition-colors',
-            isLight ? 'border-slate-300 hover:border-teal-400 hover:text-teal-600' : 'border-slate-600 hover:border-brand-teal hover:text-brand-teal')}>
+            isLight ? 'border-line hover:border-primary/50 hover:text-primary' : 'border-line hover:border-primary hover:text-primary')}>
             <Camera size={11} /> التقاط لقطة الآن
           </button>
         </div>
@@ -700,13 +700,13 @@ function CodeBlock({ code, lang, deviceId, isLight, autoExecEnabled, onFeedback 
 
   const headerCls = clsx(
     'flex items-center justify-between px-3 py-1.5 text-[11px] font-mono border-b',
-    isLight ? 'bg-slate-100 border-slate-200 text-slate-500' : 'bg-[#161b22] border-slate-700/60 text-slate-500'
+    isLight ? 'bg-surface2 border-line text-muted' : 'bg-code border-line text-muted'
   )
 
   return (
     <div className={clsx(
       'rounded-xl overflow-hidden border text-[12px] my-1.5',
-      isLight ? 'border-slate-200' : 'border-slate-700/60'
+      'border-line'
     )}>
       {/* Header */}
       <div className={headerCls}>
@@ -714,24 +714,22 @@ function CodeBlock({ code, lang, deviceId, isLight, autoExecEnabled, onFeedback 
           <Terminal size={10} />
           <span>{lang || 'bash'}</span>
           {autoExecEnabled && isExecutable && (
-            <span className="text-amber-500 flex items-center gap-1">
+            <span className="text-warning flex items-center gap-1">
               <Zap size={8} /> auto
             </span>
           )}
         </div>
         <div className="flex items-center gap-1">
           <button onClick={copy} title="نسخ"
-            className={clsx('p-1 rounded transition-colors', isLight ? 'hover:bg-slate-200' : 'hover:bg-slate-700/50')}>
-            {copied ? <Check size={10} className="text-emerald-500" /> : <Copy size={10} />}
+            className={clsx('p-1 rounded transition-colors', isLight ? 'hover:bg-line' : 'hover:bg-surface2')}>
+            {copied ? <Check size={10} className="text-success" /> : <Copy size={10} />}
           </button>
           {isExecutable && deviceId && (
             <button onClick={() => execute()} disabled={executing}
               title="تنفيذ على الجهاز البعيد"
               className={clsx(
                 'flex items-center gap-1 px-2 py-0.5 rounded transition-colors text-[10px] disabled:opacity-50',
-                isLight
-                  ? 'bg-teal-100 text-teal-700 hover:bg-teal-200'
-                  : 'bg-brand-teal/15 text-brand-teal hover:bg-brand-teal/25'
+                'bg-primary/15 text-primary hover:bg-primary/25'
               )}>
               {executing
                 ? <><Loader size={9} className="animate-spin" /> جاري...</>
@@ -744,23 +742,23 @@ function CodeBlock({ code, lang, deviceId, isLight, autoExecEnabled, onFeedback 
       {/* Code */}
       <pre className={clsx(
         'px-4 py-3 font-mono overflow-x-auto whitespace-pre leading-relaxed',
-        isLight ? 'text-slate-700 bg-slate-50' : 'text-slate-200 bg-[#0d1117]'
+        isLight ? 'text-ink bg-surface2' : 'text-ink bg-code'
       )}>
         {code}
       </pre>
 
       {/* Dangerous-confirm (v3.4.0) */}
       {needConfirm && (
-        <div className={clsx('border-t px-3 py-2.5 text-[11px]', isLight ? 'border-amber-200 bg-amber-50 text-amber-700' : 'border-amber-500/20 bg-amber-500/10 text-amber-300')}>
+        <div className={clsx('border-t px-3 py-2.5 text-[11px]', isLight ? 'border-warning/30 bg-warning/10 text-warning' : 'border-warning/20 bg-warning/100/10 text-warning')}>
           <div className="flex items-center gap-1.5 font-medium">
             <AlertCircle size={11} />
             <span>{document.documentElement.lang === 'en' ? 'Dangerous command — explicit confirmation required before running.' : 'أمر خطير — يتطلب تأكيداً صريحاً قبل التنفيذ.'}</span>
           </div>
           <div className="flex items-center gap-2 mt-2">
-            <button onClick={() => execute(true)} className="px-2.5 py-1 rounded bg-red-500/90 hover:bg-red-500 text-white text-[10px] font-semibold transition-colors">
+            <button onClick={() => execute(true)} className="px-2.5 py-1 rounded bg-danger/100/90 hover:bg-danger/100 text-ink text-[10px] font-semibold transition-colors">
               {document.documentElement.lang === 'en' ? 'Confirm run' : 'تأكيد التنفيذ'}
             </button>
-            <button onClick={() => setNeedConfirm(false)} className="px-2.5 py-1 rounded bg-slate-600/40 hover:bg-slate-600/60 text-[10px] transition-colors">
+            <button onClick={() => setNeedConfirm(false)} className="px-2.5 py-1 rounded bg-line/70 hover:bg-line text-[10px] transition-colors">
               {document.documentElement.lang === 'en' ? 'Cancel' : 'إلغاء'}
             </button>
           </div>
@@ -769,12 +767,12 @@ function CodeBlock({ code, lang, deviceId, isLight, autoExecEnabled, onFeedback 
 
       {/* Result */}
       {result && (
-        <div className={clsx('border-t', isLight ? 'border-slate-200' : 'border-slate-700/50')}>
+        <div className={clsx('border-t', 'border-line')}>
           <div className={clsx(
             'flex items-center justify-between px-3 py-1.5',
             result.exitCode === 0
-              ? isLight ? 'bg-emerald-50 text-emerald-700' : 'bg-emerald-500/8 text-emerald-400'
-              : isLight ? 'bg-red-50 text-red-600'         : 'bg-red-500/8 text-red-400'
+              ? isLight ? 'bg-success/10 text-success' : 'bg-success/100/8 text-success'
+              : isLight ? 'bg-danger/10 text-danger'         : 'bg-danger/100/8 text-danger'
           )}>
             <div className="flex items-center gap-1.5">
               {result.exitCode === 0 ? <Check size={10} /> : <AlertCircle size={10} />}
@@ -784,7 +782,7 @@ function CodeBlock({ code, lang, deviceId, isLight, autoExecEnabled, onFeedback 
               {!autoExecEnabled && onFeedback && (
                 <button
                   onClick={() => onFeedback({ code, stdout: result.stdout, stderr: result.stderr, exitCode: result.exitCode })}
-                  className="text-[10px] px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 transition-colors"
+                  className="text-[10px] px-2 py-0.5 rounded bg-surface/10 hover:bg-surface/20 transition-colors"
                 >
                   إرسال النتيجة للمساعد
                 </button>
@@ -797,10 +795,10 @@ function CodeBlock({ code, lang, deviceId, isLight, autoExecEnabled, onFeedback 
           {showResult && (result.stdout || result.stderr) && (
             <pre className={clsx(
               'px-3 py-2 font-mono text-[10px] whitespace-pre-wrap overflow-x-auto max-h-48',
-              isLight ? 'bg-slate-50 text-slate-600' : 'bg-[#0d1117] text-slate-300'
+              isLight ? 'bg-surface2 text-muted' : 'bg-code text-ink'
             )}>
-              {result.stdout && <span className={isLight ? 'text-slate-700' : 'text-slate-200'}>{result.stdout.slice(0, 2000)}{result.stdout.length > 2000 ? '\n…' : ''}</span>}
-              {result.stderr && <span className={isLight ? 'text-red-600' : 'text-red-400'}>{result.stderr}</span>}
+              {result.stdout && <span className={'text-ink'}>{result.stdout.slice(0, 2000)}{result.stdout.length > 2000 ? '\n…' : ''}</span>}
+              {result.stderr && <span className={'text-danger'}>{result.stderr}</span>}
             </pre>
           )}
         </div>
@@ -1225,10 +1223,10 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
       <div className={clsx(
         'text-[13px] leading-relaxed space-y-2',
         msg.error
-          ? (isLight ? 'text-red-600' : 'text-red-300')
+          ? ('text-danger')
           : isLight
-            ? msg.role === 'user' ? 'text-white' : 'text-slate-800'
-            : msg.role === 'user' ? 'text-white' : 'text-slate-100'
+            ? msg.role === 'user' ? 'text-ink' : 'text-ink'
+            : msg.role === 'user' ? 'text-ink' : 'text-ink'
       )}>
         {parts.map((part, i) => {
           const isLastPart = i === parts.length - 1
@@ -1257,7 +1255,7 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
                 {msg.streaming && isLastPart && (
                   <span className={clsx(
                     'inline-block w-0.5 h-3.5 ml-0.5 align-middle animate-pulse',
-                    isLight ? 'bg-teal-500' : 'bg-brand-teal'
+                    isLight ? 'bg-primary/100' : 'bg-primary'
                   )} />
                 )}
               </p>
@@ -1266,7 +1264,7 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
         {msg.streaming && msg.content === '' && (
           <span className={clsx(
             'inline-block w-0.5 h-3.5 animate-pulse',
-            isLight ? 'bg-teal-500' : 'bg-brand-teal'
+            isLight ? 'bg-primary/100' : 'bg-primary'
           )} />
         )}
       </div>
@@ -1276,17 +1274,17 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
   // ── Input field classes ────────────────────────────────────────────────
   const inputCls = clsx(
     'w-full border rounded-2xl px-4 py-3 text-sm resize-none overflow-hidden transition-all',
-    'placeholder:text-slate-400 focus:outline-none',
+    'placeholder:text-muted focus:outline-none',
     isLight
-      ? 'bg-white border-slate-300 text-slate-800 focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 shadow-sm'
-      : 'bg-navy-900 border-slate-600 text-slate-100 focus:border-brand-teal focus:ring-2 focus:ring-brand-teal/15'
+      ? 'bg-surface border-line text-ink focus:border-primary/60 focus:ring-2 focus:ring-primary/20 shadow-sm'
+      : 'bg-canvas border-line text-ink focus:border-primary focus:ring-2 focus:ring-primary/15'
   )
 
   const cfgFieldCls = clsx(
     'w-full border rounded-xl px-3 py-2 text-xs transition-colors focus:outline-none',
     isLight
-      ? 'bg-white border-slate-300 text-slate-700 focus:border-teal-500'
-      : 'bg-navy-900 border-slate-600 text-slate-200 focus:border-brand-teal'
+      ? 'bg-surface border-line text-ink focus:border-primary/60'
+      : 'bg-canvas border-line text-ink focus:border-primary'
   )
 
   return (
@@ -1295,22 +1293,22 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className={clsx(
         'flex items-center justify-between px-4 py-3 border-b flex-shrink-0',
-        isLight ? 'border-slate-200' : 'border-slate-700/50'
+        'border-line'
       )}>
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-brand-teal to-brand-blue flex items-center justify-center shadow-sm shadow-brand-teal/30">
-            <Sparkles size={14} className="text-white" />
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-info flex items-center justify-center shadow-sm shadow-primary/30">
+            <Sparkles size={14} className="text-ink" />
           </div>
           <div>
-            <h3 className={clsx('text-sm font-semibold', isLight ? 'text-slate-800' : 'text-slate-100')}>
+            <h3 className={clsx('text-sm font-semibold', 'text-ink')}>
               {isAr ? 'مساعد الذكاء' : 'AI Assistant'}
             </h3>
-            <p className={clsx('text-[11px]', isLight ? 'text-slate-500' : 'text-slate-500')}>
+            <p className={clsx('text-[11px]', 'text-muted')}>
               {selectedProvider?.label} · {config.model}
             </p>
           </div>
           {deviceId && (
-            <span className="text-[10px] bg-brand-teal/10 text-brand-teal border border-brand-teal/25 px-2 py-0.5 rounded-full font-medium">
+            <span className="text-[10px] bg-primary/10 text-primary border border-primary/25 px-2 py-0.5 rounded-full font-medium">
               سياق الجهاز ✓
             </span>
           )}
@@ -1319,8 +1317,8 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
           {/* Conversations history (v3.3.4) */}
           <button onClick={toggleConvs} title="سجل المحادثات (آخر 10)"
             className={clsx('p-1.5 rounded-lg transition-colors',
-              showConvs ? 'bg-brand-blue/15 text-brand-blue'
-                : isLight ? 'text-slate-400 hover:text-slate-600 hover:bg-slate-100' : 'text-slate-500 hover:text-slate-300 hover:bg-slate-700/40')}>
+              showConvs ? 'bg-info/15 text-info'
+                : isLight ? 'text-muted hover:text-muted hover:bg-surface2' : 'text-muted hover:text-ink hover:bg-surface2/70')}>
             <History size={14} />
           </button>
           {/* Auto-exec toggle (only when connected to a device) */}
@@ -1335,10 +1333,10 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
               className={clsx(
                 'p-1.5 rounded-lg transition-colors border text-[10px] flex items-center gap-1',
                 autoExec
-                  ? 'bg-amber-500/12 border-amber-500/30 text-amber-500'
+                  ? 'bg-warning/100/12 border-warning/30 text-warning'
                   : isLight
-                    ? 'border-transparent text-slate-400 hover:text-slate-600 hover:bg-slate-100'
-                    : 'border-transparent text-slate-500 hover:text-slate-300 hover:bg-slate-700/40'
+                    ? 'border-transparent text-muted hover:text-muted hover:bg-surface2'
+                    : 'border-transparent text-muted hover:text-ink hover:bg-surface2/70'
               )}
             >
               <Zap size={13} />
@@ -1350,10 +1348,10 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
             className={clsx(
               'p-1.5 rounded-lg transition-colors',
               showConfig
-                ? 'bg-brand-blue/15 text-brand-blue'
+                ? 'bg-info/15 text-info'
                 : isLight
-                  ? 'text-slate-400 hover:text-slate-600 hover:bg-slate-100'
-                  : 'text-slate-500 hover:text-slate-300 hover:bg-slate-700/40'
+                  ? 'text-muted hover:text-muted hover:bg-surface2'
+                  : 'text-muted hover:text-ink hover:bg-surface2/70'
             )}
             title="إعدادات AI"
           >
@@ -1364,7 +1362,7 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
             disabled={messages.length === 0}
             className={clsx(
               'p-1.5 rounded-lg transition-colors disabled:opacity-30',
-              isLight ? 'text-slate-400 hover:text-red-500 hover:bg-red-50' : 'text-slate-500 hover:text-red-400 hover:bg-red-400/10'
+              'text-muted hover:text-danger hover:bg-danger/10'
             )}
             title="مسح المحادثة"
           >
@@ -1374,18 +1372,18 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
       </div>
 
       {showConvs && (
-        <div className={clsx('absolute top-14 z-30 w-80 max-h-[420px] overflow-y-auto rounded-xl border shadow-2xl', isLight ? 'bg-white border-slate-200' : 'bg-navy-800 border-slate-700/70')} style={{ insetInlineEnd: 12 }}>
+        <div className={clsx('absolute top-14 z-30 w-80 max-h-[420px] overflow-y-auto rounded-xl border shadow-2xl', 'bg-surface border-line')} style={{ insetInlineEnd: 12 }}>
           <button onClick={startNewConv}
-            className={clsx('w-full flex items-center gap-2 px-3 py-2.5 text-xs border-b transition-colors', isLight ? 'border-slate-100 text-teal-700 hover:bg-teal-50' : 'border-slate-700/50 text-brand-teal hover:bg-slate-700/30')}>
+            className={clsx('w-full flex items-center gap-2 px-3 py-2.5 text-xs border-b transition-colors', isLight ? 'border-line text-primary hover:bg-primary/10' : 'border-line text-primary hover:bg-surface2/70')}>
             <Plus size={12} /> محادثة جديدة
           </button>
-          {deviceId && <div className={clsx('px-3 py-1.5 text-[10px]', isLight ? 'text-slate-400' : 'text-slate-500')}>ذاكرة الذكاء: آخر 10 محادثات لهذا الجهاز</div>}
-          {convs.length === 0 && <p className={clsx('px-3 py-3 text-xs', isLight ? 'text-slate-400' : 'text-slate-500')}>لا توجد محادثات سابقة بعد.</p>}
+          {deviceId && <div className={clsx('px-3 py-1.5 text-[10px]', 'text-muted')}>ذاكرة الذكاء: آخر 10 محادثات لهذا الجهاز</div>}
+          {convs.length === 0 && <p className={clsx('px-3 py-3 text-xs', 'text-muted')}>لا توجد محادثات سابقة بعد.</p>}
           {convs.map(cv => (
-            <div key={cv.id} className={clsx('flex items-stretch border-b last:border-b-0', isLight ? 'border-slate-50' : 'border-slate-700/30', activeConvId === cv.id && (isLight ? 'bg-teal-50' : 'bg-brand-teal/10'))}>
-              <button onClick={() => openConv(cv.id)} className={clsx('flex-1 min-w-0 text-start px-3 py-2 transition-colors', isLight ? 'hover:bg-slate-50' : 'hover:bg-slate-700/25')}>
-                <p className={clsx('text-xs truncate', isLight ? 'text-slate-700' : 'text-slate-200')}>{cv.title || 'محادثة'}</p>
-                <p className={clsx('text-[10px] mt-0.5', isLight ? 'text-slate-400' : 'text-slate-500')} dir="ltr">{String(cv.updated_at || '').slice(0, 16)}</p>
+            <div key={cv.id} className={clsx('flex items-stretch border-b last:border-b-0', 'border-line', activeConvId === cv.id && ('bg-primary/10'))}>
+              <button onClick={() => openConv(cv.id)} className={clsx('flex-1 min-w-0 text-start px-3 py-2 transition-colors', isLight ? 'hover:bg-surface2' : 'hover:bg-surface2/70')}>
+                <p className={clsx('text-xs truncate', 'text-ink')}>{cv.title || 'محادثة'}</p>
+                <p className={clsx('text-[10px] mt-0.5', 'text-muted')} dir="ltr">{String(cv.updated_at || '').slice(0, 16)}</p>
               </button>
               <button
                 onClick={async (ev) => {
@@ -1395,7 +1393,7 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
                   if (activeConvId === cv.id) { skipReloadRef.current = true; setActiveConvId(undefined); setMessages([]) }
                 }}
                 title="حذف هذه المحادثة"
-                className={clsx('px-2 transition-colors', isLight ? 'text-slate-300 hover:text-red-500 hover:bg-red-50' : 'text-slate-600 hover:text-red-400 hover:bg-red-400/10')}>
+                className={clsx('px-2 transition-colors', isLight ? 'text-ink hover:text-danger hover:bg-danger/10' : 'text-muted hover:text-danger hover:bg-danger/10')}>
                 <Trash2 size={11} />
               </button>
             </div>
@@ -1407,15 +1405,15 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
       {showConfig && (
         <div className={clsx(
           'px-4 py-3.5 border-b space-y-3 flex-shrink-0',
-          isLight ? 'bg-slate-50/80 border-slate-200' : 'bg-navy-900/60 border-slate-700/50'
+          isLight ? 'bg-surface2 border-line' : 'bg-canvas/70 border-line'
         )}>
           <div className="flex items-center gap-2 mb-1">
-            <Key size={12} className={isLight ? 'text-slate-400' : 'text-slate-500'} />
-            <span className={clsx('text-xs font-medium', isLight ? 'text-slate-600' : 'text-slate-400')}>إعدادات النموذج</span>
+            <Key size={12} className={'text-muted'} />
+            <span className={clsx('text-xs font-medium', 'text-muted')}>إعدادات النموذج</span>
           </div>
           <div className="grid grid-cols-2 gap-2.5">
             <div>
-              <label className={clsx('text-[11px] block mb-1', isLight ? 'text-slate-500' : 'text-slate-500')}>المزود</label>
+              <label className={clsx('text-[11px] block mb-1', 'text-muted')}>المزود</label>
               <select
                 value={config.provider}
                 onChange={e => {
@@ -1432,7 +1430,7 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
               </select>
             </div>
             <div>
-              <label className={clsx('text-[11px] block mb-1', isLight ? 'text-slate-500' : 'text-slate-500')}>النموذج</label>
+              <label className={clsx('text-[11px] block mb-1', 'text-muted')}>النموذج</label>
               <select
                 value={config.model}
                 onChange={e => saveConfig({ ...config, model: e.target.value })}
@@ -1443,7 +1441,7 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
             </div>
           </div>
           <div>
-            <label className={clsx('text-[11px] block mb-1', isLight ? 'text-slate-500' : 'text-slate-500')}>
+            <label className={clsx('text-[11px] block mb-1', 'text-muted')}>
               {config.provider === 'ollama' ? 'Ollama URL' : 'API Key'}
             </label>
             <input
@@ -1460,10 +1458,10 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
               disabled={validating || (config.provider !== 'ollama' && !config.apiKey?.trim())}
               className={clsx(
                 'flex items-center gap-1.5 text-[11px] px-3 py-1.5 rounded-lg border transition-all disabled:opacity-40',
-                validateOk === true  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-500' :
-                validateOk === false ? 'bg-red-500/10 border-red-500/30 text-red-500' :
-                isLight ? 'border-slate-300 text-slate-600 hover:border-teal-500 hover:text-teal-600'
-                        : 'border-slate-600 text-slate-400 hover:border-brand-teal hover:text-brand-teal'
+                validateOk === true  ? 'bg-success/100/10 border-success/30 text-success' :
+                validateOk === false ? 'bg-danger/100/10 border-danger/30 text-danger' :
+                isLight ? 'border-line text-muted hover:border-primary/60 hover:text-primary'
+                        : 'border-line text-muted hover:border-primary hover:text-primary'
               )}
             >
               {validating  ? <><Loader size={10} className="animate-spin" /> جاري...</> :
@@ -1476,8 +1474,8 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
               className={clsx(
                 'flex-1 flex items-center justify-center gap-1.5 text-xs py-1.5 rounded-lg transition-colors',
                 isLight
-                  ? 'bg-teal-50 hover:bg-teal-100 text-teal-600 border border-teal-200'
-                  : 'bg-brand-teal/10 hover:bg-brand-teal/20 text-brand-teal border border-brand-teal/20'
+                  ? 'bg-primary/10 hover:bg-primary/15 text-primary border border-primary/25'
+                  : 'bg-primary/10 hover:bg-primary/20 text-primary border border-primary/20'
               )}
             >
               <ChevronDown size={12} /> حفظ وإغلاق
@@ -1493,7 +1491,7 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
       >
         {loadingHistory && (
           <div className="flex justify-center py-8">
-            <div className={clsx('w-5 h-5 border-2 border-t-transparent rounded-full animate-spin', isLight ? 'border-teal-500' : 'border-brand-teal')} />
+            <div className={clsx('w-5 h-5 border-2 border-t-transparent rounded-full animate-spin', isLight ? 'border-primary/60' : 'border-primary')} />
           </div>
         )}
 
@@ -1504,27 +1502,27 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
                 <div className={clsx(
                   'w-16 h-16 rounded-2xl flex items-center justify-center mb-3 border shadow-sm',
                   isLight
-                    ? 'bg-gradient-to-br from-teal-50 to-blue-50 border-slate-200'
-                    : 'bg-gradient-to-br from-brand-teal/15 to-brand-blue/15 border-slate-700/50'
+                    ? 'bg-gradient-to-br from-primary/10 to-blue-50 border-line'
+                    : 'bg-gradient-to-br from-primary/15 to-info/15 border-line'
                 )}>
-                  <Bot size={28} className={isLight ? 'text-teal-500' : 'text-brand-teal'} />
+                  <Bot size={28} className={'text-primary'} />
                 </div>
-                <h3 className={clsx('text-base font-bold', isLight ? 'text-slate-800' : 'text-white')}>
+                <h3 className={clsx('text-base font-bold', 'text-ink')}>
                   {isAr ? 'كيف يمكنني مساعدتك اليوم؟' : 'How can I help you today?'}
                 </h3>
-                <p className={clsx('text-xs leading-relaxed mt-1.5 max-w-md', isLight ? 'text-slate-500' : 'text-slate-400')}>
+                <p className={clsx('text-xs leading-relaxed mt-1.5 max-w-md', 'text-muted')}>
                   {deviceId
                     ? (isAr ? 'أنا متصل بهذا الجهاز ويمكنني قراءة حالته، تنفيذ الأوامر، أخذ لقطات شاشة، والتحكم به عند الحاجة.' : 'Connected to this device: read state, run commands, take screenshots, and control it.')
                     : (isAr ? 'اسأل عن أي شيء يخص أجهزتك أو الشبكة أو الأخطاء — وإن أردت إجراءً فعلياً اختر جهازاً من القائمة الجانبية.' : 'Ask about your devices, network, or errors — pick a device to act on it.')}
                 </p>
                 <div className="flex flex-wrap items-center justify-center gap-1.5 mt-3">
                   {[isAr ? 'تنفيذ أوامر' : 'Commands', isAr ? 'لقطات شاشة' : 'Screenshots', isAr ? 'تحكم بالماوس' : 'Mouse control', isAr ? 'مدير الملفات' : 'Files', isAr ? 'تحليل الأعطال' : 'Diagnostics'].map(c => (
-                    <span key={c} className={clsx('text-[10px] px-2 py-1 rounded-full border', isLight ? 'bg-white border-slate-200 text-slate-500' : 'bg-white/[0.03] border-slate-700/50 text-slate-400')}>{c}</span>
+                    <span key={c} className={clsx('text-[10px] px-2 py-1 rounded-full border', isLight ? 'bg-surface border-line text-muted' : 'bg-surface/[0.03] border-line text-muted')}>{c}</span>
                   ))}
                 </div>
               </div>
 
-              <p className={clsx('text-[11px] font-semibold uppercase tracking-wider mt-6 mb-2', isLight ? 'text-slate-400' : 'text-slate-500')}>
+              <p className={clsx('text-[11px] font-semibold uppercase tracking-wider mt-6 mb-2', 'text-muted')}>
                 {isAr ? 'اقتراحات سريعة' : 'Quick prompts'}
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -1535,16 +1533,16 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
                     className={clsx(
                       'group text-start px-3.5 py-3 rounded-xl border transition-all flex items-start gap-2.5',
                       isLight
-                        ? 'bg-white border-slate-200 text-slate-600 hover:border-teal-300 hover:bg-teal-50/60 hover:text-teal-800 shadow-sm'
-                        : 'bg-navy-800/70 border-slate-700/50 text-slate-300 hover:border-brand-teal/40 hover:bg-slate-700/40 hover:text-slate-100'
+                        ? 'bg-surface border-line text-muted hover:border-primary/40 hover:bg-primary/10 hover:text-primary shadow-sm'
+                        : 'bg-surface/80 border-line text-ink hover:border-primary/40 hover:bg-surface2/70 hover:text-ink'
                     )}
                   >
                     <span className={clsx('w-6 h-6 rounded-lg flex items-center justify-center flex-shrink-0 text-[10px] font-mono font-bold',
-                      isLight ? 'bg-slate-100 text-slate-400 group-hover:bg-teal-100 group-hover:text-teal-600' : 'bg-slate-700/50 text-slate-500 group-hover:bg-brand-teal/15 group-hover:text-brand-teal')}>
+                      'bg-surface2 text-muted group-hover:bg-primary/15 group-hover:text-primary')}>
                       {String(i + 1).padStart(2, '0')}
                     </span>
                     <span className="text-[12px] leading-5 flex-1">{s}</span>
-                    <Zap size={10} className={clsx('mt-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity', isLight ? 'text-teal-500' : 'text-brand-teal')} />
+                    <Zap size={10} className={clsx('mt-1 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity', 'text-primary')} />
                   </button>
                 ))}
               </div>
@@ -1564,16 +1562,16 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
               <div className={clsx(
                 'w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 border',
                 msg.role === 'user'
-                  ? 'bg-brand-blue/20 border-brand-blue/30'
+                  ? 'bg-info/20 border-info/30'
                   : msg.error
-                    ? 'bg-red-500/15 border-red-500/25'
+                    ? 'bg-danger/100/15 border-danger/25'
                     : isLight
-                      ? 'bg-teal-50 border-teal-200'
-                      : 'bg-brand-teal/15 border-brand-teal/25'
+                      ? 'bg-primary/10 border-primary/25'
+                      : 'bg-primary/15 border-primary/25'
               )}>
                 {msg.role === 'user'
-                  ? <User size={12} className="text-brand-blue" />
-                  : <Bot size={12} className={msg.error ? 'text-red-400' : isLight ? 'text-teal-600' : 'text-brand-teal'} />
+                  ? <User size={12} className="text-info" />
+                  : <Bot size={12} className={msg.error ? 'text-danger' : 'text-primary'} />
                 }
               </div>
 
@@ -1586,10 +1584,10 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
                 isProgUser
                   ? ''
                   : msg.role === 'user'
-                    ? 'bg-brand-blue text-white rounded-tr-sm'
+                    ? 'bg-info text-primary-fg rounded-tr-sm'
                   : msg.error
-                    ? isLight ? 'bg-red-50 border border-red-200 text-red-700 rounded-tl-sm' : 'bg-red-500/10 border border-red-500/20 rounded-tl-sm'
-                    : isLight ? 'bg-white border border-slate-200 text-slate-800 rounded-tl-sm' : 'bg-navy-800 border border-slate-700/50 rounded-tl-sm'
+                    ? isLight ? 'bg-danger/10 border border-danger/25 text-danger rounded-tl-sm' : 'bg-danger/100/10 border border-danger/20 rounded-tl-sm'
+                    : isLight ? 'bg-surface border border-line text-ink rounded-tl-sm' : 'bg-surface border border-line rounded-tl-sm'
               )}>
                 {isProgUser
                   ? <ProgressNote text={msg.content} isLight={isLight} />
@@ -1598,14 +1596,14 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
                   'text-[10px] mt-1.5 select-none',
                   msg.role === 'user'
                     ? 'text-blue-200'
-                    : isLight ? 'text-slate-400' : 'text-slate-500'
+                    : 'text-muted'
                 )}>
                   {msg.timestamp instanceof Date
                     ? msg.timestamp.toLocaleTimeString('ar')
                     : new Date(msg.timestamp).toLocaleTimeString('ar')}
                 </p>
                 <div className={clsx('mt-1 flex items-center gap-2 transition-opacity',
-                  msg.role === 'user' ? 'justify-end text-white/70' : (isLight ? 'text-slate-400' : 'text-slate-500'),
+                  msg.role === 'user' ? 'justify-end text-ink/70' : ('text-muted'),
                   msg.streaming ? 'opacity-0 pointer-events-none' : 'opacity-0 group-hover:opacity-100')}>
                   <button onClick={() => copyMessage(msg.content, i)} title={isAr ? 'نسخ' : 'Copy'} className="hover:opacity-80 transition-opacity flex items-center gap-0.5">
                     {copiedIdx === i
@@ -1628,18 +1626,18 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
           <div className="flex gap-2.5">
             <div className={clsx(
               'w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 border',
-              isLight ? 'bg-teal-50 border-teal-200' : 'bg-brand-teal/15 border-brand-teal/25'
+              isLight ? 'bg-primary/10 border-primary/25' : 'bg-primary/15 border-primary/25'
             )}>
-              <Loader size={12} className={clsx('animate-spin', isLight ? 'text-teal-600' : 'text-brand-teal')} />
+              <Loader size={12} className={clsx('animate-spin', 'text-primary')} />
             </div>
             <div className={clsx(
               'rounded-2xl rounded-tl-sm px-4 py-3 border',
-              isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-navy-800 border-slate-700/50'
+              isLight ? 'bg-surface border-line shadow-sm' : 'bg-surface border-line'
             )}>
               <div className="flex gap-1.5 items-center h-4">
                 {[0, 150, 300].map(d => (
                   <div key={d}
-                    className={clsx('w-2 h-2 rounded-full animate-bounce', isLight ? 'bg-teal-400' : 'bg-brand-teal')}
+                    className={clsx('w-2 h-2 rounded-full animate-bounce', 'bg-primary')}
                     style={{ animationDelay: `${d}ms` }}
                   />
                 ))}
@@ -1651,7 +1649,7 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
         {/* Proactive suggestion chips */}
         {suggestions.length > 0 && !loading && (
           <div className="flex flex-wrap gap-1.5 pl-10 pr-2 pt-1">
-            <span className={clsx('text-[11px] w-full mb-0.5', isLight ? 'text-slate-400' : 'text-slate-500')}>اقتراحات بناءً على حالة الجهاز:</span>
+            <span className={clsx('text-[11px] w-full mb-0.5', 'text-muted')}>اقتراحات بناءً على حالة الجهاز:</span>
             {suggestions.map(s => (
               <button
                 key={s}
@@ -1659,8 +1657,8 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
                 className={clsx(
                   'text-[11px] px-3 py-1.5 rounded-full border transition-all flex items-center gap-1.5',
                   isLight
-                    ? 'border-teal-200 text-teal-600 bg-teal-50 hover:bg-teal-100 hover:border-teal-300'
-                    : 'border-brand-teal/30 text-brand-teal bg-brand-teal/8 hover:bg-brand-teal/15'
+                    ? 'border-primary/25 text-primary bg-primary/10 hover:bg-primary/15 hover:border-primary/40'
+                    : 'border-primary/30 text-primary bg-primary/8 hover:bg-primary/15'
                 )}
               >
                 <Zap size={9} />
@@ -1676,10 +1674,10 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
       {/* ── Input ───────────────────────────────────────────────────────── */}
       <div className={clsx(
         'p-3 border-t flex-shrink-0',
-        isLight ? 'border-slate-200 bg-slate-50/50' : 'border-slate-700/50'
+        isLight ? 'border-line bg-surface2' : 'border-line'
       )}>
         {queueHint && (
-          <p className={clsx('text-[10px] mb-1.5', isLight ? 'text-amber-600' : 'text-amber-400')}>الرد السابق ما زال قيد التوليد — انتظر قليلاً أو أوقفه بزر الإيقاف ثم أرسل.</p>
+          <p className={clsx('text-[10px] mb-1.5', 'text-warning')}>الرد السابق ما زال قيد التوليد — انتظر قليلاً أو أوقفه بزر الإيقاف ثم أرسل.</p>
         )}
         <div className="flex gap-2 items-end">
           <textarea
@@ -1701,8 +1699,8 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
               className={clsx(
                 'p-3 rounded-2xl transition-all flex-shrink-0',
                 isLight
-                  ? 'bg-red-100 hover:bg-red-200 text-red-500 border border-red-200'
-                  : 'bg-red-500/15 hover:bg-red-500/25 text-red-400 border border-red-500/20'
+                  ? 'bg-danger/15 hover:bg-danger/20 text-danger border border-danger/25'
+                  : 'bg-danger/100/15 hover:bg-danger/100/25 text-danger border border-danger/20'
               )}
             >
               <Square size={15} />
@@ -1713,18 +1711,16 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
               disabled={!input.trim()}
               className={clsx(
                 'p-3 rounded-2xl transition-all flex-shrink-0 disabled:opacity-40 disabled:cursor-not-allowed',
-                isLight
-                  ? 'bg-teal-500 hover:bg-teal-600 text-white shadow-sm shadow-teal-200'
-                  : 'bg-brand-teal hover:bg-teal-400 text-white'
+                'bg-primary hover:brightness-110 text-primary-fg shadow-sm shadow-primary/25'
               )}
             >
               <Send size={15} />
             </button>
           )}
         </div>
-        <p className={clsx('text-[10px] mt-1.5 text-center', isLight ? 'text-slate-400' : 'text-slate-600')}>
+        <p className={clsx('text-[10px] mt-1.5 text-center', 'text-muted')}>
           Enter للإرسال · Shift+Enter لسطر جديد
-          {autoExec && deviceId && <span className="text-amber-500 mr-2">· تنفيذ تلقائي مفعّل ⚡</span>}
+          {autoExec && deviceId && <span className="text-warning mr-2">· تنفيذ تلقائي مفعّل ⚡</span>}
         </p>
       </div>
     </div>
