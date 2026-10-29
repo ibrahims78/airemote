@@ -29,7 +29,9 @@ function walk(dir, out) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const full = path.join(dir, entry.name)
     if (entry.isDirectory()) {
-      if (entry.name === 'win-unpacked') continue
+      // v3.8.21 - archived builds are not downloadable artifacts: hashing them would
+      // walk gigabytes and list files the manifest no longer publishes.
+      if (entry.name === 'win-unpacked' || entry.name === 'archive' || entry.name === 'old releases') continue
       walk(full, out)
     } else if (/\.(exe|zip|apk|msi|7z|tar\.gz)$/i.test(entry.name)) {
       out.push(full)
