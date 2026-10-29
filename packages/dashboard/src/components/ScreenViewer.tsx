@@ -133,6 +133,11 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
     } catch { return popout ? 'fill' : 'fit' }
   })
   const [canvasBox,      setCanvasBox]      = useState<{ w: number; h: number } | null>(null)
+  // v3.8.24 - the remote machine's own display modes (Windows), so the desktop can be
+  // switched to the shape of this window instead of being cropped or letterboxed.
+  const [deviceModes,    setDeviceModes]    = useState<string[]>([])
+  const [deviceRes,      setDeviceRes]      = useState('')
+  const [resBusy,        setResBusy]        = useState(false)
   const [popoutHint,     setPopoutHint]     = useState(!!popout)
 
   // ── Control ───────────────────────────────────────────────────────────────
@@ -635,6 +640,18 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
               }, 2000)
             }
             break
+          case 'screen:resolutions': {
+            const modes = Array.isArray(msg.payload?.modes) ? msg.payload.modes : []
+            setDeviceModes(modes)
+            if (msg.payload?.current) setDeviceRes(String(msg.payload.current))
+            setResBusy(false)
+            break
+          }
+          case 'screen:resolution_applied': {
+            if (msg.payload?.ok && msg.payload?.current) setDeviceRes(String(msg.payload.current))
+            setResBusy(false)
+            break
+          }
           case 'screen:monitors':
             setMonitors(msg.payload?.monitors || []); break
           case 'screen:state':
@@ -1669,12 +1686,33 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
               title={tr('viewer_quality_settings')}>
               <Settings2 size={13}/>
             </button>
-            {showSettings && qualityPos && createPortal(
+            {showSettings && qualityPos && (() => { try { sendWs({ type: 'screen:get_resolutions', payload: {} }) } catch {} ; return true })() && createPortal(
               <div className="fixed inset-0 z-[300]" onClick={() => setShowSettings(false)} onContextMenu={e => e.preventDefault()}>
                 <div className="absolute rounded-xl border shadow-2xl"
                      style={{ top: qualityPos.top, left: qualityPos.left, width: 268, maxHeight: 'min(72vh, 460px)', overflowY: 'auto',
                               background: '#0b1622', borderColor: 'rgba(148,163,184,0.35)', color: '#e2e8f0' }}
                      onClick={e => e.stopPropagation()}>
+                <div className="px-3 py-2 border-b border-line">
+                  <label className="block text-[10px] uppercase tracking-wider text-muted mb-1.5">
+                    {tr('viewer_device_resolution')}
+                  </label>
+                  <select
+                    value={deviceRes}
+                    disabled={resBusy || deviceModes.length === 0}
+                    onChange={e => {
+                      const [w, h] = String(e.target.value).split('x').map(Number)
+                      if (!w || !h) return
+                      setResBusy(true)
+                      sendWs({ type: 'screen:set_resolution', payload: { width: w, height: h } })
+                    }}
+                    className="w-full text-xs rounded-lg px-2 py-1.5 bg-surface2 text-ink border border-line outline-none focus:border-primary disabled:opacity-60">
+                    {deviceModes.length === 0 && <option value="">{tr('viewer_device_resolution_na')}</option>}
+                    {deviceModes.map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                  <p className="text-[10px] text-muted mt-1">
+                    {resBusy ? tr('viewer_device_resolution_busy') : tr('viewer_device_resolution_hint')}
+                  </p>
+                </div>
                 <div className="px-3 py-2 border-b border-line">
                   <label className="block text-[10px] uppercase tracking-wider text-muted mb-1.5">
                     {tr('viewer_quality_resolution')}

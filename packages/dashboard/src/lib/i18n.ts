@@ -303,6 +303,10 @@ const T = {
     chat_rec_video_label: 'تسجيل فيديو — {s} ثانية',
     chat_recording_progress: 'جارٍ التسجيل... {p}%',
     chat_input_hint: 'Enter للإرسال · Shift+Enter لسطر جديد',
+    viewer_device_resolution: 'دقة شاشة الجهاز',
+    viewer_device_resolution_hint: 'تغيير دقة الجهاز البعيد لتناسب النافذة (ويندوز)',
+    viewer_device_resolution_busy: 'جارٍ تطبيق الدقة...',
+    viewer_device_resolution_na: 'غير متاح لهذا الجهاز',
     // --- ScreenViewer (R6 i18n debt) ---
     viewer_back: 'رجوع', 
     viewer_home: 'الرئيسية', 
@@ -724,6 +728,10 @@ const T = {
     chat_rec_video_label: 'Video recording — {s}s',
     chat_recording_progress: 'Recording... {p}%',
     chat_input_hint: 'Enter to send · Shift+Enter for a new line',
+    viewer_device_resolution: 'Device screen resolution',
+    viewer_device_resolution_hint: 'Change the remote display mode to match this window (Windows)',
+    viewer_device_resolution_busy: 'Applying...',
+    viewer_device_resolution_na: 'Not available for this device',
     // --- ScreenViewer (R6 i18n debt) ---
     viewer_back: 'Back', 
     viewer_home: 'Home', 

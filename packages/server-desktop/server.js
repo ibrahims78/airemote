@@ -1427,6 +1427,16 @@ function handleAgentWs(socket) {
       return
     }
 
+    if (type === 'agent:screen_resolutions') {
+      sendToScreenViewers(deviceId, { type: 'screen:resolutions', payload: { modes: payload.modes || [], current: payload.current || '', error: payload.error || '' }, timestamp: Date.now() })
+      return
+    }
+
+    if (type === 'agent:screen_resolution_applied') {
+      sendToScreenViewers(deviceId, { type: 'screen:resolution_applied', payload: { ok: !!payload.ok, width: payload.width, height: payload.height, current: payload.current || '', result: payload.result || '', error: payload.error || '' }, timestamp: Date.now() })
+      return
+    }
+
     if (type === 'agent:screen_monitors') {
       sendToScreenViewers(deviceId, { type: 'screen:monitors', payload: { monitors: payload.monitors } })
       return
@@ -2078,6 +2088,12 @@ function handleScreenWs(socket, request, user) {
       case 'screen:set_monitor':
         sendJson(rec.ws, { type: 'server:screen_set_monitor', payload: { sessionId, monitorId: payload.monitorId || 0 }, timestamp: Date.now() })
         sendJson(rec.ws, { type: 'server:screen_start', payload: { sessionId, fps, quality, maxWidth, binary: true, monitorId: payload.monitorId || 0 }, timestamp: Date.now() })
+        break
+      case 'screen:get_resolutions':
+        sendJson(rec.ws, { type: 'server:screen_get_resolutions', payload: { sessionId }, timestamp: Date.now() })
+        break
+      case 'screen:set_resolution':
+        sendJson(rec.ws, { type: 'server:screen_set_resolution', payload: { sessionId, width: payload.width, height: payload.height }, timestamp: Date.now() })
         break
       case 'screen:get_monitors':
         sendJson(rec.ws, { type: 'server:screen_get_monitors', payload: { sessionId }, timestamp: Date.now() })
@@ -2790,7 +2806,7 @@ let TLS_CERT_PATH = null
 
 const AGENT_VERSION = '3.8.7'   // agent artifact version (downloads)
 let serverLogger = null   // set in start(); lets WS handlers write to the app log
-const SERVER_VERSION = '3.8.23'  // server build version (/health)
+const SERVER_VERSION = '3.8.24'  // server build version (/health)
 
 async function start(config) {
   if (started) return

@@ -48,7 +48,7 @@ const RECONNECT_MAX  = 30_000
 const CONFIG_FILE    = path.join(app.getPath('userData'), 'airemote-config.json')
 const LOG_MAX        = 300
 // v3.8.12 — مصدر واحد للحقيقة: رقم package.json لا نصّ ثابت داخل main.js.
-const AGENT_VERSION  = (() => { try { return require('./package.json').version } catch { return '3.8.23' } })()
+const AGENT_VERSION  = (() => { try { return require('./package.json').version } catch { return '3.8.24' } })()
 
 // v3.7.0 — TLS policy for the relay connection.
 //   AGENT_CA_CERT       path to a PEM certificate to trust (self-signed servers)
@@ -695,6 +695,21 @@ function handleMsg(msg) {
       break
     }
 
+    case 'server:screen_get_resolutions': {
+      runDisplayScript(0, 0, (r) => {
+        send({ type: 'agent:screen_resolutions', payload: { modes: r.modes, current: r.current, error: r.err }, timestamp: Date.now() })
+      })
+      break
+    }
+    case 'server:screen_set_resolution': {
+      const w = Math.max(640, Math.min(5120, parseInt(msg.payload && msg.payload.width, 10) || 0))
+      const h = Math.max(480, Math.min(2880, parseInt(msg.payload && msg.payload.height, 10) || 0))
+      runDisplayScript(w, h, (r) => {
+        const ok = r.result === 'apply:0'
+        send({ type: 'agent:screen_resolution_applied', payload: { ok, width: w, height: h, current: r.current, result: r.result, error: r.err }, timestamp: Date.now() })
+      })
+      break
+    }
     case 'server:screen_rotate':
     case 'server:screen_rotate_auto': {
       // Windows does not expose per-application display rotation to a normal
@@ -1572,6 +1587,67 @@ function scheduleReconnect() {
 function clearTimers() {
   if (heartbeatTimer) { clearInterval(heartbeatTimer); heartbeatTimer = null }
   if (reconnectTimer) { clearTimeout(reconnectTimer);  reconnectTimer = null }
+}
+
+
+// v3.8.24 - remote display mode (Windows): enumerate + apply through ChangeDisplaySettingsEx.
+const DISPLAY_PS = String.raw`
+param([int]$Width = 0, [int]$Height = 0)
+$ErrorActionPreference = 'Stop'
+$code = @'
+using System;
+using System.Runtime.InteropServices;
+public class DM {
+  [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
+  public struct DEVMODE {
+    [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string dmDeviceName;
+    public short dmSpecVersion; public short dmDriverVersion; public short dmSize; public short dmDriverExtra;
+    public int dmFields; public int dmPositionX; public int dmPositionY; public int dmDisplayOrientation; public int dmDisplayFixedOutput;
+    public short dmColor; public short dmDuplex; public short dmYResolution; public short dmTTOption; public short dmCollate;
+    [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 32)] public string dmFormName;
+    public short dmLogPixels; public int dmBitsPerPel; public int dmPelsWidth; public int dmPelsHeight;
+    public int dmDisplayFlags; public int dmDisplayFrequency; public int dmICMMethod; public int dmICMIntent;
+    public int dmMediaType; public int dmDitherType; public int dmReserved1; public int dmReserved2;
+    public int dmPanningWidth; public int dmPanningHeight;
+  }
+  [DllImport("user32.dll", CharSet = CharSet.Ansi)] static extern bool EnumDisplaySettings(string dev, int num, ref DEVMODE dm);
+  [DllImport("user32.dll", CharSet = CharSet.Ansi)] static extern int ChangeDisplaySettingsEx(string dev, ref DEVMODE dm, IntPtr h, int flags, IntPtr p);
+  static DEVMODE New() { DEVMODE d = new DEVMODE(); d.dmDeviceName = new string(new char[32]); d.dmFormName = new string(new char[32]); d.dmSize = (short)Marshal.SizeOf(typeof(DEVMODE)); return d; }
+  public static string Current() { DEVMODE d = New(); if (!EnumDisplaySettings(null, -1, ref d)) return ""; return d.dmPelsWidth + "x" + d.dmPelsHeight; }
+  public static string List() {
+    var seen = new System.Collections.Generic.HashSet<string>(); var parts = new System.Collections.Generic.List<string>();
+    for (int i = 0; i < 400; i++) { DEVMODE d = New(); if (!EnumDisplaySettings(null, i, ref d)) break; if (d.dmBitsPerPel < 32) continue; string k = d.dmPelsWidth + "x" + d.dmPelsHeight; if (seen.Add(k)) parts.Add(k); }
+    return string.Join(",", parts);
+  }
+  public static string Apply(int w, int h) {
+    DEVMODE d = New(); d.dmPelsWidth = w; d.dmPelsHeight = h; d.dmFields = 0x80000 | 0x100000;
+    int t = ChangeDisplaySettingsEx(null, ref d, IntPtr.Zero, 0x2, IntPtr.Zero); if (t != 0) return "test:" + t;
+    int r = ChangeDisplaySettingsEx(null, ref d, IntPtr.Zero, 0x1, IntPtr.Zero); return "apply:" + r;
+  }
+}
+'@
+Add-Type -TypeDefinition $code -Language CSharp | Out-Null
+Write-Output ("CURRENT=" + [DM]::Current())
+Write-Output ("MODES=" + [DM]::List())
+if ($Width -gt 0 -and $Height -gt 0) { Write-Output ("RESULT=" + [DM]::Apply($Width, $Height)) }
+`
+
+function runDisplayScript(width, height, cb) {
+  let file = ''
+  try {
+    file = path.join(os.tmpdir(), 'airemote-display-' + Date.now() + '.ps1')
+    fs.writeFileSync(file, DISPLAY_PS, 'utf8')
+    const args = ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', file]
+    if (width > 0 && height > 0) args.push('-Width', String(width), '-Height', String(height))
+    execFile('powershell', args, { windowsHide: true, timeout: 20000 }, (err, stdout) => {
+      try { fs.unlinkSync(file) } catch {}
+      const out = String(stdout || '')
+      const cur = (out.match(/CURRENT=([0-9x]+)/) || [])[1] || ''
+      const modes = ((out.match(/MODES=([0-9x,]+)/) || [])[1] || '').split(',').filter(Boolean)
+      const res = (out.match(/RESULT=([a-z0-9:]+)/) || [])[1] || ''
+      cb({ err: err ? String(err.message || err) : '', current: cur, modes, result: res })
+    })
+  } catch (e) { cb({ err: String(e.message || e), current: '', modes: [], result: '' }) }
 }
 
 function send(msg) {
