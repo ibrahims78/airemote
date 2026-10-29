@@ -2525,8 +2525,8 @@ function exportRecordingMp4(r, dir) {
   try {
     fs.mkdirSync(tmp, { recursive: true })
     const durationSec = Math.max(1, (Date.now() - r.startedAt) / 1000)
-    const fps = Math.min(30, Math.max(1, Math.round(frames.length / durationSec)))
-    const perFrame = 1 / fps
+    let fps = Math.min(30, Math.max(1, Math.round(frames.length / durationSec)))
+    let perFrame = 1 / fps
 
     // v3.8.11 - a recording can mix WebP and JPEG frames (the agent falls back to
     // JPEG when WebP is slow). Writing them all with the first frame's extension
@@ -2534,6 +2534,49 @@ function exportRecordingMp4(r, dir) {
     // keeps its real extension and the concat demuxer carries the timing.
     // v3.8.14 - frames already live in r.frameDir (written while recording), so the
     // muxer only writes the concat list: no second full copy of the session in RAM.
+    // v3.8.15 - the agent alternates WebP and JPEG, and a mislabelled frame makes the
+    // concat demuxer abort with "missing RIFF tag" (exit 69, a 5-minute clip became
+    // 32 seconds). Every frame is re-sniffed here and renamed to its real extension.
+    // v3.8.16 - the agent alternates WebP and JPEG. The concat demuxer restarts the
+    // timeline whenever the codec changes, so a 3-minute clip was muxed to 69 seconds.
+    // Frames are sniffed, relabelled to their real extension, and only the dominant
+    // format is kept so the demuxer sees one uniform stream; fps is derived from the
+    // frames that actually survive.
+    const sniffed = []
+    for (const f of frames) {
+      if (!f || !f.name) continue
+      const abs = path.join(r.frameDir, f.name)
+      let head = null
+      try { head = fs.readFileSync(abs).subarray(0, 16) } catch { continue }
+      if (!head || head.length < 12) continue
+      const isWebp = head.toString('ascii', 0, 4) === 'RIFF' && head.toString('ascii', 8, 12) === 'WEBP'
+      const isJpeg = head[0] === 0xFF && head[1] === 0xD8
+      const isPng = head[0] === 0x89 && head[1] === 0x50
+      const kind = isWebp ? '.webp' : isJpeg ? '.jpg' : isPng ? '.png' : '.bin'
+      const want = f.name.replace(/\.[^.]+$/, kind)
+      if (want !== f.name) {
+        try { fs.renameSync(abs, path.join(r.frameDir, want)); f.name = want } catch { continue }
+      }
+      if (kind !== '.bin') sniffed.push({ name: f.name, kind })
+    }
+    const byKind = {}
+    for (const f of sniffed) byKind[f.kind] = (byKind[f.kind] || 0) + 1
+    const dominant = Object.keys(byKind).sort((a, b) => byKind[b] - byKind[a])[0] || ''
+    const kept = sniffed.filter(f => f.kind === dominant)
+    frames.length = 0
+    for (const f of kept) frames.push(f)
+    if (sniffed.length !== kept.length) {
+      try { serverLogger && serverLogger.info('recording', 'uniform mux kept=' + kept.length + '/' + sniffed.length + ' format=' + dominant) } catch {}
+    }
+    if (!frames.length) {
+      muxingRecordings.delete(r.recId)
+      try { if (r.frameDir) fs.rmSync(r.frameDir, { recursive: true, force: true }) } catch {}
+      try { serverLogger && serverLogger.warn('recording', 'no usable frames rec=' + String(r.recId).slice(0, 8)) } catch {}
+      return
+    }
+    fps = Math.min(30, Math.max(1, Math.round(frames.length / durationSec)))
+    perFrame = 1 / fps
+
     const list = ['ffconcat version 1.0']
     for (let i = 0; i < frames.length; i++) {
       const name = frames[i].name
@@ -2570,6 +2613,7 @@ function exportRecordingMp4(r, dir) {
           const audioSec = audio ? (audio.length / 32000) : 0
           try { serverLogger && serverLogger.info('recording', 'video ' + String(r.recId).slice(0, 8) + ' ' + mb.toFixed(1) + 'MB fps=' + fps + ' frames=' + frames.length + ' audio=' + audioSec.toFixed(1) + 's') } catch {}
         } else {
+          try { if (fs.existsSync(out)) fs.rmSync(out, { force: true }) } catch {}
           try { serverLogger && serverLogger.warn('recording', 'ffmpeg exit ' + code + ' ' + err.replace(/\s+/g, ' ').slice(0, 300)) } catch {}
         }
       } catch {}
@@ -2651,7 +2695,7 @@ let TLS_CERT_PATH = null
 
 const AGENT_VERSION = '3.8.7'   // agent artifact version (downloads)
 let serverLogger = null   // set in start(); lets WS handlers write to the app log
-const SERVER_VERSION = '3.8.13'  // server build version (/health)
+const SERVER_VERSION = '3.8.16'  // server build version (/health)
 
 async function start(config) {
   if (started) return
@@ -4764,10 +4808,14 @@ if ($target -eq $null) { 'name-not-found' } else {
     if (p.role !== 'admin' && rec.user_id !== p.userId) return reply.code(403).send({ error: 'Forbidden' })
     const dir = path.join(path.dirname(_config.dbPath || '.'), 'recordings')
     const mp4Path = path.join(dir, rec.id + '.mp4')
+    // v3.8.15 - ffmpeg creates the output file before it finishes writing it, so
+    // "file exists" is not "ready": muxing wins, and mp4 is only reported once the
+    // row points at it (the exporter updates file_path on exit code 0).
     let state = 'missing'
-    if (fs.existsSync(mp4Path)) state = 'mp4'
-    else if (muxingRecordings.has(rec.id)) state = 'muxing'
+    if (muxingRecordings.has(rec.id)) state = 'muxing'
+    else if (rec.file_path && rec.file_path.toLowerCase().endsWith('.mp4') && fs.existsSync(rec.file_path)) state = 'mp4'
     else if (rec.file_path && fs.existsSync(rec.file_path)) state = 'zip'
+    else if (fs.existsSync(mp4Path)) state = 'mp4'
     return { id: rec.id, state, endedAt: rec.ended_at, sizeMb: rec.size_mb || 0 }
   })
 
