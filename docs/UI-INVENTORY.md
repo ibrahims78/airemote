@@ -57,7 +57,7 @@
 
 **القياس:** عدد أدوات اللون الصريحة (مثل `bg-slate-800`, `text-sky-400`, `border-l-yellow-400`, `shadow-brand-teal/25`) لكل ملف في `src`. عمود «يستخدم المكتبة» يعني استيراداً فعلياً من `components/ui`.
 
-**الحصيلة الحالية:** **1061** صنفاً صريحاً · **11** ملفاً على المكتبة · **11** شاشة/ملفاً بصفر أصناف صريحة.
+**الحصيلة الحالية:** **765** صنفاً صريحاً · **12** ملفاً على المكتبة · **15** شاشة/ملفاً بصفر أصناف صريحة.
 
 > **تصحيح قياس (2026-10-28):** البوابة كانت لا ترصد الاتجاهات (`border-l-*`) ولا `shadow-*` ولا `navy-*` ولا `text-white`، فمرّت أصناف مثل `border-l-yellow-400` بلا رصد. وُسِّعت في `scripts/scan-ui-colors.cjs`، فارتفعت أرقام الملفات غير المحوَّلة (مثال `AiChatPanel`: 276 ← 345) وانخفض الإجمالي لأن أربع صفحات صُفِّرت في الجولة نفسها.
 >
@@ -67,25 +67,26 @@
 |---|---|---|---|
 | `components/AiChatPanel.tsx` | 444 | ❌ | — (سطح تفاعلي: قرار مؤجّل) |
 | `components/ScreenViewer.tsx` | 281 | ❌ | — (سطح بث: قرار مؤجّل) |
-| `components/CommandRunner.tsx` | 80 | ❌ | ❌ / ✅ / ✅ / ❌ |
-| `components/PTYTerminal.tsx` | 55 | ❌ | — / — / ✅ / ❌ |
-| `components/SettingsExtra.tsx` | 59 | ❌ | ❌ / — / ❌ / ❌ |
-| `components/SSHTerminal.tsx` | 44 | ❌ | — / — / ✅ / ❌ |
+| `components/CommandRunner.tsx` | **0** | ✅ (رموز) | ❌ / ✅ / ✅ / ❌ |
+| `components/PTYTerminal.tsx` | **0** | ✅ (كروم) | — / — / ✅ / ❌ |
+| `components/SettingsExtra.tsx` | **0** | ✅ | ❌ / — / ✅ / ❌ |
+| `components/SSHTerminal.tsx` | **0** | ✅ (كروم) | — / — / ✅ / ❌ |
 | `components/MonitoringCharts.tsx` | 40 | ❌ | ❌ / ✅ / ❌ / ❌ |
-| `components/CommandPalette.tsx` | 16 | ❌ | — / ✅ / — / ❌ |
-| `components/ToastContainer.tsx` | 16 | ❌ | — / — / — / ❌ |
-| `App.tsx` | 9 | ❌ | — / — / — / ❌ |
-| `components/ExecConsole.tsx` | 9 | ❌ | — / — / ✅ / ❌ |
-| `components/ErrorBoundary.tsx` | 7 | ❌ | — / — / ✅ / ❌ |
+| `components/CommandPalette.tsx` | **0** | ✅ (رموز) | — / ✅ / — / ❌ |
+| `components/ToastContainer.tsx` | **0** | ✅ (رموز) | — / — / — / ❌ |
+| `App.tsx` | **0** | ✅ (رموز) | — / — / — / ❌ |
+| `components/ExecConsole.tsx` | **0** | ✅ (رموز) | — / — / ✅ / ❌ |
+| `components/ErrorBoundary.tsx` | **0** | ✅ (رموز) | — / — / ✅ / ❌ |
 | `components/FileManager.tsx` | **0** | ✅ | ✅ / ✅ / ✅ / ✅ |
 | `components/TransferQueue.tsx` | **0** | ✅ | ✅ / ✅ / ✅ / ✅ |
-| `pages/ScreenPopoutPage.tsx` | 1 | ❌ | — / — / ❌ / ❌ |
+| `pages/ScreenPopoutPage.tsx` | **0** | ✅ (رموز) | — / — / ❌ / ❌ |
 | `pages/AiPage.tsx` | **0** | ❌ | ❌ / ✅ / ❌ / ❌ |
 | `pages/AuditPage.tsx` | **0** | ✅ | ✅ / ✅ / ✅ / ✅ |
 | `pages/DevicesPage.tsx` | **0** | ✅ | ✅ / ✅ / ✅ / ✅ |
 | `pages/DeviceWorkspacePage.tsx` | **0** | ✅ | — / ✅ / ✅ / ❌ |
 | `pages/HelpPage.tsx` | **0** | ✅ | ❌ / ✅ / ✅ / ❌ |
 | `pages/LoginPage.tsx` | **0** | ❌ | ✅ / — / ✅ / ❌ |
+| `pages/OverviewPage.tsx` | **0** | ✅ | ✅ / ✅ / ✅ / ✅ |
 | `pages/NotificationsPage.tsx` | **0** | ✅ | ✅ / ✅ / ✅ / ✅ |
 | `pages/SessionsPage.tsx` | **0** | ✅ | ✅ / ✅ / ✅ / ✅ |
 | `pages/SettingsPage.tsx` | **0** | ✅ | ✅ / — / ✅ / ✅ |
@@ -94,7 +95,7 @@
 
 **نطاق الاستثناء:** `AiChatPanel` و`ScreenViewer` سطحان تفاعليان بقرار مكتوب (`docs/ADR-R6-INTERACTIVE-SURFACES-AR.md`): الكروم يدخل البوابة، وألوان المحتوى تُثبَّت في قائمة استثناء صريحة. `LoginPage` سطح علامة يستهلك CSS خاصاً به.\n\n**معيار الخروج:** صفر صنف صريح في كل ملف يُعلن «محوَّلاً»، وليس صفراً في المجموع فقط. الملفات المتبقية أعلاه هي قائمة العمل الحقيقية لـR6.
 
-**ملاحظة (مُحدَّثة 2026-10-29):** `DevicesPage` صارت صفراً بعد تحويل `WolModal` و`AgentInstallModal` إلى `Modal` المشترك (الشريحة 15)، وكذلك `HelpPage` بعد تحويل نافذة About وسحب فروع `isLight`. لم يبق في قائمة «صفر صنف صريح» من الشاشات إلا `AiChatPanel` و`ScreenViewer` بقرار مكتوب، و`LoginPage` بسطح CSS خاص، و`OverviewPage` (856 حرفاً عربياً مباشراً، لم تُمس بعد).
+**ملاحظة (مُحدَّثة 2026-10-29 — الشريحة 16):** لم يبق في قائمة «أصناف صريحة» إلا AiChatPanel (444) وScreenViewer (281) بقرار مكتوب، وMonitoringCharts (40) بنداً مستقلاً. OverviewPage صُفِّرت أصنافها أصلاً (0) لكن أُخرجت 856 حرفاً عربياً مباشراً إلى i18n ونُقلت إلى المكتبة. الدفعة الطرفية والبواقي الستة صُفِّرت في هذه الشريحة (238 + 62 ← 0)، والقياس الكلي **765** صنفاً و**12** ملفاً على المكتبة. تفصيل الأدلة: outputs/verify-2026-10-29/r6-contrast/REPORT-AR.md.
 
 ---
 
