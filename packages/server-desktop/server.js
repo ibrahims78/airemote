@@ -1272,6 +1272,11 @@ function handleAgentWs(socket) {
     }
 
     if (type === 'agent:heartbeat') {
+      // v3.8.21 - an Android agent in Doze can be slow to answer a protocol ping, but it
+      // still sends heartbeats. Treat a heartbeat as proof of life: otherwise the socket
+      // is terminated 12s after the first missed pong, which is the "disconnects when I
+      // stop using it" symptom.
+      clearTimeout(pongTimer); pongTimer = null; schedulePing()
       const { stats } = payload
       markDeviceOnline(deviceId, null)
       const rec = agentSockets.get(deviceId)
@@ -2785,7 +2790,7 @@ let TLS_CERT_PATH = null
 
 const AGENT_VERSION = '3.8.7'   // agent artifact version (downloads)
 let serverLogger = null   // set in start(); lets WS handlers write to the app log
-const SERVER_VERSION = '3.8.20'  // server build version (/health)
+const SERVER_VERSION = '3.8.21'  // server build version (/health)
 
 async function start(config) {
   if (started) return

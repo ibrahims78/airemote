@@ -48,7 +48,7 @@ const RECONNECT_MAX  = 30_000
 const CONFIG_FILE    = path.join(app.getPath('userData'), 'airemote-config.json')
 const LOG_MAX        = 300
 // v3.8.12 — مصدر واحد للحقيقة: رقم package.json لا نصّ ثابت داخل main.js.
-const AGENT_VERSION  = (() => { try { return require('./package.json').version } catch { return '3.8.20' } })()
+const AGENT_VERSION  = (() => { try { return require('./package.json').version } catch { return '3.8.21' } })()
 
 // v3.7.0 — TLS policy for the relay connection.
 //   AGENT_CA_CERT       path to a PEM certificate to trust (self-signed servers)

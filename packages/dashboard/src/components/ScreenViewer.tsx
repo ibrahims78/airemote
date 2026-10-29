@@ -221,6 +221,8 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
   const recStartRef        = useRef(0)
   const idleTimerRef       = useRef<ReturnType<typeof setTimeout> | null>(null)
   const moveThrottleRef    = useRef(0)
+  const localCursorRef     = useRef<HTMLDivElement | null>(null)
+  const cursorIdleRef      = useRef<ReturnType<typeof setTimeout> | null>(null)
   const permissionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pwActiveRef        = useRef(false)
   const presetRef          = useRef(preset)
@@ -928,7 +930,22 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
     }
 
     if (!controlEnabled) return
-    const now = Date.now(); if (now - moveThrottleRef.current < 33) return; moveThrottleRef.current = now
+    // v3.8.21 - the remote cursor can only move when a frame arrives (8-20 fps), which
+    // reads as lag. A local overlay follows the pointer at event rate and hides itself
+    // once the pointer rests, so the feel is direct without faking the remote state.
+    const dot = localCursorRef.current
+    if (dot) {
+      const area = canvasAreaRef.current
+      const box = area ? area.getBoundingClientRect() : null
+      if (box) {
+        dot.style.transform = `translate(${e.clientX - box.left}px, ${e.clientY - box.top}px)`
+        dot.style.opacity = '1'
+      }
+      if (cursorIdleRef.current) clearTimeout(cursorIdleRef.current)
+      cursorIdleRef.current = setTimeout(() => { if (dot) dot.style.opacity = '0' }, 1200)
+    }
+    // 60 Hz with the unchanged coalescing guard is smooth without flooding the socket.
+    const now = performance.now(); if (now - moveThrottleRef.current < 16) return; moveThrottleRef.current = now
     sendMouse('move', e)
   }, [controlEnabled, sendMouse])
 
@@ -1754,6 +1771,12 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
       {started && <div ref={canvasAreaRef} className={clsx('flex-1 min-h-0 relative flex items-center justify-center bg-canvas', fitMode === 'actual' ? 'overflow-auto' : 'overflow-hidden', popout && pinned && 'pt-14')}
         onClick={() => { setShowSettings(false); setShowMonitors(false); setShowClipboard(false) }}>
 
+        <div
+          ref={localCursorRef}
+          aria-hidden
+          className="pointer-events-none absolute left-0 top-0 z-10 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border border-ink/70 bg-primary/80 opacity-0 transition-opacity duration-200 shadow-lg"
+          style={{ willChange: 'transform' }}
+        />
         <canvas ref={canvasRef}
           className={clsx(
             'block shrink-0 transition-opacity duration-300',
@@ -1770,7 +1793,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
           }}
           onMouseMove={handleMouseMove}
           onMouseEnter={e => { setCursorVisible(true); if (controlEnabled) sendMouse('move', e) }}
-          onMouseLeave={() => setCursorVisible(false)}
+          onMouseLeave={() => { setCursorVisible(false); if (localCursorRef.current) localCursorRef.current.style.opacity = '0' }}
           onMouseDown={e => sendMouse('down', e)}
           onMouseUp={e => sendMouse('up', e)}
           onContextMenu={e => e.preventDefault()}
