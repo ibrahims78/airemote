@@ -70,7 +70,7 @@
 | GitHub | كل العمل محلي؛ لا push ولا Release | قواعد المشروع |
 
 **نقطة الاستئناف الدقيقة (مُحدَّثة 2026-10-29):** **R6 — ما بعد الشريحة 15:** النوافذ اليدوية أُغلقت في `DevicesPage` و`HelpPage`، والصفحات `Notifications`/`Setup`/`Help`/`Devices` صفر أصناف صريحة على المكتبة. **التالي بالترتيب:** (1) تباين الشاشات الفعلي بالبكسل على 360/768/1280/1920 فاتحة وداكنة، (2) `OverviewPage` (856 حرفاً عربياً مباشراً — أكبر بند i18n متبقٍّ)، (3) الدفعة الطرفية `CommandRunner`/`PTYTerminal`/`SSHTerminal`/`SettingsExtra` (233 صنفاً صريحاً مجتمعة) مع قرار الدمج، (4) بناء **3.8.13** وتثبيته. أما `AiChatPanel` (444) و`ScreenViewer` (281) فبقرار مكتوب في `docs/ADR-R6-INTERACTIVE-SURFACES-AR.md`.
-**مرجع التسليم الكامل:** `docs/HANDOFF-2026-10-28-R6-AR.md` (الحالة، الأدوات، البيئة، وما تبقّى من R6) ثم `docs/PLAN-STATUS.md` (سجل المراحل والقيود وأوامر التحقق).
+**مرجع التسليم الكامل (الأحدث):** `docs/HANDOFF-2026-10-29-R6-CLOSED-AR.md` — الحالة بعد ختام R6، الأدوات، المفتاح، الأجهزة، ثم `docs/PLAN-STATUS.md` (سجل المراحل والقيود وأوامر التحقق). الأمر الجاهز للحساب الجديد: `docs/PROMPT-NEW-ACCOUNT-2026-10-29-AR.md`.
 
 **آخر نسخة مبنية:** `releases/server-windows/AiRemote-Server-Setup-v3.8.13-x64.exe` (121.2MB) + `releases/agent-windows/AiRemote-Agent-Setup-v3.8.13-x64.exe` (76.4MB) — **غير مثبَّتة**. **المثبَّت الحالي:** 3.8.12. الدليل: `outputs/verify-2026-10-29/r6-release/REPORT-AR.md`.
 
