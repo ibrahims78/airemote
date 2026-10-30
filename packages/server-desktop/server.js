@@ -48,6 +48,16 @@ const ptyClients        = new Map()   // sessionId → Set<WebSocket>
 const screenViewers     = new Map()   // deviceId  → Set<WebSocket>
 const screenSessions    = new Map()   // sessionId → { deviceId, viewers, startedAt, connectTimer }
 const deviceScreenSess  = new Map()   // deviceId  → sessionId
+// v3.8.28 (R7) - observability registry. Cardinality stays bounded on purpose:
+// HTTP is aggregated by method+status only, everything else has fixed labels.
+const metrics = {
+  http: new Map(),        // "GET 200" -> count
+  httpCount: 0,
+  httpSecondsSum: 0,
+  errors: 0,
+}
+let shuttingDown = false
+
 // Late joiner support: a capture that is already running only emits delta
 // frames, so a viewer that joins later never learns the screen size and the
 // canvas stays blank (black standalone window). Keep the last FULL frame per
@@ -2804,9 +2814,9 @@ let _startedAt = null
 let TLS_ACTIVE   = false
 let TLS_CERT_PATH = null
 
-const AGENT_VERSION = '3.8.27'   // agent artifact version (downloads)
+const AGENT_VERSION = '3.8.28'   // agent artifact version (downloads)
 let serverLogger = null   // set in start(); lets WS handlers write to the app log
-const SERVER_VERSION = '3.8.27'  // server build version (/health)
+const SERVER_VERSION = '3.8.28'  // server build version (/health)
 
 async function start(config) {
   if (started) return
@@ -2925,11 +2935,23 @@ async function start(config) {
   await fastify.register(frateLimit, { global: false, max: 200, timeWindow: '1 minute' })
   await fastify.register(fws)
 
+  // v3.8.28 (R7) - count every response once; /metrics reads these counters.
+  fastify.addHook('onResponse', async (req, reply) => {
+    try {
+      const key = req.method + ' ' + reply.statusCode
+      metrics.http.set(key, (metrics.http.get(key) || 0) + 1)
+      metrics.httpCount++
+      metrics.httpSecondsSum += (reply.elapsedTime || 0) / 1000
+      if (reply.statusCode >= 500) metrics.errors++
+    } catch { }
+  })
+
   // معالج خطأ مخصّص لحالة رفض الدور فقط؛ بقية الأخطاء تمرّ للمعالج الافتراضي.
   fastify.setErrorHandler((err, req, reply) => {
     if (err && err.code === 'role_too_low') {
       return reply.code(403).send({ error: err.message, code: 'role_too_low' })
     }
+    metrics.errors++
     reply.send(err)
   })
 
@@ -3164,6 +3186,81 @@ async function start(config) {
     status: 'ok', version: SERVER_VERSION, tls: TLS_ACTIVE,
     uptime: Math.floor(process.uptime()), port, isDesktop: true
   }))
+
+  // v3.8.28 (R7) - readiness. /health says the process is alive; /ready says it can
+  // actually serve a session: database reachable, schema present, not shutting down.
+  fastify.get('/ready', async (req, reply) => {
+    const checks = {}
+    let ok = true
+    try {
+      const row = db.prepare('SELECT 1 AS one').get()
+      checks.db = row && Number(row.one) === 1 ? 'ok' : 'empty'
+    } catch (e) { checks.db = 'error'; }
+    if (checks.db !== 'ok') ok = false
+    try {
+      const c = db.prepare('SELECT COUNT(*) AS c FROM devices').get()
+      checks.schema = c && Number(c.c) >= 0 ? 'ok' : 'empty'
+    } catch (e) { checks.schema = 'missing'; }
+    if (checks.schema !== 'ok') ok = false
+    if (shuttingDown) checks.shutdown = 'in-progress'
+    if (shuttingDown) ok = false
+    reply.code(ok ? 200 : 503).header('cache-control', 'no-store')
+    return { ready: ok, version: SERVER_VERSION, uptime: Math.floor(process.uptime()), checks }
+  })
+
+  // v3.8.28 (R7) - Prometheus text format. Authenticated: counts are operational
+  // data, not public. Labels are fixed or derived from a bounded set.
+  fastify.get('/metrics', async (req, reply) => {
+    const user = authMiddleware(req, reply); if (!user) return
+    const out = []
+    const v = (name, help, type, value, labels) => {
+      out.push('# HELP ' + name + ' ' + help)
+      out.push('# TYPE ' + name + ' ' + type)
+      out.push(name + (labels ? '{' + labels + '}' : '') + ' ' + value)
+    }
+    let devicesTotal = 0
+    try { devicesTotal = Number(db.prepare('SELECT COUNT(*) AS c FROM devices').get().c) || 0 } catch { }
+    let viewers = 0
+    try { for (const sess of screenSessions.values()) viewers += sess && sess.viewers ? sess.viewers.size : 0 } catch { }
+    const relayByState = new Map()
+    try { for (const sess of relaySessions.values()) { const st = sess.state || 'unknown'; relayByState.set(st, (relayByState.get(st) || 0) + 1) } } catch { }
+
+    v('airemote_up', '1 while the server answers HTTP.', 'gauge', 1)
+    v('airemote_uptime_seconds', 'Process uptime in seconds.', 'gauge', Math.floor(process.uptime()))
+    out.push('# HELP airemote_info Build and runtime identity.')
+    out.push('# TYPE airemote_info gauge')
+    out.push('airemote_info{version="' + SERVER_VERSION + '",engine="' + String(db.__engine || 'better-sqlite3')
+      + '",tls="' + (TLS_ACTIVE ? 1 : 0) + '"} 1')
+    v('airemote_devices_total', 'Devices known to the server.', 'gauge', devicesTotal)
+    v('airemote_devices_online', 'Devices with a live agent socket.', 'gauge', agentSockets.size)
+    v('airemote_ws_clients', 'Dashboard websocket clients.', 'gauge', clientSockets.size)
+    v('airemote_screen_sessions', 'Active screen capture sessions.', 'gauge', screenSessions.size)
+    v('airemote_screen_viewers', 'Sockets watching a screen session.', 'gauge', viewers)
+    out.push('# HELP airemote_relay_sessions Relay sessions by state.')
+    out.push('# TYPE airemote_relay_sessions gauge')
+    const known = ['requested', 'active', 'suspended', 'closed', 'denied', 'expired']
+    const extra = [...relayByState.keys()].filter(k => known.indexOf(k) < 0)
+    for (const st of known.concat(extra)) {
+      const n = relayByState.get(st) || 0
+      if (known.indexOf(st) >= 0 || n > 0) out.push('airemote_relay_sessions{state="' + st + '"} ' + n)
+    }
+    out.push('# HELP airemote_http_requests_total HTTP responses by method and status.')
+    out.push('# TYPE airemote_http_requests_total counter')
+    for (const entry of [...metrics.http.entries()].sort()) {
+      const sp = entry[0].indexOf(' ')
+      out.push('airemote_http_requests_total{method="' + entry[0].slice(0, sp)
+        + '",status="' + entry[0].slice(sp + 1) + '"} ' + entry[1])
+    }
+    out.push('# HELP airemote_http_request_duration_seconds_sum Total response time in seconds.')
+    out.push('# TYPE airemote_http_request_duration_seconds_sum counter')
+    out.push('airemote_http_request_duration_seconds_sum ' + metrics.httpSecondsSum.toFixed(6))
+    out.push('# HELP airemote_http_request_duration_seconds_count Responses timed.')
+    out.push('# TYPE airemote_http_request_duration_seconds_count counter')
+    out.push('airemote_http_request_duration_seconds_count ' + metrics.httpCount)
+    v('airemote_errors_total', 'Unhandled errors and responses with status >= 500.', 'counter', metrics.errors)
+    reply.type('text/plain; version=0.0.4; charset=utf-8').header('cache-control', 'no-store')
+    return out.join('\n') + '\n'
+  })
 
   // ── GET /api/agent/allowed — lets a kicked agent poll whether it may reconnect ──
   fastify.get('/api/agent/allowed', async (req, reply) => {
@@ -5371,6 +5468,7 @@ if ($target -eq $null) { 'name-not-found' } else {
   })
 
   await fastify.listen({ port, host: '0.0.0.0' })
+  shuttingDown = false
   started    = true
   _startedAt = Date.now()
   log?.info('server', `✅ AiRemote Server v${SERVER_VERSION} listening on port ${port}`)
@@ -5380,6 +5478,7 @@ if ($target -eq $null) { 'name-not-found' } else {
 
 async function stop() {
   if (!started || !fastify) return
+  shuttingDown = true
   started = false; _startedAt = null
   for (const [id] of agentSockets) markDeviceOffline(id)
   agentSockets.clear(); clientSockets.clear(); ptyClients.clear()
