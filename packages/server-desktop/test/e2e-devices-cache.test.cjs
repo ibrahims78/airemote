@@ -17,7 +17,14 @@ const os = require('os')
 const crypto = require('crypto')
 
 let Database
-try { Database = require('better-sqlite3'); new Database(':memory:').close() } catch { console.log('SKIP'); process.exit(0) }
+try { Database = require('better-sqlite3'); new Database(':memory:').close() }
+catch {
+  try {
+    const { createDatabase } = require(require('path').join(__dirname, '..', 'lib', 'db-adapter'))
+    Database = function (p, o) { return createDatabase(p, o) }
+    new Database(':memory:').close()
+  } catch { console.log('SKIP: no sqlite engine'); process.exit(0) }
+}
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcryptjs')
 

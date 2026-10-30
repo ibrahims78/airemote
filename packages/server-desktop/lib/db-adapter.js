@@ -54,6 +54,14 @@ function createNode(pathToDb) {
         return raw.exec('PRAGMA ' + text)
       }
     },
+    // better-sqlite3 wraps a function in BEGIN/COMMIT; the file-transfer service relies on it.
+    transaction(fn) {
+      return (...args) => {
+        raw.exec('BEGIN')
+        try { const out = fn(...args); raw.exec('COMMIT'); return out }
+        catch (e) { try { raw.exec('ROLLBACK') } catch {} ; throw e }
+      }
+    },
     close() { return raw.close() },
     get open() { return true },
     get name() { return path.basename(pathToDb) }

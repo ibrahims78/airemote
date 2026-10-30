@@ -2806,7 +2806,7 @@ let TLS_CERT_PATH = null
 
 const AGENT_VERSION = '3.8.7'   // agent artifact version (downloads)
 let serverLogger = null   // set in start(); lets WS handlers write to the app log
-const SERVER_VERSION = '3.8.25'  // server build version (/health)
+const SERVER_VERSION = '3.8.26'  // server build version (/health)
 
 async function start(config) {
   if (started) return
@@ -2914,6 +2914,13 @@ async function start(config) {
     logger: false,
     ...(tlsOptions ? { serverFactory: (handler) => require('https').createServer(tlsOptions, handler) } : {})
   })
+  // Empty body + application/json is common on DELETE (browsers and our e2e client send the
+  // header unconditionally). Treat it as {} so validation cannot pre-empt authorization.
+  fastify.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => {
+    const t = String(body || '').trim()
+    if (!t) return done(null, {})
+    try { done(null, JSON.parse(t)) } catch (e) { done(e) }
+  })
   await fastify.register(fcors, { origin: false, credentials: true })
   await fastify.register(frateLimit, { global: false, max: 200, timeWindow: '1 minute' })
   await fastify.register(fws)
@@ -2931,7 +2938,11 @@ async function start(config) {
   // تكتفي بالملكية، فمشاهد يملك جهازاً يستطيع حذفه أو التحكم به — خلافاً لسياسة
   // الأدوار المعلنة (viewer للقراءة فقط، manager يشغّل). الحارس هنا فقط يمنع
   // دوراً أقل من manager عند وجود رمز صالح؛ غياب الرمز يترك الرد 401 للمسار.
-  fastify.addHook('preHandler', async (req, reply) => {
+  // v3.8.26 - was preHandler, i.e. AFTER body parsing. With fastify 5 a DELETE that carries
+  // Content-Type: application/json but no body failed the parser first and answered 400, so a
+  // viewer's forbidden delete looked like a bad request instead of a 403. onRequest runs
+  // before any parsing: the security decision is made first, as it should be.
+  fastify.addHook('onRequest', async (req, reply) => {
     const method = req.method
     if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') return
     const url = String(req.url || '').split('?')[0]

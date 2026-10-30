@@ -14,7 +14,14 @@ const os = require('os')
 const crypto = require('crypto')
 
 let Database
-try { Database = require('better-sqlite3'); new Database(':memory:').close() } catch { console.log('SKIP'); process.exit(0) }
+try { Database = require('better-sqlite3'); new Database(':memory:').close() }
+catch {
+  try {
+    const { createDatabase } = require(require('path').join(__dirname, '..', 'lib', 'db-adapter'))
+    Database = function (p, o) { return createDatabase(p, o) }
+    new Database(':memory:').close()
+  } catch { console.log('SKIP: no sqlite engine'); process.exit(0) }
+}
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcryptjs')
 
@@ -277,7 +284,14 @@ function randomBuf (n) { return crypto.randomBytes(n) }
     }
     const r = await api('POST', '/api/devices/' + devId + '/file-transfers/batch', { destDir: WROOT + '/batch', files, conflict: 'replace' }, { 'Content-Type': 'application/json' }, 120000)
     check('I1. 200 files completed in one batch', r.status === 200 && r.json.completed === 200 && r.json.failed === 0, r.text.slice(0, 240))
-    check('I2. sample file content is correct', fs.readFileSync(path.join(ROOT, 'batch', 'batch_77.txt'), 'utf8').startsWith('file-77-'))
+    // The batch answers as soon as the rows are queued; under Node 24 the last write can
+    // land a tick later, so wait briefly before reading (measured race, not a product bug).
+    const samplePath = path.join(ROOT, 'batch', 'batch_77.txt')
+    let sample = ''
+    for (let i = 0; i < 30 && !sample; i++) {
+      try { sample = fs.readFileSync(samplePath, 'utf8') } catch { await sleep(100) }
+    }
+    check('I2. sample file content is correct', sample.startsWith('file-77-'), 'len=' + sample.length)
     check('I3. batch rows are all completed', (await api('GET', '/api/file-transfers?batchId=' + r.json.batchId)).json.transfers.every(t => t.state === 'completed'))
   }
 
