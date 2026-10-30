@@ -1339,8 +1339,8 @@ function clipHashOf(text) {
   return crypto.createHash('sha256').update(String(text), 'utf8').digest('hex')
 }
 
-function clipWatchAck(sessionId, watching, direction) {
-  send({ type: 'agent:screen_clipboard_watch_ack', payload: { sessionId, watching: !!watching, direction }, timestamp: Date.now() })
+function clipWatchAck(sessionId, watching, direction, reason) {
+  send({ type: 'agent:screen_clipboard_watch_ack', payload: { sessionId, watching: !!watching, direction, reason: reason || '' }, timestamp: Date.now() })
 }
 
 function stopClipWatch(reason) {
@@ -1355,7 +1355,7 @@ function configureClipWatch(sessionId, enabled, direction) {
   const granted = !!sessionId && grantedSessions.has(sessionId)
   if (!enabled || !granted) {
     stopClipWatch(!granted ? 'no-consent' : 'disabled')
-    clipWatchAck(sessionId, false, direction)
+    clipWatchAck(sessionId, false, direction, granted ? 'disabled' : 'no-consent')
     return
   }
   if (clipWatch && clipWatch.sessionId !== sessionId) stopClipWatch('session-switch')

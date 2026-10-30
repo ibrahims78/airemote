@@ -37,6 +37,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.FileInputStream;
 import java.io.InputStream;
+import java.security.MessageDigest;
 import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
 import java.net.NetworkInterface;
@@ -72,6 +73,15 @@ public class AgentService extends Service {
     private volatile boolean streamRunning = false;
     private Thread streamThread = null;
     private volatile String streamSessionId = "";
+    // v3.8.36 (R8) — one-way clipboard sync (text). Android 10+ only lets a focused
+    // app read the clipboard, so the watch ack reports honestly whether background
+    // reads are allowed (AppOps) instead of pretending to work.
+    private Handler clipHandler = null;
+    private volatile boolean clipSyncEnabled = false;
+    private volatile String clipSyncDirection = "to-device";
+    private volatile String clipSyncSession = "";
+    private volatile String clipSyncLastHash = "";
+    private Runnable clipPoll = null;
     private volatile int streamQuality = 60;
     private volatile int streamMaxWidth = 1280;
     // v3.8.2 - binary frames (no base64/JSON) negotiated by the server.
@@ -262,8 +272,111 @@ public class AgentService extends Service {
         connect();
     }
 
+    // ── v3.8.36 (R8) — clipboard sync helpers ─────────────────────────────
+    private static String sha256Hex(String value) {
+        try {
+            MessageDigest md = MessageDigest.getInstance("SHA-256");
+            byte[] digest = md.digest(value.getBytes("UTF-8"));
+            StringBuilder sb = new StringBuilder(digest.length * 2);
+            for (byte b : digest) sb.append(String.format("%02x", b));
+            return sb.toString();
+        } catch (Exception ignore) { return ""; }
+    }
+
+    /** null = the platform refused the read (background restriction). */
+    private String readClipboardText() {
+        try {
+            android.content.ClipboardManager cm = (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+            if (cm == null || !cm.hasPrimaryClip() || cm.getPrimaryClip() == null) return "";
+            if (cm.getPrimaryClip().getItemCount() <= 0) return "";
+            CharSequence cs = cm.getPrimaryClip().getItemAt(0).coerceToText(AgentService.this);
+            return cs == null ? "" : cs.toString();
+        } catch (Throwable ignore) {
+            return null;
+        }
+    }
+
+    /**
+     * Android 10+ serves clipboard reads only to the app that currently has focus
+     * (or the default IME); AppOps READ_CLIPBOARD does not lift that restriction.
+     * So the only honest signal is "our own UI is in front right now" — which is
+     * why Android is push-only unless the agent window is open.
+     */
+    private boolean clipboardReadAllowed() {
+        try { return MainActivity.visibleNow(); } catch (Throwable ignore) { return false; }
+    }
+
+    private void stopClipPoll() {
+        try { if (clipHandler != null && clipPoll != null) clipHandler.removeCallbacks(clipPoll); } catch (Exception ignore) { }
+        clipPoll = null;
+    }
+
+    private void startClipPoll() {
+        if (clipHandler == null) clipHandler = new Handler(android.os.Looper.getMainLooper());
+        if (clipPoll != null) return;
+        clipPoll = new Runnable() {
+            @Override public void run() {
+                try {
+                    if (clipSyncEnabled && "to-viewer".equals(clipSyncDirection)) {
+                        String txt = readClipboardText();
+                        if (txt != null && txt.length() > 0) {
+                            String h = sha256Hex(txt);
+                            if (!h.equals(clipSyncLastHash)) {
+                                clipSyncLastHash = h;
+                                JSONObject o = new JSONObject();
+                                o.put("sessionId", clipSyncSession);
+                                o.put("text", txt);
+                                o.put("hash", h);
+                                o.put("at", System.currentTimeMillis());
+                                sendMsg("agent:screen_clipboard_change", o);
+                            }
+                        }
+                    }
+                } catch (Throwable ignore) { }
+                if (clipSyncEnabled && clipHandler != null) clipHandler.postDelayed(this, 600);
+            }
+        };
+        clipHandler.postDelayed(clipPoll, 600);
+    }
+
+    private void configureClipSync(String sessionId, boolean enabled, String direction) {
+        boolean wasViewer = "to-viewer".equals(clipSyncDirection);
+        clipSyncSession = sessionId == null ? "" : sessionId;
+        clipSyncDirection = "to-viewer".equals(direction) ? "to-viewer" : "to-device";
+        // Entering pull: forget the last applied hash so the viewer receives the
+        // current clipboard once (same initial snapshot the desktop agent sends).
+        if (enabled && "to-viewer".equals(clipSyncDirection) && !wasViewer) clipSyncLastHash = "";
+        clipSyncEnabled = enabled;
+        boolean watching = false;
+        String reason = "";
+        if (!enabled) {
+            stopClipPoll();
+            reason = "disabled";
+        } else if ("to-viewer".equals(clipSyncDirection)) {
+            watching = clipboardReadAllowed();
+            if (watching) startClipPoll(); else { stopClipPoll(); reason = "background-denied"; }
+        } else {
+            // Pushing needs no read access on this device.
+            stopClipPoll();
+            watching = true;
+        }
+        try {
+            JSONObject ack = new JSONObject();
+            ack.put("sessionId", clipSyncSession);
+            ack.put("watching", watching);
+            ack.put("direction", clipSyncDirection);
+            ack.put("reason", reason);
+            sendMsg("agent:screen_clipboard_watch_ack", ack);
+        } catch (Exception ignore) { }
+        if (!enabled) MainActivity.log("📋 أُوقفت مزامنة الحافظة");
+        else if (!watching) MainActivity.log("📋 مزامنة الحافظة: قراءة الخلفية غير مسموحة");
+        else MainActivity.log("📋 مزامنة الحافظة: " + clipSyncDirection);
+    }
+
     private void stopAgent() {
         running = false;
+        stopClipPoll();
+        clipSyncEnabled = false;
         registered = false;
         try { if (ws != null) ws.close(); } catch (Exception ignore) { }
         ws = null;
@@ -607,6 +720,13 @@ public class AgentService extends Service {
                 }
                 break;
             }
+            case "server:screen_clipboard_watch": {
+                final String wsid = payload.optString("sessionId", "");
+                final boolean wenabled = payload.optBoolean("enabled", false);
+                final String wdir = payload.optString("direction", "to-device");
+                new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> configureClipSync(wsid, wenabled, wdir));
+                break;
+            }
             case "server:screen_clipboard_read": {
                 final String csid = payload.optString("sessionId", "");
                 new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
@@ -631,6 +751,8 @@ public class AgentService extends Service {
                     try {
                         android.content.ClipboardManager cm = (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
                         if (cm != null) cm.setPrimaryClip(android.content.ClipData.newPlainText("AiRemote", ctxt));
+                        // Echo guard: our own write must never come back as a device change.
+                        clipSyncLastHash = sha256Hex(ctxt);
                         MainActivity.log("📋 نُسخ النص إلى حافظة الجهاز");
                     } catch (Exception ignore) { }
                 });
@@ -1804,6 +1926,8 @@ public class AgentService extends Service {
     }
 
     private void stopScreenStreamRaw() {
+        stopClipPoll();
+        clipSyncEnabled = false;
         streamRunning = false;
         stopSystemAudio();
         restoreDisplaySettings();

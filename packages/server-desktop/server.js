@@ -1060,7 +1060,8 @@ function clipboardState(deviceId) {
   if (!s) {
     s = {
       enabled: false, direction: 'to-device', lastHash: '', lastLen: 0, lastAt: 0,
-      sent: 0, received: 0, blocked: 0, duplicates: 0, updatedAt: 0, by: '', agentWatching: false
+      sent: 0, received: 0, blocked: 0, duplicates: 0, updatedAt: 0, by: '', agentWatching: false,
+      lastReason: ''
     }
     clipboardSync.set(deviceId, s)
   }
@@ -1079,6 +1080,7 @@ function clipboardPublic(s) {
     blocked: s.blocked || 0,
     duplicates: s.duplicates || 0,
     agentWatching: !!s.agentWatching,
+    lastReason: s.lastReason || '',
     updatedAt: s.updatedAt || 0,
     by: s.by || ''
   }
@@ -1107,9 +1109,14 @@ function clipboardTellAgent(deviceId) {
 
 function clipboardSet(deviceId, patch, actor) {
   const s = clipboardState(deviceId)
+  const prevEnabled = !!s.enabled
+  const prevDirection = s.direction
   if (patch && patch.enabled !== undefined) s.enabled = !!patch.enabled
   if (patch && (patch.direction === 'to-device' || patch.direction === 'to-viewer')) s.direction = patch.direction
-  if (!s.enabled) { s.lastHash = ''; s.lastLen = 0; s.agentWatching = false }
+  // A new direction (or a fresh enable) starts with a clean slate: the first
+  // change the agent reports is the current clipboard, not an echo of our write.
+  if (!prevEnabled || prevDirection !== s.direction) { s.lastHash = ''; s.lastLen = 0; s.duplicates = s.duplicates || 0 }
+  if (!s.enabled) { s.lastHash = ''; s.lastLen = 0; s.agentWatching = false; s.lastReason = '' }
   s.updatedAt = Date.now()
   s.by = String(actor || '').slice(0, 120)
   clipboardTellAgent(deviceId)
@@ -1561,6 +1568,7 @@ function handleAgentWs(socket) {
     if (type === 'agent:screen_clipboard_watch_ack') {
       const s = clipboardState(deviceId)
       s.agentWatching = !!payload.watching
+      s.lastReason = s.agentWatching ? '' : String(payload.reason || 'unknown').slice(0, 40)
       if (payload.direction === 'to-device' || payload.direction === 'to-viewer') s.direction = payload.direction
       clipboardBroadcast(deviceId)
       return

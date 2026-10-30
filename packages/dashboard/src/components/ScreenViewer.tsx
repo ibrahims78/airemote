@@ -56,6 +56,7 @@ interface ClipboardSyncState {
   lastAt: number
   agentWatching: boolean
   lastHash: string
+  lastReason: string
 }
 
 interface MonitorInfo {
@@ -178,7 +179,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
   // v3.8.36 (R8) — one-way clipboard sync state, mirrored from the server.
   const [clipSync,        setClipSync]        = useState<ClipboardSyncState>({
     enabled: false, direction: 'to-device', sent: 0, received: 0, blocked: 0,
-    duplicates: 0, lastLen: 0, lastAt: 0, agentWatching: false, lastHash: ''
+    duplicates: 0, lastLen: 0, lastAt: 0, agentWatching: false, lastHash: '', lastReason: ''
   })
   const clipWatchStopRef = useRef<null | (() => void)>(null)
 
@@ -1701,9 +1702,11 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
                           clipSync.direction === 'to-device' ? 'bg-info/20 text-info' : 'bg-surface2 text-muted hover:text-ink')}>
                         {tr('viewer_clip_dir_to_device')}
                       </button>
-                      <button onClick={() => setClipDirection('to-viewer')}
+                      <button onClick={() => setClipDirection('to-viewer')} disabled={remoteIsAndroid}
+                        title={remoteIsAndroid ? tr('viewer_clip_bg_denied') : ''}
                         className={clsx('flex-1 text-xs py-1.5 rounded transition-colors',
-                          clipSync.direction === 'to-viewer' ? 'bg-info/20 text-info' : 'bg-surface2 text-muted hover:text-ink')}>
+                          remoteIsAndroid ? 'bg-surface2 text-muted opacity-50 cursor-not-allowed'
+                            : clipSync.direction === 'to-viewer' ? 'bg-info/20 text-info' : 'bg-surface2 text-muted hover:text-ink')}>
                         {tr('viewer_clip_dir_to_viewer')}
                       </button>
                     </div>
@@ -1714,7 +1717,11 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
                     </div>
 
                     {clipSync.enabled && !clipSync.agentWatching && (
-                      <div className="text-[10px] text-warning">{tr('viewer_clip_waiting_agent')}</div>
+                      <div className="text-[10px] text-warning">
+                        {clipSync.lastReason === 'background-denied' || remoteIsAndroid
+                          ? tr('viewer_clip_bg_denied')
+                          : tr('viewer_clip_waiting_agent')}
+                      </div>
                     )}
                     {clipSync.enabled && clipSync.direction === 'to-viewer' && (
                       <div className="text-[10px] text-success">{tr('viewer_clip_auto_pull')}</div>

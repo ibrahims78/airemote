@@ -1,0 +1,49 @@
+{
+  "steps": [
+    {
+      "name": "start screen sharing",
+      "value": "started"
+    },
+    {
+      "name": "open clipboard panel",
+      "value": "clicked"
+    },
+    {
+      "name": "panel opened",
+      "hasPanel": true,
+      "text": "مزامنة الحافظة\n✕\nالمزامنة متوقفة\nCtrl+Alt+Shift+V\nإلى الجهاز\nمن الجهاز\nاتجاه واحد فقط\n2 مُرسل · 3 مُستلم · 1 متجاهَل\nنسخ محلياً\nأرسل حافظتي\nإرسال للجهاز"
+    },
+    {
+      "name": "enable sync",
+      "value": "المزامنة متوقفة"
+    },
+    {
+      "name": "state after enable",
+      "text": "مزامنة الحافظة\n✕\nالمزامنة مفعّلة\nCtrl+Alt+Shift+V\nإلى الجهاز\nمن الجهاز\nاتجاه واحد فقط\n2 مُرسل · 3 مُستلم · 1 متجاهَل\nبانتظار موافقة الجهاز على التحكم\nيُطبَّق تلقائياً على حافظتك\nنسخ محلياً\nأرسل حافظتي\nإرسال للجهاز",
+      "api": {
+        "enabled": true,
+        "direction": "to-viewer",
+        "agentWatching": false
+      }
+    },
+    {
+      "name": "reverse chord",
+      "defaultPrevented": true,
+      "text": "مزامنة الحافظة\n✕\nالمزامنة مفعّلة\nCtrl+Alt+Shift+V\nإلى الجهاز\nمن الجهاز\nاتجاه واحد فقط\n2 مُرسل · 3 مُستلم · 1 متجاهَل\nبانتظار موافقة الجهاز على التحكم\nنسخ محلياً\nأرسل حافظتي\nإرسال للجهاز",
+      "api": {
+        "enabled": true,
+        "direction": "to-device"
+      }
+    },
+    {
+      "name": "disable sync",
+      "value": "المزامنة مفعّلة"
+    },
+    {
+      "name": "state after disable",
+      "api": {
+        "enabled": false
+      }
+    }
+  ]
+}

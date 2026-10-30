@@ -109,7 +109,17 @@ public class SetupActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
+        // v3.8.36 (R8) — the wizard is part of our UI: while it is in front the
+        // clipboard is readable (Android 10+ only serves the focused app), and the
+        // capability probe in AgentService must see that.
+        MainActivity.foreground = true;
         refresh();
+    }
+
+    @Override
+    protected void onPause() {
+        MainActivity.foreground = false;
+        super.onPause();
     }
 
     private LinearLayout.LayoutParams marginParams(int l, int t, int r, int b) {
