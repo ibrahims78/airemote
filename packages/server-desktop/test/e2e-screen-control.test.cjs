@@ -35,12 +35,20 @@ function loadWs() {
 const WebSocket = loadWs()
 let Database
 try {
-  Database = require('better-sqlite3')
-  const _probe = new Database(':memory:'); _probe.close()
+  Database = require(path.resolve(__dirname, '..', 'node_modules', 'better-sqlite3'))
+  new Database(':memory:').close()
 } catch (e) {
-  console.log('SKIP: better-sqlite3 is not usable under Node in this checkout (most likely built for Electron).')
-  console.log('      Run desktop-server tests in a source checkout where better-sqlite3 targets Node.')
-  process.exit(0)
+  // v3.8.26 - the server can now run on node:sqlite (Electron 44+). If the native module
+  // cannot load in this process, fall back to the adapter instead of skipping the test.
+  try {
+    const { createDatabase } = require(path.resolve(__dirname, '..', 'lib', 'db-adapter'))
+    Database = function (p, o) { return createDatabase(p, o) }
+    new Database(':memory:').close()
+  } catch (e2) {
+    console.log('SKIP: no usable sqlite engine in this process (' + e.message + ' / ' + e2.message + ')')
+    console.log('      Run under the Electron binary with ELECTRON_RUN_AS_NODE=1.')
+    process.exit(0)
+  }
 }
 const jwt = require('jsonwebtoken')
 

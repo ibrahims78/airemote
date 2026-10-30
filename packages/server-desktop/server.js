@@ -16,7 +16,7 @@ const bcrypt            = require('bcryptjs')
 const jwt               = require('jsonwebtoken')
 const zlib              = require('zlib')
 const { v4: uuidv4 }    = require('uuid')
-const Database          = require('better-sqlite3')
+const { createDatabase }  = require('./lib/db-adapter')
 const path              = require('path')
 const fs                = require('fs')
 const os                = require('os')
@@ -76,7 +76,7 @@ let JWT = ''
 function initDb(dbPath) {
   const dir = path.dirname(dbPath)
   fs.mkdirSync(dir, { recursive: true })
-  db = new Database(dbPath)
+  db = createDatabase(dbPath)
   db.pragma('journal_mode = WAL')
   db.pragma('foreign_keys = ON')
 
