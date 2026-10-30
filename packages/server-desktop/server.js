@@ -43,6 +43,7 @@ function getSsh2()     { if (!_ssh2)     _ssh2     = require('ssh2');        ret
 const agentSockets      = new Map()   // deviceId → { ws, info, deviceName, connectedAt, stats }
 const { createFileTransferManager } = require('./lib/file-transfer')
 const { createBackupManager } = require('./lib/backup-manager')
+const migrations = require('./lib/migrations')
 let fileTransfers = null
 const clientSockets     = new Map()   // Map<WebSocket, { user }>
 const ptyClients        = new Map()   // sessionId → Set<WebSocket>
@@ -260,6 +261,17 @@ function initDb(dbPath) {
 
   // Cleanup expired tokens on start
   db.prepare("DELETE FROM refresh_tokens WHERE expires_at < ?").run(new Date().toISOString())
+  // v3.8.30 (R7) - schema version. The CREATE TABLE block above guarantees the baseline
+  // tables, so a 3.8.x database is adopted at v1 and every later step is reversible.
+  try {
+    const ml = (scope, msg) => { try { if (serverLogger && serverLogger.info) serverLogger.info(scope, msg) } catch {} }
+    migrations.adoptBaseline(db, ml)
+    migrations.run(db, { log: ml })
+  } catch (e) {
+    try { if (serverLogger && serverLogger.error) serverLogger.error('schema', e.message) } catch {}
+    throw e
+  }
+
   // Cleanup old stats (keep 7 days)
   const oldStats = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
   db.prepare("DELETE FROM stats_history WHERE recorded_at < ?").run(oldStats)
@@ -2818,7 +2830,7 @@ let TLS_CERT_PATH = null
 
 const AGENT_VERSION = '3.8.28'   // agent artifact version (downloads)
 let serverLogger = null   // set in start(); lets WS handlers write to the app log
-const SERVER_VERSION = '3.8.29'  // server build version (/health)
+const SERVER_VERSION = '3.8.30'  // server build version (/health)
 
 async function start(config) {
   if (started) return
@@ -5337,6 +5349,12 @@ if ($target -eq $null) { 'name-not-found' } else {
 
   // v3.8.29 (R7) - what the operator needs before a restore: where the files are how old
   // the newest one is, and whether the last run failed.
+  // v3.8.30 (R7) - schema state for an operator deciding whether an upgrade is safe.
+  fastify.get('/api/desktop/schema', async (req, reply) => {
+    const p = adminMiddleware(req, reply); if (!p) return
+    try { return migrations.status(db) } catch (e) { return reply.code(500).send({ error: e.message }) }
+  })
+
   fastify.get('/api/desktop/backups', async (req, reply) => {
     const p = adminMiddleware(req, reply); if (!p) return
     if (!backupManager) return reply.code(503).send({ error: 'backup manager not available' })
