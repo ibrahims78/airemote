@@ -1,0 +1,3 @@
+﻿present: idx_audit_log_created,idx_audit_log_device,idx_sessions_device_started,idx_sessions_user_started
+missing: none
+legacy idx_sessions_device kept: true
