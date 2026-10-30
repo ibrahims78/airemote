@@ -2806,7 +2806,7 @@ let TLS_CERT_PATH = null
 
 const AGENT_VERSION = '3.8.7'   // agent artifact version (downloads)
 let serverLogger = null   // set in start(); lets WS handlers write to the app log
-const SERVER_VERSION = '3.8.24'  // server build version (/health)
+const SERVER_VERSION = '3.8.25'  // server build version (/health)
 
 async function start(config) {
   if (started) return

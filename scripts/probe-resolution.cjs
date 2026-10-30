@@ -45,7 +45,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms))
   for (let i = 0; i < 20 && !modes; i++) await sleep(400)
   if (!modes) { console.log('NO MODES (agent too old or not Windows)'); process.exit(2) }
 
-  const current = modes.current || (modes.modes && modes.modes[0])
+  const current = process.env.LAB_APPLY || modes.current || (modes.modes && modes.modes[0])
   if (current) {
     const [w, h] = String(current).split('x').map(Number)
     console.log('re-applying current mode', w, h)

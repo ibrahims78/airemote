@@ -9,6 +9,8 @@
 
 ### 0.1 قيد التنفيذ
 
+**3.8.25 — دقة شاشة الجهاز البعيد (مُثبت من الطرف إلى الطرف):** قائمة أوضاع العرض الحقيقية من وكيل ويندوز عبر `ChangeDisplaySettingsEx`، وتمريرها في السيرفر، وقائمة منسدلة في لوحة الجودة. الدليل على WIN11: 29 وضعاً، تطبيق `1280x720` ثم قراءة `current=1280x720`، ثم إرجاع `1920x1080` (`apply:0`). WIN10: 28 وضعاً وتطبيق ناجح. الوكلاء على 3.8.25 · السيرفر 3.8.25 · APK 3.8.25 (vc22).
+
 **R7/Electron 44 — تحقيق منجَز ومانع واحد:** Electron 44.3.0 متاح محلياً (tgz + win32-x64.zip في offline-build-tools)، لكن better-sqlite3 9.6.0 بلا prebuilds (build/ فقط) وبصمة ABI 119 لـElectron 28، وVS2019 BuildTools بلا C++ (لا cl.exe/MSBuild/vcvarsall). لذلك الترقية تتطلب تركيب حزمة Desktop development with C++ أو إزالة الاعتماد على better-sqlite3.
 
 

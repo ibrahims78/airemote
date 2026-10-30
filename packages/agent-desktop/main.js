@@ -6,7 +6,7 @@ const os     = require('os')
 const fs     = require('fs')
 const https  = require('https')
 const crypto = require('crypto')
-const { exec, spawn } = require('child_process')
+const { exec, spawn, execFile } = require('child_process')
 const WebSocket = require('ws')
 
 // R5 — محرّك نقل الملفات على الجهاز (مقاطع، استكمال، تحقق SHA-256، حارس مسارات)
@@ -48,7 +48,7 @@ const RECONNECT_MAX  = 30_000
 const CONFIG_FILE    = path.join(app.getPath('userData'), 'airemote-config.json')
 const LOG_MAX        = 300
 // v3.8.12 — مصدر واحد للحقيقة: رقم package.json لا نصّ ثابت داخل main.js.
-const AGENT_VERSION  = (() => { try { return require('./package.json').version } catch { return '3.8.24' } })()
+const AGENT_VERSION  = (() => { try { return require('./package.json').version } catch { return '3.8.25' } })()
 
 // v3.7.0 — TLS policy for the relay connection.
 //   AGENT_CA_CERT       path to a PEM certificate to trust (self-signed servers)
@@ -1590,7 +1590,7 @@ function clearTimers() {
 }
 
 
-// v3.8.24 - remote display mode (Windows): enumerate + apply through ChangeDisplaySettingsEx.
+// v3.8.25 - remote display mode (Windows): enumerate + apply through ChangeDisplaySettingsEx.
 const DISPLAY_PS = String.raw`
 param([int]$Width = 0, [int]$Height = 0)
 $ErrorActionPreference = 'Stop'
