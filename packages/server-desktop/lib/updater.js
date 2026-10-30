@@ -129,7 +129,12 @@ const HELPER_SOURCE = String.raw`'use strict'
 // because NSIS cannot replace files that the running process holds open.
 const fs = require('fs')
 const path = require('path')
-const { spawnSync } = require('child_process')
+const { spawnSync, spawn } = require('child_process')
+
+// The health probe talks to 127.0.0.1 with the self-signed server certificate. The first
+// live drill failed exactly here: fetch rejected the certificate, every probe returned "",
+// and a perfectly good install was declared unhealthy.
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'
 
 const planPath = process.argv[2]
 const plan = JSON.parse(fs.readFileSync(planPath, 'utf8'))
@@ -141,6 +146,16 @@ function result(state, extra) { try { fs.writeFileSync(resultPath, JSON.stringif
 const fake = process.env.AIREMOTE_UPDATE_FAKE_HEALTH || ''
 const skipProcess = process.env.AIREMOTE_UPDATE_SKIP_PROCESS === '1'
 const installCmd = process.env.AIREMOTE_UPDATE_INSTALL_CMD || ''
+
+// The helper itself runs with ELECTRON_RUN_AS_NODE=1. Inheriting that into the product's
+// own executable makes Electron start as plain Node and exit at once - the app "started"
+// and never answered /health in the second live drill. Strip it for the children that are
+// supposed to be the real application.
+function appEnv() {
+  const env = Object.assign({}, process.env)
+  delete env.ELECTRON_RUN_AS_NODE
+  return env
+}
 
 function runInstaller(file, label) {
   const cmd = installCmd || file
@@ -184,7 +199,8 @@ async function waitForVersion(target, seconds) {
     }
     if (!skipProcess) {
       say('starting ' + plan.appExe)
-      spawnSync(plan.appExe, [], { detached: true, stdio: 'ignore' })
+      // spawnSync would wait for the app to exit; the app must outlive this helper.
+      spawn(plan.appExe, [], { detached: true, stdio: 'ignore', env: appEnv() }).unref()
     }
     const healthy = await waitForVersion(plan.target, plan.timeoutSeconds || 90)
     if (healthy) { say('target version is live'); result('success', { version: plan.target }); return }
@@ -195,7 +211,7 @@ async function waitForVersion(target, seconds) {
       if (!skipProcess) spawnSync('taskkill', ['/F', '/IM', 'AiRemote Server.exe'], { encoding: 'utf8' })
       const back = runInstaller(plan.previousInstaller, 'rollback')
       say('rollback installer exit ' + (back && back.status))
-      if (!skipProcess) spawnSync(plan.appExe, [], { detached: true, stdio: 'ignore' })
+      if (!skipProcess) spawn(plan.appExe, [], { detached: true, stdio: 'ignore', env: appEnv() }).unref()
       result('rolled-back', { version: seen || null, rollbackExit: back && back.status })
     } else {
       result('failed', { stage: 'health', seen: seen || null, reason: 'no previous installer to roll back to' })
@@ -206,12 +222,41 @@ async function waitForVersion(target, seconds) {
 })()
 `
 
+/**
+ * Makes sure a Node-capable binary with a NEUTRAL image name exists.
+ *
+ * The first live drill failed for a reason worth writing down: the helper was started with
+ * the product's own executable, so its image name was "AiRemote Server.exe" - and the first
+ * thing the helper does is `taskkill /IM "AiRemote Server.exe"`, which killed the helper
+ * itself before the installer ever ran. Copying the same binary under a different name keeps
+ * the kill precise and lets the installer proceed.
+ */
+function ensureHelperBinary(dataDir) {
+  const dir = path.join(dataDir, 'updates')
+  fs.mkdirSync(dir, { recursive: true })
+  const dest = path.join(dir, 'updater.exe')
+  const src = process.execPath
+  try {
+    const s = fs.statSync(src)
+    const fresh = fs.existsSync(dest) && fs.statSync(dest).size === s.size && fs.statSync(dest).mtimeMs >= s.mtimeMs
+    if (!fresh) {
+      fs.copyFileSync(src, dest)
+      try { fs.chmodSync(dest, 0o755) } catch {}
+    }
+  } catch (e) {
+    // If the copy fails we still return the path: spawn will fail loudly instead of silently
+    // installing nothing.
+  }
+  return dest
+}
+
 /** Writes the helper where the data directory can keep it, and returns its path. */
 function writeHelper(dataDir) {
   const dir = path.join(dataDir, 'updates')
   fs.mkdirSync(dir, { recursive: true })
   const file = path.join(dir, 'apply-update.cjs')
   fs.writeFileSync(file, HELPER_SOURCE, 'utf8')
+  ensureHelperBinary(dataDir)
   return file
 }
 
@@ -238,7 +283,8 @@ function apply(opts) {
   }
   fs.writeFileSync(planPath, JSON.stringify(plan, null, 2), 'utf8')
   try { fs.unlinkSync(plan.resultPath) } catch {}
-  const child = spawn(process.execPath, [helper, planPath], {
+  const runner = ensureHelperBinary(dataDir)
+  const child = spawn(runner, [helper, planPath], {
     detached: true,
     stdio: 'ignore',
     env: Object.assign({}, process.env, { ELECTRON_RUN_AS_NODE: '1' }),
@@ -250,10 +296,18 @@ function apply(opts) {
 function readResult(dataDir) {
   const p = path.join(dataDir, 'updates', 'result.json')
   if (!fs.existsSync(p)) return null
-  try { return JSON.parse(fs.readFileSync(p, 'utf8')) } catch { return null }
+  try {
+    const r = JSON.parse(fs.readFileSync(p, 'utf8'))
+    // A helper killed mid-flight leaves state "running" behind. After fifteen minutes that
+    // is not progress any more, and reporting it as running would hide a failed update.
+    if (r && r.state === 'running' && Date.now() - Date.parse(r.at || 0) > 15 * 60 * 1000) {
+      return Object.assign({}, r, { state: 'stalled', stalledAfterMinutes: 15 })
+    }
+    return r
+  } catch { return null }
 }
 
 module.exports = {
-  check, stage, apply, readResult, writeHelper, readSignedManifest,
+  check, stage, apply, readResult, writeHelper, ensureHelperBinary, readSignedManifest,
   compareVersions, parseVersion, sha256File, SERVER_PUBLIC_KEY,
 }

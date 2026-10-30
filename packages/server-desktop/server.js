@@ -46,6 +46,7 @@ const { createBackupManager } = require('./lib/backup-manager')
 const migrations = require('./lib/migrations')
 const updater = require('./lib/updater')
 const { createRetention } = require('./lib/retention')
+const { createFailureAlerter } = require('./lib/alerts')
 let fileTransfers = null
 const clientSockets     = new Map()   // Map<WebSocket, { user }>
 const ptyClients        = new Map()   // sessionId → Set<WebSocket>
@@ -57,6 +58,7 @@ const deviceScreenSess  = new Map()   // deviceId  → sessionId
 let backupManager = null
 let updateState = { at: null, verdict: null }
 let retention = null
+let failureAlerter = null
 const metrics = {
   http: new Map(),        // "GET 200" -> count
   httpCount: 0,
@@ -2834,7 +2836,7 @@ let TLS_CERT_PATH = null
 
 const AGENT_VERSION = '3.8.28'   // agent artifact version (downloads)
 let serverLogger = null   // set in start(); lets WS handlers write to the app log
-const SERVER_VERSION = '3.8.32'  // server build version (/health)
+const SERVER_VERSION = '3.8.35'  // server build version (/health)
 
 async function start(config) {
   if (started) return
@@ -2887,6 +2889,15 @@ async function start(config) {
       }
     })
     retention.start()
+
+    // v3.8.33 (R7) - a counter nobody watches is not monitoring: raise a bell on a burst.
+    failureAlerter = createFailureAlerter({
+      db,
+      windowMs: (config.alertWindowSeconds || 300) * 1000,
+      threshold: config.alertThreshold || 10,
+      cooldownMs: (config.alertCooldownSeconds || 1800) * 1000,
+      log: { warn: (m) => (serverLogger && serverLogger.warn ? serverLogger.warn('alerts', m) : console.warn(m)) }
+    })
   } catch (e) {
     retention = null
     try { (serverLogger && serverLogger.error ? serverLogger.error : console.error)('retention', 'init failed: ' + e.message) } catch {}
@@ -3003,7 +3014,7 @@ async function start(config) {
       metrics.http.set(key, (metrics.http.get(key) || 0) + 1)
       metrics.httpCount++
       metrics.httpSecondsSum += (reply.elapsedTime || 0) / 1000
-      if (reply.statusCode >= 500) metrics.errors++
+      if (reply.statusCode >= 500) { metrics.errors++; try { if (failureAlerter) failureAlerter.record(reply.statusCode) } catch {} }
     } catch { }
   })
 
@@ -3319,6 +3330,11 @@ async function start(config) {
     out.push('# TYPE airemote_http_request_duration_seconds_count counter')
     out.push('airemote_http_request_duration_seconds_count ' + metrics.httpCount)
     v('airemote_errors_total', 'Unhandled errors and responses with status >= 500.', 'counter', metrics.errors)
+    if (failureAlerter) {
+      const as = failureAlerter.state()
+      v('airemote_alert_events_total', 'Burst alerts raised since start.', 'counter', as.alerts)
+      v('airemote_alert_recent_failures', 'Failures inside the alerting window.', 'gauge', as.recent)
+    }
     if (retention) {
       const rs = retention.preview()
       v('airemote_recordings_rows', 'Recordings kept.', 'gauge', rs.recordings.total)
@@ -5446,15 +5462,20 @@ if ($target -eq $null) { 'name-not-found' } else {
 
     // Rollback needs an older package. A release share usually keeps them, so pick the
     // highest version below the target; otherwise the helper reports a clean failure.
+    // The pattern must keep its backslashes: an escaped-to-death regex silently matches
+    // nothing, and the first live drill shipped exactly that bug.
     let previous = null
+    let rollbackNote = null
     try {
       const dir = path.join(updateDir(), 'server-windows')
-      const older = fs.readdirSync(dir)
-        .map((f) => ({ f, v: (f.match(/-v(d+.d+.d+)-x64.exe$/) || [])[1] }))
+      const files = fs.readdirSync(dir)
+      const older = files
+        .map((f) => ({ f, v: (f.match(/-v(\d+\.\d+\.\d+)-x64\.exe$/) || [])[1] }))
         .filter((x) => x.v && updater.compareVersions(x.v, verdict.latest) < 0)
         .sort((a, b) => updater.compareVersions(b.v, a.v))[0]
       previous = older ? path.join(dir, older.f) : null
-    } catch { previous = null }
+      if (!previous) rollbackNote = 'no older package in ' + dir + ' (found ' + files.length + ' file(s))'
+    } catch (e) { previous = null; rollbackNote = 'scan failed: ' + e.message }
 
     const appExe = path.join(path.dirname(process.execPath), 'AiRemote Server.exe')
     const started = updater.apply({
@@ -5465,7 +5486,7 @@ if ($target -eq $null) { 'name-not-found' } else {
       appExe,
     })
     dbLogAudit({ userId: p.userId, userEmail: p.email, action: 'update_started', details: { from: SERVER_VERSION, to: verdict.latest, staged: staged.path, rollback: previous }, ipAddress: req.ip })
-    return { ok: true, from: SERVER_VERSION, to: verdict.latest, staged: staged.path, rollback: previous, helper: started }
+    return { ok: true, from: SERVER_VERSION, to: verdict.latest, staged: staged.path, rollback: previous, rollbackNote, helper: started }
   })
 
   fastify.get('/api/desktop/schema', async (req, reply) => {
