@@ -1,0 +1,117 @@
+{
+  "device": "WIN11-VM",
+  "at": "2026-10-30T21:42:42.070Z",
+  "steps": [
+    {
+      "name": "control granted (consent gate)",
+      "ok": true,
+      "ms": 5
+    },
+    {
+      "name": "enable (to-device)",
+      "http": 200,
+      "agentWatchingMs": 7,
+      "direction": "to-device"
+    },
+    {
+      "name": "push viewer→device (ASCII)",
+      "ms": 3,
+      "deviceLen": 29,
+      "deviceHash": "1193ccb10b6a",
+      "match": true
+    },
+    {
+      "name": "push viewer→device (UTF-8 Arabic)",
+      "deviceLen": 41,
+      "match": true
+    },
+    {
+      "name": "device change while pushing",
+      "appliesForwarded": 0,
+      "note": "agent does not read the clipboard in this direction"
+    },
+    {
+      "name": "reverse key",
+      "ms": 5,
+      "direction": "to-viewer"
+    },
+    {
+      "name": "pull initial snapshot",
+      "ok": true,
+      "match": true
+    },
+    {
+      "name": "pull device→viewer",
+      "ms": 357,
+      "match": true,
+      "hash": "f4a91cf688f6",
+      "len": 29
+    },
+    {
+      "name": "pull device→viewer (UTF-8 Arabic)",
+      "ms": 380,
+      "match": true
+    },
+    {
+      "name": "viewer change while pulling",
+      "sentDelta": 0,
+      "blockedDelta": 1,
+      "deviceUnchanged": true
+    },
+    {
+      "name": "disable",
+      "ms": 4,
+      "enabled": false,
+      "agentWatching": false,
+      "appliesAfterOff": 0
+    }
+  ],
+  "numbers": {
+    "agentVersion": "3.8.36",
+    "enableAckMs": 7,
+    "pushMs": 3,
+    "pushMatch": true,
+    "pushArabicMatch": true,
+    "pushLeak": 0,
+    "reverseMs": 5,
+    "pullMs": 357,
+    "pullMatch": true,
+    "pullArabicMs": 380,
+    "pullLeak": 0,
+    "pullBlocked": 1,
+    "disableMs": 4,
+    "finalState": {
+      "ok": true,
+      "deviceId": "d147684b-2451-4418-a628-86f11aa66a4e",
+      "enabled": false,
+      "direction": "to-viewer",
+      "lastHash": "",
+      "lastLen": 0,
+      "lastAt": 1793396573048,
+      "sent": 4,
+      "received": 6,
+      "blocked": 2,
+      "duplicates": 0,
+      "agentWatching": false,
+      "updatedAt": 1793396575238,
+      "by": "lab-probe@local"
+    },
+    "events": [
+      "screen:clipboard_sync",
+      "screen:clipboard_sync",
+      "screen:clipboard_sync",
+      "screen:clipboard_sync",
+      "screen:clipboard_sync",
+      "screen:clipboard_sync",
+      "screen:clipboard_apply",
+      "screen:clipboard_sync",
+      "screen:clipboard_apply",
+      "screen:clipboard_sync",
+      "screen:clipboard_apply",
+      "screen:clipboard_sync",
+      "screen:clipboard_sync",
+      "screen:clipboard_sync",
+      "screen:clipboard_sync"
+    ]
+  }
+}

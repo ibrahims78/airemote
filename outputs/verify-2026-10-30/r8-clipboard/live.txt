@@ -1,0 +1,16 @@
+live snapshot — 2026-10-30T21:54:52.462Z
+
+GET /api/desktop/update  -> current=3.8.36
+POST /api/desktop/update/check -> {"current":"3.8.36","latest":"3.8.36","available":false,"verified":true,"reason":"up-to-date"}
+
+/metrics (clipboard series, after the live runs):
+airemote_clipboard_sync_enabled 0
+airemote_clipboard_sync_events_total 20
+airemote_clipboard_sync_blocked_total 4
+airemote_clipboard_sync_duplicates_total 0
+
+manifest: 5 artifacts · signature OK · all artifacts match (3.8.36)
+
+devices: WIN10-VM 3.8.36 online · WIN11-VM 3.8.36 online · TECNO-KL4 3.8.28-android online · Android-Emulator 3.8.28-android online
+
+restored: controlAuthMode=consent on WIN10 and WIN11 (no control password), temp files removed
