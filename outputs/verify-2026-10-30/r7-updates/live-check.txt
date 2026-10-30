@@ -1,0 +1,5 @@
+﻿anonymous status -> 401
+before check: lastCheck=2026-10-30T17:59:14.119Z verdict={"ok":true,"sourceDir":"C:\\Users\\admin\\AppData\\Roaming\\AiRemote-Server\\updates\\source","current":"3.8.31","latest":"3.8.31","available":false,"verified":true,"generatedAt":"2026-10-30T17:58:05.531Z","reason":"up-to-date"}
+check -> {"ok":true,"sourceDir":"C:\\Users\\admin\\AppData\\Roaming\\AiRemote-Server\\updates\\source","current":"3.8.31","latest":"3.8.31","available":false,"verified":true,"generatedAt":"2026-10-30T17:58:05.531Z","reason":"up-to-date"}
+metric airemote_update_available 0
+metric airemote_update_last_check_seconds 0
