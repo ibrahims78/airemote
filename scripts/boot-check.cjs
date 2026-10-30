@@ -16,7 +16,7 @@ const BASE = process.env.BOOT_SCHEME === 'http' ? 'http://127.0.0.1:' + PORT : '
   const dbCopy = path.join(dir, 'test.db')
   fs.copyFileSync(DB, dbCopy)
 
-  await srv.start({ port: PORT, jwtSecret: 'boot-test', dbPath: dbCopy, logger: { info(){}, warn(){}, error(){} }, desktopCallbacks: {} })
+  await srv.start({ port: PORT, jwtSecret: 'boot-test', dbPath: dbCopy, tls: process.env.BOOT_SCHEME === 'http' ? false : undefined, logger: { info(){}, warn(){}, error(){} }, desktopCallbacks: {} })
   const h = await fetch(BASE + '/health').then(r => r.json())
   console.log('HEALTH ' + JSON.stringify(h))
 

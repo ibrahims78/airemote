@@ -42,6 +42,7 @@ function getSsh2()     { if (!_ssh2)     _ssh2     = require('ssh2');        ret
 // ─────────────────────────────────────────────────────────────────────────────
 const agentSockets      = new Map()   // deviceId → { ws, info, deviceName, connectedAt, stats }
 const { createFileTransferManager } = require('./lib/file-transfer')
+const { createBackupManager } = require('./lib/backup-manager')
 let fileTransfers = null
 const clientSockets     = new Map()   // Map<WebSocket, { user }>
 const ptyClients        = new Map()   // sessionId → Set<WebSocket>
@@ -50,6 +51,7 @@ const screenSessions    = new Map()   // sessionId → { deviceId, viewers, star
 const deviceScreenSess  = new Map()   // deviceId  → sessionId
 // v3.8.28 (R7) - observability registry. Cardinality stays bounded on purpose:
 // HTTP is aggregated by method+status only, everything else has fixed labels.
+let backupManager = null
 const metrics = {
   http: new Map(),        // "GET 200" -> count
   httpCount: 0,
@@ -2816,7 +2818,7 @@ let TLS_CERT_PATH = null
 
 const AGENT_VERSION = '3.8.28'   // agent artifact version (downloads)
 let serverLogger = null   // set in start(); lets WS handlers write to the app log
-const SERVER_VERSION = '3.8.28'  // server build version (/health)
+const SERVER_VERSION = '3.8.29'  // server build version (/health)
 
 async function start(config) {
   if (started) return
@@ -2830,6 +2832,28 @@ async function start(config) {
 
   // v3.8.12 / R2 — مفتاح أسرار مستقل + هجرة القيم القديمة إلى GCM
   initSecretKey(dbPath)
+
+  // v3.8.29 (R7) - scheduled, verified snapshots. VACUUM INTO gives a standalone
+  // database from the live connection, so a backup never captures a torn WAL state.
+  try {
+    backupManager = createBackupManager({
+      db,
+      dbPath,
+      dir: config.backupDir || process.env.AIREMOTE_BACKUP_DIR || undefined,
+      keep: config.backupKeep,
+      intervalHours: config.backupIntervalHours,
+      disabled: config.backup === false,
+      log: {
+        info: (m) => (serverLogger && serverLogger.info ? serverLogger.info('backup', m) : console.log(m)),
+        warn: (m) => (serverLogger && serverLogger.warn ? serverLogger.warn('backup', m) : console.log(m)),
+        error: (m) => (serverLogger && serverLogger.error ? serverLogger.error('backup', m) : console.error(m))
+      }
+    })
+    backupManager.start()
+  } catch (e) {
+    backupManager = null
+    try { (serverLogger && serverLogger.error ? serverLogger.error : console.error)('backup', 'init failed: ' + e.message) } catch {}
+  }
 
   // v3.8.12 / R3 — عمود code لدفتر العناوين + تعبئة الأجهزة القائمة
   ensureContactsSchema()
@@ -3258,6 +3282,13 @@ async function start(config) {
     out.push('# TYPE airemote_http_request_duration_seconds_count counter')
     out.push('airemote_http_request_duration_seconds_count ' + metrics.httpCount)
     v('airemote_errors_total', 'Unhandled errors and responses with status >= 500.', 'counter', metrics.errors)
+    if (backupManager) {
+      const bs = backupManager.state()
+      v('airemote_backup_files', 'Snapshots kept on disk.', 'gauge', bs.files)
+      v('airemote_backup_age_seconds', 'Age of the newest verified snapshot, -1 when none.', 'gauge',
+        bs.ageSeconds === null ? -1 : bs.ageSeconds)
+      v('airemote_backup_failures_total', 'Failed snapshot attempts since start.', 'counter', bs.failures)
+    }
     reply.type('text/plain; version=0.0.4; charset=utf-8').header('cache-control', 'no-store')
     return out.join('\n') + '\n'
   })
@@ -5291,9 +5322,25 @@ if ($target -eq $null) { 'name-not-found' } else {
 
   fastify.post('/api/desktop/backup', async (req, reply) => {
     const p = adminMiddleware(req, reply); if (!p) return
+    // v3.8.29 (R7) - the server owns the snapshot now; the desktop callback stays as a
+    // fallback for builds that predate the manager.
+    if (backupManager) {
+      const r = backupManager.create('manual')
+      if (!r.ok) return reply.code(500).send(r)
+      dbLogAudit({ userId: p.userId, userEmail: p.email, action: 'backup_created', details: { path: r.path, bytes: r.bytes }, ipAddress: req.ip })
+      return r
+    }
     try {
       return await (_desktopCallbacks.createBackup?.() || Promise.reject(new Error('Backup not available')))
     } catch (e) { return reply.code(500).send({ ok: false, error: e.message }) }
+  })
+
+  // v3.8.29 (R7) - what the operator needs before a restore: where the files are how old
+  // the newest one is, and whether the last run failed.
+  fastify.get('/api/desktop/backups', async (req, reply) => {
+    const p = adminMiddleware(req, reply); if (!p) return
+    if (!backupManager) return reply.code(503).send({ error: 'backup manager not available' })
+    return { state: backupManager.state(), files: backupManager.list() }
   })
 
   // ── v3.8.12 / R4 — جلسات وكيل‑بوكيل عبر Relay ──────────────────────────────
@@ -5477,6 +5524,7 @@ if ($target -eq $null) { 'name-not-found' } else {
 }
 
 async function stop() {
+  try { if (backupManager) backupManager.stop() } catch {}
   if (!started || !fastify) return
   shuttingDown = true
   started = false; _startedAt = null
