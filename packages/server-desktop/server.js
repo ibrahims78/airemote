@@ -45,6 +45,7 @@ const { createFileTransferManager } = require('./lib/file-transfer')
 const { createBackupManager } = require('./lib/backup-manager')
 const migrations = require('./lib/migrations')
 const updater = require('./lib/updater')
+const { createRetention } = require('./lib/retention')
 let fileTransfers = null
 const clientSockets     = new Map()   // Map<WebSocket, { user }>
 const ptyClients        = new Map()   // sessionId → Set<WebSocket>
@@ -55,6 +56,7 @@ const deviceScreenSess  = new Map()   // deviceId  → sessionId
 // HTTP is aggregated by method+status only, everything else has fixed labels.
 let backupManager = null
 let updateState = { at: null, verdict: null }
+let retention = null
 const metrics = {
   http: new Map(),        // "GET 200" -> count
   httpCount: 0,
@@ -2832,7 +2834,7 @@ let TLS_CERT_PATH = null
 
 const AGENT_VERSION = '3.8.28'   // agent artifact version (downloads)
 let serverLogger = null   // set in start(); lets WS handlers write to the app log
-const SERVER_VERSION = '3.8.31'  // server build version (/health)
+const SERVER_VERSION = '3.8.32'  // server build version (/health)
 
 async function start(config) {
   if (started) return
@@ -2867,6 +2869,27 @@ async function start(config) {
   } catch (e) {
     backupManager = null
     try { (serverLogger && serverLogger.error ? serverLogger.error : console.error)('backup', 'init failed: ' + e.message) } catch {}
+  }
+
+  // v3.8.32 (R7) - storage stays bounded: recordings and audit rows expire on a schedule,
+  // and a notification goes out before anything is removed.
+  try {
+    retention = createRetention({
+      db,
+      dataDir: path.dirname(dbPath || '.'),
+      enabled: config.retention !== false,
+      recordingsDays: config.recordingsDays,
+      auditDays: config.auditDays,
+      notifyBeforeDays: config.retentionNotifyDays,
+      log: {
+        info: (m) => (serverLogger && serverLogger.info ? serverLogger.info('retention', m) : console.log(m)),
+        warn: (m) => (serverLogger && serverLogger.warn ? serverLogger.warn('retention', m) : console.log(m))
+      }
+    })
+    retention.start()
+  } catch (e) {
+    retention = null
+    try { (serverLogger && serverLogger.error ? serverLogger.error : console.error)('retention', 'init failed: ' + e.message) } catch {}
   }
 
   // v3.8.12 / R3 — عمود code لدفتر العناوين + تعبئة الأجهزة القائمة
@@ -3296,6 +3319,14 @@ async function start(config) {
     out.push('# TYPE airemote_http_request_duration_seconds_count counter')
     out.push('airemote_http_request_duration_seconds_count ' + metrics.httpCount)
     v('airemote_errors_total', 'Unhandled errors and responses with status >= 500.', 'counter', metrics.errors)
+    if (retention) {
+      const rs = retention.preview()
+      v('airemote_recordings_rows', 'Recordings kept.', 'gauge', rs.recordings.total)
+      v('airemote_recordings_megabytes', 'Size of kept recordings in MB.', 'gauge', rs.recordings.totalMb)
+      v('airemote_retention_expired_recordings', 'Recordings past the retention window.', 'gauge', rs.recordings.expired)
+      v('airemote_retention_expired_audit_rows', 'Audit rows past the retention window.', 'gauge', rs.audit.expired)
+      v('airemote_retention_failures_total', 'Failed retention runs since start.', 'counter', retention.state().failures)
+    }
     v('airemote_update_available', '1 when a newer verified package is in the update folder.', 'gauge',
       updateState.verdict && updateState.verdict.available ? 1 : 0)
     v('airemote_update_last_check_seconds', 'Age of the last update check, -1 when never checked.', 'gauge',
@@ -5355,6 +5386,25 @@ if ($target -eq $null) { 'name-not-found' } else {
 
   // v3.8.29 (R7) - what the operator needs before a restore: where the files are how old
   // the newest one is, and whether the last run failed.
+  // v3.8.32 (R7) - retention: read the policy and the dry run any time, purge only on an
+  // explicit admin call.
+  fastify.get('/api/desktop/retention', async (req, reply) => {
+    const p = adminMiddleware(req, reply); if (!p) return
+    if (!retention) return reply.code(503).send({ error: 'retention not available' })
+    return { state: retention.state(), preview: retention.preview() }
+  })
+
+  fastify.post('/api/desktop/retention/run', async (req, reply) => {
+    const p = adminMiddleware(req, reply); if (!p) return
+    if (!retention) return reply.code(503).send({ error: 'retention not available' })
+    const body = req.body || {}
+    const dryRun = body.dryRun === true
+    if (!dryRun && body.confirm !== true) return reply.code(400).send({ error: 'confirm:true is required to delete' })
+    const r = retention.run({ dryRun, dataDir: path.dirname(_config.dbPath || '.') })
+    if (!dryRun && r.ok) dbLogAudit({ userId: p.userId, userEmail: p.email, action: 'retention_run', details: r.deleted || {}, ipAddress: req.ip })
+    return r
+  })
+
   // v3.8.30 (R7) - schema state for an operator deciding whether an upgrade is safe.
   // v3.8.31 (R7) - update from an internal folder, verified by the signed manifest.
   // Checking is read-only; applying is a separate admin action that names the version.
@@ -5611,6 +5661,7 @@ if ($target -eq $null) { 'name-not-found' } else {
 
 async function stop() {
   try { if (backupManager) backupManager.stop() } catch {}
+  try { if (retention) retention.stop() } catch {}
   if (!started || !fastify) return
   shuttingDown = true
   started = false; _startedAt = null

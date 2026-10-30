@@ -30,6 +30,9 @@ const { spawnSync } = require('child_process')
 const SERVER_DIR = path.resolve(__dirname, '..')
 const ROOT = path.resolve(SERVER_DIR, '..', '..')
 const updater = require(path.resolve(SERVER_DIR, 'lib', 'updater'))
+// never hard-code the build number here: the assertion is about the endpoint reporting the
+// running build, not about which build that is
+const RUNNING_VERSION = require(path.resolve(SERVER_DIR, 'package.json')).version
 
 let failed = 0
 function check(desc, cond, extra) {
@@ -150,7 +153,7 @@ async function main() {
   const H = { Authorization: 'Bearer ' + admin.token, 'Content-Type': 'application/json' }
 
   const st = await fetch(BASE + '/api/desktop/update', { headers: H }).then((r) => r.json())
-  check('J1. status reports current version and source', st.current === '3.8.31' && st.sourceDir === source, JSON.stringify(st).slice(0, 160))
+  check('J1. status reports current version and source', st.current === RUNNING_VERSION && st.sourceDir === source, JSON.stringify(st).slice(0, 160))
   const anon = await fetch(BASE + '/api/desktop/update/check', { method: 'POST' })
   check('J2. checking needs a token', anon.status === 401)
   const applied = await fetch(BASE + '/api/desktop/update/apply', { method: 'POST', headers: H, body: JSON.stringify({ version: '3.8.99' }) })
