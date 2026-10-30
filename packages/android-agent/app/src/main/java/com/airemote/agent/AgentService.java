@@ -124,11 +124,12 @@ public class AgentService extends Service {
     private int audioSeq = 0;
     private volatile int streamFps = 8;
     private volatile int capW = 0, capH = 0;
-    // v3.8.22 - MediaProjection mirrors the display content below the status bar/cutout,
-    // leaving a solid black band at the top of every frame (measured 72px on TKL4 at
-    // 720x1600 = 4.5% of the height). It is cropped at the source so the live view, the
-    // recording and the bandwidth all lose it; touch input adds it back.
-    private volatile int streamTopInset = 0;
+    // v3.8.28 - the system band MediaProjection mirrors is not always at the top: a
+    // 90-degree rotation moves it to the left edge (measured 72px on TKL4 at 1600x720),
+    // which the top-only crop of v3.8.22 left visible as a black column. Crops are now
+    // measured on all four edges, applied only where the band really is black, and touch
+    // input adds the same offsets back per axis.
+    private volatile int cropL = 0, cropT = 0, cropR = 0, cropB = 0;
     private volatile boolean insetChecked = false;
     private volatile int lastDownX = -1, lastDownY = -1;
     private final java.util.List<Long> ctrlAuthAttempts = new java.util.ArrayList<>();
@@ -1443,6 +1444,10 @@ public class AgentService extends Service {
         streamBinary = payload.optBoolean("binary", false);
         streamDelta = payload.optBoolean("delta", true);
         prevPixels = null; deltaRun = 0; slowEncodeStreak = 0; forceJpeg = false;
+        // v3.8.28 - a new session must re-measure the band: the fields survive between
+        // sessions, and a stale insetChecked would keep the old (possibly zero) crops.
+        insetChecked = false;
+        cropL = 0; cropT = 0; cropR = 0; cropB = 0;
         stopScreenStreamRaw();
         saveDisplaySettings();
         screenOffMode = false;
@@ -1552,9 +1557,10 @@ public class AgentService extends Service {
                     Image image = reader.acquireLatestImage();
                     if (image == null) { Thread.sleep(30); continue; }
                     try {
-                        float fscale = Math.min(1f, streamMaxWidth / (float) fullW);
-                        int visH = Math.max(1, fullH - streamTopInset);
-                        int fw = Math.max(320, Math.round(fullW * fscale));
+                        int visW = Math.max(1, fullW - cropL - cropR);
+                        int visH = Math.max(1, fullH - cropT - cropB);
+                        float fscale = Math.min(1f, streamMaxWidth / (float) visW);
+                        int fw = Math.max(320, Math.round(visW * fscale));
                         int fh = Math.max(240, Math.round(visH * fscale));
                         if (scaled == null || scaled.getWidth() != fw || scaled.getHeight() != fh) {
                             if (scaled != null) scaled.recycle();
@@ -1570,11 +1576,11 @@ public class AgentService extends Service {
                         buffer.rewind();
                         bmp.copyPixelsFromBuffer(buffer);
                         if (!insetChecked) {
-                            streamTopInset = detectTopInset(bmp);
+                            measureCrops(bmp);
                             insetChecked = true;
                         }
                         if (scaleCanvas == null) scaleCanvas = new android.graphics.Canvas(scaled);
-                        android.graphics.Rect src = new android.graphics.Rect(0, streamTopInset, fullW, fullH);
+                        android.graphics.Rect src = new android.graphics.Rect(cropL, cropT, fullW - cropR, fullH - cropB);
                         android.graphics.Rect dst = new android.graphics.Rect(0, 0, fw, fh);
                         scaleCanvas.drawBitmap(bmp, src, dst, null);
                         // v3.8.3 - send only the changed rectangle when the diff is small.
@@ -1963,56 +1969,124 @@ public class AgentService extends Service {
         if (sid.isEmpty() || sid.equals(streamSessionId)) stopScreenStreamRaw();
     }
 
-    /** Status-bar height in pixels, raised to the display cutout on API 30+. */
-    private int candidateTopInset() {
-        int inset = 0;
+    /** Rotation of the default display. */
+    private int displayRotation() {
+        try {
+            DisplayManager dm = (DisplayManager) getSystemService(DISPLAY_SERVICE);
+            android.view.Display d = dm != null ? dm.getDisplay(android.view.Display.DEFAULT_DISPLAY) : null;
+            return d != null ? d.getRotation() : android.view.Surface.ROTATION_0;
+        } catch (Exception ignore) { return android.view.Surface.ROTATION_0; }
+    }
+
+    /**
+     * The edge the system bar sits on, for the current rotation: 1=top, 0=left, 2=right, 3=bottom.
+     * The bar (and the cutout letterbox that follows it) rotates with the display, which is
+     * exactly what the top-only crop of v3.8.22 missed: in landscape the band moved to the
+     * left while the code kept looking at the top.
+     */
+    private int barEdge() {
+        switch (displayRotation()) {
+            case android.view.Surface.ROTATION_90:  return 0;   // bar on the left
+            case android.view.Surface.ROTATION_180: return 3;   // bar at the bottom
+            case android.view.Surface.ROTATION_270: return 2;   // bar on the right
+            default:                                return 1;   // portrait: top
+        }
+    }
+
+    /** Thickness the system reserves on that edge, in pixels. */
+    private int barThickness(int edge) {
+        int value = 0;
         try {
             int id = getResources().getIdentifier("status_bar_height", "dimen", "android");
-            if (id > 0) inset = getResources().getDimensionPixelSize(id);
+            if (id > 0) value = getResources().getDimensionPixelSize(id);
         } catch (Exception ignore) { }
         if (Build.VERSION.SDK_INT >= 30) {
             try {
                 android.view.WindowManager wm = (android.view.WindowManager) getSystemService(WINDOW_SERVICE);
                 if (wm != null) {
-                    android.view.WindowInsets wi = wm.getCurrentWindowMetrics().getWindowInsets();
-                    android.view.DisplayCutout cut = wi.getDisplayCutout();
-                    if (cut != null) inset = Math.max(inset, cut.getSafeInsetTop());
+                    android.view.DisplayCutout cut = wm.getCurrentWindowMetrics().getWindowInsets().getDisplayCutout();
+                    if (cut != null) {
+                        if (edge == 0) value = Math.max(value, cut.getSafeInsetLeft());
+                        else if (edge == 1) value = Math.max(value, cut.getSafeInsetTop());
+                        else if (edge == 2) value = Math.max(value, cut.getSafeInsetRight());
+                        else value = Math.max(value, cut.getSafeInsetBottom());
+                    }
                 }
             } catch (Exception ignore) { }
         }
-        return Math.max(0, inset);
+        return Math.max(0, value);
     }
 
     /**
-     * Returns the inset to crop only when the top rows really are black. A device that
-     * mirrors a visible status bar (clock, battery) keeps its full frame instead of
-     * losing it to a blind crop.
+     * Depth of the black band on ONE edge, or 0 when that edge carries real content.
+     *
+     * The system reports 72px while the actual letterbox on TKL4 is ~96px (status bar plus
+     * the black padding above the app), so a single probe at the reported depth sees another
+     * black row and gives up. The band is therefore walked: it must start dark for at least
+     * minCandidate rows, then the first clearly brighter line marks where content begins.
+     *
+     * Guards: the band must be >=85% dark to count at all, the walk stops at a quarter of the
+     * frame, and a band that never ends (a full black screen) is rejected as ambiguous.
      */
-    private int detectTopInset(Bitmap frame) {
-        int candidate = candidateTopInset();
-        if (frame == null || candidate <= 0) return 0;
-        int w = frame.getWidth(), h = frame.getHeight();
-        if (candidate >= h / 4) return 0;
-        int stepY = Math.max(1, candidate / 8);
-        int stepX = Math.max(1, w / 24);
-        int sampled = 0, dark = 0;
+    private int measureBand(Bitmap frame, int edge, int minCandidate) {
+        if (frame == null) return 0;
+        final int w = frame.getWidth(), h = frame.getHeight();
+        if (w <= 0 || h <= 0) return 0;
+        final boolean column = (edge == 0 || edge == 2);
+        final int depth = column ? w : h;
+        final int span  = column ? h : w;
+        final int start = Math.max(1, minCandidate);
+        final int cap = Math.min(depth / 4, Math.max(start * 2, 160));
+        if (start >= depth / 4) return 0;
+        final int stepAlong = Math.max(1, span / 32);
         try {
-            for (int y = 0; y < candidate; y += stepY) {
-                for (int x = 0; x < w; x += stepX) {
-                    int c = frame.getPixel(x, y);
-                    int lum = (((c >> 16) & 0xff) + ((c >> 8) & 0xff) + (c & 0xff)) / 3;
+            // 1) the innermost reported band must actually be dark
+            int dark = 0, sampled = 0;
+            long sum = 0; int n = 0;
+            for (int d = 0; d < start; d += Math.max(1, start / 8)) {
+                for (int sAlong = 0; sAlong < span; sAlong += stepAlong) {
+                    final int x = column ? (edge == 0 ? d : w - 1 - d) : sAlong;
+                    final int y = column ? sAlong : (edge == 1 ? d : h - 1 - d);
+                    final int c = frame.getPixel(x, y);
+                    final int lum = (((c >> 16) & 0xff) + ((c >> 8) & 0xff) + (c & 0xff)) / 3;
                     sampled++;
+                    sum += lum;
                     if (lum < 20) dark++;
                 }
             }
-        } catch (Exception ignore) {
-            return 0;
-        }
-        if (sampled == 0) return 0;
-        boolean mostlyBlack = dark >= (int) (sampled * 0.9);
-        MainActivity.log("top inset check: candidate=" + candidate + " dark=" + dark + "/" + sampled
-                + " crop=" + (mostlyBlack ? candidate : 0));
-        return mostlyBlack ? candidate : 0;
+            if (sampled == 0) return 0;
+            if (dark < (int) (sampled * 0.85)) return 0;
+            final double bandMean = (double) sum / sampled;
+
+            // 2) find the first line that is clearly content, walking outwards
+            for (int d = start; d < cap; d += 2) {
+                long lineSum = 0; int lineN = 0;
+                for (int sAlong = 0; sAlong < span; sAlong += stepAlong) {
+                    final int x = column ? (edge == 0 ? d : w - 1 - d) : sAlong;
+                    final int y = column ? sAlong : (edge == 1 ? d : h - 1 - d);
+                    final int c = frame.getPixel(x, y);
+                    lineSum += (((c >> 16) & 0xff) + ((c >> 8) & 0xff) + (c & 0xff)) / 3;
+                    lineN++;
+                }
+                if (lineN == 0) break;
+                if ((double) lineSum / lineN >= bandMean + 12) return d;
+            }
+        } catch (Exception ignore) { return 0; }
+        return 0;   // the band never ended inside the cap: leave the frame alone
+    }
+
+    /** Measures the band on the edge the system bar occupies; called once per orientation. */
+    private void measureCrops(Bitmap frame) {
+        final int edge = barEdge();
+        final int candidate = barThickness(edge);
+        final int found = measureBand(frame, edge, candidate);
+        cropL = edge == 0 ? found : 0;
+        cropT = edge == 1 ? found : 0;
+        cropR = edge == 2 ? found : 0;
+        cropB = edge == 3 ? found : 0;
+        MainActivity.log("inset scan: edge=" + edge + " candidate=" + candidate + " crop l=" + cropL
+                + " t=" + cropT + " r=" + cropR + " b=" + cropB
+                + " frame " + (frame != null ? frame.getWidth() : 0) + "x" + (frame != null ? frame.getHeight() : 0));
     }
 
     private void handleScreenMouse(JSONObject payload) {
@@ -2020,10 +2094,11 @@ public class AgentService extends Service {
             String t = payload.optString("type", "");
             double rx = payload.optDouble("x", 0.0), ry = payload.optDouble("y", 0.0);
             DisplayMetrics dm = getResources().getDisplayMetrics();
-            int mw = capW > 0 ? capW : dm.widthPixels, mh = capH > 0 ? capH : dm.heightPixels;
-            int inset = streamTopInset;
-            int px = (int) Math.round(rx * mw);
-            int py = inset + (int) Math.round(ry * Math.max(1, mh - inset));
+            int mFullW = capW > 0 ? capW : dm.widthPixels, mFullH = capH > 0 ? capH : dm.heightPixels;
+            int mw = Math.max(1, mFullW - cropL - cropR);
+            int mh = Math.max(1, mFullH - cropT - cropB);
+            int px = cropL + (int) Math.round(rx * mw);
+            int py = cropT + (int) Math.round(ry * mh);
             JSONObject act = new JSONObject();
             if (t.equals("click")) { act.put("action", "click"); act.put("x", px); act.put("y", py); }
             else if (t.equals("dblclick")) { act.put("action", "dclick"); act.put("x", px); act.put("y", py); }
