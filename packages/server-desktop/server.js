@@ -44,6 +44,7 @@ const agentSockets      = new Map()   // deviceId → { ws, info, deviceName, co
 const { createFileTransferManager } = require('./lib/file-transfer')
 const { createBackupManager } = require('./lib/backup-manager')
 const migrations = require('./lib/migrations')
+const updater = require('./lib/updater')
 let fileTransfers = null
 const clientSockets     = new Map()   // Map<WebSocket, { user }>
 const ptyClients        = new Map()   // sessionId → Set<WebSocket>
@@ -53,6 +54,7 @@ const deviceScreenSess  = new Map()   // deviceId  → sessionId
 // v3.8.28 (R7) - observability registry. Cardinality stays bounded on purpose:
 // HTTP is aggregated by method+status only, everything else has fixed labels.
 let backupManager = null
+let updateState = { at: null, verdict: null }
 const metrics = {
   http: new Map(),        // "GET 200" -> count
   httpCount: 0,
@@ -2830,7 +2832,7 @@ let TLS_CERT_PATH = null
 
 const AGENT_VERSION = '3.8.28'   // agent artifact version (downloads)
 let serverLogger = null   // set in start(); lets WS handlers write to the app log
-const SERVER_VERSION = '3.8.30'  // server build version (/health)
+const SERVER_VERSION = '3.8.31'  // server build version (/health)
 
 async function start(config) {
   if (started) return
@@ -3294,6 +3296,10 @@ async function start(config) {
     out.push('# TYPE airemote_http_request_duration_seconds_count counter')
     out.push('airemote_http_request_duration_seconds_count ' + metrics.httpCount)
     v('airemote_errors_total', 'Unhandled errors and responses with status >= 500.', 'counter', metrics.errors)
+    v('airemote_update_available', '1 when a newer verified package is in the update folder.', 'gauge',
+      updateState.verdict && updateState.verdict.available ? 1 : 0)
+    v('airemote_update_last_check_seconds', 'Age of the last update check, -1 when never checked.', 'gauge',
+      updateState.at ? Math.round((Date.now() - updateState.at) / 1000) : -1)
     if (backupManager) {
       const bs = backupManager.state()
       v('airemote_backup_files', 'Snapshots kept on disk.', 'gauge', bs.files)
@@ -5350,6 +5356,68 @@ if ($target -eq $null) { 'name-not-found' } else {
   // v3.8.29 (R7) - what the operator needs before a restore: where the files are how old
   // the newest one is, and whether the last run failed.
   // v3.8.30 (R7) - schema state for an operator deciding whether an upgrade is safe.
+  // v3.8.31 (R7) - update from an internal folder, verified by the signed manifest.
+  // Checking is read-only; applying is a separate admin action that names the version.
+  const updateDir = () => _config.updateDir || process.env.AIREMOTE_UPDATE_DIR || path.join(path.dirname(_config.dbPath || '.'), 'updates', 'source')
+  const runCheck = async () => {
+    const verdict = await updater.check({ sourceDir: updateDir(), currentVersion: SERVER_VERSION })
+    updateState = { at: Date.now(), verdict }
+    return verdict
+  }
+
+  fastify.get('/api/desktop/update', async (req, reply) => {
+    const p = adminMiddleware(req, reply); if (!p) return
+    return {
+      current: SERVER_VERSION,
+      sourceDir: updateDir(),
+      lastCheck: updateState.at ? new Date(updateState.at).toISOString() : null,
+      verdict: updateState.verdict,
+      lastResult: updater.readResult(path.dirname(_config.dbPath || '.')),
+    }
+  })
+
+  fastify.post('/api/desktop/update/check', async (req, reply) => {
+    const p = adminMiddleware(req, reply); if (!p) return
+    try { return await runCheck() } catch (e) { return reply.code(500).send({ ok: false, error: e.message }) }
+  })
+
+  fastify.post('/api/desktop/update/apply', async (req, reply) => {
+    const p = adminMiddleware(req, reply); if (!p) return
+    const body = req.body || {}
+    const target = String(body.version || '')
+    if (body.confirm !== true) return reply.code(400).send({ error: 'confirm:true is required' })
+    let verdict
+    try { verdict = await runCheck() } catch (e) { return reply.code(500).send({ ok: false, error: e.message }) }
+    if (!verdict.available || !verdict.verified) return reply.code(409).send({ error: 'no verified update available', verdict })
+    if (target && target !== verdict.latest) return reply.code(409).send({ error: 'target mismatch', expected: verdict.latest })
+    let staged
+    try { staged = updater.stage(verdict, path.dirname(_config.dbPath || '.')) }
+    catch (e) { return reply.code(500).send({ error: 'staging failed: ' + e.message }) }
+
+    // Rollback needs an older package. A release share usually keeps them, so pick the
+    // highest version below the target; otherwise the helper reports a clean failure.
+    let previous = null
+    try {
+      const dir = path.join(updateDir(), 'server-windows')
+      const older = fs.readdirSync(dir)
+        .map((f) => ({ f, v: (f.match(/-v(d+.d+.d+)-x64.exe$/) || [])[1] }))
+        .filter((x) => x.v && updater.compareVersions(x.v, verdict.latest) < 0)
+        .sort((a, b) => updater.compareVersions(b.v, a.v))[0]
+      previous = older ? path.join(dir, older.f) : null
+    } catch { previous = null }
+
+    const appExe = path.join(path.dirname(process.execPath), 'AiRemote Server.exe')
+    const started = updater.apply({
+      dataDir: path.dirname(_config.dbPath || '.'),
+      stagedPath: staged.path,
+      previousInstaller: previous,
+      target: verdict.latest,
+      appExe,
+    })
+    dbLogAudit({ userId: p.userId, userEmail: p.email, action: 'update_started', details: { from: SERVER_VERSION, to: verdict.latest, staged: staged.path, rollback: previous }, ipAddress: req.ip })
+    return { ok: true, from: SERVER_VERSION, to: verdict.latest, staged: staged.path, rollback: previous, helper: started }
+  })
+
   fastify.get('/api/desktop/schema', async (req, reply) => {
     const p = adminMiddleware(req, reply); if (!p) return
     try { return migrations.status(db) } catch (e) { return reply.code(500).send({ error: e.message }) }

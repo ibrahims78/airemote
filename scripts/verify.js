@@ -68,6 +68,7 @@ const steps = [
   { name: 'e2e: observability (R7)',   cmd: electronStep('packages/server-desktop/test/e2e-observability.test.cjs') },
   { name: 'e2e: backup + restore (R7)', cmd: electronStep('packages/server-desktop/test/e2e-backup.test.cjs') },
   { name: 'e2e: schema migrations (R7)', cmd: electronStep('packages/server-desktop/test/e2e-migrations.test.cjs') },
+  { name: 'e2e: updater from folder (R7)', cmd: electronStep('packages/server-desktop/test/e2e-updater.test.cjs') },
   { name: 'unit: secret storage (R2)',   cmd: electronStep('packages/server-desktop/test/secrets.test.cjs') },
 ]
 
