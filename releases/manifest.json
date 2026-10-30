@@ -1,32 +1,32 @@
 {
   "product": "AiRemote",
-  "version": "3.8.25",
-  "generatedAt": "2026-10-30T04:23:48.411Z",
+  "version": "3.8.27",
+  "generatedAt": "2026-10-30T11:08:33.471Z",
   "artifacts": [
     {
-      "name": "agent-windows/AiRemote-Agent-Setup-v3.8.25-x64.exe",
-      "size": 76363680,
-      "sha256": "e9e9388198f7060fcffdf17babdd7977374e20050fa52510d518bf59e4c3ba74"
+      "name": "agent-windows/AiRemote-Agent-Setup-v3.8.27-x64.exe",
+      "size": 76363698,
+      "sha256": "f416cadd0d5db6d1f8ce88564a084751e609b855025de6a91f9369709b8c0874"
     },
     {
-      "name": "agent-windows/AiRemote-Agent-v3.8.25-Windows-x64.zip",
-      "size": 103969649,
-      "sha256": "ecc7e44d603ca814fee6d053a004b325fb689bae9ac27444f2bfba9f640f02fc"
+      "name": "agent-windows/AiRemote-Agent-v3.8.27-Windows-x64.zip",
+      "size": 103969643,
+      "sha256": "a3dcaf951a97c93a29ab3445bbe9c09509357477a940f1ecb2b2c441051fd19e"
     },
     {
-      "name": "android-agent/AiRemote-Agent-Android-v3.8.25.apk",
+      "name": "android-agent/AiRemote-Agent-Android-v3.8.27.apk",
       "size": 152759,
-      "sha256": "e45459962a478296e226f2e80269453f1f95dad687b96975d5d181b0d68c7049"
+      "sha256": "8fc24560582a98f538548fd0803f335d5daf5c3d1d80ab1944d41111a74b2721"
     },
     {
-      "name": "server-windows/AiRemote-Server-Setup-v3.8.25-x64.exe",
-      "size": 121219314,
-      "sha256": "d340d54b2222ca8d6f1de3b584576c61281f1408a312b62e9e470516700e17c9"
+      "name": "server-windows/AiRemote-Server-Setup-v3.8.27-x64.exe",
+      "size": 159383880,
+      "sha256": "14eb90da1db5063443d2f04049842703d7a9e195c367d9bcccdfa06ad7acf8ce"
     },
     {
-      "name": "server-windows/AiRemote-Server-v3.8.25-Windows-x64.zip",
-      "size": 162888788,
-      "sha256": "f4e4d4b261eb85e4652fa453b6444788caf5835fa8c0d4d17343deca35e1a388"
+      "name": "server-windows/AiRemote-Server-v3.8.27-Windows-x64.zip",
+      "size": 212109428,
+      "sha256": "0d9fabe501abb9b7abc3710c2f828f09b1e921e443431250fe740d1dbb6079f6"
     }
   ]
 }

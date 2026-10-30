@@ -1,0 +1,13 @@
+{
+  "device": "TECNO-KL4",
+  "frames": 9,
+  "fps": 0.8025682182985554,
+  "avgKB": 15.6259765625,
+  "types": {
+    "screen:viewer_count": 1,
+    "screen:state": 2,
+    "screen:display_state": 1,
+    "screen:rotate_status": 1
+  },
+  "errors": []
+}

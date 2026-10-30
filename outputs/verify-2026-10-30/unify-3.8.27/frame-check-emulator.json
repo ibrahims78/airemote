@@ -1,0 +1,13 @@
+{
+  "device": "Android-Emulator",
+  "frames": 24,
+  "fps": 1.6713091922005572,
+  "avgKB": 3.474853515625,
+  "types": {
+    "screen:viewer_count": 1,
+    "screen:state": 2,
+    "screen:display_state": 1,
+    "screen:rotate_status": 1
+  },
+  "errors": []
+}
