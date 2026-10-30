@@ -51,6 +51,9 @@ let fileTransfers = null
 const clientSockets     = new Map()   // Map<WebSocket, { user }>
 const ptyClients        = new Map()   // sessionId → Set<WebSocket>
 const screenViewers     = new Map()   // deviceId  → Set<WebSocket>
+// v3.8.36 (R8) — one-way clipboard sync state per device. Content is never kept:
+// only a SHA-256 hash, a length, and counters (privacy by construction).
+const clipboardSync     = new Map()   // deviceId  → { enabled, direction, lastHash, sent, received, blocked, duplicates }
 const screenSessions    = new Map()   // sessionId → { deviceId, viewers, startedAt, connectTimer }
 const deviceScreenSess  = new Map()   // deviceId  → sessionId
 // v3.8.28 (R7) - observability registry. Cardinality stays bounded on purpose:
@@ -1046,6 +1049,87 @@ function sendToScreenViewers(deviceId, obj) {
   }
 }
 
+// ── v3.8.36 (R8) — clipboard sync, one direction at a time ─────────────────
+// "to-device" pushes what the viewer copies to the remote machine. "to-viewer"
+// pulls remote clipboard changes to the viewer. The reverse key flips it; the
+// opposite direction is dropped and counted, so a session can never leak both ways.
+const CLIPBOARD_SYNC_MAX = 64 * 1024
+
+function clipboardState(deviceId) {
+  let s = clipboardSync.get(deviceId)
+  if (!s) {
+    s = {
+      enabled: false, direction: 'to-device', lastHash: '', lastLen: 0, lastAt: 0,
+      sent: 0, received: 0, blocked: 0, duplicates: 0, updatedAt: 0, by: '', agentWatching: false
+    }
+    clipboardSync.set(deviceId, s)
+  }
+  return s
+}
+
+function clipboardPublic(s) {
+  return {
+    enabled: !!s.enabled,
+    direction: s.direction === 'to-viewer' ? 'to-viewer' : 'to-device',
+    lastHash: s.lastHash ? s.lastHash.slice(0, 12) : '',
+    lastLen: s.lastLen || 0,
+    lastAt: s.lastAt || 0,
+    sent: s.sent || 0,
+    received: s.received || 0,
+    blocked: s.blocked || 0,
+    duplicates: s.duplicates || 0,
+    agentWatching: !!s.agentWatching,
+    updatedAt: s.updatedAt || 0,
+    by: s.by || ''
+  }
+}
+
+function clipboardHash(text) {
+  return crypto.createHash('sha256').update(String(text), 'utf8').digest('hex')
+}
+
+function clipboardBroadcast(deviceId, extra) {
+  const payload = clipboardPublic(clipboardState(deviceId))
+  sendToScreenViewers(deviceId, { type: 'screen:clipboard_sync', payload: extra ? Object.assign(payload, extra) : payload })
+}
+
+function clipboardTellAgent(deviceId) {
+  const s = clipboardState(deviceId)
+  const rec = agentSockets.get(deviceId)
+  if (!rec) { s.agentWatching = false; return false }
+  sendJson(rec.ws, {
+    type: 'server:screen_clipboard_watch',
+    payload: { sessionId: deviceScreenSess.get(deviceId) || '', enabled: !!s.enabled, direction: s.direction },
+    timestamp: Date.now()
+  })
+  return true
+}
+
+function clipboardSet(deviceId, patch, actor) {
+  const s = clipboardState(deviceId)
+  if (patch && patch.enabled !== undefined) s.enabled = !!patch.enabled
+  if (patch && (patch.direction === 'to-device' || patch.direction === 'to-viewer')) s.direction = patch.direction
+  if (!s.enabled) { s.lastHash = ''; s.lastLen = 0; s.agentWatching = false }
+  s.updatedAt = Date.now()
+  s.by = String(actor || '').slice(0, 120)
+  clipboardTellAgent(deviceId)
+  clipboardBroadcast(deviceId)
+  return s
+}
+
+function clipboardStop(deviceId, reason) {
+  const s = clipboardState(deviceId)
+  if (!s.enabled && !s.agentWatching) return
+  s.enabled = false
+  s.lastHash = ''
+  s.lastLen = 0
+  s.agentWatching = false
+  s.updatedAt = Date.now()
+  s.by = String(reason || 'session-ended').slice(0, 120)
+  clipboardTellAgent(deviceId)
+  clipboardBroadcast(deviceId)
+}
+
 function pushChatHistory(deviceId, msg) {
   if (!deviceId || !msg || !msg.text) return
   if (!chatHistoryByDevice.has(deviceId)) chatHistoryByDevice.set(deviceId, [])
@@ -1101,6 +1185,7 @@ function leaveScreenSession(sessionId, socket) {
       if (rec) sendJson(rec.ws, { type: 'server:screen_stop', payload: { sessionId }, timestamp: Date.now() })
       try { dbLogSessionEnd(s2.dbId) } catch {}
       try { finalizeScreenRecording(s2.deviceId) } catch {}
+      try { clipboardStop(s2.deviceId, 'session-ended') } catch {}
       screenSessions.delete(sessionId)
       if (deviceScreenSess.get(s2.deviceId) === sessionId) deviceScreenSess.delete(s2.deviceId)
     }, 6000)
@@ -1125,6 +1210,7 @@ function closeScreenSession(sessionId, errMsg) {
   }
   try { dbLogSessionEnd(session.dbId) } catch {}
   try { finalizeScreenRecording(session.deviceId) } catch {}
+  try { clipboardStop(session.deviceId, 'session-closed') } catch {}
   screenSessions.delete(sessionId)
   if (deviceScreenSess.get(session.deviceId) === sessionId) deviceScreenSess.delete(session.deviceId)
   screenViewers.delete(session.deviceId)
@@ -1469,6 +1555,32 @@ function handleAgentWs(socket) {
 
     if (type === 'agent:screen_monitors') {
       sendToScreenViewers(deviceId, { type: 'screen:monitors', payload: { monitors: payload.monitors } })
+      return
+    }
+
+    if (type === 'agent:screen_clipboard_watch_ack') {
+      const s = clipboardState(deviceId)
+      s.agentWatching = !!payload.watching
+      if (payload.direction === 'to-device' || payload.direction === 'to-viewer') s.direction = payload.direction
+      clipboardBroadcast(deviceId)
+      return
+    }
+
+    if (type === 'agent:screen_clipboard_change') {
+      const s = clipboardState(deviceId)
+      const clipText = typeof payload.text === 'string' ? payload.text : ''
+      const hash = payload.hash || clipboardHash(clipText)
+      if (!s.enabled || s.direction !== 'to-viewer') {
+        s.blocked++
+        return
+      }
+      if (!clipText || hash === s.lastHash) { s.duplicates++; return }
+      s.lastHash = hash
+      s.lastLen = clipText.length
+      s.lastAt = Date.now()
+      s.received++
+      sendToScreenViewers(deviceId, { type: 'screen:clipboard_apply', payload: { text: clipText, hash: hash.slice(0, 12), len: clipText.length, at: s.lastAt } })
+      clipboardBroadcast(deviceId)
       return
     }
 
@@ -2088,7 +2200,8 @@ function handleScreenWs(socket, request, user) {
     // v3.7.0 — viewer may watch, only manager/admin may act on the device
     const CONTROL = new Set(['screen:mouse_event', 'screen:key_event', 'screen:clipboard_write',
       'screen:clipboard_read', 'screen:privacy', 'screen:control_request', 'screen:rotate',
-      'screen:rotate_auto', 'screen:brightness', 'screen:audio_control', 'screen:set_quality', 'screen:set_monitor'])
+      'screen:rotate_auto', 'screen:brightness', 'screen:audio_control', 'screen:set_quality', 'screen:set_monitor',
+      'screen:clipboard_sync_enable', 'screen:clipboard_sync_direction', 'screen:clipboard_sync_reverse', 'screen:clipboard_local'])
     if (CONTROL.has(msg.type) && !atLeast(user && user.role, 'manager')) {
       try { socket.send(JSON.stringify({ type: 'screen:error', payload: { message: 'صلاحية تحكم مطلوبة (manager) لهذا الإجراء' } })) } catch {}
       return
@@ -2131,9 +2244,63 @@ function handleScreenWs(socket, request, user) {
       case 'screen:clipboard_read':
         sendJson(rec.ws, { type: 'server:screen_clipboard_read', payload: { sessionId }, timestamp: Date.now() })
         break
-      case 'screen:clipboard_write':
-        sendJson(rec.ws, { type: 'server:screen_clipboard_write', payload: { sessionId, text: String(payload.text || '').slice(0, 100000) }, timestamp: Date.now() })
+      case 'screen:clipboard_write': {
+        const manualText = String(payload.text || '').slice(0, 100000)
+        sendJson(rec.ws, { type: 'server:screen_clipboard_write', payload: { sessionId, text: manualText }, timestamp: Date.now() })
+        const ms = clipboardState(deviceId)
+        ms.lastHash = clipboardHash(manualText)
+        ms.lastLen = manualText.length
+        ms.lastAt = Date.now()
         break
+      }
+
+      case 'screen:clipboard_sync_state':
+        sendJson(socket, { type: 'screen:clipboard_sync', payload: clipboardPublic(clipboardState(deviceId)) })
+        break
+
+      case 'screen:clipboard_sync_enable': {
+        const want = !!payload.enabled
+        if (want && !agentSockets.get(deviceId)) {
+          sendJson(socket, { type: 'screen:error', payload: { message: 'الجهاز غير متصل' } })
+          break
+        }
+        const s = clipboardSet(deviceId, { enabled: want }, (user && user.email) || '')
+        dbLogAudit({ userId: (user && user.userId) || '', userEmail: (user && user.email) || '', deviceId, action: 'clipboard_sync_set', details: { enabled: s.enabled, direction: s.direction, via: 'ws' } })
+        break
+      }
+
+      case 'screen:clipboard_sync_direction': {
+        const dir = payload.direction === 'to-viewer' ? 'to-viewer' : 'to-device'
+        const s = clipboardSet(deviceId, { direction: dir }, (user && user.email) || '')
+        dbLogAudit({ userId: (user && user.userId) || '', userEmail: (user && user.email) || '', deviceId, action: 'clipboard_sync_direction', details: { direction: s.direction } })
+        break
+      }
+
+      case 'screen:clipboard_sync_reverse': {
+        const cur = clipboardState(deviceId).direction === 'to-viewer' ? 'to-device' : 'to-viewer'
+        const s = clipboardSet(deviceId, { direction: cur }, (user && user.email) || '')
+        dbLogAudit({ userId: (user && user.userId) || '', userEmail: (user && user.email) || '', deviceId, action: 'clipboard_sync_reverse', details: { direction: s.direction } })
+        break
+      }
+
+      case 'screen:clipboard_local': {
+        const s2 = clipboardState(deviceId)
+        const localText = typeof payload.text === 'string' ? payload.text.slice(0, CLIPBOARD_SYNC_MAX) : ''
+        if (!localText) break
+        const localHash = clipboardHash(localText)
+        if (!s2.enabled || s2.direction !== 'to-device') { s2.blocked++; clipboardBroadcast(deviceId, { lastBlocked: 'direction' }); break }
+        if (!s2.agentWatching) { s2.blocked++; clipboardBroadcast(deviceId, { lastBlocked: 'no-consent' }); break }
+        if (localHash === s2.lastHash) { s2.duplicates++; break }
+        const rec2 = agentSockets.get(deviceId)
+        if (!rec2) { s2.blocked++; break }
+        s2.lastHash = localHash
+        s2.lastLen = localText.length
+        s2.lastAt = Date.now()
+        s2.sent++
+        sendJson(rec2.ws, { type: 'server:screen_clipboard_write', payload: { sessionId, text: localText }, timestamp: Date.now() })
+        clipboardBroadcast(deviceId)
+        break
+      }
       case 'screen:privacy':
         sendJson(rec.ws, { type: 'server:screen_privacy', payload: { enable: !!payload.enable }, timestamp: Date.now() })
         break
@@ -2834,9 +3001,9 @@ let _startedAt = null
 let TLS_ACTIVE   = false
 let TLS_CERT_PATH = null
 
-const AGENT_VERSION = '3.8.28'   // agent artifact version (downloads)
+const AGENT_VERSION = '3.8.36'   // agent artifact version (downloads)
 let serverLogger = null   // set in start(); lets WS handlers write to the app log
-const SERVER_VERSION = '3.8.35'  // server build version (/health)
+const SERVER_VERSION = '3.8.36'  // server build version (/health)
 
 async function start(config) {
   if (started) return
@@ -3308,6 +3475,19 @@ async function start(config) {
     v('airemote_ws_clients', 'Dashboard websocket clients.', 'gauge', clientSockets.size)
     v('airemote_screen_sessions', 'Active screen capture sessions.', 'gauge', screenSessions.size)
     v('airemote_screen_viewers', 'Sockets watching a screen session.', 'gauge', viewers)
+    {
+      let csEnabled = 0, csEvents = 0, csBlocked = 0, csDup = 0
+      for (const cs of clipboardSync.values()) {
+        if (cs.enabled) csEnabled++
+        csEvents += (cs.sent || 0) + (cs.received || 0)
+        csBlocked += cs.blocked || 0
+        csDup += cs.duplicates || 0
+      }
+      v('airemote_clipboard_sync_enabled', 'Devices with one-way clipboard sync on.', 'gauge', csEnabled)
+      v('airemote_clipboard_sync_events_total', 'Clipboard transfers in either direction since start.', 'counter', csEvents)
+      v('airemote_clipboard_sync_blocked_total', 'Changes dropped because the one-way direction forbids them.', 'counter', csBlocked)
+      v('airemote_clipboard_sync_duplicates_total', 'Identical clipboard payloads skipped (echo guard).', 'counter', csDup)
+    }
     out.push('# HELP airemote_relay_sessions Relay sessions by state.')
     out.push('# TYPE airemote_relay_sessions gauge')
     const known = ['requested', 'active', 'suspended', 'closed', 'denied', 'expired']
@@ -3768,6 +3948,27 @@ async function start(config) {
     return { ok: true }
   })
   // ── v3.8.12 / R3-2 — الوصول غير المراقب (كلمة مرور لكل جهاز) ───────────────
+  // ── v3.8.36 / R8 — حالة مزامنة الحافظة أحادية الاتجاه (قراءة/ضبط) ─────────
+  fastify.get('/api/devices/:id/clipboard-sync', async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
+    return Object.assign({ ok: true, deviceId: req.params.id }, clipboardPublic(clipboardState(req.params.id)))
+  })
+
+  fastify.post('/api/devices/:id/clipboard-sync', { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    if (!atLeast(p.role, 'manager')) return reply.code(403).send({ error: 'Manager role required', code: 'role_too_low' })
+    if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
+    const body = req.body || {}
+    if (body.direction !== undefined && body.direction !== 'to-device' && body.direction !== 'to-viewer') {
+      return reply.code(400).send({ error: 'direction must be to-device or to-viewer', code: 'bad_direction' })
+    }
+    if (body.enabled === true && !agentSockets.get(req.params.id)) return reply.code(409).send({ error: 'الجهاز غير متصل', code: 'device_offline' })
+    const s = clipboardSet(req.params.id, { enabled: body.enabled, direction: body.direction }, p.email)
+    dbLogAudit({ userId: p.userId, userEmail: p.email, deviceId: req.params.id, action: 'clipboard_sync_set', details: { enabled: s.enabled, direction: s.direction, via: 'api' }, ipAddress: req.ip })
+    return Object.assign({ ok: true, deviceId: req.params.id }, clipboardPublic(s))
+  })
+
   fastify.get('/api/devices/:id/access', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
     if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })

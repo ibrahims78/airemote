@@ -77,6 +77,21 @@ contextBridge.exposeInMainWorld('airemote', {
     schedule: (cfg)  => ipcRenderer.invoke('backup:schedule', cfg),
   },
 
+  // ── Clipboard (R8 — one-way sync) ───────────────────────────────────────
+  clipboard: {
+    read:  ()      => ipcRenderer.invoke('clipboard:read'),
+    write: (text)  => ipcRenderer.invoke('clipboard:write', text),
+    watch: (cb)    => {
+      const sub = (_e, text) => cb(text)
+      ipcRenderer.on('clipboard:change', sub)
+      ipcRenderer.send('clipboard:watch', true)
+      return () => {
+        ipcRenderer.send('clipboard:watch', false)
+        ipcRenderer.removeListener('clipboard:change', sub)
+      }
+    },
+  },
+
   // ── System ──────────────────────────────────────────────────────────────
   system: {
     getLocalIp:  ()    => ipcRenderer.invoke('system:getLocalIp'),

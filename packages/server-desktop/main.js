@@ -3,7 +3,7 @@
  * main.js — AiRemote Server Desktop (Electron Main Process)
  * Version: v3.7.0
  */
-const { app, BrowserWindow, Tray, Menu, ipcMain, shell, dialog, Notification, nativeImage, session } = require('electron')
+const { app, BrowserWindow, Tray, Menu, ipcMain, shell, dialog, Notification, nativeImage, session, clipboard } = require('electron')
 const path  = require('path')
 const fs    = require('fs')
 const os    = require('os')
@@ -346,6 +346,36 @@ ipcMain.handle('devices:list', () => {
 })
 
 ipcMain.handle('logs:recent', (_e, n = 200) => logger.getRecent(n))
+
+// v3.8.36 (R8) — clipboard bridge for the embedded dashboard. The dashboard
+// runs in a plain browser too, so this is an optional accelerator: without it
+// the panel falls back to an explicit "send my clipboard" button.
+let clipWatchTimer = null
+let clipWatchHash = ''
+
+ipcMain.handle('clipboard:read', () => {
+  try { return clipboard.readText() } catch { return '' }
+})
+
+ipcMain.handle('clipboard:write', (_e, text) => {
+  try { clipboard.writeText(String(text == null ? '' : text)); return true } catch { return false }
+})
+
+ipcMain.on('clipboard:watch', (event, enabled) => {
+  if (clipWatchTimer) { clearInterval(clipWatchTimer); clipWatchTimer = null }
+  if (!enabled) return
+  const sender = event.sender
+  clipWatchHash = ''
+  clipWatchTimer = setInterval(() => {
+    let text = ''
+    try { text = clipboard.readText() || '' } catch { return }
+    if (!text) return
+    const hash = crypto.createHash('sha256').update(text, 'utf8').digest('hex')
+    if (hash === clipWatchHash) return
+    clipWatchHash = hash
+    try { if (!sender.isDestroyed()) sender.send('clipboard:change', text) } catch {}
+  }, 600)
+})
 ipcMain.handle('logs:export', async (_e, dest) => {
   try { await logger.exportAllLogs(dest); return { ok: true, dest } }
   catch (e) { return { ok: false, error: e.message } }

@@ -95,6 +95,9 @@ let reconnectDelay = RECONNECT_BASE
 let lastRegisterPayload = null
 let lastReRegisterAt = 0
 const grantedSessions = new Set()
+// v3.8.29 (R8) — one-way clipboard sync watcher; lives only while a control
+// session is granted and the server keeps it enabled.
+let clipWatch = null
 let ctrlAuthAttempts = []
 let currentMonitorId = 0
 let lastCaptureRestartAt = 0
@@ -522,6 +525,7 @@ function doConnect() {
 
   ws.on('close', (code, reason) => {
     clearTimers()
+    stopClipWatch('socket-close')
     if (agentState !== 'stopped') {
       const why = reason?.toString() || `code=${code}`
       addLog('warn', `📴 [ws] انقطع الاتصال — ${why} — إعادة المحاولة خلال ${(reconnectDelay / 1000).toFixed(0)}ث`)
@@ -624,10 +628,21 @@ function handleMsg(msg) {
       send({ type: 'agent:screen_clipboard', payload: { sessionId: msg.payload?.sessionId, text: clipText }, timestamp: Date.now() })
       break
     }
-    case 'server:screen_clipboard_write':
+    case 'server:screen_clipboard_write': {
       if (!grantedSessions.has(msg.payload?.sessionId)) break
-      if (msg.payload?.text != null) clipboard.writeText(String(msg.payload.text))
+      if (msg.payload?.text != null) {
+        const applied = String(msg.payload.text)
+        // Remember our own write so the watcher does not bounce it back.
+        if (clipWatch && clipWatch.sessionId === msg.payload?.sessionId) clipWatch.lastHash = clipHashOf(applied)
+        clipboard.writeText(applied)
+      }
       break
+    }
+    case 'server:screen_clipboard_watch': {
+      const p = msg.payload || {}
+      configureClipWatch(p.sessionId, !!p.enabled, p.direction === 'to-viewer' ? 'to-viewer' : 'to-device')
+      break
+    }
     case 'server:screen_get_monitors':
       if (capWin && !capWin.isDestroyed()) capWin.webContents.send('get-monitors', { sessionId: msg.payload?.sessionId })
       break
@@ -1316,7 +1331,56 @@ function handleScreenStart(payload) {
   if (process.platform === 'win32') ensurePsInput()
 }
 
+// ─── Clipboard sync (v3.8.29 / R8) ────────────────────────────────────────
+// One direction at a time: "to-viewer" reports local changes; "to-device" only
+// applies writes. Echo guard: the hash of text we just applied is remembered so
+// the watcher never sends our own write back as a change.
+function clipHashOf(text) {
+  return crypto.createHash('sha256').update(String(text), 'utf8').digest('hex')
+}
+
+function clipWatchAck(sessionId, watching, direction) {
+  send({ type: 'agent:screen_clipboard_watch_ack', payload: { sessionId, watching: !!watching, direction }, timestamp: Date.now() })
+}
+
+function stopClipWatch(reason) {
+  if (!clipWatch) return
+  try { clearInterval(clipWatch.timer) } catch {}
+  const sid = clipWatch.sessionId
+  clipWatch = null
+  addLog('info', '📋 [clipboard] stopped' + (reason ? ' (' + reason + ')' : '') + ' — session=' + String(sid || '').slice(0, 8))
+}
+
+function configureClipWatch(sessionId, enabled, direction) {
+  const granted = !!sessionId && grantedSessions.has(sessionId)
+  if (!enabled || !granted) {
+    stopClipWatch(!granted ? 'no-consent' : 'disabled')
+    clipWatchAck(sessionId, false, direction)
+    return
+  }
+  if (clipWatch && clipWatch.sessionId !== sessionId) stopClipWatch('session-switch')
+  if (!clipWatch) {
+    const state = { sessionId, direction, lastHash: '', timer: null }
+    state.timer = setInterval(() => {
+      if (!clipWatch || clipWatch.sessionId !== state.sessionId) return
+      if (clipWatch.direction !== 'to-viewer') return
+      let clipText = ''
+      try { clipText = clipboard.readText() || '' } catch { return }
+      if (!clipText) return
+      const hash = clipHashOf(clipText)
+      if (hash === clipWatch.lastHash) return
+      clipWatch.lastHash = hash
+      send({ type: 'agent:screen_clipboard_change', payload: { sessionId: state.sessionId, text: clipText, hash, at: Date.now() }, timestamp: Date.now() })
+    }, 600)
+    clipWatch = state
+  }
+  clipWatch.direction = direction
+  addLog('info', '📋 [clipboard] watching (' + direction + ') — session=' + String(sessionId).slice(0, 8))
+  clipWatchAck(sessionId, true, direction)
+}
+
 function handleScreenStop(payload) {
+  if (clipWatch && clipWatch.sessionId === payload.sessionId) stopClipWatch('screen-stop')
   const { sessionId } = payload
   const sid8   = sessionId.slice(0, 8)
   const info   = screenSessions.get(sessionId)

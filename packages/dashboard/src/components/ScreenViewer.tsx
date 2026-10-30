@@ -22,7 +22,7 @@ import {
   MouseEvent as ReactMouseEvent, KeyboardEvent as ReactKeyboardEvent
 } from 'react'
 import {
-  Monitor, Maximize2, Minimize2, RefreshCw, Wifi, WifiOff, ExternalLink,
+  Monitor, Maximize2, Minimize2, RefreshCw, Wifi, WifiOff, ExternalLink, ArrowLeftRight,
   AlertTriangle, Loader2, Settings2,
   Clipboard, ClipboardPaste, EyeOff, Eye,
   Video, Tv2, Mouse, Keyboard, ChevronDown, Undo2, Home, Layers, Circle,
@@ -44,6 +44,19 @@ interface Props {
 
 type Status          = 'connecting' | 'streaming' | 'error' | 'unavailable' | 'disconnected'
 type PermissionState = 'idle' | 'requesting' | 'granted'
+
+interface ClipboardSyncState {
+  enabled: boolean
+  direction: 'to-device' | 'to-viewer'
+  sent: number
+  received: number
+  blocked: number
+  duplicates: number
+  lastLen: number
+  lastAt: number
+  agentWatching: boolean
+  lastHash: string
+}
 
 interface MonitorInfo {
   id: number; x: number; y: number
@@ -162,6 +175,12 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
   const [monitors,        setMonitors]        = useState<MonitorInfo[]>([])
   const [selectedMonitor, setSelectedMonitor] = useState(0)
   const [clipboardText,   setClipboardText]   = useState('')
+  // v3.8.36 (R8) — one-way clipboard sync state, mirrored from the server.
+  const [clipSync,        setClipSync]        = useState<ClipboardSyncState>({
+    enabled: false, direction: 'to-device', sent: 0, received: 0, blocked: 0,
+    duplicates: 0, lastLen: 0, lastAt: 0, agentWatching: false, lastHash: ''
+  })
+  const clipWatchStopRef = useRef<null | (() => void)>(null)
 
   // ── v3.0.0 state ──────────────────────────────────────────────────────────
   const [permissionState, setPermissionState] = useState<PermissionState>('idle')
@@ -463,6 +482,31 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
     if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify(msg))
   }, [])
 
+  // Ctrl+Alt+Shift+V reverses the clipboard direction. It is captured before the
+  // remote-keyboard handler so the chord never reaches the remote machine.
+  useEffect(() => {
+    const onReverse = (ev: KeyboardEvent) => {
+      if (!(ev.ctrlKey && ev.altKey && ev.shiftKey)) return
+      if (String(ev.key).toLowerCase() !== 'v') return
+      ev.preventDefault()
+      ev.stopImmediatePropagation()
+      sendWs({ type: 'screen:clipboard_sync_reverse', payload: {} })
+    }
+    window.addEventListener('keydown', onReverse, { capture: true })
+    return () => window.removeEventListener('keydown', onReverse, { capture: true })
+  }, [sendWs])
+
+  // Desktop shell only: mirror local clipboard changes while pushing to the device.
+  useEffect(() => {
+    const bridge = (window as unknown as { airemote?: { clipboard?: { watch?: (cb: (t: string) => void) => () => void } } }).airemote?.clipboard
+    const stop = () => { try { clipWatchStopRef.current?.() } catch {} ; clipWatchStopRef.current = null }
+    if (!bridge?.watch || !clipSync.enabled || clipSync.direction !== 'to-device') { stop(); return }
+    clipWatchStopRef.current = bridge.watch((value: string) => {
+      if (value) sendWs({ type: 'screen:clipboard_local', payload: { text: value } })
+    })
+    return stop
+  }, [clipSync.enabled, clipSync.direction, sendWs])
+
   // ── Idle reset ────────────────────────────────────────────────────────────
   // Idle overlay is intentionally disabled: an operator watching a remote
   // screen must never be covered by a 5-minute inactivity message.
@@ -508,6 +552,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
 
     ws.onopen = () => {
       setTimeout(() => sendWs({ type: 'screen:get_monitors', payload: {} }), 800)
+      setTimeout(() => sendWs({ type: 'screen:clipboard_sync_state', payload: {} }), 600)
       if (pingTimerRef.current) clearInterval(pingTimerRef.current)
       pingTimerRef.current = setInterval(() => {
         if (wsRef.current?.readyState === WebSocket.OPEN)
@@ -660,6 +705,13 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
             break
           case 'screen:clipboard':
             setClipboardText(msg.payload?.text || ''); setShowClipboard(true); break
+          case 'screen:clipboard_sync':
+            setClipSync(prev => ({ ...prev, ...(msg.payload || {}) })); break
+          case 'screen:clipboard_apply': {
+            const incoming = String(msg.payload?.text ?? '')
+            if (incoming) { setClipboardText(incoming); void applyLocalClipboard(incoming) }
+            break
+          }
           case 'screen:pong':
             // Pong proves the relay is alive even when the remote screen is
             // static and no video frames are produced for a while.
@@ -991,6 +1043,30 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
   const readRemoteClipboard  = () => sendWs({ type: 'screen:clipboard_read',  payload: {} })
   const writeRemoteClipboard = () => { sendWs({ type: 'screen:clipboard_write', payload: { text: clipboardText } }); setShowClipboard(false) }
   const copyToLocal          = async () => { try { await navigator.clipboard.writeText(clipboardText) } catch { /* denied */ } }
+
+  // ── v3.8.36 (R8) — clipboard sync, one direction at a time ──────────────
+  // Pull writes straight into the local clipboard; push reads it from here.
+  // In a plain browser the read side needs a user gesture, so the panel keeps
+  // an explicit 'send now' button; the desktop shell exposes a watcher bridge.
+  const applyLocalClipboard = async (value: string) => {
+    try {
+      const bridge = (window as unknown as { airemote?: { clipboard?: { write?: (t: string) => Promise<void> } } }).airemote?.clipboard
+      if (bridge?.write) { await bridge.write(value); return }
+      await navigator.clipboard.writeText(value)
+    } catch { /* clipboard permission denied — the text stays in the panel */ }
+  }
+
+  const setClipSyncEnabled = (on: boolean) => sendWs({ type: 'screen:clipboard_sync_enable', payload: { enabled: on } })
+  const setClipDirection   = (direction: 'to-device' | 'to-viewer') => sendWs({ type: 'screen:clipboard_sync_direction', payload: { direction } })
+  const reverseClipSync    = () => sendWs({ type: 'screen:clipboard_sync_reverse', payload: {} })
+
+  const pushLocalClipboard = async () => {
+    try {
+      const bridge = (window as unknown as { airemote?: { clipboard?: { read?: () => Promise<string> } } }).airemote?.clipboard
+      const value = bridge?.read ? await bridge.read() : await navigator.clipboard.readText()
+      if (value) sendWs({ type: 'screen:clipboard_local', payload: { text: value } })
+    } catch { /* no clipboard permission — use the text box below */ }
+  }
 
   // ── Privacy ───────────────────────────────────────────────────────────────
   const togglePrivacy = () => { const next = !privacyOn; setPrivacyOn(next); sendWs({ type: 'screen:privacy', payload: { enable: next } }) }
@@ -1599,11 +1675,52 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
                 <Clipboard size={13}/>
               </button>
               {showClipboard && (
-                <div className="absolute top-full right-0 mt-1 bg-surface border border-line rounded-lg shadow-xl z-30 w-72" onClick={e => e.stopPropagation()}>
+                <div className="absolute top-full right-0 mt-1 bg-surface border border-line rounded-lg shadow-xl z-30 w-80" onClick={e => e.stopPropagation()}>
                   <div className="px-3 py-2 text-xs text-muted border-b border-line flex items-center justify-between">
                     <span>{tr('viewer_clipboard_sync')}</span>
                     <button onClick={() => setShowClipboard(false)} className="text-muted hover:text-muted text-base leading-none">✕</button>
                   </div>
+
+                  <div className="px-3 pt-2 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => setClipSyncEnabled(!clipSync.enabled)}
+                        className={clsx('flex-1 text-xs py-1.5 rounded transition-colors',
+                          clipSync.enabled ? 'bg-success/20 text-success' : 'bg-surface2 text-muted hover:text-ink')}>
+                        {clipSync.enabled ? tr('viewer_clip_sync_on') : tr('viewer_clip_sync_off')}
+                      </button>
+                      <button onClick={reverseClipSync} title={tr('viewer_clip_reverse')}
+                        className="flex items-center gap-1 px-2 py-1.5 text-xs rounded bg-surface2 hover:bg-surface2 text-ink transition-colors">
+                        <ArrowLeftRight size={11}/>
+                        <span className="font-mono text-[10px]">{tr('viewer_clip_reverse_hint')}</span>
+                      </button>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <button onClick={() => setClipDirection('to-device')}
+                        className={clsx('flex-1 text-xs py-1.5 rounded transition-colors',
+                          clipSync.direction === 'to-device' ? 'bg-info/20 text-info' : 'bg-surface2 text-muted hover:text-ink')}>
+                        {tr('viewer_clip_dir_to_device')}
+                      </button>
+                      <button onClick={() => setClipDirection('to-viewer')}
+                        className={clsx('flex-1 text-xs py-1.5 rounded transition-colors',
+                          clipSync.direction === 'to-viewer' ? 'bg-info/20 text-info' : 'bg-surface2 text-muted hover:text-ink')}>
+                        {tr('viewer_clip_dir_to_viewer')}
+                      </button>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[10px] text-muted">
+                      <span>{tr('viewer_clip_one_way')}</span>
+                      <span className="font-mono">{tr('viewer_clip_stats', { sent: clipSync.sent, received: clipSync.received, blocked: clipSync.blocked })}</span>
+                    </div>
+
+                    {clipSync.enabled && !clipSync.agentWatching && (
+                      <div className="text-[10px] text-warning">{tr('viewer_clip_waiting_agent')}</div>
+                    )}
+                    {clipSync.enabled && clipSync.direction === 'to-viewer' && (
+                      <div className="text-[10px] text-success">{tr('viewer_clip_auto_pull')}</div>
+                    )}
+                  </div>
+
                   <div className="p-3 space-y-2">
                     <textarea value={clipboardText} onChange={e => setClipboardText(e.target.value)} placeholder={tr('viewer_clipboard_placeholder')}
                       className="w-full h-20 bg-surface/50 border border-line rounded text-xs text-ink p-2 resize-none font-mono"/>
@@ -1611,10 +1728,14 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
                       <button onClick={copyToLocal} className="flex-1 flex items-center justify-center gap-1 text-xs py-1.5 bg-surface2 hover:bg-surface2 rounded text-ink transition-colors">
                         <Clipboard size={10}/> {tr('viewer_copy_local')}
                       </button>
-                      <button onClick={writeRemoteClipboard} className="flex-1 flex items-center justify-center gap-1 text-xs py-1.5 bg-info/20 hover:bg-info/30 rounded text-info transition-colors">
-                        <ClipboardPaste size={10}/> {tr('viewer_send_to_device')}
+                      <button onClick={() => { void pushLocalClipboard() }} title={tr('viewer_clip_send_now')}
+                        className="flex-1 flex items-center justify-center gap-1 text-xs py-1.5 bg-surface2 hover:bg-surface2 rounded text-ink transition-colors">
+                        <ArrowLeftRight size={10}/> {tr('viewer_clip_send_now')}
                       </button>
                     </div>
+                    <button onClick={writeRemoteClipboard} className="w-full flex items-center justify-center gap-1 text-xs py-1.5 bg-info/20 hover:bg-info/30 rounded text-info transition-colors">
+                      <ClipboardPaste size={10}/> {tr('viewer_send_to_device')}
+                    </button>
                   </div>
                 </div>
               )}
