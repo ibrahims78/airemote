@@ -304,7 +304,8 @@ function signToken(payload, expiresIn = '8h') {
   return jwt.sign(payload, JWT, { expiresIn })
 }
 function verifyToken(token) {
-  return jwt.verify(token, JWT)
+  // R9.2 - pin the algorithm: a token signed with another alg is rejected outright.
+  return jwt.verify(token, JWT, { algorithms: ['HS256'] })
 }
 function extractBearer(req) {
   const auth = req.headers?.authorization || ''
@@ -3047,7 +3048,7 @@ let TLS_CERT_PATH = null
 
 const AGENT_VERSION = '3.8.36'   // agent artifact version (downloads)
 let serverLogger = null   // set in start(); lets WS handlers write to the app log
-const SERVER_VERSION = '3.8.39'  // server build version (/health)
+const SERVER_VERSION = '3.8.40'  // server build version (/health)
 
 async function start(config) {
   if (started) return

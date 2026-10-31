@@ -73,6 +73,7 @@ const steps = [
   { name: 'e2e: clipboard sync (R8)', cmd: electronStep('packages/server-desktop/test/e2e-clipboard-sync.test.cjs') },
   { name: 'e2e: annotations relay (R8)', cmd: electronStep('packages/server-desktop/test/e2e-annotations.test.cjs') },
   { name: 'e2e: sessions export (R8)', cmd: electronStep('packages/server-desktop/test/e2e-sessions-export.test.cjs') },
+  { name: 'e2e: jwt algorithm (R9)', cmd: electronStep('packages/server-desktop/test/e2e-jwt-alg.test.cjs') },
   { name: 'unit: failure alerting (R7)', cmd: electronStep('packages/server-desktop/test/alerts.test.cjs') },
   { name: 'unit: secret storage (R2)',   cmd: electronStep('packages/server-desktop/test/secrets.test.cjs') },
 ]
