@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react'
-import { History, Terminal, Monitor, FolderOpen, Bot, RefreshCw, Circle, Tv2, Square, AlertTriangle } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { History, Terminal, Monitor, FolderOpen, Bot, RefreshCw, Circle, Tv2, Square, AlertTriangle, Search, Download } from 'lucide-react'
 import { api } from '../lib/api'
 import { useT } from '../lib/i18n'
 import { clsx } from 'clsx'
@@ -48,13 +48,37 @@ export function SessionsPage({ embedded = false }: { embedded?: boolean } = {}) 
   const [confirmId, setConfirmId]       = useState<string | null>(null)
   const [filter, setFilter]             = useState<string>('all')
   const [isAdmin, setIsAdmin]           = useState(false)
+  // v3.8.38 (R8.3) — search + date range are applied by the server, so an export
+  // contains the whole filtered set instead of the rows currently on screen.
+  const [query, setQuery]               = useState('')
+  const [fromDate, setFromDate]         = useState('')
+  const [toDate, setToDate]             = useState('')
+  const [exporting, setExporting]       = useState(false)
+  const filtersRef = useRef({ q: '', from: '', to: '' })
+  filtersRef.current = { q: query, from: fromDate, to: toDate }
   const T = useT()
+
+  const listParams = useCallback(() => {
+    const f = filtersRef.current
+    const params: Record<string, string> = {}
+    if (f.q.trim()) params.q = f.q.trim()
+    if (f.from) params.from = f.from
+    if (f.to) params.to = f.to + 'T23:59:59'
+    return params
+  }, [])
+
+  const exportParams = useCallback(() => {
+    const params = listParams()
+    if (filter === 'active' || filter === 'ended') params.status = filter
+    else if (filter !== 'all') params.type = filter
+    return params
+  }, [filter, listParams])
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
       const [sessRes, liveRes] = await Promise.allSettled([
-        api.get('/api/sessions'),
+        api.get('/api/sessions', { params: listParams() }),
         api.get('/api/sessions/screen/active')
       ])
       if (sessRes.status === 'fulfilled') setSessions(sessRes.value.data)
@@ -68,6 +92,35 @@ export function SessionsPage({ embedded = false }: { embedded?: boolean } = {}) 
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  // Debounce the search box so typing does not hammer the API.
+  const firstRun = useRef(true)
+  useEffect(() => {
+    if (firstRun.current) { firstRun.current = false; return }
+    const t = setTimeout(() => { load() }, 350)
+    return () => clearTimeout(t)
+  }, [query, fromDate, toDate, load])
+
+  async function exportCsv() {
+    setExporting(true)
+    try {
+      const res = await api.get('/api/sessions/export', { params: exportParams(), responseType: 'blob' })
+      const blob = new Blob([res.data], { type: 'text/csv;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'airemote-sessions-' + new Date().toISOString().slice(0, 10) + '.csv'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 2000)
+      toast.success(T('sessions_exported'))
+    } catch {
+      toast.error(T('sessions_export_failed'))
+    } finally {
+      setExporting(false)
+    }
+  }
 
   async function forceStop(sessionId: string) {
     setStoppingId(sessionId)
@@ -114,6 +167,29 @@ export function SessionsPage({ embedded = false }: { embedded?: boolean } = {}) 
         >
           <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
           {T('refresh')}
+        </button>
+      </div>
+
+      {/* ── Search / range / export (R8.3) ───────────────────────────────── */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[220px]">
+          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+          <input
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder={T('sessions_search_placeholder')}
+            className="w-full bg-surface border border-line rounded-lg pl-8 pr-3 py-2 text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-info/40"
+          />
+        </div>
+        <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} title={T('sessions_from')}
+          className="bg-surface border border-line rounded-lg px-2 py-2 text-xs text-ink" />
+        <span className="text-muted text-xs">→</span>
+        <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} title={T('sessions_to')}
+          className="bg-surface border border-line rounded-lg px-2 py-2 text-xs text-ink" />
+        <button onClick={exportCsv} disabled={exporting}
+          className="flex items-center gap-2 text-sm text-muted hover:text-ink bg-surface2 hover:bg-surface border border-line px-3 py-2 rounded-lg transition-all disabled:opacity-50">
+          <Download size={13} className={exporting ? 'animate-pulse' : ''} />
+          {T('sessions_export')}
         </button>
       </div>
 

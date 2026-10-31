@@ -3047,7 +3047,7 @@ let TLS_CERT_PATH = null
 
 const AGENT_VERSION = '3.8.36'   // agent artifact version (downloads)
 let serverLogger = null   // set in start(); lets WS handlers write to the app log
-const SERVER_VERSION = '3.8.37'  // server build version (/health)
+const SERVER_VERSION = '3.8.38'  // server build version (/health)
 
 async function start(config) {
   if (started) return
@@ -3806,14 +3806,73 @@ async function start(config) {
   })
 
   // ── Sessions ──────────────────────────────────────────────────────────────
+  // ── v3.8.38 (R8.3) — سجل جلسات قابل للبحث والتصدير ────────────────────────
+  // Filters run in SQL, never in the browser: an export must be the whole filtered
+  // set, and a non-admin may only ever see their own rows.
+  const SESSION_BASE = "SELECT s.*, d.name as device_name, u.email as user_email FROM sessions s LEFT JOIN devices d ON s.device_id=d.id LEFT JOIN users u ON s.user_id=u.id"
+  function sessionWhere(p, q) {
+    const where = [], args = []
+    if (p.role !== 'admin') { where.push('s.user_id = ?'); args.push(p.userId) }
+    if (q.type)   { where.push('s.type = ?'); args.push(String(q.type).slice(0, 20)) }
+    if (q.status === 'active') where.push('s.ended_at IS NULL')
+    else if (q.status === 'ended') where.push('s.ended_at IS NOT NULL')
+    if (q.deviceId) { where.push('s.device_id = ?'); args.push(String(q.deviceId).slice(0, 64)) }
+    if (q.from)   { where.push('s.started_at >= ?'); args.push(String(q.from).slice(0, 40)) }
+    if (q.to)     { where.push('s.started_at <= ?'); args.push(String(q.to).slice(0, 40)) }
+    if (q.q) {
+      // Wildcards are stripped, not escaped: the box is a text lookup, not a pattern.
+      const term = '%' + String(q.q).slice(0, 80).replace(/[%_]/g, ' ') + '%'
+      where.push("(COALESCE(d.name,'') LIKE ? OR COALESCE(u.email,'') LIKE ? OR COALESCE(s.type,'') LIKE ? OR s.id LIKE ? OR COALESCE(s.device_id,'') LIKE ?)")
+      args.push(term, term, term, term, term)
+    }
+    return { clause: where.length ? ' WHERE ' + where.join(' AND ') : '', args }
+  }
+
   fastify.get('/api/sessions', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
-    const limit = Math.min(parseInt(req.query?.limit || '100') || 100, 500)
-    const base  = "SELECT s.*, d.name as device_name, u.email as user_email FROM sessions s LEFT JOIN devices d ON s.device_id=d.id LEFT JOIN users u ON s.user_id=u.id"
-    const rows  = p.role === 'admin'
-      ? db.prepare(base + " ORDER BY s.started_at DESC LIMIT ?").all(limit)
-      : db.prepare(base + " WHERE s.user_id=? ORDER BY s.started_at DESC LIMIT ?").all(p.userId, limit)
+    const q = req.query || {}
+    const limit  = Math.min(parseInt(q.limit || '100') || 100, 500)
+    const offset = Math.max(0, parseInt(q.offset || '0') || 0)
+    const { clause, args } = sessionWhere(p, q)
+    const rows = db.prepare(SESSION_BASE + clause + ' ORDER BY s.started_at DESC LIMIT ? OFFSET ?').all(...args, limit, offset)
     return rows.map(mapSessionRow)
+  })
+
+  fastify.get('/api/sessions/export', { config: { rateLimit: { max: 12, timeWindow: '1 minute' } } }, async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    if (!atLeast(p.role, 'manager')) return reply.code(403).send({ error: 'Manager role required', code: 'role_too_low' })
+    const q = req.query || {}
+    const { clause, args } = sessionWhere(p, q)
+    const rows = db.prepare(SESSION_BASE + clause + ' ORDER BY s.started_at DESC LIMIT 5000').all(...args)
+    const esc = (v) => {
+      const s = v == null ? '' : String(v)
+      return /[",\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s
+    }
+    const header = ['id', 'type', 'started_at', 'ended_at', 'duration_sec', 'duration_min', 'device_id', 'device', 'user', 'status']
+    const lines = [header.join(',')]
+    for (const r of rows) {
+      lines.push([
+        r.id,
+        r.type,
+        r.started_at,
+        r.ended_at || '',
+        r.duration_sec != null ? r.duration_sec : '',
+        r.duration_sec != null ? (Number(r.duration_sec) / 60).toFixed(1) : '',
+        r.device_id,
+        r.device_name || '',
+        r.user_email || '',
+        r.ended_at ? 'ended' : 'active'
+      ].map(esc).join(','))
+    }
+    dbLogAudit({
+      userId: p.userId, userEmail: p.email, action: 'sessions_export',
+      details: { rows: rows.length, type: q.type || null, status: q.status || null, hasQuery: !!q.q, from: q.from || null, to: q.to || null },
+      ipAddress: req.ip
+    })
+    reply.header('Content-Type', 'text/csv; charset=utf-8')
+    reply.header('Content-Disposition', 'attachment; filename="airemote-sessions-' + new Date().toISOString().slice(0, 10) + '.csv"')
+    // BOM so Excel opens Arabic device names as UTF-8 instead of mojibake.
+    return '\uFEFF' + lines.join('\r\n') + '\r\n'
   })
 
   // v3.2.2 — Live screen sessions (admin)

@@ -22,7 +22,7 @@ import {
   MouseEvent as ReactMouseEvent, KeyboardEvent as ReactKeyboardEvent
 } from 'react'
 import {
-  Monitor, Maximize2, Minimize2, RefreshCw, Wifi, WifiOff, ExternalLink, ArrowLeftRight, PenLine, Eraser, Crosshair, Trash2,
+  Monitor, Maximize2, Minimize2, RefreshCw, Wifi, WifiOff, ExternalLink, ArrowLeftRight, PenLine, Eraser, Crosshair, Trash2, Fingerprint,
   AlertTriangle, Loader2, Settings2,
   Clipboard, ClipboardPaste, EyeOff, Eye,
   Video, Tv2, Mouse, Keyboard, ChevronDown, Undo2, Home, Layers, Circle,
@@ -188,6 +188,11 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
   const [annoColor,   setAnnoColor]   = useState('#f43f5e')
   const [annoStrokes, setAnnoStrokes] = useState<AnnotationStroke[]>([])
   const [showAnno,    setShowAnno]    = useState(false)
+  // v3.8.38 (R8.3) — watermark: who is watching this stream, refreshed every 30s.
+  const [wmOn, setWmOn] = useState<boolean>(() => {
+    try { return localStorage.getItem('airemote.screen.watermark') !== '0' } catch { return true }
+  })
+  const [wmClock, setWmClock] = useState<string>(() => new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }))
 
   // ── v3.0.0 state ──────────────────────────────────────────────────────────
   const [permissionState, setPermissionState] = useState<PermissionState>('idle')
@@ -1068,6 +1073,12 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
     } catch { /* no clipboard permission — use the text box below */ }
   }
 
+  useEffect(() => {
+    if (!wmOn) return
+    const t = setInterval(() => setWmClock(new Date().toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })), 30000)
+    return () => clearInterval(t)
+  }, [wmOn])
+
   // ── v3.8.37 (R8.2) — annotations ─────────────────────────────────────────
   // Local echo is applied immediately; the server relays the same event to the
   // other viewers. Nothing is sent to the remote machine.
@@ -1722,6 +1733,20 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
             </button>
           )}
 
+          {/* Viewer watermark (R8.3) */}
+          {status === 'streaming' && (
+            <button
+              onClick={() => {
+                const next = !wmOn
+                setWmOn(next)
+                try { localStorage.setItem('airemote.screen.watermark', next ? '1' : '0') } catch {}
+              }}
+              title={wmOn ? tr('viewer_watermark_off') : tr('viewer_watermark_on')}
+              className={clsx('p-1.5 rounded transition-colors', wmOn ? 'bg-surface2 text-ink' : 'text-muted hover:text-ink hover:bg-surface2')}>
+              <Fingerprint size={13}/>
+            </button>
+          )}
+
           {/* Laser & annotations (R8.2) */}
           {status === 'streaming' && (
             <div className="relative">
@@ -2074,6 +2099,15 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
           onDragLeave={() => setDragOver(false)}
           onDrop={handleFileDrop}
         />
+        {wmOn && status === 'streaming' && (
+          <div
+            aria-hidden
+            className="absolute bottom-2 left-2 z-[15] pointer-events-none select-none max-w-[70%] truncate rounded bg-canvas/55 px-2 py-0.5 text-[10px] font-medium text-ink/75 backdrop-blur-sm"
+            dir="ltr"
+          >
+            {user?.email || ''} · {deviceName} · {wmClock}
+          </div>
+        )}
         <AnnotationLayer
           strokes={annoStrokes}
           tool={annoTool}
