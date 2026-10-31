@@ -22,7 +22,7 @@ import {
   MouseEvent as ReactMouseEvent, KeyboardEvent as ReactKeyboardEvent
 } from 'react'
 import {
-  Monitor, Maximize2, Minimize2, RefreshCw, Wifi, WifiOff, ExternalLink, ArrowLeftRight,
+  Monitor, Maximize2, Minimize2, RefreshCw, Wifi, WifiOff, ExternalLink, ArrowLeftRight, PenLine, Eraser, Crosshair, Trash2,
   AlertTriangle, Loader2, Settings2,
   Clipboard, ClipboardPaste, EyeOff, Eye,
   Video, Tv2, Mouse, Keyboard, ChevronDown, Undo2, Home, Layers, Circle,
@@ -35,6 +35,7 @@ import { api } from '../lib/api'
 import { useT } from '../lib/i18n'
 import type { TKey } from '../lib/i18n'
 import { useAuthStore } from '../store/authStore'
+import AnnotationLayer, { type AnnotationTool, type AnnotationStroke, type AnnotationEvent } from './AnnotationLayer'
 
 interface Props {
   deviceId:   string
@@ -182,6 +183,11 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
     duplicates: 0, lastLen: 0, lastAt: 0, agentWatching: false, lastHash: '', lastReason: ''
   })
   const clipWatchStopRef = useRef<null | (() => void)>(null)
+  // v3.8.37 (R8.2) — laser / annotations, shared with every viewer of this session
+  const [annoTool,    setAnnoTool]    = useState<AnnotationTool>('off')
+  const [annoColor,   setAnnoColor]   = useState('#f43f5e')
+  const [annoStrokes, setAnnoStrokes] = useState<AnnotationStroke[]>([])
+  const [showAnno,    setShowAnno]    = useState(false)
 
   // ── v3.0.0 state ──────────────────────────────────────────────────────────
   const [permissionState, setPermissionState] = useState<PermissionState>('idle')
@@ -357,17 +363,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
     })
   }, [])
 
-  // Esc leaves fullscreen, F11 toggles it — even when the canvas owns focus.
-  useEffect(() => {
-    const onKey = (ev: KeyboardEvent) => {
-      const tag = (ev.target as HTMLElement | null)?.tagName
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return
-      if (ev.key === 'Escape' && fullscreen) { ev.preventDefault(); setFullscreen(false) }
-      else if (ev.key === 'F11') { ev.preventDefault(); setFullscreen((f) => !f) }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [fullscreen])
+
 
   // The help toast on entering the standalone window fades out on its own.
   useEffect(() => {
@@ -522,6 +518,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
     const myId = ++connectIdRef.current
     if (wsRef.current) { wsRef.current.onclose = null; wsRef.current.close(); wsRef.current = null }
     setStatus('connecting'); setErrorMsg(''); lastSeqRef.current = -1
+    setAnnoStrokes([])
     setViewerCount(1)
     setControlEnabled(false); setPermissionState('idle')
     setAudioEnabled(false)
@@ -706,6 +703,8 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
             break
           case 'screen:clipboard':
             setClipboardText(msg.payload?.text || ''); setShowClipboard(true); break
+          case 'screen:annotate':
+            applyAnnoEvent(msg.payload as AnnotationEvent); break
           case 'screen:clipboard_sync':
             setClipSync(prev => ({ ...prev, ...(msg.payload || {}) })); break
           case 'screen:clipboard_apply': {
@@ -1068,6 +1067,62 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
       if (value) sendWs({ type: 'screen:clipboard_local', payload: { text: value } })
     } catch { /* no clipboard permission — use the text box below */ }
   }
+
+  // ── v3.8.37 (R8.2) — annotations ─────────────────────────────────────────
+  // Local echo is applied immediately; the server relays the same event to the
+  // other viewers. Nothing is sent to the remote machine.
+  const applyAnnoEvent = useCallback((ev: AnnotationEvent) => {
+    if (ev.tool === 'clear') { setAnnoStrokes([]); return }
+    const x = Number(ev.x), y = Number(ev.y)
+    if (!Number.isFinite(x) || !Number.isFinite(y)) return
+    const id = ev.id || 'remote'
+    const point = { x, y, t: Date.now() }
+    setAnnoStrokes(prev => {
+      const idx = prev.findIndex(s => s.id === id)
+      if (idx < 0) {
+        if (ev.phase === 'end') return prev
+        const stroke: AnnotationStroke = { id, tool: ev.tool === 'pen' ? 'pen' : 'laser', color: ev.color || '#f43f5e', points: [point] }
+        return prev.length >= 80 ? [...prev.slice(prev.length - 79), stroke] : [...prev, stroke]
+      }
+      const next = prev.slice()
+      next[idx] = { ...next[idx], points: [...next[idx].points, point].slice(-800) }
+      return next
+    })
+  }, [])
+
+  const emitAnno = useCallback((ev: AnnotationEvent) => {
+    applyAnnoEvent(ev)
+    sendWs({ type: 'screen:annotate', payload: ev })
+  }, [applyAnnoEvent, sendWs])
+
+  const eraseAnno = useCallback((x: number, y: number) => {
+    setAnnoStrokes(prev => prev.filter(s => !s.points.some(p => Math.hypot(p.x - x, p.y - y) < 0.02)))
+  }, [])
+
+  const clearAnno = useCallback(() => {
+    applyAnnoEvent({ tool: 'clear' })
+    sendWs({ type: 'screen:annotate', payload: { tool: 'clear' } })
+  }, [applyAnnoEvent, sendWs])
+
+  // Esc leaves fullscreen, F11 toggles it — even when the canvas owns focus.
+  useEffect(() => {
+    const onKey = (ev: KeyboardEvent) => {
+      const tag = (ev.target as HTMLElement | null)?.tagName
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return
+      if (!ev.ctrlKey && !ev.altKey && !ev.metaKey) {
+        const k = String(ev.key).toLowerCase()
+        if (k === 'l') { ev.preventDefault(); setAnnoTool(t => t === 'laser' ? 'off' : 'laser'); return }
+        if (k === 'p') { ev.preventDefault(); setAnnoTool(t => t === 'pen' ? 'off' : 'pen'); return }
+        if (k === 'e') { ev.preventDefault(); setAnnoTool(t => t === 'eraser' ? 'off' : 'eraser'); return }
+        if (k === 'c') { ev.preventDefault(); clearAnno(); return }
+      }
+      if (ev.key === 'Escape' && annoTool !== 'off') { ev.preventDefault(); setAnnoTool('off'); return }
+      if (ev.key === 'Escape' && fullscreen) { ev.preventDefault(); setFullscreen(false) }
+      else if (ev.key === 'F11') { ev.preventDefault(); setFullscreen((f) => !f) }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [fullscreen, annoTool, clearAnno])
 
   // ── Privacy ───────────────────────────────────────────────────────────────
   const togglePrivacy = () => { const next = !privacyOn; setPrivacyOn(next); sendWs({ type: 'screen:privacy', payload: { enable: next } }) }
@@ -1667,6 +1722,54 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
             </button>
           )}
 
+          {/* Laser & annotations (R8.2) */}
+          {status === 'streaming' && (
+            <div className="relative">
+              <button onClick={() => setShowAnno(s => !s)}
+                title={tr('viewer_annotate')}
+                className={clsx('p-1.5 rounded transition-colors',
+                  annoTool !== 'off' ? 'bg-info/20 text-info' : showAnno ? 'bg-surface2 text-ink' : 'text-muted hover:text-ink hover:bg-surface2')}>
+                <PenLine size={13}/>
+              </button>
+              {showAnno && (
+                <div className="absolute top-full right-0 mt-1 bg-surface border border-line rounded-lg shadow-xl z-30 w-72" onClick={e => e.stopPropagation()}>
+                  <div className="px-3 py-2 text-xs text-muted border-b border-line flex items-center justify-between">
+                    <span>{tr('viewer_annotate')}</span>
+                    <button onClick={() => setShowAnno(false)} className="text-muted hover:text-muted text-base leading-none">✕</button>
+                  </div>
+                  <div className="p-2 grid grid-cols-2 gap-1.5">
+                    {([
+                      { id: 'laser',  icon: <Crosshair size={12}/>, label: tr('viewer_anno_laser') },
+                      { id: 'pen',    icon: <PenLine size={12}/>,   label: tr('viewer_anno_pen') },
+                      { id: 'eraser', icon: <Eraser size={12}/>,    label: tr('viewer_anno_eraser') },
+                      { id: 'off',    icon: <X size={12}/>,         label: tr('viewer_anno_off') },
+                    ] as const).map(o => (
+                      <button key={o.id} onClick={() => setAnnoTool(o.id)}
+                        className={clsx('flex items-center justify-center gap-1.5 text-xs py-1.5 rounded transition-colors',
+                          annoTool === o.id ? 'bg-info/20 text-info' : 'bg-surface2 text-muted hover:text-ink')}>
+                        {o.icon}{o.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="px-2 pb-2 flex items-center gap-1.5">
+                    {['#f43f5e', '#22d3ee', '#facc15', '#4ade80'].map(c => (
+                      <button key={c} onClick={() => setAnnoColor(c)} title={c}
+                        className={clsx('h-5 w-5 rounded-full border transition-transform', annoColor === c ? 'border-ink scale-110' : 'border-line')}
+                        style={{ background: c }} />
+                    ))}
+                    <button onClick={clearAnno} className="ml-auto flex items-center gap-1 text-xs px-2 py-1 rounded bg-surface2 text-muted hover:text-ink transition-colors">
+                      <Trash2 size={11}/>{tr('viewer_anno_clear')}
+                    </button>
+                  </div>
+                  <div className="px-3 pb-2 text-[10px] text-muted flex items-center justify-between">
+                    <span>{tr('viewer_anno_hint')}</span>
+                    <span>{tr('viewer_anno_shared')}</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Clipboard */}
           {status === 'streaming' && (
             <div className="relative">
@@ -1943,6 +2046,12 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
           className="pointer-events-none absolute left-0 top-0 z-10 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border border-ink/70 bg-primary/80 opacity-0 transition-opacity duration-200 shadow-lg"
           style={{ willChange: 'transform' }}
         />
+        <div className="relative shrink-0" style={{
+          width: canvasBox ? canvasBox.w + 'px' : 'auto',
+          height: canvasBox ? canvasBox.h + 'px' : 'auto',
+          maxWidth: fitMode === 'fit' ? '100%' : 'none',
+          maxHeight: fitMode === 'fit' ? '100%' : 'none',
+        }}>
         <canvas ref={canvasRef}
           className={clsx(
             'block shrink-0 transition-opacity duration-300',
@@ -1951,10 +2060,8 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
             (status === 'streaming' && !controlsVisible && !pinned) ? 'cursor-none' : ''
           )}
           style={{
-            width:  canvasBox ? canvasBox.w + 'px' : 'auto',
-            height: canvasBox ? canvasBox.h + 'px' : 'auto',
-            maxWidth:  fitMode === 'fit' ? '100%' : 'none',
-            maxHeight: fitMode === 'fit' ? '100%' : 'none',
+            width: '100%',
+            height: '100%',
             imageRendering: 'auto',
           }}
           onMouseMove={handleMouseMove}
@@ -1967,9 +2074,22 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
           onDragLeave={() => setDragOver(false)}
           onDrop={handleFileDrop}
         />
+        <AnnotationLayer
+          strokes={annoStrokes}
+          tool={annoTool}
+          color={annoColor}
+          onEvent={emitAnno}
+          onErase={eraseAnno}
+        />
+        </div>
 
         {/* ── Windows-style cursor overlay ── */}
         {/* v3.3.0: custom cursor overlay disabled - the remote frames already include the real cursor (single-cursor UX) */}
+        {annoTool !== 'off' && status === 'streaming' && (
+          <div className="absolute top-3 right-3 z-40 bg-info/20 border border-info/50 text-ink text-[11px] px-3 py-1.5 rounded-lg pointer-events-none">
+            {tr('viewer_anno_active')}
+          </div>
+        )}
         {screenLocked && status === 'streaming' && (
           <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 max-w-[92%] bg-warning/100/20 border border-warning/50 text-ink text-xs px-4 py-2 rounded-xl shadow-lg pointer-events-none text-center leading-6">
             {tr('viewer_locked_note')}

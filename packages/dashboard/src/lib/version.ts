@@ -1,3 +1,3 @@
 // إصدار الواجهة الموحّد — يُحدَّث مع كل إصدار
-export const APP_VERSION = '3.8.36'
+export const APP_VERSION = '3.8.37'
 export const APP_NAME = 'AiRemote'

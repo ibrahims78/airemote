@@ -67,6 +67,7 @@ const metrics = {
   httpCount: 0,
   httpSecondsSum: 0,
   errors: 0,
+  annotationEvents: 0,    // v3.8.37 (R8.2) — laser/pen events relayed between viewers
 }
 let shuttingDown = false
 
@@ -2334,6 +2335,41 @@ function handleScreenWs(socket, request, user) {
           timestamp: Date.now()
         })
         break
+      // ── v3.8.37 (R8.2) — laser / annotations ──────────────────────────────
+      // Pure viewer-to-viewer relay: the agent is never involved, the remote
+      // machine never sees a mark, and coordinates travel normalised (0..1) so
+      // two viewers at different sizes draw on the same spot.
+      case 'screen:annotate': {
+        const tool = String(payload.tool || '').toLowerCase()
+        if (tool !== 'laser' && tool !== 'pen' && tool !== 'clear') break
+        const now = Date.now()
+        if (!socket.__annoWin || now - socket.__annoWin > 1000) { socket.__annoWin = now; socket.__annoCount = 0 }
+        if (++socket.__annoCount > 240) break
+        const clamp01 = (v) => { const n = Number(v); return Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 0 }
+        const phase = (payload.phase === 'start' || payload.phase === 'end') ? payload.phase : 'move'
+        const out = tool === 'clear'
+          ? { type: 'screen:annotate', payload: { tool: 'clear', at: now } }
+          : {
+              type: 'screen:annotate',
+              payload: {
+                tool, phase,
+                id: typeof payload.id === 'string' ? payload.id.slice(0, 40) : '',
+                x: clamp01(payload.x), y: clamp01(payload.y),
+                color: typeof payload.color === 'string' ? payload.color.slice(0, 16) : '',
+                at: now
+              }
+            }
+        const encoded = JSON.stringify(out)
+        try {
+          for (const vws of session.viewers) {
+            if (vws === socket) continue
+            if (vws.readyState === 1) vws.send(encoded)
+          }
+        } catch {}
+        metrics.annotationEvents++
+        break
+      }
+
       case 'screen:chat': {
         const chatMsg = { text: String(payload.text || '').slice(0, 2000), sender: 'viewer', ts: Date.now() }
         pushChatHistory(deviceId, chatMsg)
@@ -3011,7 +3047,7 @@ let TLS_CERT_PATH = null
 
 const AGENT_VERSION = '3.8.36'   // agent artifact version (downloads)
 let serverLogger = null   // set in start(); lets WS handlers write to the app log
-const SERVER_VERSION = '3.8.36'  // server build version (/health)
+const SERVER_VERSION = '3.8.37'  // server build version (/health)
 
 async function start(config) {
   if (started) return
@@ -3518,6 +3554,7 @@ async function start(config) {
     out.push('# TYPE airemote_http_request_duration_seconds_count counter')
     out.push('airemote_http_request_duration_seconds_count ' + metrics.httpCount)
     v('airemote_errors_total', 'Unhandled errors and responses with status >= 500.', 'counter', metrics.errors)
+    v('airemote_annotation_events_total', 'Laser/annotation events relayed between viewers.', 'counter', metrics.annotationEvents || 0)
     if (failureAlerter) {
       const as = failureAlerter.state()
       v('airemote_alert_events_total', 'Burst alerts raised since start.', 'counter', as.alerts)
