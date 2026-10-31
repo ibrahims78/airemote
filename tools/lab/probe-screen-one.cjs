@@ -1,0 +1,10 @@
+const lab = require('./lab.cjs')
+const screen = require('./screen.cjs')
+;(async () => {
+  const c = await screen.open(process.argv[2] || 'TECNO-KL4')
+  console.log('open', await c.open())
+  await new Promise(r => setTimeout(r, 8000))
+  console.log(JSON.stringify(c.events.map(e => ({ t: e.type, p: e.payload && Object.keys(e.payload).slice(0, 4) })), null, 1))
+  console.log('frames', c.frames.count, 'size', c.frames.lastSize)
+  c.close()
+})()
