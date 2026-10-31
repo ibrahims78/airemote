@@ -1,0 +1,84 @@
+{
+  "at": "2026-10-31T11:33:48.677Z",
+  "base": "https://127.0.0.1:3001",
+  "samples": 3,
+  "endpoints": {
+    "login": {
+      "name": "POST /api/auth/login",
+      "runs": [
+        173.8,
+        103.2,
+        122
+      ],
+      "statuses": [
+        200,
+        200,
+        200
+      ],
+      "errors": [],
+      "p50": 122,
+      "p95": 173.8,
+      "min": 103.2,
+      "max": 173.8,
+      "okCount": 3
+    },
+    "wsTicket": {
+      "name": "POST /api/auth/ws-ticket",
+      "runs": [
+        6.1,
+        3.1,
+        3.9
+      ],
+      "statuses": [
+        200,
+        200,
+        200
+      ],
+      "errors": [],
+      "p50": 3.9,
+      "p95": 6.1,
+      "min": 3.1,
+      "max": 6.1,
+      "okCount": 3
+    },
+    "devices": {
+      "name": "GET /api/devices",
+      "runs": [
+        12.7,
+        4.8,
+        2.8
+      ],
+      "statuses": [
+        200,
+        200,
+        200
+      ],
+      "errors": [],
+      "p50": 4.8,
+      "p95": 12.7,
+      "min": 2.8,
+      "max": 12.7,
+      "okCount": 3
+    },
+    "sessions": {
+      "name": "GET /api/sessions",
+      "runs": [
+        7.8,
+        9.7,
+        8.1
+      ],
+      "statuses": [
+        200,
+        200,
+        200
+      ],
+      "errors": [],
+      "p50": 8.1,
+      "p95": 9.7,
+      "min": 7.8,
+      "max": 9.7,
+      "okCount": 3
+    }
+  },
+  "ok": true
+}

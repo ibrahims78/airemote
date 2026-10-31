@@ -1,0 +1,207 @@
+{
+  "slice": "R9.4",
+  "kind": "pilot-dryrun-live",
+  "startedAt": "2026-10-31T11:36:19.135Z",
+  "version": "3.8.41",
+  "steps": [
+    {
+      "name": "health",
+      "at": "2026-10-31T11:36:19.200Z",
+      "status": 200,
+      "ms": 64,
+      "version": "3.8.41",
+      "tls": true,
+      "uptime": 5575
+    },
+    {
+      "name": "ready",
+      "at": "2026-10-31T11:36:19.206Z",
+      "status": 200,
+      "ms": 6,
+      "ready": true,
+      "checks": {
+        "db": "ok",
+        "schema": "ok"
+      }
+    },
+    {
+      "name": "metrics",
+      "at": "2026-10-31T11:36:19.228Z",
+      "status": 200,
+      "ms": 22,
+      "bytes": 5055,
+      "devicesOnline": "4",
+      "viewers": "0"
+    },
+    {
+      "name": "devices",
+      "at": "2026-10-31T11:36:19.235Z",
+      "status": 200,
+      "ms": 0,
+      "count": 4,
+      "online": 4,
+      "versions": [
+        "Android-Emulator=undefined",
+        "TECNO-KL4=undefined",
+        "WIN10-VM=undefined",
+        "WIN11-VM=undefined"
+      ]
+    },
+    {
+      "name": "view:WIN11-VM",
+      "at": "2026-10-31T11:36:27.213Z",
+      "ok": true,
+      "opened": true,
+      "openMs": 20,
+      "firstFrameMs": 1677,
+      "frames": 37,
+      "seconds": 6,
+      "fps": 6.17,
+      "lastFrameBytes": 9152,
+      "events": [
+        "screen:viewer_count",
+        "screen:monitors"
+      ]
+    },
+    {
+      "name": "view:WIN10-VM",
+      "at": "2026-10-31T11:36:35.201Z",
+      "ok": true,
+      "opened": true,
+      "openMs": 30,
+      "firstFrameMs": 1673,
+      "frames": 8,
+      "seconds": 6,
+      "fps": 1.33,
+      "lastFrameBytes": 849,
+      "events": [
+        "screen:viewer_count",
+        "screen:monitors"
+      ]
+    },
+    {
+      "name": "exec:win11:echo1",
+      "at": "2026-10-31T11:36:36.201Z",
+      "ok": true,
+      "status": 200,
+      "exitCode": 0,
+      "stdout": "r94-ok",
+      "stderr": "",
+      "ms": 984
+    },
+    {
+      "name": "exec:win11:echo2",
+      "at": "2026-10-31T11:36:36.843Z",
+      "ok": true,
+      "status": 200,
+      "exitCode": 0,
+      "stdout": "r94-ok",
+      "stderr": "",
+      "ms": 631
+    },
+    {
+      "name": "exec:win11:echo3",
+      "at": "2026-10-31T11:36:37.560Z",
+      "ok": true,
+      "status": 200,
+      "exitCode": 0,
+      "stdout": "r94-ok",
+      "stderr": "",
+      "ms": 712
+    },
+    {
+      "name": "exec:win11:blocked",
+      "at": "2026-10-31T11:36:37.568Z",
+      "ok": false,
+      "status": 403,
+      "stdout": "",
+      "stderr": "",
+      "ms": 5
+    },
+    {
+      "name": "exec:win10:echo",
+      "at": "2026-10-31T11:36:38.233Z",
+      "ok": true,
+      "status": 200,
+      "exitCode": 0,
+      "stdout": "r94-ok",
+      "stderr": "",
+      "ms": 660
+    },
+    {
+      "name": "file:upload8mb",
+      "at": "2026-10-31T11:36:39.124Z",
+      "ok": true,
+      "status": 200,
+      "id": "27fad25f-d46d-4523-a574-83a413d07b6e",
+      "bytes": 8388608,
+      "sha": "b8ae3ccb5f5dd829ec960e7388fe8e01cce2bb764a63187afd63967feac15975",
+      "actualSha256": "b8ae3ccb5f5dd829ec960e7388fe8e01cce2bb764a63187afd63967feac15975",
+      "state": "completed",
+      "ms": 674,
+      "mbps": 11.87,
+      "chunkSize": 1048576
+    },
+    {
+      "name": "file:download8mb",
+      "at": "2026-10-31T11:36:39.651Z",
+      "ok": true,
+      "status": 200,
+      "bytes": 8388608,
+      "sha": "b8ae3ccb5f5dd829ec960e7388fe8e01cce2bb764a63187afd63967feac15975",
+      "ms": 461,
+      "mbps": 17.35,
+      "matchesUpload": true
+    },
+    {
+      "name": "file:cleanup",
+      "at": "2026-10-31T11:36:40.669Z",
+      "ok": true,
+      "status": 200,
+      "exitCode": 0,
+      "stdout": "removed",
+      "stderr": "",
+      "ms": 1010
+    },
+    {
+      "name": "sessions:list",
+      "at": "2026-10-31T11:36:40.677Z",
+      "status": 200,
+      "ms": 8,
+      "count": 5
+    },
+    {
+      "name": "sessions:export",
+      "at": "2026-10-31T11:36:40.701Z",
+      "status": 200,
+      "ms": 24,
+      "bytes": 73890,
+      "head": "id,type,started_at,ended_at,duration_sec,duration_min,device_id,device,user,status"
+    }
+  ],
+  "meta": {
+    "devices": [
+      {
+        "id": "9b5eeaf9-b30d-449c-875e-1e21e56ac041",
+        "name": "Android-Emulator",
+        "status": "online"
+      },
+      {
+        "id": "07f8ae91-5b64-41d9-97df-ce649772b0d3",
+        "name": "TECNO-KL4",
+        "status": "online"
+      },
+      {
+        "id": "b42175d0-d0c9-428d-ab94-4e66dff56af3",
+        "name": "WIN10-VM",
+        "status": "online"
+      },
+      {
+        "id": "d147684b-2451-4418-a628-86f11aa66a4e",
+        "name": "WIN11-VM",
+        "status": "online"
+      }
+    ]
+  },
+  "finishedAt": "2026-10-31T11:36:40.701Z"
+}

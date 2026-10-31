@@ -74,3 +74,6 @@ outputs/**/*.zip
 outputs/**/rec-long/frames/
 outputs/**/rec-long/list.txt
 
+
+# Lab login cache (JWT) — never commit
+tools/lab/.token.json

@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>لوحة قياس الترحيل — AiRemote R9.4</title>
+<style>
+:root{
+  --bg:#eef1f5; --surface:#ffffff; --ink:#16202a; --ink2:#46535f; --line:#d5dce4;
+  --accent:#1d4ed8;
+  --g:#17603f; --g-bg:#e6f3ea; --g-line:#b9d9c6;
+  --y:#7a4c00; --y-bg:#fdf2d9; --y-line:#e8cf92;
+  --r:#9a1c1c; --r-bg:#fbe7e7; --r-line:#eec3c3;
+  --n:#3f4a56; --n-bg:#eceff2; --n-line:#ccd3da;
+  --radius:14px; --shadow:0 1px 2px rgba(16,32,42,.06),0 8px 24px rgba(16,32,42,.05);
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);line-height:1.6;
+  font-family:"Segoe UI","Tahoma","Noto Naskh Arabic","Arial",sans-serif;
+  -webkit-text-size-adjust:100%}
+.wrap{max-width:1180px;margin:0 auto;padding:0 20px}
+.skip{position:absolute;inset-inline-start:-9999px;top:0}
+.skip:focus{inset-inline-start:12px;top:12px;background:#fff;padding:8px 12px;border:1px solid var(--accent);border-radius:8px;z-index:9}
+
+header.top{background:var(--surface);border-bottom:1px solid var(--line);padding:26px 0 20px}
+.kicker{margin:0;font-size:12.5px;color:var(--ink2);letter-spacing:.02em}
+h1{font-size:clamp(21px,3vw,29px);margin:6px 0 8px;line-height:1.35}
+.sub{margin:0;color:var(--ink2);max-width:72ch;font-size:14.5px}
+.banner{margin-top:16px;padding:10px 14px;border-radius:10px;font-size:13.5px;border:1px solid var(--line)}
+.banner.sample{background:var(--y-bg);border-color:var(--y-line);color:#5d3a00}
+.banner.live{background:var(--g-bg);border-color:var(--g-line);color:var(--g)}
+.banner:empty{display:none}
+.meta{display:flex;flex-wrap:wrap;gap:6px 24px;margin:14px 0 0;font-size:12.5px;color:var(--ink2)}
+.meta div{display:flex;gap:6px;margin:0}
+.meta dt{margin:0}
+.meta dd{margin:0;font-weight:600;color:var(--ink);font-variant-numeric:tabular-nums}
+
+main{padding:26px 0 8px}
+section{margin-bottom:32px}
+h2{font-size:18px;margin:0 0 4px}
+.lede{margin:0 0 14px;color:var(--ink2);font-size:13.5px;max-width:88ch}
+
+.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:11px 14px;border-inline-start:4px solid var(--line)}
+.tile .n{font-size:25px;font-weight:700;line-height:1.15;font-variant-numeric:tabular-nums}
+.tile .l{font-size:12.5px;color:var(--ink2)}
+.tile.t-green{border-inline-start-color:var(--g)}
+.tile.t-yellow{border-inline-start-color:#c08a00}
+.tile.t-red{border-inline-start-color:var(--r)}
+.tile.t-nodata{border-inline-start-color:var(--n)}
+
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+  padding:13px 15px;box-shadow:var(--shadow);border-inline-start:5px solid var(--line);
+  display:flex;flex-direction:column;gap:7px;min-width:0}
+.card--green{border-inline-start-color:var(--g)}
+.card--yellow{border-inline-start-color:#c08a00}
+.card--red{border-inline-start-color:var(--r)}
+.card--nodata{border-inline-start-color:var(--n)}
+.card__head{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}
+.card__idx{font-size:11.5px;color:var(--ink2);font-variant-numeric:tabular-nums}
+.card__name{font-size:14px;margin:0;flex:1 1 auto;line-height:1.4;min-width:110px}
+.chip{font-size:11px;font-weight:700;padding:2px 8px;border-radius:999px;white-space:nowrap;border:1px solid transparent}
+.st-green{background:var(--g-bg);color:var(--g);border-color:var(--g-line)}
+.st-yellow{background:var(--y-bg);color:var(--y);border-color:var(--y-line)}
+.st-red{background:var(--r-bg);color:var(--r);border-color:var(--r-line)}
+.st-nodata{background:var(--n-bg);color:var(--n);border-color:var(--n-line)}
+.card__val{display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.card__val b{font-size:29px;line-height:1.1;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.card__val .u{font-size:12.5px;color:var(--ink2)}
+.card__val .n{font-size:12px;color:var(--ink2);margin-inline-start:auto}
+.card__rule{font-size:12px;color:var(--ink2);background:#f6f8fa;border:1px dashed var(--line);border-radius:8px;padding:5px 8px}
+.card__foot{font-size:11.5px;color:var(--ink2);border-top:1px solid var(--line);padding-top:7px;margin-top:auto;display:flex;flex-direction:column;gap:1px}
+.card__foot b{font-weight:600;color:#2b3540}
+
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--surface)}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:880px}
+caption{caption-side:top;text-align:start;padding:10px 13px;font-size:12.5px;color:var(--ink2);border-bottom:1px solid var(--line);background:#f8fafb;border-radius:12px 12px 0 0}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:start;vertical-align:top}
+thead th{background:#f2f5f8;font-size:12px;color:#2b3540;white-space:nowrap}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:nth-child(even){background:#fbfcfd}
+td.num{font-variant-numeric:tabular-nums;white-space:nowrap}
+td .small{font-size:11.5px;color:var(--ink2);margin-top:2px;max-width:34ch}
+
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:18px}
+figure.chart{margin:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:15px 16px;box-shadow:var(--shadow)}
+figure.chart h3{margin:0;font-size:14.5px;line-height:1.4}
+figure.chart .figsub{margin:1px 0 8px;font-size:12px;color:var(--ink2)}
+figure.chart figcaption{font-size:12px;color:var(--ink2);margin-top:8px;border-top:1px solid var(--line);padding-top:7px}
+svg{width:100%;height:auto;display:block;overflow:visible}
+.legend{display:flex;flex-wrap:wrap;gap:12px;margin:6px 0 2px;font-size:11.5px;color:var(--ink2)}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.sw{width:11px;height:11px;border-radius:3px;display:inline-block}
+
+.notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.note-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:13px 15px}
+.note-card h3{margin:0 0 7px;font-size:13.5px}
+.note-card ul{margin:0;padding-inline-start:18px}
+.note-card li{margin-bottom:5px;font-size:12.5px;color:var(--ink2)}
+.note-card p{margin:0;font-size:12.5px;color:var(--ink2)}
+footer{border-top:1px solid var(--line);padding:16px 0 28px;font-size:12px;color:var(--ink2)}
+footer a{color:var(--accent)}
+.empty{padding:16px;border:1px dashed var(--line);border-radius:10px;color:var(--ink2);font-size:13px;background:#fff}
+
+@media (max-width:520px){
+  .card__val b{font-size:25px}
+  .wrap{padding:0 14px}
+}
+@media print{
+  body{background:#fff}
+  .card,.tile,figure.chart,.note-card,.tablewrap{box-shadow:none}
+  section{margin-bottom:20px}
+  .skip{display:none}
+}
+@media (prefers-reduced-motion:no-preference){
+  .card{transition:box-shadow .18s ease,border-color .18s ease}
+  .card:hover{box-shadow:0 2px 4px rgba(16,32,42,.08),0 12px 28px rgba(16,32,42,.09)}
+}
+</style>
+</head>
+<body>
+<a class="skip" href="#main">تجاوز إلى المحتوى</a>
+
+<header class="top">
+  <div class="wrap">
+    <p class="kicker">AiRemote · R9.4 · مهمة 06 — إطار القياس ولوحة الترحيل</p>
+    <h1>لوحة قياس الترحيل التجريبي</h1>
+    <p class="sub">عشرة مقاييس قرار لثمانية مستخدمين في موجتين. كل بطاقة تحمل القيمة وحجم العينة والعتبات والمصدر ومن يجمعها — حتى يمكن الطعن في الرقم لا تصديقه فقط.</p>
+    <div id="dataset-banner" class="banner" role="status"></div>
+    <dl class="meta" id="meta"></dl>
+  </div>
+</header>
+
+<main id="main" class="wrap">
+  <noscript>
+    <p class="empty">هذه اللوحة تحتاج JavaScript للرسم. الأرقام والتعريفات الكاملة متاحة في الملف النصي <b>06-metrics.md</b> داخل مجلد r94.</p>
+  </noscript>
+
+  <section aria-labelledby="h-sum">
+    <h2 id="h-sum">الخلاصة الآن</h2>
+    <p class="lede">عدد المقاييس في كل حالة، محسوباً من القيم والعتبات نفسها التي يعرضها الجدول — لا مكتوباً يدوياً في الصفحة.</p>
+    <div class="summary" id="summary"></div>
+  </section>
+
+  <section aria-labelledby="h-cards">
+    <h2 id="h-cards">البطاقات</h2>
+    <p class="lede">القيمة الكبيرة هي القياس، والرقم الصغير بجانبها <b>n</b> هو حجم العينة. الشريط الملوّن على حافة كل بطاقة هو الحالة، لا لون النص.</p>
+    <div class="cards" id="cards"></div>
+  </section>
+
+  <section aria-labelledby="h-table">
+    <h2 id="h-table">جدول المقاييس</h2>
+    <p class="lede">كيف تقرأ الجدول: ابدأ بعمود <b>القيمة</b> ثم <b>الحالة</b>؛ العمودان المجاوران للأخضر والأصفر يخبرانك بمسافة الرقم إلى الحد، و<b>n</b> يخبرك بثقة الرقم. الصفوف مرتّبة بترتيب تعريف المهمة لا بترتيب القيمة.</p>
+    <div class="tablewrap">
+      <table id="mtable">
+        <caption>الجدول 1 — المقاييس العشرة: القيمة والوحدة والعينة والعتبات والحالة والمصدر والجامع.</caption>
+        <thead>
+          <tr>
+            <th scope="col">#</th>
+            <th scope="col">المقياس</th>
+            <th scope="col">القيمة</th>
+            <th scope="col">الوحدة</th>
+            <th scope="col">n</th>
+            <th scope="col">أخضر</th>
+            <th scope="col">أصفر</th>
+            <th scope="col">أحمر</th>
+            <th scope="col">الحالة</th>
+            <th scope="col">المصدر</th>
+            <th scope="col">الجامع والتواتر</th>
+          </tr>
+        </thead>
+        <tbody id="mrows"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-charts">
+    <h2 id="h-charts">الرسمان</h2>
+    <p class="lede">رسم واحد لكل سؤال: الأول عن حجم الجلسات ومعدل فشلها أسبوعياً، والثاني عن مسار زمن أول إطار أمام عتبتيه. لا محور مزدوج في أي منهما.</p>
+    <div class="charts">
+      <figure class="chart">
+        <h3>هل ينمو عدد الجلسات الناجحة مع بقاء الفشل صغيراً؟</h3>
+        <p class="figsub">عدد الجلسات لكل أسبوع — مكدّس: ناجحة + غير ناجحة. المحور من صفر.</p>
+        <div class="legend">
+          <span><i class="sw" style="background:#2f7d54"></i>ناجحة</span>
+          <span><i class="sw" style="background:#b3382f"></i>غير ناجحة</span>
+        </div>
+        <div id="chart1"></div>
+        <figcaption>المصدر: تصدير الجلسات، تجميع أسبوعي. التسميات على الشرائح هي الأعداد الفعلية. الأرقام عيّنة توضيحية.</figcaption>
+      </figure>
+
+      <figure class="chart">
+        <h3>أين يقف زمن أول إطار p95 من عتبتيه؟</h3>
+        <p class="figsub">الثواني، كل نقطة = p95 الأسبوع. النطاقات: أخضر 3ث أو أقل · أصفر من 3 إلى 6ث · أحمر أكثر من 6ث.</p>
+        <div class="legend">
+          <span><i class="sw" style="background:#1d4ed8"></i>p95 الأسبوع</span>
+          <span><i class="sw" style="background:#e8f4ec;border:1px solid #b9d9c6"></i>أخضر</span>
+          <span><i class="sw" style="background:#fdf4dd;border:1px solid #e8cf92"></i>أصفر</span>
+          <span><i class="sw" style="background:#fbe9e8;border:1px solid #eec3c3"></i>أحمر</span>
+        </div>
+        <div id="chart2"></div>
+        <figcaption>المصدر: /metrics. ملاحظة: قيمة الموجة الكلية ليست متوسط هذه النقاط الخمس، بل p95 على كل الجلسات. الأرقام عيّنة توضيحية.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section aria-labelledby="h-notes">
+    <h2 id="h-notes">كيف تُقرأ الحالات، وما لا تقيسه اللوحة</h2>
+    <div class="notes">
+      <div class="note-card">
+        <h3>الحالات الأربع</h3>
+        <ul>
+          <li><span class="chip st-green">أخضر</span> بلغ العتبة الخضراء على القيمة غير المقربة.</li>
+          <li><span class="chip st-yellow">أصفر</span> بين العتبتين: مقبول بمراقبة، لا يُهمل أسبوعين.</li>
+          <li><span class="chip st-red">أحمر</span> تحت العتبة الصفراء: يفتح إجراءً في الأسبوع نفسه.</li>
+          <li><span class="chip st-nodata">بيانات غير كافية</span> العينة تحت الحد الأدنى: الرقم يُعرض إرشادياً ولا يُلوَّن.</li>
+        </ul>
+      </div>
+      <div class="note-card">
+        <h3>حدود متعمّدة</h3>
+        <ul>
+          <li>لا تحسب اللوحة p95 ولا تعيد تجميع الأحداث؛ تقرأ نتائج مجمّعة.</li>
+          <li>لا تحفظ شيئاً ولا ترسل أي طلب خارجي؛ تعمل بفتح الملف مباشرة.</li>
+          <li>العتبات تُقرأ من البيانات، فتغييرها يظهر في الشاشة ولا يُخفى.</li>
+          <li>هذه ليست شهادة أمان: العيبان F3 (رمز في localStorage) وF4 (trustProxy) لا يظهران في أي مقياس هنا.</li>
+        </ul>
+      </div>
+      <div class="note-card">
+        <h3>قبل الاعتماد على أي رقم</h3>
+        <ul>
+          <li>ثلاثة مقاييس تعتمد على وجود <b>/metrics</b> — لم يُتحقق من وجوده بعد.</li>
+          <li>سرعة النقل تُقاس على شبكة، وسقف المشاهدين 30/دقيقة لكل IP يحدّ التزامن.</li>
+          <li>مقاييس الأداء تُفصل بين ويندوز 3.8.41 وأندرويد 3.8.36.</li>
+          <li>NPS على 8 مستخدمين هشّ: صوت واحد يحرّك الرقم 12.5 نقطة.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer>
+  <div class="wrap">
+    التعريفات والصيغ وقواعد المعايرة في <b>r94/06-metrics.md</b>. تاريخ التجميع الظاهر أعلاه هو تاريخ اللقطة لا تاريخ التنفيذ.
+    <span id="foot-note"></span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- sample data (all values synthetic; sample:true) ---------- */
+  var SAMPLE = {
+    sample: true,
+    windowLabel: 'الموجة 1 + الموجة 2 · 5 أسابيع (مقترح)',
+    updatedAt: '2026-10-31',
+    metrics: [
+      { id:'m1', idx:'01', name:'معدل نجاح الجلسات', value:91.3, unit:'%', n:138, nUnit:'جلسة',
+        dir:'gte', green:90, yellow:80, minN:10, source:'تصدير الجلسات', owner:'منسّق الترحيل',
+        cadence:'كل خميس + إقفال موجة', note:'إعادة الاتصال خلال 60 ثانية تُحسب محاولة داخل الجلسة نفسها' },
+      { id:'m2', idx:'02', name:'زمن أول إطار p95', value:3.4, unit:'ث', n:131, nUnit:'جلسة',
+        dir:'lte', green:3, yellow:6, minN:20, source:'/metrics', owner:'مشغّل النظام',
+        cadence:'لقطة أسبوعية', note:'من إصدار تذكرة WS إلى أول إطار معروض' },
+      { id:'m3', idx:'03', name:'متوسط الإطارات/ث', value:22.1, unit:'إطار/ث', n:131, nUnit:'جلسة',
+        dir:'gte', green:20, yellow:12, minN:20, source:'/metrics', owner:'مشغّل النظام',
+        cadence:'لقطة أسبوعية', note:'يستبعد الخمول وأول 3 ثوانٍ من كل جلسة' },
+      { id:'m4', idx:'04', name:'معدل نجاح نقل الملفات', value:96.9, unit:'%', n:64, nUnit:'عملية',
+        dir:'gte', green:98, yellow:95, minN:15, source:'تصدير الجلسات', owner:'منسّق الترحيل',
+        cadence:'بعد كل نقل + تجميع أسبوعي', note:'الرفض بسبب حد 16MB/128MB يُحسب فشلاً' },
+      { id:'m5', idx:'05', name:'سرعة النقل', value:1.6, unit:'MB/s', n:41, nUnit:'عملية',
+        dir:'gte', green:5, yellow:2, minN:10, source:'/metrics', owner:'مشغّل النظام',
+        cadence:'أسبوعياً', note:'وسيط عمليات أكبر من 16MB · 1MB = 10⁶ بايت' },
+      { id:'m6', idx:'06', name:'نسبة مطابقة SHA-256', value:100, unit:'%', n:62, nUnit:'عملية',
+        dir:'gte', green:100, yellow:99.5, minN:10, source:'تصدير الجلسات', owner:'منسّق الترحيل',
+        cadence:'مع كل تصدير', note:'أي تلف يصل للمستخدم = أحمر مهما كانت النسبة' },
+      { id:'m7', idx:'07', name:'زمن تنفيذ الأمر p95', value:1720, unit:'ms', n:212, nUnit:'أمر',
+        dir:'lte', green:1500, yellow:4000, minN:30, source:'audit', owner:'مشغّل النظام',
+        cadence:'آلي + 10 أوامر يدوية/أسبوع', note:'أوامر حتى 30 ثانية فقط · حد الأمر 4000 حرف' },
+      { id:'m8', idx:'08', name:'عدد الحوادث/أسبوع', value:2, unit:'حادث', n:5, nUnit:'أسابيع',
+        dir:'lte', green:0, yellow:2, minN:1, source:'قياس يدوي', owner:'منسّق + مشغّل',
+        cadence:'إقفال أسبوعي', note:'P1/P2: انقطاع جماعي · تلف بيانات · تجاوز صلاحية · وكيل متوقف أكثر من ساعة' },
+      { id:'m9', idx:'09', name:'CSAT (1–5)', value:4.1, unit:'/5', n:21, nUnit:'استجابة', invited:40,
+        dir:'gte', green:4.2, yellow:3.5, minN:5, source:'استبيان', owner:'منسّق الترحيل',
+        cadence:'تجميع أسبوعي', note:'سؤال واحد بعد الجلسة · نسبة استجابة 52.5%' },
+      { id:'m10', idx:'10', name:'NPS', value:20, unit:'نقطة', n:5, nUnit:'استجابة', invited:8,
+        dir:'gte', green:30, yellow:0, minN:6, source:'استبيان', owner:'مدير المنتج',
+        cadence:'نهاية الموجة 2', note:'n=5 تحت الحد 6 ⇒ إشارة إرشادية فقط' }
+    ],
+    weekly: [
+      { label:'أسبوع 1', ok:20, fail:4 },
+      { label:'أسبوع 2', ok:25, fail:3 },
+      { label:'أسبوع 3', ok:29, fail:2 },
+      { label:'أسبوع 4', ok:27, fail:2 },
+      { label:'أسبوع 5', ok:25, fail:1 }
+    ],
+    timeline: [
+      { label:'أسبوع 1', value:4.2 },
+      { label:'أسبوع 2', value:3.9 },
+      { label:'أسبوع 3', value:3.6 },
+      { label:'أسبوع 4', value:3.3 },
+      { label:'أسبوع 5', value:3.4 }
+    ]
+  };
+
+  var STATUS = {
+    green:  { label:'أخضر', cls:'st-green' },
+    yellow: { label:'أصفر', cls:'st-yellow' },
+    red:    { label:'أحمر', cls:'st-red' },
+    nodata: { label:'بيانات غير كافية', cls:'st-nodata' }
+  };
+
+  /* ---------- helpers ---------- */
+  function isNum(v){ return typeof v === 'number' && isFinite(v); }
+
+  function fmt(v){
+    if (!isNum(v)) return '—';
+    var r = Math.round(v * 10) / 10;
+    if (Math.abs(r) >= 1000) {
+      return String(Math.round(r)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+    return String(r);
+  }
+
+  function fmtInt(v){
+    if (!isNum(v)) return '—';
+    return String(Math.round(v)).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+
+  function unitTail(unit){
+    if (!unit) return '';
+    if (unit === '%') return '%';
+    if (unit === '/5') return '/5';
+    return ' ' + unit;
+  }
+
+  function statusOf(m){
+    if (!isNum(m.value)) return 'nodata';
+    if (isNum(m.minN) && isNum(m.n) && m.n < m.minN) return 'nodata';
+    var g = m.green, y = m.yellow;
+    if (!isNum(g) || !isNum(y)) return 'nodata';
+    if (m.dir === 'lte') {
+      if (m.value <= g) return 'green';
+      if (m.value <= y) return 'yellow';
+      return 'red';
+    }
+    if (m.value >= g) return 'green';
+    if (m.value >= y) return 'yellow';
+    return 'red';
+  }
+
+  /* thresholds are phrased in words, not with < / > glyphs:
+     a lone comparison sign in an RTL cell can render mirrored and invert its meaning. */
+  function greenText(m){
+    var u = unitTail(m.unit);
+    return fmt(m.green) + u + (m.dir === 'lte' ? ' أو أقل' : ' أو أكثر');
+  }
+  function yellowText(m){
+    var u = unitTail(m.unit), g = fmt(m.green), y = fmt(m.yellow);
+    if (m.dir === 'lte') return 'أكثر من ' + g + u + ' وحتى ' + y + u;
+    return 'من ' + y + u + ' إلى أقل من ' + g + u;
+  }
+  function redText(m){
+    var u = unitTail(m.unit);
+    return (m.dir === 'lte' ? 'أكثر من ' + fmt(m.yellow) : 'أقل من ' + fmt(m.yellow)) + u;
+  }
+  function ruleText(m){
+    return 'أخضر: ' + greenText(m) + ' · أصفر: ' + yellowText(m);
+  }
+  function nText(m){
+    var base = 'n = ' + fmtInt(m.n) + (m.nUnit ? ' ' + m.nUnit : '');
+    if (isNum(m.invited) && m.invited > 0) base += ' من ' + fmtInt(m.invited) + ' مدعو';
+    return base;
+  }
+  function xe(s){
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function el(tag, cls, text){
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text;
+    return n;
+  }
+
+  /* ---------- normalize input ---------- */
+  function normalize(d){
+    d = d || {};
+    var out = {
+      sample: d.sample !== false,
+      windowLabel: d.windowLabel || 'نافذة غير محددة',
+      updatedAt: d.updatedAt || '—',
+      metrics: Array.isArray(d.metrics) ? d.metrics.slice() : [],
+      weekly: Array.isArray(d.weekly) ? d.weekly.slice() : [],
+      timeline: Array.isArray(d.timeline) ? d.timeline.slice() : []
+    };
+    for (var i = 0; i < out.metrics.length; i++) {
+      if (!out.metrics[i].idx) out.metrics[i].idx = ('0' + (i + 1)).slice(-2);
+      if (!out.metrics[i].dir) out.metrics[i].dir = 'gte';
+    }
+    return out;
+  }
+
+  /* ---------- sections ---------- */
+  function renderBanner(d){
+    var b = document.getElementById('dataset-banner');
+    if (!b) return;
+    if (d.sample) {
+      b.className = 'banner sample';
+      b.textContent = 'بيانات عيّنة توضيحية (sample: true) — كل الأرقام مُصنَّعة لاختبار طريقة العرض، وليست نتائج ترحيل ولا قياساً لأي جهاز.';
+    } else {
+      b.className = 'banner live';
+      b.textContent = 'بيانات تشغيلية (sample: false) — لقطة مجمّعة؛ راجع المصدر والتاريخ قبل الاقتباس.';
+    }
+  }
+
+  function renderMeta(d){
+    var host = document.getElementById('meta');
+    if (!host) return;
+    while (host.firstChild) host.removeChild(host.firstChild);
+    var rows = [
+      ['النافذة', d.windowLabel],
+      ['آخر تجميع', d.updatedAt],
+      ['التغطية', d.metrics.length + ' / 10 مقياس'],
+      ['نوع البيانات', d.sample ? 'عيّنة' : 'تشغيلية']
+    ];
+    for (var i = 0; i < rows.length; i++) {
+      var box = document.createElement('div');
+      box.appendChild(el('dt', null, rows[i][0] + ':'));
+      box.appendChild(el('dd', null, rows[i][1]));
+      host.appendChild(box);
+    }
+  }
+
+  function renderSummary(metrics){
+    var host = document.getElementById('summary');
+    if (!host) return;
+    while (host.firstChild) host.removeChild(host.firstChild);
+    var counts = { green:0, yellow:0, red:0, nodata:0 };
+    for (var i = 0; i < metrics.length; i++) counts[statusOf(metrics[i])] += 1;
+    var tiles = [
+      ['green', counts.green, 'أخضر'],
+      ['yellow', counts.yellow, 'أصفر'],
+      ['red', counts.red, 'أحمر'],
+      ['nodata', counts.nodata, 'بيانات غير كافية'],
+      ['total', metrics.length, 'إجمالي المقاييس']
+    ];
+    for (var j = 0; j < tiles.length; j++) {
+      var t = document.createElement('div');
+      t.className = 'tile ' + (tiles[j][0] === 'total' ? 't-total' : 't-' + tiles[j][0]);
+      t.appendChild(el('div', 'n', fmtInt(tiles[j][1])));
+      t.appendChild(el('div', 'l', tiles[j][2]));
+      host.appendChild(t);
+    }
+  }
+
+  function renderCards(metrics){
+    var host = document.getElementById('cards');
+    if (!host) return;
+    while (host.firstChild) host.removeChild(host.firstChild);
+    if (!metrics.length) { host.appendChild(el('p', 'empty', 'لا توجد مقاييس في البيانات المحمّلة.')); return; }
+
+    for (var i = 0; i < metrics.length; i++) {
+      var m = metrics[i];
+      var st = statusOf(m);
+      var art = document.createElement('article');
+      art.className = 'card card--' + st;
+
+      var head = el('div', 'card__head');
+      head.appendChild(el('span', 'card__idx', m.idx || ''));
+      head.appendChild(el('h3', 'card__name', m.name || 'مقياس بلا اسم'));
+      head.appendChild(el('span', 'chip ' + STATUS[st].cls, STATUS[st].label));
+      art.appendChild(head);
+
+      var val = el('div', 'card__val');
+      val.appendChild(el('b', null, (st === 'nodata' ? '≈ ' : '') + fmt(m.value)));
+      if (m.unit) val.appendChild(el('span', 'u', m.unit));
+      val.appendChild(el('span', 'n', nText(m)));
+      art.appendChild(val);
+
+      art.appendChild(el('div', 'card__rule', ruleText(m)));
+
+      var foot = el('div', 'card__foot');
+      var src = el('div', null, 'المصدر: ');
+      src.appendChild(el('b', null, m.source || '—'));
+      foot.appendChild(src);
+      foot.appendChild(el('div', null, (m.owner || '—') + ' · ' + (m.cadence || '—')));
+      art.appendChild(foot);
+
+      host.appendChild(art);
+    }
+  }
+
+  function renderTable(metrics){
+    var body = document.getElementById('mrows');
+    if (!body) return;
+    while (body.firstChild) body.removeChild(body.firstChild);
+    if (!metrics.length) {
+      var tr0 = document.createElement('tr');
+      var td0 = el('td', null, 'لا توجد صفوف.');
+      td0.colSpan = 11;
+      tr0.appendChild(td0);
+      body.appendChild(tr0);
+      return;
+    }
+
+    for (var i = 0; i < metrics.length; i++) {
+      var m = metrics[i];
+      var st = statusOf(m);
+      var tr = document.createElement('tr');
+
+      tr.appendChild(el('td', 'num', m.idx || ''));
+
+      var nameCell = document.createElement('td');
+      nameCell.appendChild(el('strong', null, m.name || '—'));
+      if (m.note) nameCell.appendChild(el('div', 'small', m.note));
+      tr.appendChild(nameCell);
+
+      tr.appendChild(el('td', 'num', fmt(m.value)));
+      tr.appendChild(el('td', null, m.unit || '—'));
+      tr.appendChild(el('td', 'num', fmtInt(m.n)));
+
+      tr.appendChild(el('td', 'num', greenText(m)));
+      tr.appendChild(el('td', 'num', yellowText(m)));
+      tr.appendChild(el('td', 'num', redText(m)));
+
+      var stCell = document.createElement('td');
+      stCell.appendChild(el('span', 'chip ' + STATUS[st].cls, STATUS[st].label));
+      tr.appendChild(stCell);
+
+      tr.appendChild(el('td', null, m.source || '—'));
+      tr.appendChild(el('td', null, (m.owner || '—') + ' · ' + (m.cadence || '—')));
+
+      body.appendChild(tr);
+    }
+  }
+
+  /* ---------- charts ---------- */
+  function barChart(weekly){
+    var W = 660, H = 330, mL = 52, mR = 16, mT = 28, mB = 56;
+    var pw = W - mL - mR, ph = H - mT - mB;
+    var max = 0, i, t;
+    for (i = 0; i < weekly.length; i++) {
+      var tot = (weekly[i].ok || 0) + (weekly[i].fail || 0);
+      if (tot > max) max = tot;
+    }
+    if (max <= 0) max = 1;
+    var step = max <= 10 ? 2 : (max <= 40 ? 10 : 20);
+    var top = Math.ceil(max / step) * step;
+    var band = pw / weekly.length;
+    var bw = Math.min(74, band * 0.54);
+    var s = '';
+
+    for (t = 0; t <= top; t += step) {
+      var gy = mT + ph - (t / top) * ph;
+      s += '<line x1="' + mL + '" y1="' + gy.toFixed(1) + '" x2="' + (mL + pw) + '" y2="' + gy.toFixed(1) + '" stroke="#e3e8ee" stroke-width="1"/>';
+      s += '<text x="' + (mL - 10) + '" y="' + (gy + 4).toFixed(1) + '" text-anchor="end" font-size="11" fill="#5b6874">' + t + '</text>';
+    }
+
+    for (i = 0; i < weekly.length; i++) {
+      var d = weekly[i], ok = d.ok || 0, fail = d.fail || 0;
+      var x = mL + band * i + (band - bw) / 2;
+      var okH = (ok / top) * ph;
+      var failH = (fail / top) * ph;
+      var yOk = mT + ph - okH;
+      var yFail = yOk - failH;
+
+      if (okH > 0) {
+        s += '<rect x="' + x.toFixed(1) + '" y="' + yOk.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + okH.toFixed(1) + '" fill="#2f7d54" rx="3"/>';
+      }
+      if (failH > 0) {
+        s += '<rect x="' + x.toFixed(1) + '" y="' + yFail.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + failH.toFixed(1) + '" fill="#b3382f" rx="3"/>';
+      }
+      if (ok > 0) {
+        if (okH > 22) {
+          s += '<text x="' + (x + bw / 2).toFixed(1) + '" y="' + (yOk + okH / 2 + 4).toFixed(1) + '" text-anchor="middle" font-size="11.5" font-weight="700" fill="#ffffff">' + ok + '</text>';
+        } else {
+          s += '<text x="' + (x + bw / 2).toFixed(1) + '" y="' + (yOk - 6).toFixed(1) + '" text-anchor="middle" font-size="11.5" fill="#24503a">' + ok + '</text>';
+        }
+      }
+      if (fail > 0) {
+        s += '<text x="' + (x + bw / 2).toFixed(1) + '" y="' + (yFail - 6).toFixed(1) + '" text-anchor="middle" font-size="11" font-weight="700" fill="#8d2b23">' + fail + '</text>';
+      }
+      s += '<text x="' + (x + bw / 2).toFixed(1) + '" y="' + (mT + ph + 22) + '" text-anchor="middle" font-size="12" fill="#3f4a56">' + xe(d.label) + '</text>';
+    }
+
+    s += '<line x1="' + mL + '" y1="' + (mT + ph) + '" x2="' + (mL + pw) + '" y2="' + (mT + ph) + '" stroke="#9aa6b2" stroke-width="1"/>';
+    s += '<text x="' + mL + '" y="' + (mT - 10) + '" font-size="11" fill="#5b6874">جلسة / أسبوع</text>';
+
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="c1t c1d" style="direction:ltr">' +
+      '<title id="c1t">الجلسات الأسبوعية: ناجحة وغير ناجحة</title>' +
+      '<desc id="c1d">أعمدة مكدّسة لخمسة أسابيع، المحور الرأسي من صفر إلى ' + top + ' جلسة.</desc>' +
+      s + '</svg>';
+  }
+
+  function lineChart(pts){
+    var W = 660, H = 330, mL = 52, mR = 24, mT = 28, mB = 56;
+    var pw = W - mL - mR, ph = H - mT - mB;
+    var max = 0, i, t;
+    for (i = 0; i < pts.length; i++) {
+      if (isNum(pts[i].value) && pts[i].value > max) max = pts[i].value;
+    }
+    var top = Math.max(8, Math.ceil(max / 2) * 2);
+    function y(v){ return mT + ph - (v / top) * ph; }
+    var s = '';
+
+    var bands = [[0, 3, '#e8f4ec'], [3, 6, '#fdf4dd'], [6, top, '#fbe9e8']];
+    for (i = 0; i < bands.length; i++) {
+      var lo = bands[i][0], hi = bands[i][1];
+      if (hi > top) hi = top;
+      if (lo >= hi) continue;
+      s += '<rect x="' + mL + '" y="' + y(hi).toFixed(1) + '" width="' + pw + '" height="' + (y(lo) - y(hi)).toFixed(1) + '" fill="' + bands[i][2] + '"/>';
+    }
+
+    for (t = 0; t <= top; t += 2) {
+      s += '<line x1="' + mL + '" y1="' + y(t).toFixed(1) + '" x2="' + (mL + pw) + '" y2="' + y(t).toFixed(1) + '" stroke="#d9dfe6" stroke-width="1"/>';
+      s += '<text x="' + (mL - 10) + '" y="' + (y(t) + 4).toFixed(1) + '" text-anchor="end" font-size="11" fill="#5b6874">' + t + '</text>';
+    }
+
+    s += '<line x1="' + mL + '" y1="' + y(3).toFixed(1) + '" x2="' + (mL + pw) + '" y2="' + y(3).toFixed(1) + '" stroke="#8aa79a" stroke-width="1.2" stroke-dasharray="5 4"/>';
+    s += '<line x1="' + mL + '" y1="' + y(6).toFixed(1) + '" x2="' + (mL + pw) + '" y2="' + y(6).toFixed(1) + '" stroke="#c08a8a" stroke-width="1.2" stroke-dasharray="5 4"/>';
+    s += '<text x="' + (mL + pw + 4) + '" y="' + (y(3) + 4).toFixed(1) + '" font-size="10.5" fill="#4a6a5c">3ث</text>';
+    s += '<text x="' + (mL + pw + 4) + '" y="' + (y(6) + 4).toFixed(1) + '" font-size="10.5" fill="#8d4a4a">6ث</text>';
+
+    var n = pts.length;
+    var xs = [];
+    for (i = 0; i < n; i++) xs.push(mL + (n === 1 ? pw / 2 : (pw * i) / (n - 1)));
+
+    var poly = '';
+    for (i = 0; i < n; i++) {
+      if (!isNum(pts[i].value)) continue;
+      poly += (poly ? ' ' : '') + xs[i].toFixed(1) + ',' + y(pts[i].value).toFixed(1);
+    }
+    if (poly) {
+      s += '<polyline points="' + poly + '" fill="none" stroke="#1d4ed8" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>';
+    }
+
+    for (i = 0; i < n; i++) {
+      var v = pts[i].value;
+      if (!isNum(v)) continue;
+      s += '<circle cx="' + xs[i].toFixed(1) + '" cy="' + y(v).toFixed(1) + '" r="4.2" fill="#ffffff" stroke="#1d4ed8" stroke-width="2.4"/>';
+      s += '<text x="' + xs[i].toFixed(1) + '" y="' + (y(v) - 11).toFixed(1) + '" text-anchor="middle" font-size="11.5" font-weight="700" fill="#12335f">' + fmt(v) + '</text>';
+      s += '<text x="' + xs[i].toFixed(1) + '" y="' + (mT + ph + 22) + '" text-anchor="middle" font-size="12" fill="#3f4a56">' + xe(pts[i].label) + '</text>';
+    }
+
+    s += '<line x1="' + mL + '" y1="' + (mT + ph) + '" x2="' + (mL + pw) + '" y2="' + (mT + ph) + '" stroke="#9aa6b2" stroke-width="1"/>';
+    s += '<text x="' + mL + '" y="' + (mT - 10) + '" font-size="11" fill="#5b6874">ثانية</text>';
+
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" role="img" aria-labelledby="c2t c2d" style="direction:ltr">' +
+      '<title id="c2t">زمن أول إطار p95 أسبوعياً أمام عتبتي 3 و6 ثوانٍ</title>' +
+      '<desc id="c2d">خط زمني لخمسة أسابيع، والمحور الرأسي من صفر إلى ' + top + ' ثانية.</desc>' +
+      s + '</svg>';
+  }
+
+  function renderCharts(d){
+    var c1 = document.getElementById('chart1');
+    var c2 = document.getElementById('chart2');
+    if (c1) {
+      while (c1.firstChild) c1.removeChild(c1.firstChild);
+      if (d.weekly.length) {
+        c1.innerHTML = barChart(d.weekly);
+      } else {
+        c1.appendChild(el('p', 'empty', 'لا بيانات أسبوعية.'));
+      }
+    }
+    if (c2) {
+      while (c2.firstChild) c2.removeChild(c2.firstChild);
+      if (d.timeline.length) {
+        c2.innerHTML = lineChart(d.timeline);
+      } else {
+        c2.appendChild(el('p', 'empty', 'لا بيانات زمنية.'));
+      }
+    }
+  }
+
+  function render(d){
+    renderBanner(d);
+    renderMeta(d);
+    renderSummary(d.metrics);
+    renderCards(d.metrics);
+    renderTable(d.metrics);
+    renderCharts(d);
+    var foot = document.getElementById('foot-note');
+    if (foot) {
+      foot.textContent = d.sample
+        ? ' — هذه لقطة عيّنة: لا تُقتبس كقياس.'
+        : ' — لقطة تشغيلية.';
+    }
+  }
+
+  /* ---------- boot: window.PILOT_DATA > metrics.json (http only) > sample ---------- */
+  function boot(){
+    if (window.PILOT_DATA) { render(normalize(window.PILOT_DATA)); return; }
+
+    var onFile = (location.protocol === 'file:');
+    if (onFile || typeof fetch !== 'function') { render(normalize(SAMPLE)); return; }
+
+    fetch('metrics.json', { cache: 'no-store' })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (j) { render(normalize(j)); })
+      .catch(function () { render(normalize(SAMPLE)); });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,55 @@
+{
+  "at": "2026-10-31T11:31:50.520Z",
+  "host": "DESKTOP-K81PJ9H",
+  "node": "v24.20.0",
+  "port": 3994,
+  "phases": {
+    "http": {
+      "concurrency": 40,
+      "seconds": 5,
+      "requests": 2360,
+      "rps": 472,
+      "errors": 0,
+      "p50": 78,
+      "p95": 177,
+      "p99": 197,
+      "max": 234
+    },
+    "viewers": {
+      "requested": 60,
+      "issued": 30,
+      "rejected": 30,
+      "opened": 30,
+      "joinMs": 75
+    },
+    "fanout": {
+      "viewers": 29,
+      "events": 200,
+      "expected": 5800,
+      "delivered": 5800,
+      "ratio": 1,
+      "p50": 1,
+      "p95": 2,
+      "senderMs": 2007
+    },
+    "agents": {
+      "attempted": 25,
+      "online": 25,
+      "pongs": 0
+    }
+  },
+  "resources": {
+    "rssStartMb": 71.9,
+    "rssEndMb": 227,
+    "rssDeltaMb": 155.1,
+    "cpuUserMs": 6312,
+    "cpuSystemMs": 719,
+    "eventLoopLagMaxMs": 90,
+    "cpus": 8,
+    "loadAvg": [
+      0,
+      0,
+      0
+    ]
+  }
+}
