@@ -33,6 +33,26 @@ public class MainActivity extends Activity {
     private static final int REQ_CAPTURE = 1001;
     public static volatile MainActivity instance;
     public static volatile boolean foreground = false;
+
+    /** 3.9.0 — حوار موافقة داخل التطبيق (يُستدعى من AgentService على الخيط الرئيسي). */
+    public void showSessionOffer(final JSONObject offer) {
+        runOnUiThread(() -> {
+            try {
+                if (isFinishing()) return;
+                JSONObject req = offer.optJSONObject("requester");
+                String who = req != null ? req.optString("name", "جهاز") : "جهاز";
+                String access = offer.optString("accessLabel", offer.optString("access"));
+                final String sid = offer.optString("sessionId", "");
+                new AlertDialog.Builder(this)
+                        .setTitle("طلب اتصال بجهازك")
+                        .setMessage(who + " يطلب " + access + "\nالمهلة 60 ثانية.")
+                        .setPositiveButton("سماح", (d, w) -> AgentService.sendSessionDecision(sid, true))
+                        .setNegativeButton("رفض", (d, w) -> AgentService.sendSessionDecision(sid, false))
+                        .setCancelable(true)
+                        .show();
+            } catch (Exception ignore) {}
+        });
+    }
     private static final Handler UI = new Handler(Looper.getMainLooper());
     private static final StringBuilder LOG = new StringBuilder();
     private static final StringBuilder AI_CHAT = new StringBuilder();

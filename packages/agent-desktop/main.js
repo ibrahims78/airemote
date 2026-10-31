@@ -804,6 +804,7 @@ function handleMsg(msg) {
     case 'session:closed':
     case 'session:expired': {
       closeSessionView((msg.payload || {}).sessionId)
+      try { if (win && !win.isDestroyed()) win.webContents.send('session-closed', msg.payload || {}) } catch {}
       break
     }
   }
@@ -1796,6 +1797,21 @@ function openSessionView (payload) {
       title: 'AiRemote — session',
       webPreferences: { contextIsolation: true, sandbox: true, partition: 'persist:session-' + sid },
     })
+    // 3.9.0 — شهادة السيرفر ذاتية التوقيع: TOFU مقيّد بمضيف السيرفر فقط.
+    v.webContents.on('certificate-error', (event, failedUrl, error, certificate, callback) => {
+      try {
+        event.preventDefault()
+        const host = new URL(failedUrl).hostname
+        const srvHost = new URL(serverHttpBase()).hostname
+        if (host !== srvHost) { callback(false); return }
+        const pinFile = require('path').join(app.getPath('userData'), 'session-cert-pin.txt')
+        let pin = ''
+        try { pin = require('fs').readFileSync(pinFile, 'utf8').trim() } catch {}
+        const fp = String((certificate && certificate.fingerprint) || "").replace(/:/g, "").toLowerCase()
+        if (!pin) { try { require('fs').writeFileSync(pinFile, fp) } catch {} ; callback(true); return }
+        callback(!!fp && fp === pin.replace(/:/g, '').toLowerCase())
+      } catch { callback(false) }
+    })
     v.loadURL(url).catch(() => {})
     v.on('closed', () => { sessionViews.delete(sid) })
     sessionViews.set(sid, v)
@@ -2553,6 +2569,8 @@ ipcMain.on('screen-track-ended', () => {
 
 // ─── App Lifecycle ─────────────────────────────────────────────────────────
 app.whenReady().then(() => {
+  // 3.9.0 — إتاحة الوصول: تُظهر أزرار الحوار لأدوات UIA وقارئات الشاشة.
+  try { app.setAccessibilitySupportEnabled(true) } catch {}
   Menu.setApplicationMenu(null)
   createWindow()
   createTray()

@@ -1,0 +1,7 @@
+npm warn Unknown project config "confirm-module-purge". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+  • electron-builder  version=24.13.3 os=10.0.19045
+  • loaded configuration  file=package.json ("build" field)
+  • packaging       platform=win32 arch=x64 electron=28.3.3 appOutDir=D:\autoclaw projects-new\AiRemote\releases\agent-windows\win-unpacked
+  • building        target=zip arch=x64 file=D:\autoclaw projects-new\AiRemote\releases\agent-windows\AiRemote-Agent-v3.9.0-Windows-x64.zip
+  • building        target=nsis file=D:\autoclaw projects-new\AiRemote\releases\agent-windows\AiRemote-Agent-Setup-v3.9.0-x64.exe archs=x64 oneClick=false perMachine=false
+  • building block map  blockMapFile=D:\autoclaw projects-new\AiRemote\releases\agent-windows\AiRemote-Agent-Setup-v3.9.0-x64.exe.blockmap

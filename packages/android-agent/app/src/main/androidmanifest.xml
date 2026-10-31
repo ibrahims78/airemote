@@ -78,6 +78,20 @@
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
             </intent-filter>
         </receiver>
+        <activity
+            android:name=".SessionWebViewActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden" />
+
+        <receiver
+            android:name=".SessionActionReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.airemote.agent.SESSION_ACCEPT" />
+                <action android:name="com.airemote.agent.SESSION_DENY" />
+            </intent-filter>
+        </receiver>
+
     </application>
 </manifest>
 

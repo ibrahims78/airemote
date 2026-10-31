@@ -35,7 +35,8 @@ api.interceptors.response.use(
 
       if (!refreshToken) {
         localStorage.removeItem('airemote-auth')
-        window.location.href = '/login'
+        // 3.9.0 — نافذة جلسة بتذكرة rt تعمل بلا JWT: لا تُحوّل إلى /login.
+        if (!new URLSearchParams(window.location.search).has('rt')) window.location.href = '/login'
         return Promise.reject(err)
       }
 
@@ -73,7 +74,8 @@ api.interceptors.response.use(
         isRefreshing = false
         refreshQueue = []
         localStorage.removeItem('airemote-auth')
-        window.location.href = '/login'
+        // 3.9.0 — نافذة جلسة بتذكرة rt تعمل بلا JWT: لا تُحوّل إلى /login.
+        if (!new URLSearchParams(window.location.search).has('rt')) window.location.href = '/login'
         return Promise.reject(err)
       }
     }

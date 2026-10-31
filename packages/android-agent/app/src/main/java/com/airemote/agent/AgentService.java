@@ -641,6 +641,77 @@ public class AgentService extends Service {
         } catch (Exception ignore) { }
     }
 
+    // ── 3.9.0 — جلسات وكيل↔وكيل: عرض/موافقة/نافذة عرض ─────────────────────
+    public static void sendSessionDecision(String sessionId, boolean accept) {
+        AgentService s = INSTANCE;
+        if (s == null || sessionId == null || sessionId.isEmpty()) return;
+        try {
+            JSONObject p = new JSONObject();
+            p.put("sessionId", sessionId);
+            if (!accept) p.put("reason", "denied");
+            s.sendMsg(accept ? "session:accept" : "session:deny", p);
+        } catch (Exception ignore) {}
+    }
+
+    private void handleSessionOffer(JSONObject offer) {
+        if (offer == null) return;
+        if (offer.optString("sessionId", "").isEmpty()) return;
+        if (MainActivity.foreground && MainActivity.instance != null) {
+            MainActivity.instance.showSessionOffer(offer);
+        } else {
+            notifySessionOffer(offer);
+        }
+    }
+
+    private void notifySessionOffer(JSONObject offer) {
+        try {
+            if (Build.VERSION.SDK_INT >= 33 && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)
+                    != android.content.pm.PackageManager.PERMISSION_GRANTED) return;
+            NotificationManager nm = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            if (Build.VERSION.SDK_INT >= 26) {
+                NotificationChannel ch = new NotificationChannel("sessions_v1", "طلبات الجلسات", NotificationManager.IMPORTANCE_HIGH);
+                nm.createNotificationChannel(ch);
+            }
+            String sid = offer.optString("sessionId");
+            JSONObject req = offer.optJSONObject("requester");
+            String who = req != null ? req.optString("name", "جهاز") : "جهاز";
+            String access = offer.optString("accessLabel", offer.optString("access"));
+            int piFlags = android.app.PendingIntent.FLAG_UPDATE_CURRENT;
+            if (Build.VERSION.SDK_INT >= 23) piFlags |= android.app.PendingIntent.FLAG_IMMUTABLE;
+            Intent open = new Intent(this, MainActivity.class);
+            open.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            android.app.PendingIntent pi = android.app.PendingIntent.getActivity(this, sid.hashCode(), open, piFlags);
+            Notification.Builder b = Build.VERSION.SDK_INT >= 26
+                    ? new Notification.Builder(this, "sessions_v1")
+                    : new Notification.Builder(this);
+            b.setContentTitle("طلب اتصال بجهازك")
+                    .setContentText(who + " يطلب " + access)
+                    .setSmallIcon(android.R.drawable.stat_sys_warning)
+                    .setContentIntent(pi)
+                    .setAutoCancel(true);
+            Intent acc = new Intent(this, SessionActionReceiver.class).setAction(SessionActionReceiver.ACTION_ACCEPT).putExtra("sessionId", sid);
+            Intent den = new Intent(this, SessionActionReceiver.class).setAction(SessionActionReceiver.ACTION_DENY).putExtra("sessionId", sid);
+            Notification.Action a1 = new Notification.Action.Builder(android.R.drawable.checkbox_on_background, "سماح",
+                    android.app.PendingIntent.getBroadcast(this, sid.hashCode() + 1, acc, piFlags)).build();
+            Notification.Action a2 = new Notification.Action.Builder(android.R.drawable.checkbox_off_background, "رفض",
+                    android.app.PendingIntent.getBroadcast(this, sid.hashCode() + 2, den, piFlags)).build();
+            b.addAction(a1).addAction(a2);
+            nm.notify(sid.hashCode(), b.build());
+        } catch (Exception ignore) {}
+    }
+
+    private void openSessionView(JSONObject payload) {
+        try {
+            String url = payload.optString("viewUrl", "");
+            if (url.isEmpty()) return;
+            Intent i = new Intent(this, SessionWebViewActivity.class);
+            i.putExtra("url", url);
+            i.putExtra("sessionId", payload.optString("sessionId", ""));
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(i);
+        } catch (Exception ignore) {}
+    }
+
     private void sendMsg(String type, JSONObject payload) {
         try {
             JSONObject m = new JSONObject();
@@ -856,6 +927,21 @@ public class AgentService extends Service {
             case "server:error":
                 MainActivity.log("خطأ من الخادم: " + payload.optString("message"));
                 break;
+            case "session:offer":
+                handleSessionOffer(payload);
+                break;
+            case "session:ticket":
+                openSessionView(payload);
+                break;
+            case "session:close":
+            case "session:closed":
+            case "session:expired": {
+                Intent closed = new Intent(SessionWebViewActivity.ACTION_CLOSED);
+                closed.setPackage(getPackageName());
+                closed.putExtra("sessionId", payload.optString("sessionId", ""));
+                sendBroadcast(closed);
+                break;
+            }
         }
     }
 
@@ -2286,6 +2372,7 @@ public class AgentService extends Service {
 
     @Override
     public void onDestroy() {
+        if (INSTANCE == this) INSTANCE = null;
         INSTANCE = null;
         releaseAgentLocks();
         stopScreenStreamRaw();

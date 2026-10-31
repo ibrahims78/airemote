@@ -1017,6 +1017,7 @@ airemote.onInit(data => {
         ' — المهلة ' + Math.round((pending.expiresInMs || 60000) / 1000) + ' ثانية.'
     }
     const m = $id('session-offer'); if (m) m.style.display = 'flex'
+    setTimeout(() => { const a = $id('offer-accept'); if (a) a.focus() }, 40)
   }
 
   async function decide (accept) {
@@ -1039,4 +1040,12 @@ airemote.onInit(data => {
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind)
   else bind()
   if (window.airemote && window.airemote.onSessionOffer) window.airemote.onSessionOffer(showOffer)
+
+  // 3.9.0 — إخفاء حوار العرض عند انتهاء/إغلاق الجلسة
+  if (window.airemote && window.airemote.onSessionClosed) {
+    window.airemote.onSessionClosed(function () {
+      const m = $id('session-offer'); if (m) m.style.display = 'none'
+      setState('انتهت الجلسة أو أُغلقت.')
+    })
+  }
 })()
