@@ -656,6 +656,12 @@ function handleMsg(msg) {
       break
     case 'server:screen_control_request': {
       const { sessionId: scSid, requestId, requesterName, password } = msg.payload || {}
+      // 3.9.3 — الجلسة الممنوحة عند القبول لا تطلب موافقة ثانية (كانت تُسقط التحكم
+      // لأن المستخدم لا يرى الحوار أصلاً في نافذة الجلسة).
+      if (scSid && grantedSessions.has(String(scSid))) {
+        send({ type: 'agent:screen_control_granted', payload: { sessionId: scSid, requestId, via: 'session' }, timestamp: Date.now() })
+        break
+      }
       if (controlAuthCapability() === 'password') {
         const nowTs = Date.now()
         ctrlAuthAttempts = ctrlAuthAttempts.filter(t => nowTs - t < 60000)

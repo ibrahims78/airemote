@@ -1702,6 +1702,10 @@ function handleAgentWs(socket) {
   socket.on('close', () => {
     clearTimeout(pingTimer); clearTimeout(pongTimer); clearTimeout(regTimer)
     if (deviceId) {
+      // 3.9.3 — مقبس قديم استُبدل بمقبس أحدث: إغلاقه يجب ألا يمسح التسجيل الحالي
+      // (كان يحدث بعد set فيُعلن الجهاز offline وهو متصل، وتضيع session:ticket).
+      const cur = agentSockets.get(deviceId)
+      if (cur && cur.ws && cur.ws !== socket) return
       const sid = deviceScreenSess.get(deviceId)
       if (sid) closeScreenSession(sid, 'الجهاز انقطع اتصاله / Device disconnected')
       try {

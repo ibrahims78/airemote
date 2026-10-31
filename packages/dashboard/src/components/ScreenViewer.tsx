@@ -118,6 +118,14 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
   // الوضع العادي: بلا تذكرة. وضع الجلسة: التذكرة تأتي من الرابط وتُستخدم بدل JWT.
   const ticketMode = !!(sessionTicket || sessionResumeKey)
   const viewOnly = ticketMode && sessionAccess !== 'control'
+  // 3.9.3 — جلسة أُنشئت بـaccess=control: الموافقة تمّت عند قبول الجلسة، فلا نطلب
+  // موافقة ثانية (كانت البوابة تبقى مغلقة فتُسقط كل نقرة/حركة في نافذة الجلسة).
+  useEffect(() => {
+    if (ticketMode && sessionAccess === 'control') {
+      setControlEnabled(true)
+      setKeyboardMode(true)
+    }
+  }, [ticketMode, sessionAccess])
   const canvasRef     = useRef<HTMLCanvasElement>(null)
   const wsRef         = useRef<WebSocket | null>(null)
   const imgRef        = useRef<HTMLImageElement>(new Image())
