@@ -95,3 +95,14 @@ GET /api/desktop/update        # lastResult: success | rolled-back | failed
 | تحديث كامل عبر المحدّث | 22.3 ثانية |
 | كشف وكيل منقطع / عودته | 5 ثوانٍ / 5 ثوانٍ |
 | نسخة احتياطية لقاعدة 244 جلسة | 4.3 MB في أقل من ثانية |
+
+## 9) تمرين الرجوع على 3.8.41 (2026-10-31)
+
+| الخطوة | القياس |
+|---|---|
+| تراجع **3.8.41 → 3.8.40** (تثبيت صامت + إقلاع + `/health`) | **36 ثانية** · `/ready` سليم · المخطط v2 |
+| عودة **3.8.40 → 3.8.41** | **35 ثانية** · `/ready` سليم |
+| الأجهزة بعد إعادتَي تشغيل | الأربعة online (WIN10/WIN11 على 3.8.41) |
+
+الأمر: `taskkill /F /IM "AiRemote Server.exe"` ثم `AiRemote-Server-Setup-v<ver>-x64.exe /S` ثم تشغيل التطبيق. الحزم المؤرشفة في `releases/archive/server-windows/`.
+الدليل: `outputs/verify-2026-10-31/r9-release/rollback-drill.txt`.
