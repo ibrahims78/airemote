@@ -6,6 +6,7 @@ const os     = require('os')
 const fs     = require('fs')
 const https  = require('https')
 const crypto = require('crypto')
+const { blockedReason } = require('./lib/safety')
 const { exec, spawn, execFile } = require('child_process')
 const WebSocket = require('ws')
 
@@ -1597,6 +1598,24 @@ function injectKey(payload) {
 function executeCommand(payload) {
   if (payload.type !== 'shell' || !payload.command) return
   const cmd = payload.command
+  // v3.8.41 (R9.2/F2) — defence in depth: refuse a destructive one-liner before it
+  // reaches cmd.exe, and answer with a normal command_result so the UI shows why.
+  const blocked = blockedReason(cmd)
+  if (blocked) {
+    addLog('warn', `⛔ [cmd] blocked (${blocked}): ${String(cmd).slice(0, 120)}`)
+    send({
+      type: 'agent:command_result',
+      payload: {
+        commandId: payload.commandId,
+        stdout: '',
+        stderr: 'Command blocked by agent policy: ' + blocked,
+        exitCode: 126,
+        duration: 0
+      },
+      timestamp: Date.now()
+    })
+    return
+  }
   addLog('info', `▶ [cmd] تنفيذ: ${cmd}`)
   const t0 = Date.now()
   exec(cmd, { shell: 'cmd.exe', timeout: 30000, maxBuffer: 10 * 1024 * 1024 }, (err, stdout, stderr) => {

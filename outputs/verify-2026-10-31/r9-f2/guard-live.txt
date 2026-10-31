@@ -1,0 +1,67 @@
+﻿=== 2026-10-31T12:46:19.3297848+03:00 ===
+--- WIN11-VM ---
+node : (node:16124) Warning: Setting the NODE_TLS_REJECT_UNAUTHORIZED environment variable to '0' makes TLS 
+connections and HTTPS requests insecure by disabling certificate verification.
+At line:1 char:526
++ ... Encoding UTF8; node scratch/exec.cjs $d 'rm -rf /' 20000 2>&1 | Out-F ...
++                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ((node:16124) Wa...e verification.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+(Use `node --trace-warnings ...` to show where the warning was created)
+device: WIN11-VM | http 403 | exit undefined | duration undefined
+node : (node:36708) Warning: Setting the NODE_TLS_REJECT_UNAUTHORIZED environment variable to '0' makes TLS 
+connections and HTTPS requests insecure by disabling certificate verification.
+At line:1 char:613
++ ... oding UTF8; node scratch/exec.cjs $d 'shutdown /s /t 0' 20000 2>&1 |  ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ((node:36708) Wa...e verification.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+(Use `node --trace-warnings ...` to show where the warning was created)
+device: WIN11-VM | http 403 | exit undefined | duration undefined
+node : (node:35812) Warning: Setting the NODE_TLS_REJECT_UNAUTHORIZED environment variable to '0' makes TLS 
+connections and HTTPS requests insecure by disabling certificate verification.
+At line:1 char:708
++ ... oding UTF8; node scratch/exec.cjs $d 'echo guard-ok' 20000 2>&1 | Out ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ((node:35812) Wa...e verification.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+(Use `node --trace-warnings ...` to show where the warning was created)
+device: WIN11-VM | http 200 | exit 0 | duration 583
+guard-ok
+
+--- WIN10-VM ---
+node : (node:31528) Warning: Setting the NODE_TLS_REJECT_UNAUTHORIZED environment variable to '0' makes TLS 
+connections and HTTPS requests insecure by disabling certificate verification.
+At line:1 char:526
++ ... Encoding UTF8; node scratch/exec.cjs $d 'rm -rf /' 20000 2>&1 | Out-F ...
++                    ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ((node:31528) Wa...e verification.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+(Use `node --trace-warnings ...` to show where the warning was created)
+device: WIN10-VM | http 403 | exit undefined | duration undefined
+node : (node:25268) Warning: Setting the NODE_TLS_REJECT_UNAUTHORIZED environment variable to '0' makes TLS 
+connections and HTTPS requests insecure by disabling certificate verification.
+At line:1 char:613
++ ... oding UTF8; node scratch/exec.cjs $d 'shutdown /s /t 0' 20000 2>&1 |  ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ((node:25268) Wa...e verification.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+(Use `node --trace-warnings ...` to show where the warning was created)
+device: WIN10-VM | http 403 | exit undefined | duration undefined
+node : (node:35660) Warning: Setting the NODE_TLS_REJECT_UNAUTHORIZED environment variable to '0' makes TLS 
+connections and HTTPS requests insecure by disabling certificate verification.
+At line:1 char:708
++ ... oding UTF8; node scratch/exec.cjs $d 'echo guard-ok' 20000 2>&1 | Out ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: ((node:35660) Wa...e verification.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+(Use `node --trace-warnings ...` to show where the warning was created)
+device: WIN10-VM | http 200 | exit 0 | duration 1355
+guard-ok
+

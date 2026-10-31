@@ -43,6 +43,7 @@ function getSsh2()     { if (!_ssh2)     _ssh2     = require('ssh2');        ret
 const agentSockets      = new Map()   // deviceId → { ws, info, deviceName, connectedAt, stats }
 const { createFileTransferManager } = require('./lib/file-transfer')
 const { createBackupManager } = require('./lib/backup-manager')
+const { blockedReason } = require('./lib/safety')
 const migrations = require('./lib/migrations')
 const updater = require('./lib/updater')
 const { createRetention } = require('./lib/retention')
@@ -2610,6 +2611,10 @@ function sendToUser(userId, msg) {
 async function execOnDevice(deviceId, command, timeoutMs) {
   const rec = agentSockets.get(deviceId)
   if (!rec) throw new Error('Device offline')
+  // v3.8.41 (R9.2/F2) — the agent cannot see the original text: this route wraps
+  // the command in a PowerShell -EncodedCommand before it leaves the server.
+  const blockedInternal = blockedReason(command)
+  if (blockedInternal) throw new Error('Command blocked by policy: ' + blockedInternal)
   const commandId = uuidv4()
   const tOut = Math.min(Math.max(parseInt(timeoutMs) || 60000, 1000), 300000)
   let runCommand = command
@@ -3046,9 +3051,9 @@ let _startedAt = null
 let TLS_ACTIVE   = false
 let TLS_CERT_PATH = null
 
-const AGENT_VERSION = '3.8.36'   // agent artifact version (downloads)
+const AGENT_VERSION = '3.8.41'   // agent artifact version (downloads)
 let serverLogger = null   // set in start(); lets WS handlers write to the app log
-const SERVER_VERSION = '3.8.40'  // server build version (/health)
+const SERVER_VERSION = '3.8.41'  // server build version (/health)
 
 async function start(config) {
   if (started) return
@@ -4566,6 +4571,12 @@ async function start(config) {
     const { command, timeoutMs } = req.body || {}
     if (!command || typeof command !== 'string') return reply.code(400).send({ error: 'command required' })
     if (command.length > 4000) return reply.code(400).send({ error: 'command too long (max 4000)' })
+    // v3.8.41 (R9.2/F2) — checked here because the agent receives an encoded wrapper.
+    const blockedCmd = blockedReason(command)
+    if (blockedCmd) {
+      dbLogAudit({ userId: p.userId, userEmail: p.email, deviceId: req.params.id, action: 'command_blocked', details: { reason: blockedCmd }, ipAddress: req.ip })
+      return reply.code(403).send({ error: 'أمر محجوب بسياسة الوكيل: ' + blockedCmd, code: 'blocked_command' })
+    }
     // v3.3.4 — agents execute via cmd.exe; for Windows devices wrap the command to run in
     // PowerShell. -EncodedCommand sidelines all quoting/encoding pitfalls (Arabic, quotes).
     // (kept raw for very long commands to stay under the cmd.exe line-length limit)
