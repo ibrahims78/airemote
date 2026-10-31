@@ -796,6 +796,13 @@ function handleMsg(msg) {
       } catch {}
       break
     }
+    case 'session:token': {
+      // 3.9.3 — الجلسة صارت نشطة: افتح بوّابة الإدخال المحلية لها.
+      // السيرفر يبقى الحاكم (يرسل أحداث الفأرة فقط لجلسات access=control).
+      const p = msg.payload || {}
+      if (p.sessionId && p.access === 'control') grantedSessions.add(String(p.sessionId))
+      break
+    }
     case 'session:ticket': {
       openSessionView(msg.payload || {})
       break
@@ -803,6 +810,7 @@ function handleMsg(msg) {
     case 'session:close':
     case 'session:closed':
     case 'session:expired': {
+      try { grantedSessions.delete(String((msg.payload || {}).sessionId || '')) } catch {}
       closeSessionView((msg.payload || {}).sessionId)
       try { if (win && !win.isDestroyed()) win.webContents.send('session-closed', msg.payload || {}) } catch {}
       break
@@ -2412,6 +2420,9 @@ ipcMain.handle('session-decision', (_evt, payload) => {
   const sessionId = String(p.sessionId || '')
   if (!sessionId) return { ok: false, error: 'sessionId required' }
   send({ type: p.accept ? 'session:accept' : 'session:deny', payload: { sessionId, reason: p.reason || (p.accept ? 'accepted' : 'denied') }, timestamp: Date.now() })
+  // 3.9.3 — قبول البطاقة («تحكم كامل») يفتح الإدخال لهذه الجلسة؛ كان grantedSessions
+  // يُملأ فقط من حوار طلب التحكم المنفصل، فتُسقط كل أحداث الفأرة.
+  try { if (p.accept) grantedSessions.add(sessionId) } catch {}
   return { ok: true }
 })
 

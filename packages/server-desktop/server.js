@@ -329,6 +329,9 @@ function adminMiddleware(req, reply) {
 // 3.9.1 (B1) — إعدادات إدارية لا تُرسل لغير admin، وحجب أي حقل سرّي متداخل.
 // القائمة السوداء للأسماء الكاملة + نمط للحقول المتداخلة: أي مفتاح جديد يشبه
 // سرّاً يُحجب تلقائياً حتى لو نُسي ذكره هنا.
+// 3.9.2 — قائمة أدوار واحدة. كانت POST ترفض manager (يمنع حسابات الترحيل)
+// وPATCH تقبل أي نص بلا تحقق.
+const USER_ROLES = ['admin', 'manager', 'viewer', 'user']
 const SETTINGS_NON_ADMIN_DENY_KEYS = new Set(['ai_config', 'telegramToken', 'github_config'])
 const SETTINGS_SECRET_FIELD_RE = /(token|secret|password|passwd|api[_-]?key|private[_-]?key|credential)/i
 function redactSettingsSecretFields(value, depth) {
@@ -1015,15 +1018,27 @@ function flushScreenFrame(vws, st) {
   }
   const packet = st.packet
   st.packet = null
+  st.pendingFull = false
   st.lastSent = Date.now()
   try { vws.send(packet) } catch {}
+}
+
+// 3.9.2 — إطار كامل (flags bit0) معلّق لا يُستبدل بدلتا أحدث: الأبعاد والمفتاح
+// كانا يُفقدان عند التدوير فتبقى اللوحة بمقاسها القديم (شاشة سوداء).
+function isFullFramePacket(packet) {
+  try { if (Buffer.isBuffer(packet) && packet.length >= 13) return (packet[12] & 1) !== 0 } catch {}
+  return false
 }
 
 function queueScreenFrame(vws, packet) {
   if (!vws || vws.readyState !== 1) return
   let st = vws._screenFrameState
-  if (!st) { st = { packet: null, timer: null, lastSent: 0 }; vws._screenFrameState = st }
+  if (!st) { st = { packet: null, timer: null, lastSent: 0, pendingFull: false }; vws._screenFrameState = st }
+  const full = isFullFramePacket(packet)
+  // انتظار إطار كامل قيد الإرسال: أسقط الدلتا، ولا تُسقط الإطار الكامل.
+  if (st.packet && st.pendingFull && !full) return
   st.packet = packet
+  st.pendingFull = full
   if (st.timer) return
   const wait = Math.max(0, SCREEN_FRAME_INTERVAL_MS - (Date.now() - st.lastSent))
   st.timer = setTimeout(() => flushScreenFrame(vws, st), wait)
@@ -1033,7 +1048,7 @@ function clearScreenFrameState(vws) {
   const st = vws && vws._screenFrameState
   if (!st) return
   if (st.timer) clearTimeout(st.timer)
-  st.timer = null; st.packet = null
+  st.timer = null; st.packet = null; st.pendingFull = false
   try { delete vws._screenFrameState } catch {}
 }
 
@@ -1790,6 +1805,20 @@ function relayCloseSession(session, reason, actorUserId) {
   return true
 }
 
+// 3.9.2 (H2) — إغلاق كل جلسات طرف أُزيل (مستخدم محذوف/دوره تغيّر، أو جهاز محذوف).
+function relayCloseForPrincipal(target) {
+  const t = target || {}
+  let closed = 0
+  for (const s of relaySessions.values()) {
+    if (!RELAY_ACTIVE_STATES.includes(s.state)) continue
+    const byDevice = t.deviceId && (s.target.deviceId === t.deviceId || s.requester.deviceId === t.deviceId)
+    const byUser = t.userId && (s.requester.userId === t.userId || s.target.ownerId === t.userId)
+    if (!byDevice && !byUser) continue
+    try { relayCloseSession(s, 'principal_removed', t.actorUserId || 'system'); closed++ } catch {}
+  }
+  return closed
+}
+
 // ── 3.9.0 — تذكرة عرض الجلسة (view ticket) ──────────────────────────────────
 // 32 bytes, hash-only storage, one-time for /screen, bound to (session, device, access).
 function sessionViewIssue(session, deviceId, access) {
@@ -1831,7 +1860,8 @@ function sessionViewIssueKey(session, deviceId, access) {
 function sessionViewGrant(session, deviceId, access) {
   const ticket = sessionViewIssue(session, deviceId, access)
   const key = sessionViewIssueKey(session, deviceId, access)
-  const viewUrl = '/view/' + session.target.deviceId + '?rt=' + ticket.ticket + '&rk=' + key.resumeKey + '&access=' + encodeURIComponent(access)
+  // 3.9.2 (H1) — مفتاح الإعادة في fragment: لا يُرسل إلى السيرفر ولا يظهر في سجلاته.
+  const viewUrl = '/view/' + session.target.deviceId + '?rt=' + ticket.ticket + '&access=' + encodeURIComponent(access) + '#rk=' + key.resumeKey
   return { ...ticket, ...key, viewUrl }
 }
 
@@ -4024,7 +4054,7 @@ async function start(config) {
     const { email, name, password, role = 'viewer' } = req.body || {}
     if (!email || !name || !password) return reply.code(400).send({ error: 'email, name, password required' })
     if (password.length < 12) return reply.code(400).send({ error: 'Min 12 characters' })
-    if (!['admin','viewer','user'].includes(role)) return reply.code(400).send({ error: 'Invalid role' })
+    if (!USER_ROLES.includes(role)) return reply.code(400).send({ error: 'Invalid role', allowed: USER_ROLES })
     if (db.prepare("SELECT id FROM users WHERE email=?").get(email)) return reply.code(409).send({ error: 'Email already exists' })
     const id = uuidv4()
     db.prepare("INSERT INTO users (id, email, name, role, password_hash) VALUES (?,?,?,?,?)").run(id, email, name, role, await bcrypt.hash(password, 12))
@@ -4037,7 +4067,16 @@ async function start(config) {
     const { name, role, password } = req.body || {}
     const existing = db.prepare("SELECT * FROM users WHERE id=?").get(req.params.id)
     if (!existing) return reply.code(404).send({ error: 'User not found' })
-    if (password) { if (password.length < 12) return reply.code(400).send({ error: 'Min 12 characters' }); db.prepare("UPDATE users SET password_hash=?, updated_at=datetime('now') WHERE id=?").run(await bcrypt.hash(password, 12), req.params.id) }
+    // 3.9.2 — تحقق من الدور، وأبطل رموز التحديث عند تغيير كلمة المرور أو الدور.
+    if (role && !USER_ROLES.includes(role)) return reply.code(400).send({ error: 'Invalid role', allowed: USER_ROLES })
+    if (password) {
+      if (password.length < 12) return reply.code(400).send({ error: 'Min 12 characters' })
+      db.prepare("UPDATE users SET password_hash=?, updated_at=datetime('now') WHERE id=?").run(await bcrypt.hash(password, 12), req.params.id)
+      try { db.prepare('DELETE FROM refresh_tokens WHERE user_id=?').run(req.params.id) } catch {}
+    }
+    if (role && role !== existing.role) {
+      try { db.prepare('DELETE FROM refresh_tokens WHERE user_id=?').run(req.params.id) } catch {}
+    }
     const updates = []; const vals = []
     if (name) { updates.push('name=?'); vals.push(name) }
     if (role) { updates.push('role=?'); vals.push(role) }
@@ -4051,9 +4090,11 @@ async function start(config) {
     if (req.params.id === p.userId) return reply.code(400).send({ error: 'Cannot delete yourself' })
     const existing = db.prepare("SELECT email FROM users WHERE id=?").get(req.params.id)
     if (!existing) return reply.code(404).send({ error: 'User not found' })
+    // 3.9.2 (H2) — لا تترك جلسات حيّة بعد حذف المستخدم.
+    const closed = relayCloseForPrincipal({ userId: req.params.id })
     db.prepare("DELETE FROM users WHERE id=?").run(req.params.id)
     db.prepare("DELETE FROM refresh_tokens WHERE user_id=?").run(req.params.id)
-    dbLogAudit({ userId: p.userId, userEmail: p.email, action: 'user_deleted', details: { email: existing.email }, ipAddress: req.ip })
+    dbLogAudit({ userId: p.userId, userEmail: p.email, action: 'user_deleted', details: { email: existing.email, closedSessions: closed }, ipAddress: req.ip })
     return reply.code(204).send()
   })
 
@@ -4489,8 +4530,10 @@ async function start(config) {
     if (!isDeviceOwnerOrAdmin(p, req.params.id)) return reply.code(403).send({ error: 'المالك أو المدير فقط يدير الجهاز', code: 'owner_required' })
     const d = db.prepare("SELECT name FROM devices WHERE id=?").get(req.params.id)
     if (!d) return reply.code(404).send({ error: 'Not found' })
+    // 3.9.2 (H2) — جهاز محذوف لا يترك جلسة حيّة ولا مفتاح إعادة صالحاً.
+    const closedSessions = relayCloseForPrincipal({ deviceId: req.params.id, actorUserId: p.userId })
     db.prepare("DELETE FROM devices WHERE id=?").run(req.params.id)
-    dbLogAudit({ userId: p.userId, userEmail: p.email, action: 'device_deleted', details: { name: d.name }, ipAddress: req.ip })
+    dbLogAudit({ userId: p.userId, userEmail: p.email, action: 'device_deleted', details: { name: d.name, closedSessions }, ipAddress: req.ip })
     return { ok: true }
   })
 

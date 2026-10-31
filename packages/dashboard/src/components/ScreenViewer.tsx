@@ -1009,11 +1009,10 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
 
   // ── Mouse handlers ────────────────────────────────────────────────────────
   const getContentRect = (c: HTMLCanvasElement) => {
+    // 3.9.3 — اللوحة تُملأ العنصر (CSS 100%)، فمستطيل العنصر هو المساحة المرسومة بالضبط.
+    // حساب letterbox القديم كان يخالف ذلك فتُرسل إحداثيات بعيدة عن اللمسة.
     const r = c.getBoundingClientRect()
-    const iw = c.width || 1, ih = c.height || 1
-    const scale = Math.min(r.width / iw, r.height / ih)
-    const w = iw * scale, h = ih * scale
-    return { left: r.left + (r.width - w) / 2, top: r.top + (r.height - h) / 2, width: w, height: h }
+    return { left: r.left, top: r.top, width: r.width || 1, height: r.height || 1 }
   }
   const getPos = (e: ReactMouseEvent<HTMLCanvasElement>) => {
     const r = getContentRect(canvasRef.current!)
@@ -1057,7 +1056,9 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
     if (!controlEnabled) return; e.preventDefault(); resetIdle()
     const canvas = canvasRef.current; if (!canvas) return
     const r = canvas.getBoundingClientRect()
-    sendWs({ type: 'screen:mouse_event', payload: { type: 'scroll', x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height, deltaY: e.deltaY } })
+    // 3.9.3 — الوكيل يضرب deltaY في -120، فالقيمة تُرسل «نقرات» لا بكسل: نقرة = ±1.
+    const notches = e.deltaY > 0 ? 1 : -1
+    sendWs({ type: 'screen:mouse_event', payload: { type: 'scroll', x: (e.clientX - r.left) / r.width, y: (e.clientY - r.top) / r.height, deltaY: notches } })
   }, [controlEnabled, sendWs, resetIdle])
 
   useEffect(() => {
@@ -1065,6 +1066,163 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
     c.addEventListener('wheel', handleWheel, { passive: false })
     return () => c.removeEventListener('wheel', handleWheel)
   }, [handleWheel])
+
+  // ── 3.9.3 — تحكم لمس احترافي (Pointer Events) ────────────────────────────
+  // نقرة = زر أيسر · ضغط مطوّل 550ms = زر أيمن · سحب = زر أيسر مضغوط ·
+  // إصبعان: قرصة = تكبير، تحريك = إزاحة. الماوس يبقى كما هو (hover + أزرار).
+  const [viewZoom,   setViewZoom]   = useState(1)
+  const [viewPan,    setViewPan]    = useState({ x: 0, y: 0 })
+  const [viewOrigin, setViewOrigin] = useState({ x: 0.5, y: 0.5 })
+  const pointersRef = useRef<Map<number, { x: number; y: number }>>(new Map())
+  const gestureRef = useRef({
+    downX: 0, downY: 0, moved: false, dragging: false, longFired: false,
+    longPress: null as ReturnType<typeof setTimeout> | null,
+    twoFinger: false, pinchDist: 0, zoomStart: 1, panStart: { x: 0, y: 0 },
+    midX: 0, midY: 0,
+    tapAt: 0, tapMoved: false, tapMid: { x: 0, y: 0 },
+  })
+
+  const clearLongPress = () => {
+    const g = gestureRef.current
+    if (g.longPress) { clearTimeout(g.longPress); g.longPress = null }
+  }
+
+  const sendMouseAt = (type: string, cx: number, cy: number, button = 0, extra?: object) => {
+    if (!controlEnabled) return
+    const c = canvasRef.current; if (!c) return
+    const r = getContentRect(c)
+    const x = (cx - r.left) / r.width
+    const y = (cy - r.top) / r.height
+    if (!(x >= 0 && x <= 1 && y >= 0 && y <= 1)) return
+    sendWs({ type: 'screen:mouse_event', payload: { type, x, y, button, ...extra } })
+  }
+
+  const resetView = () => { setViewZoom(1); setViewPan({ x: 0, y: 0 }); setViewOrigin({ x: 0.5, y: 0.5 }) }
+
+  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const c = canvasRef.current; if (!c) return
+    try { c.setPointerCapture(e.pointerId) } catch {}
+    pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    const g = gestureRef.current
+    if (!controlEnabled) return
+    resetIdle()
+
+    if (pointersRef.current.size === 1) {
+      g.downX = e.clientX; g.downY = e.clientY
+      g.moved = false; g.dragging = false; g.longFired = false; g.twoFinger = false
+      if (e.pointerType === 'touch') {
+        clearLongPress()
+        g.longPress = setTimeout(() => {
+          const gg = gestureRef.current
+          gg.longPress = null
+          if (gg.moved || gg.dragging) return
+          gg.longFired = true
+          // ضغط مطوّل = نقرة زر أيمن (قائمة السياق) — سلوك AnyDesk/TeamViewer.
+          sendMouseAt('down', gg.downX, gg.downY, 2)
+          sendMouseAt('up', gg.downX, gg.downY, 2)
+        }, 500)
+      }
+      return
+    }
+
+    if (pointersRef.current.size === 2) {
+      clearLongPress()
+      if (g.dragging) { sendMouseAt('up', g.downX, g.downY, 0); g.dragging = false }
+      g.twoFinger = true
+      const pts = Array.from(pointersRef.current.values())
+      g.pinchDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1
+      g.zoomStart = viewZoom
+      g.panStart = { ...viewPan }
+      g.midX = (pts[0].x + pts[1].x) / 2
+      g.midY = (pts[0].y + pts[1].y) / 2
+      g.tapAt = Date.now()
+      g.tapMoved = false
+      g.tapMid = { x: g.midX, y: g.midY }
+      const r = c.getBoundingClientRect()
+      setViewOrigin({ x: g.midX - r.left, y: g.midY - r.top })
+    }
+  }
+
+  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const g = gestureRef.current
+    if (pointersRef.current.has(e.pointerId)) pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    if (!controlEnabled) return
+
+    if (g.twoFinger && pointersRef.current.size >= 2) {
+      const pts = Array.from(pointersRef.current.values())
+      const dist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1
+      const midX = (pts[0].x + pts[1].x) / 2
+      const midY = (pts[0].y + pts[1].y) / 2
+      const ratio = dist / g.pinchDist
+      if (Math.abs(midX - g.tapMid.x) > 10 || Math.abs(midY - g.tapMid.y) > 10) g.tapMoved = true
+      if (Math.abs(dist - g.pinchDist) > 10) {
+        setViewZoom(Math.min(4, Math.max(1, g.zoomStart * ratio)))
+      }
+      setViewPan({ x: g.panStart.x + (midX - g.midX), y: g.panStart.y + (midY - g.midY) })
+      return
+    }
+
+    if (!g.downX && !g.downY) {
+      // ماوس فقط: حركة hover بلا زر
+      if (e.pointerType === 'mouse') {
+        const now = performance.now(); if (now - moveThrottleRef.current < 16) return; moveThrottleRef.current = now
+        sendMouseAt('move', e.clientX, e.clientY, 0)
+      }
+      return
+    }
+
+    const dx = e.clientX - g.downX, dy = e.clientY - g.downY
+    if (!g.moved && Math.hypot(dx, dy) > 10) {
+      g.moved = true
+      clearLongPress()
+      g.dragging = true
+      sendMouseAt('down', g.downX, g.downY, 0)
+    }
+    if (g.dragging) {
+      const now = performance.now(); if (now - moveThrottleRef.current < 16) return; moveThrottleRef.current = now
+      sendMouseAt('move', e.clientX, e.clientY, 0)
+    }
+  }
+
+  const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const g = gestureRef.current
+    pointersRef.current.delete(e.pointerId)
+    clearLongPress()
+
+    if (g.twoFinger) {
+      if (pointersRef.current.size === 0) {
+        g.twoFinger = false
+        // نقرة بإصبعين (بلا تحريك) = زر أيمن — السلوك المعتاد في برامج التحكم.
+        if (controlEnabled && !g.tapMoved && g.tapAt && Date.now() - g.tapAt < 350) {
+          sendMouseAt('down', g.tapMid.x, g.tapMid.y, 2)
+          sendMouseAt('up', g.tapMid.x, g.tapMid.y, 2)
+        }
+        g.tapAt = 0
+      }
+      return
+    }
+    if (!controlEnabled) return
+    if (g.dragging) {
+      sendMouseAt('up', e.clientX, e.clientY, 0)
+      g.dragging = false
+    } else if (!g.longFired && Math.hypot(e.clientX - g.downX, e.clientY - g.downY) <= 10) {
+      // نقرة واحدة = زر أيسر (أمر واحد على الوكيل = أقل زمن وصول).
+      sendMouseAt('click', e.clientX, e.clientY, 0)
+    }
+    g.moved = false; g.downX = 0; g.downY = 0
+  }
+
+  const handlePointerCancel = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const g = gestureRef.current
+    pointersRef.current.delete(e.pointerId)
+    clearLongPress()
+    if (g.dragging) { sendMouseAt('up', g.downX, g.downY, 0); g.dragging = false }
+    if (pointersRef.current.size === 0) g.twoFinger = false
+    g.moved = false; g.downX = 0; g.downY = 0
+  }
+
+  // تغيير وضع الملاءمة يعيد التكبير/الإزاحة (وإلا بقي المشهد مقصوصاً بلا سبب).
+  useEffect(() => { setViewZoom(1); setViewPan({ x: 0, y: 0 }) }, [fitMode])
 
   // ── Monitor selection ─────────────────────────────────────────────────────
   const selectMonitor = (id: number) => {
@@ -2101,7 +2259,10 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
           className="pointer-events-none absolute left-0 top-0 z-10 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border border-ink/70 bg-primary/80 opacity-0 transition-opacity duration-200 shadow-lg"
           style={{ willChange: 'transform' }}
         />
-        <div className="relative shrink-0" style={{
+        <div className={popout ? 'relative w-full h-full' : 'relative shrink-0'} style={popout ? {
+          width: '100%',
+          height: '100%',
+        } : {
           width: canvasBox ? canvasBox.w + 'px' : 'auto',
           height: canvasBox ? canvasBox.h + 'px' : 'auto',
           maxWidth: fitMode === 'fit' ? '100%' : 'none',
@@ -2118,17 +2279,37 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
             width: '100%',
             height: '100%',
             imageRendering: 'auto',
+            // 3.9.3 — اللمس يذهب إلى الجلسة لا إلى تمرير الصفحة/تكبيرها.
+            touchAction: 'none',
+            userSelect: 'none',
+            WebkitUserSelect: 'none',
+            WebkitTouchCallout: 'none',
+            transform: (viewZoom !== 1 || viewPan.x !== 0 || viewPan.y !== 0)
+              ? `translate(${viewPan.x}px, ${viewPan.y}px) scale(${viewZoom})`
+              : undefined,
+            transformOrigin: `${viewOrigin.x}px ${viewOrigin.y}px`,
           }}
-          onMouseMove={handleMouseMove}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerCancel}
           onMouseEnter={e => { setCursorVisible(true); if (controlEnabled) sendMouse('move', e) }}
           onMouseLeave={() => { setCursorVisible(false); if (localCursorRef.current) localCursorRef.current.style.opacity = '0' }}
-          onMouseDown={e => sendMouse('down', e)}
-          onMouseUp={e => sendMouse('up', e)}
           onContextMenu={e => e.preventDefault()}
           onDragOver={e => { e.preventDefault(); if (controlEnabled) setDragOver(true) }}
           onDragLeave={() => setDragOver(false)}
           onDrop={handleFileDrop}
         />
+        {viewZoom !== 1 && (
+          <button
+            type="button"
+            onClick={resetView}
+            aria-label="reset zoom"
+            className="absolute top-2 left-2 z-[16] rounded-lg bg-canvas/70 px-2.5 py-1 text-xs font-medium text-ink backdrop-blur-sm"
+          >
+            {Math.round(viewZoom * 100)}% ↺
+          </button>
+        )}
         {wmOn && status === 'streaming' && (
           <div
             aria-hidden

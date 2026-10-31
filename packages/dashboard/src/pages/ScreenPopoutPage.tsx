@@ -7,7 +7,12 @@ export function ScreenPopoutPage() {
   const { deviceId } = useParams<{ deviceId: string }>()
   const [search] = useSearchParams()
   const sessionTicket = search.get('rt') || ''
-  const sessionResumeKey = search.get('rk') || ''
+  // 3.9.2 (H1) — المفتاح في fragment؛ لا يُرسل إلى السيرفر. search يبقى توافقاً للروابط القديمة.
+  const sessionResumeKey = (() => {
+    const hash = window.location.hash.replace(/^#/, '')
+    const fromHash = new URLSearchParams(hash).get('rk') || ''
+    return fromHash || search.get('rk') || ''
+  })()
   const sessionAccess = (search.get('access') || '') as '' | 'view' | 'control' | 'files'
   const [name, setName] = useState('')
 

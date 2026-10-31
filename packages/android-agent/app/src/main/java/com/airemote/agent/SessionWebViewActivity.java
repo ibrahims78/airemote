@@ -55,6 +55,17 @@ public class SessionWebViewActivity extends Activity {
         s.setJavaScriptEnabled(true);
         s.setDomStorageEnabled(true);
         s.setMediaPlaybackRequiresUserGesture(false);
+        // 3.9.3 — اللمس ملك الجلسة: لا تكبير داخلي ولا تحديد نص ولا قائمة ضغط مطوّل.
+        s.setSupportZoom(false);
+        s.setBuiltInZoomControls(false);
+        s.setDisplayZoomControls(false);
+        s.setUseWideViewPort(false);
+        s.setLoadWithOverviewMode(false);
+        web.setLongClickable(false);
+        web.setHapticFeedbackEnabled(false);
+        web.setOnLongClickListener(new android.view.View.OnLongClickListener() {
+            @Override public boolean onLongClick(android.view.View v) { return true; }
+        });
         web.setBackgroundColor(0xFF0B1220);
         web.setWebViewClient(new WebViewClient() {
             @Override
@@ -110,6 +121,24 @@ public class SessionWebViewActivity extends Activity {
         StringBuilder sb = new StringBuilder();
         for (byte b : d) sb.append(String.format("%02x", b));
         return sb.toString();
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        // 3.9.3 — SINGLE_TOP يعيد استخدام النافذة؛ بدون هذا المعالج تُتجاهل الجلسة الجديدة
+        // ويبقى العنوان القديم (فلا يُفتح /screen للجلسة الجديدة).
+        setIntent(intent);
+        String sid = intent.getStringExtra("sessionId");
+        String url = intent.getStringExtra("url");
+        String base = httpBase();
+        if (url == null || url.isEmpty() || base == null) return;
+        if (url.startsWith("/")) url = base + url;
+        sessionId = sid == null ? "" : sid;
+        viewUrl = url;
+        needsReload = false;
+        android.util.Log.i(TAG, "new-intent sid=" + sessionId + " hasRt=" + url.contains("rt="));
+        try { if (web != null) web.loadUrl(url); } catch (Exception ignore) {}
     }
 
     @Override

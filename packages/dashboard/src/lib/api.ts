@@ -4,7 +4,7 @@ import { useAuthStore } from '../store/authStore'
 // 3.9.1 — نافذة الجلسة تُفتح بتذكرة rt أو بمفتاح إعادة الاتصال rk، وكلاهما بلا JWT.
 function isSessionWindow() {
   const q = new URLSearchParams(window.location.search)
-  return q.has('rt') || q.has('rk')
+  return q.has('rt') || q.has('rk') || window.location.hash.indexOf('rk=') >= 0
 }
 
 export const api = axios.create({

@@ -1,0 +1,2 @@
+11-01 01:43:38.080 I/AiR-SessionView( 7626): paused
+11-01 01:44:09.943 I/AiR-SessionView( 7626): resume-reload hasRk=true

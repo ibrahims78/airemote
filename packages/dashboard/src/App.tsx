@@ -39,7 +39,7 @@ function PageLoader() {
 // 3.9.0 — تذكرة العرض تتجاوز تسجيل الدخول لهذا المسار فقط؛ بلا rt يبقى السلوك القديم.
 function SessionTicketGate({ children }: { children: React.ReactNode }) {
   const [params] = useSearchParams()
-  if (params.get('rt') || params.get('rk')) return <>{children}</>
+  if (params.get('rt') || params.get('rk') || window.location.hash.indexOf('rk=') >= 0) return <>{children}</>
   return <RequireAuth>{children}</RequireAuth>
 }
 

@@ -164,7 +164,7 @@ async function openScreen (deviceId, cred) {
   if (CASE === 'reuse') {
     const s = await acceptSession('view')
     check('reuse/1. accept issues ticket + resume key', !!s.ticket && /^[0-9a-f]{64}$/.test(String(s.resumeKey)), JSON.stringify({ t: !!s.ticket, k: !!s.resumeKey }))
-    check('reuse/2. viewUrl carries rt and rk', /[?&]rt=/.test(String(s.viewUrl)) && /[?&]rk=/.test(String(s.viewUrl)), String(s.viewUrl).slice(0, 40) + '…')
+    check('reuse/2. viewUrl carries rt in the query and rk in the fragment', /[?&]rt=/.test(String(s.viewUrl)) && /#rk=/.test(String(s.viewUrl)), String(s.viewUrl).slice(0, 48) + '…')
     const first = await openScreen(devB, { rt: s.ticket, rk: s.resumeKey })
     check('reuse/3. first open (ticket) succeeds', !first.closed(), 'closed=' + first.closed())
     first.close(); await sleep(250)

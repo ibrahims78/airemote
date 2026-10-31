@@ -263,12 +263,8 @@ public class AgentService extends Service {
         MainActivity.log("جارٍ الاتصال بالخادم...");
         // v3.8.12 — المؤقّت قبل أول connect(): onClose مبكر كان يصطدم بـhbHandler=null
         // فيبقى الوكيل يعمل بلا أي محاولة اتصال لاحقة (سبب «الوكيل يعمل وغير متصل»).
-        if (hbThread == null) {
-            hbThread = new HandlerThread("airemote-hb");
-            hbThread.start();
-        }
-        if (hbHandler == null) hbHandler = new Handler(hbThread.getLooper());
-        hbHandler.postDelayed(hbLoop, 2500);
+        ensureHeartbeat();
+        if (hbHandler != null) hbHandler.postDelayed(hbLoop, 2500);
         connect();
     }
 
@@ -382,6 +378,10 @@ public class AgentService extends Service {
         ws = null;
         if (hbHandler != null) hbHandler.removeCallbacksAndMessages(null);
         if (hbThread != null) hbThread.quitSafely();
+        // 3.9.2 — لا تُبقِ مرجعاً لـlooper ميت: كان كل reconnect لاحق يُنشر على خيط ميّت
+        // فيفشل بصمت (الوكيل يعمل وغير متصل).
+        hbHandler = null;
+        hbThread = null;
         releaseAgentLocks();
         MainActivity.setStatus("متوقف", false);
         MainActivity.log("أُوقف الوكيل");
@@ -428,10 +428,28 @@ public class AgentService extends Service {
         cap.put("controlAuth", Prefs.hasControlPassword(this) ? "password" : ("con" + "sent"));
         return cap;
     }
+    private void ensureHeartbeat() {
+        if (hbThread == null || !hbThread.isAlive()) {
+            hbThread = new HandlerThread("airemote-hb");
+            hbThread.start();
+            hbHandler = new Handler(hbThread.getLooper());
+        } else if (hbHandler == null) {
+            hbHandler = new Handler(hbThread.getLooper());
+        }
+    }
+
     private void scheduleReconnect(long delay) {
+        if (!running) return;
+        ensureHeartbeat();
         if (hbHandler == null) return;
         hbHandler.removeCallbacks(reconnectTask);
-        hbHandler.postDelayed(reconnectTask, delay);
+        if (!hbHandler.postDelayed(reconnectTask, delay)) {
+            // looper ميت: أعد بناء المؤقّت وحاول مرة واحدة أخرى.
+            android.util.Log.w("AiRemoteAgent", "scheduleReconnect: dead looper, rebuilding");
+            hbThread = null; hbHandler = null;
+            ensureHeartbeat();
+            if (hbHandler != null) hbHandler.postDelayed(reconnectTask, Math.max(500, delay));
+        }
     }
     private void connect() {
         registered = false;
@@ -453,6 +471,7 @@ public class AgentService extends Service {
             final WebSocketClient client = new WebSocketClient(uri) {
                 @Override
                 public void onOpen(ServerHandshake handshake) {
+                    if (ws != this) return;
                     android.util.Log.d("AiRemoteAgent", "WebSocket onOpen");
                     reconnectDelay = 3000;
                     MainActivity.setStatus("متصل — جارٍ التسجيل", true);
@@ -521,6 +540,11 @@ public class AgentService extends Service {
                 public void onError(Exception ex) {
                     android.util.Log.e("AiRemoteAgent", "WebSocket onError", ex);
                     MainActivity.log("خطأ اتصال: " + (ex != null ? ex.getMessage() : "?"));
+                    if (ws != this) return;
+                    if (!running) return;
+                    final long delay = reconnectDelay;
+                    reconnectDelay = Math.min(reconnectDelay + 3000, 30000);
+                    scheduleReconnect(delay);
                 }
             };
             android.util.Log.d("AiRemoteAgent", "connect() url=" + url + " tokenLen=" + token.length());
