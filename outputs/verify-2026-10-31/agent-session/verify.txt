@@ -1,0 +1,37 @@
+AiRemote verification battery — 33 steps
+
+  ▶ static import check             ok
+  ▶ syntax: agent main.js           ok
+  ▶ build shared                    ok
+  ▶ build ai-engine                 ok
+  ▶ build server (tsc)              ok
+  ▶ build agent (tsc)               ok
+  ▶ typecheck dashboard             ok
+  ▶ contrast AA tokens (R6)         ok
+  ▶ unit: registry race             ok
+  ▶ e2e: web-server connection      ok
+  ▶ e2e: device authorization       ok
+  ▶ e2e: desktop-server control     ok
+  ▶ e2e: desktop late viewer        ok
+  ▶ e2e: desktop force keyframe     ok
+  ▶ e2e: security (R2)              ok
+  ▶ e2e: contacts + codes (R3)      ok
+  ▶ e2e: unattended access (R3)     ok
+  ▶ e2e: device permissions (R3)    ok
+  ▶ e2e: agent session relay (R4)   ok
+  ▶ e2e: session view ticket (3.9.0)  ok
+  ▶ e2e: file transfer (R5)         ok
+  ▶ e2e: observability (R7)         ok
+  ▶ e2e: backup + restore (R7)      ok
+  ▶ e2e: schema migrations (R7)     ok
+  ▶ e2e: updater from folder (R7)   ok
+  ▶ e2e: retention policy (R7)      ok
+  ▶ e2e: clipboard sync (R8)        ok
+  ▶ e2e: annotations relay (R8)     ok
+  ▶ e2e: sessions export (R8)       ok
+  ▶ e2e: jwt algorithm (R9)         ok
+  ▶ unit: failure alerting (R7)     ok
+  ▶ unit: agent command guard (R9)  ok
+  ▶ unit: secret storage (R2)       ok
+
+ALL VERIFICATION STEPS PASSED (33/33)

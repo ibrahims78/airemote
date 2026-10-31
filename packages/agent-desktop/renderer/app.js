@@ -972,3 +972,71 @@ airemote.onInit(data => {
     setTimeout(doStart, 800)
   }
 })
+
+// ── 3.9.0 — الاتصال بجهاز آخر (طلب + موافقة) ────────────────────────────────
+;(function initAgentSessionUI () {
+  const $id = (id) => document.getElementById(id)
+  const digits = (v) => String(v || '').replace(/\D/g, '')
+  const formatCode = (v) => digits(v).slice(0, 9).replace(/(\d{3})(?=\d)/g, '$1 ')
+  let pending = null
+  let pendingTimer = null
+
+  function setState (text) { const el = $id('session-state'); if (el) el.textContent = text || '' }
+  function showPw (show) { const f = $id('session-pw-field'); if (f) f.style.display = show ? '' : 'none' }
+
+  async function request () {
+    const targetCode = digits($id('session-code').value)
+    if (targetCode.length !== 9) { setState('أدخل رمزاً من 9 أرقام.'); return }
+    const access = (document.querySelector('input[name="session-access"]:checked') || {}).value || 'view'
+    const password = ($id('session-pw').value || '').trim()
+    setState('جارٍ إرسال الطلب…')
+    const r = await window.airemote.relayRequest({ targetCode, access, password: password || undefined })
+    if (!r || !r.ok) {
+      const d = (r && r.data) || {}
+      if (d.code === 'password_required') { showPw(true); setState('هذا الجهاز في وضع كلمة المرور.'); return }
+      setState('تعذّر الطلب: ' + (d.code || (r && r.error) || 'خطأ'))
+      return
+    }
+    showPw(false)
+    const until = Date.now() + 60000
+    setState('بانتظار موافقة الطرف الآخر (60 ثانية)…')
+    if (pendingTimer) clearInterval(pendingTimer)
+    pendingTimer = setInterval(() => {
+      const left = Math.max(0, Math.round((until - Date.now()) / 1000))
+      if (left <= 0) { clearInterval(pendingTimer); pendingTimer = null; setState('انتهت مهلة الطلب.') }
+      else setState('بانتظار موافقة الطرف الآخر (' + left + 'ث)…')
+    }, 1000)
+  }
+
+  function showOffer (offer) {
+    pending = offer || {}
+    const b = $id('offer-body')
+    if (b) {
+      const who = (pending.requester && (pending.requester.name || pending.requester.email)) || 'جهاز'
+      b.textContent = who + ' يطلب ' + (pending.accessLabel || pending.access || '') +
+        ' — المهلة ' + Math.round((pending.expiresInMs || 60000) / 1000) + ' ثانية.'
+    }
+    const m = $id('session-offer'); if (m) m.style.display = 'flex'
+  }
+
+  async function decide (accept) {
+    if (!pending || !pending.sessionId) return
+    await window.airemote.sessionDecision({ sessionId: pending.sessionId, accept })
+    const m = $id('session-offer'); if (m) m.style.display = 'none'
+    setState(accept ? 'تم السماح — ستُفتح نافذة العرض.' : 'تم الرفض.')
+    pending = null
+  }
+
+  function bind () {
+    const code = $id('session-code')
+    if (!code) return
+    code.addEventListener('input', () => { code.value = formatCode(code.value) })
+    $id('session-request-btn').addEventListener('click', request)
+    $id('offer-accept').addEventListener('click', () => decide(true))
+    $id('offer-deny').addEventListener('click', () => decide(false))
+  }
+
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind)
+  else bind()
+  if (window.airemote && window.airemote.onSessionOffer) window.airemote.onSessionOffer(showOffer)
+})()

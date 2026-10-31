@@ -782,6 +782,30 @@ function handleMsg(msg) {
       handleFsWriteChunk(msg.payload)
       break
     }
+
+    // ── 3.9.0 — session:offer / ticket / close ─────────────────────────────
+    case 'session:offer': {
+      const offer = msg.payload || {}
+      try {
+        if (win && !win.isDestroyed()) {
+          if (win.isMinimized()) win.restore()
+          if (!win.isVisible()) win.show()
+          try { win.flashFrame(true) } catch {}
+          win.webContents.send('session-offer', offer)
+        }
+      } catch {}
+      break
+    }
+    case 'session:ticket': {
+      openSessionView(msg.payload || {})
+      break
+    }
+    case 'session:close':
+    case 'session:closed':
+    case 'session:expired': {
+      closeSessionView((msg.payload || {}).sessionId)
+      break
+    }
   }
 }
 
@@ -1733,6 +1757,61 @@ function runDisplayScript(width, height, cb) {
   } catch (e) { cb({ err: String(e.message || e), current: '', modes: [], result: '' }) }
 }
 
+// ── 3.9.0 — جلسات وكيل↔وكيل: نافذة عرض بتذكرة + طلبات Relay ────────────────
+const sessionViews = new Map()
+
+function serverHttpBase () {
+  return String(config.serverUrl || '').trim()
+    .replace(/^wss:/i, 'https:').replace(/^ws:/i, 'http:')
+    .replace(/\/ws\/?$/, '')
+}
+
+async function relayApi (method, path, body) {
+  const base = serverHttpBase()
+  if (!base || !config.token) return { ok: false, error: 'not_configured' }
+  try {
+    const res = await fetch(base + path, {
+      method,
+      headers: { 'Content-Type': 'application/json', 'X-Device-Token': config.token },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    })
+    const data = await res.json().catch(() => ({}))
+    return { ok: res.ok, status: res.status, data }
+  } catch (e) {
+    return { ok: false, error: String((e && e.message) || e) }
+  }
+}
+
+function openSessionView (payload) {
+  const sid = String((payload && payload.sessionId) || '')
+  const viewUrl = String((payload && payload.viewUrl) || '')
+  const base = serverHttpBase()
+  if (!sid || !viewUrl || !base) return
+  closeSessionView(sid)
+  const url = base + (viewUrl.startsWith('/') ? viewUrl : '/' + viewUrl)
+  let v = null
+  try {
+    v = new BrowserWindow({
+      width: 1280, height: 800, backgroundColor: '#0b1220',
+      title: 'AiRemote — session',
+      webPreferences: { contextIsolation: true, sandbox: true, partition: 'persist:session-' + sid },
+    })
+    v.loadURL(url).catch(() => {})
+    v.on('closed', () => { sessionViews.delete(sid) })
+    sessionViews.set(sid, v)
+    addLog('info', '[session] view opened ' + sid.slice(0, 8))
+  } catch (e) {
+    addLog('error', '[session] view failed: ' + String((e && e.message) || e))
+    try { if (v && !v.isDestroyed()) v.destroy() } catch {}
+  }
+}
+
+function closeSessionView (sid) {
+  const key = String(sid || '')
+  const v = sessionViews.get(key)
+  if (v) { try { if (!v.isDestroyed()) v.destroy() } catch {} ; sessionViews.delete(key) }
+}
+
 function send(msg) {
   if (ws?.readyState === WebSocket.OPEN) {
     try { ws.send(JSON.stringify(msg)) } catch {}
@@ -2293,6 +2372,22 @@ ipcMain.handle('ai-delete-conversation', async (_, id) => {
   catch (e) { return { ok: false, error: String((e && e.message) || e) } }
 })
 ipcMain.handle('ai-set-conversation', (_, id) => { aiConvId = String(id || ''); saveAiConv(); return { ok: true } })
+
+// 3.9.0 — واجهة الاتصال بجهاز آخر
+ipcMain.handle('relay-request', async (_evt, payload) => {
+  const body = Object.assign({}, payload || {})
+  if (!body.requesterDeviceId) body.requesterDeviceId = deviceId || ''
+  return relayApi('POST', '/api/relay/request', body)
+})
+ipcMain.handle('relay-view-ticket', async (_evt, sessionId) =>
+  relayApi('POST', '/api/relay/' + encodeURIComponent(String(sessionId || '')) + '/view-ticket', {}))
+ipcMain.handle('session-decision', (_evt, payload) => {
+  const p = payload || {}
+  const sessionId = String(p.sessionId || '')
+  if (!sessionId) return { ok: false, error: 'sessionId required' }
+  send({ type: p.accept ? 'session:accept' : 'session:deny', payload: { sessionId, reason: p.reason || (p.accept ? 'accepted' : 'denied') }, timestamp: Date.now() })
+  return { ok: true }
+})
 
 ipcMain.handle('get-state', () => ({
   version:   AGENT_VERSION,

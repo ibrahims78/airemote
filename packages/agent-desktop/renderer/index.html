@@ -337,6 +337,30 @@
     </div>
 
   </div><!-- /#upper -->
+      <div class="tab-panel active" id="panel-session" style="border-top:1px solid rgba(100,116,139,.18);margin-top:12px;padding-top:12px">
+        <div class="field">
+          <label>الاتصال بجهاز آخر</label>
+          <div class="field-hint">رمز الجهاز (9 أرقام) ثم اختر نوع الوصول.</div>
+          <input id="session-code" type="text" inputmode="numeric" maxlength="11" placeholder="123 456 789" dir="ltr" autocomplete="off" spellcheck="false" />
+        </div>
+        <div class="field">
+          <label>نوع الوصول</label>
+          <div class="checks-group">
+            <label class="check-row"><input type="radio" name="session-access" value="view" checked /><span>عرض فقط</span></label>
+            <label class="check-row"><input type="radio" name="session-access" value="control" /><span>تحكم كامل</span></label>
+            <label class="check-row"><input type="radio" name="session-access" value="files" /><span>ملفات</span></label>
+          </div>
+        </div>
+        <div class="field" id="session-pw-field" style="display:none">
+          <label>كلمة مرور الجهاز</label>
+          <input id="session-pw" type="password" dir="ltr" autocomplete="off" placeholder="••••••" />
+        </div>
+        <div class="btn-row">
+          <button id="session-request-btn" type="button"><span>طلب الاتصال</span></button>
+        </div>
+        <div class="field-hint" id="session-state" role="status"></div>
+      </div>
+
   </div><!-- /#tab-status -->
 
   <!-- ── T006: Session Chat Section ──────────────────────────────────── -->
@@ -530,5 +554,15 @@
     } catch (e) {}
   })()
 </script>
+<div id="session-offer" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(2,6,23,.72);align-items:center;justify-content:center">
+  <div style="width:min(420px,92vw);background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:14px;padding:18px">
+    <div style="font-weight:700;margin-bottom:8px">طلب اتصال بجهازك</div>
+    <div id="offer-body" style="font-size:13px;line-height:1.7"></div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button id="offer-accept" type="button" style="flex:1">سماح</button>
+      <button id="offer-deny" type="button" class="btn-ghost" style="flex:1">رفض</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>

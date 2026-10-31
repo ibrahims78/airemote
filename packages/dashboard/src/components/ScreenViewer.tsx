@@ -41,7 +41,17 @@ interface Props {
   deviceId:   string
   deviceName: string
   popout?:    boolean
+  sessionTicket?: string
+  sessionAccess?: '' | 'view' | 'control' | 'files'
 }
+
+// 3.9.0 — رسائل التحكم التي لا تُرسل من جلسة «عرض فقط» (السيرفر يرفضها أيضاً).
+const SESSION_CONTROL_TYPES = new Set([
+  'screen:mouse_event', 'screen:key_event', 'screen:clipboard_write', 'screen:clipboard_read',
+  'screen:privacy', 'screen:control_request', 'screen:rotate', 'screen:rotate_auto',
+  'screen:brightness', 'screen:audio_control', 'screen:set_quality', 'screen:set_monitor',
+  'screen:clipboard_sync_enable', 'screen:clipboard_sync_direction', 'screen:clipboard_sync_reverse', 'screen:clipboard_local',
+])
 
 type Status          = 'connecting' | 'streaming' | 'error' | 'unavailable' | 'disconnected'
 type PermissionState = 'idle' | 'requesting' | 'granted'
@@ -101,9 +111,12 @@ function fmtBytes(bytes: number): string {
   return `${(bytes/1024/1024).toFixed(2)}MB/s`
 }
 
-export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
+export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTicket, sessionAccess }: Props) {
   const tr = useT()
   const { token, user } = useAuthStore()
+  // الوضع العادي: بلا تذكرة. وضع الجلسة: التذكرة تأتي من الرابط وتُستخدم بدل JWT.
+  const ticketMode = !!sessionTicket
+  const viewOnly = ticketMode && sessionAccess !== 'control'
   const canvasRef     = useRef<HTMLCanvasElement>(null)
   const wsRef         = useRef<WebSocket | null>(null)
   const imgRef        = useRef<HTMLImageElement>(new Image())
@@ -481,8 +494,9 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
 
   // ── Send WS ───────────────────────────────────────────────────────────────
   const sendWs = useCallback((msg: object) => {
+    if (viewOnly && SESSION_CONTROL_TYPES.has(String((msg as { type?: string }).type || ''))) return
     if (wsRef.current?.readyState === WebSocket.OPEN) wsRef.current.send(JSON.stringify(msg))
-  }, [])
+  }, [viewOnly])
 
   // Ctrl+Alt+Shift+V reverses the clipboard direction. It is captured before the
   // remote-keyboard handler so the chord never reaches the remote machine.
@@ -545,6 +559,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
       authParam = { token: token || '' }
     }
 
+    if (ticketMode) authParam = { rt: sessionTicket || '' }
     if (myId !== connectIdRef.current) return
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -802,7 +817,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false }: Props) {
       }
     }
     ws.onerror = () => { setStatus('error'); setErrorMsg(tr('viewer_ws_failed')) }
-  }, [deviceId, token, drawFrame, startFpsCounter, startBwCounter, sendWs, startStaleWatchdog])
+  }, [deviceId, token, ticketMode, sessionTicket, drawFrame, startFpsCounter, startBwCounter, sendWs, startStaleWatchdog])
 
   // ── Mount / unmount ───────────────────────────────────────────────────────
   useEffect(() => {

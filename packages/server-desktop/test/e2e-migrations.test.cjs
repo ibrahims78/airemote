@@ -94,10 +94,18 @@ async function main() {
   const before = firstUser.prepare('SELECT COUNT(*) AS c FROM users').get().c
   const down1 = migrations.run(firstUser, { direction: 'down', once: true, log: () => {} })
   check('C1. down moves one step back', down1.version === migrations.LATEST - 1, JSON.stringify(down1))
-  check('C2. the migration indexes are gone after down', migrationIndexes(firstUser).length === 0, migrationIndexes(firstUser).join(','))
+  // 3.9.0 — the latest step is session-view-tickets; the query indexes go one step later.
+  const ticketTable = firstUser.prepare("SELECT COUNT(*) AS c FROM sqlite_master WHERE type='table' AND name='session_view_tickets'").get().c
+  check('C2. session_view_tickets is gone after its down', ticketTable === 0, 'table=' + ticketTable)
+  const down2 = migrations.run(firstUser, { direction: 'down', once: true, log: () => {} })
+  check('C2b. the query indexes are gone after the second down', migrationIndexes(firstUser).length === 0, migrationIndexes(firstUser).join(','))
   check('C3. rows survive the down', firstUser.prepare('SELECT COUNT(*) AS c FROM users').get().c === before)
   const up1 = migrations.run(firstUser, { once: true, log: () => {} })
-  check('D1. up restores the version', up1.version === migrations.LATEST, JSON.stringify(up1))
+  check('D1. up moves one step forward', up1.version === migrations.LATEST - 1, JSON.stringify(up1))
+  const up2 = migrations.run(firstUser, { once: true, log: () => {} })
+  check('D1b. up restores the latest version', up2.version === migrations.LATEST, JSON.stringify(up2))
+  const ticketBack = firstUser.prepare("SELECT COUNT(*) AS c FROM sqlite_master WHERE type='table' AND name='session_view_tickets'").get().c
+  check('D1c. session_view_tickets is back', ticketBack === 1, 'table=' + ticketBack)
   check('D2. the migration indexes are back', migrationIndexes(firstUser).length === 4, migrationIndexes(firstUser).join(','))
   check('D3. rows survive the up', firstUser.prepare('SELECT COUNT(*) AS c FROM users').get().c === before)
   firstUser.close()

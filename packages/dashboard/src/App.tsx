@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate, useSearchParams } from 'react-router-dom'
 import { useAuthStore } from './store/authStore'
 import { useUIStore } from './store/uiStore'
 import { lazy, Suspense } from 'react'
@@ -34,6 +34,13 @@ function PageLoader() {
       <div className="h-40 rounded-xl bg-line/40 animate-pulse" />
     </div>
   )
+}
+
+// 3.9.0 — تذكرة العرض تتجاوز تسجيل الدخول لهذا المسار فقط؛ بلا rt يبقى السلوك القديم.
+function SessionTicketGate({ children }: { children: React.ReactNode }) {
+  const [params] = useSearchParams()
+  if (params.get('rt')) return <>{children}</>
+  return <RequireAuth>{children}</RequireAuth>
 }
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
@@ -89,7 +96,7 @@ export default function App() {
         {!setupRequired && (
           <>
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/view/:deviceId" element={<RequireAuth><ScreenPopoutPage /></RequireAuth>} />
+            <Route path="/view/:deviceId" element={<SessionTicketGate><ScreenPopoutPage /></SessionTicketGate>} />
             <Route path="/" element={<RequireAuth><DashboardLayout /></RequireAuth>}>
               <Route index                             element={<ErrorBoundary><OverviewPage /></ErrorBoundary>} />
               <Route path="devices"                   element={<ErrorBoundary><DevicesPage /></ErrorBoundary>} />

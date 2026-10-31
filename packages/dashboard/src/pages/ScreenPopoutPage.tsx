@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { ScreenViewer } from '../components/ScreenViewer'
 import { api } from '../lib/api'
 
 export function ScreenPopoutPage() {
   const { deviceId } = useParams<{ deviceId: string }>()
+  const [search] = useSearchParams()
+  const sessionTicket = search.get('rt') || ''
+  const sessionAccess = (search.get('access') || '') as '' | 'view' | 'control' | 'files'
   const [name, setName] = useState('')
 
   useEffect(() => {
@@ -25,21 +28,23 @@ export function ScreenPopoutPage() {
         window.addEventListener('beforeunload', closed)
       }
     } catch {}
-    api.get('/api/devices').then(r => {
-      const d = (r.data as Array<{ id: string; name: string }>).find(x => x.id === deviceId)
-      if (d) { setName(d.name); try { document.title = d.name + ' — AiRemote' } catch {} }
-    }).catch(() => {})
+    if (!sessionTicket) {
+      api.get('/api/devices').then(r => {
+        const d = (r.data as Array<{ id: string; name: string }>).find(x => x.id === deviceId)
+        if (d) { setName(d.name); try { document.title = d.name + ' — AiRemote' } catch {} }
+      }).catch(() => {})
+    }
     return () => {
       closed()
       window.removeEventListener('beforeunload', closed)
       try { bc?.close() } catch {}
     }
-  }, [deviceId])
+  }, [deviceId, sessionTicket])
 
   if (!deviceId) return null
   return (
     <div className="fixed inset-0 bg-code">
-      <ScreenViewer deviceId={deviceId} deviceName={name || deviceId} popout />
+      <ScreenViewer deviceId={deviceId} deviceName={name || deviceId} popout sessionTicket={sessionTicket} sessionAccess={sessionAccess} />
     </div>
   )
 }

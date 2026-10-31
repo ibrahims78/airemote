@@ -1,0 +1,40 @@
+[db] better-sqlite3 failed (The module '\\?\D:\autoclaw projects-new\AiRemote\node_modules\.pnpm\better-sqlite3@9.6.0\node_modules\better-sqlite3\build\Release\better_sqlite3.node'
+was compiled against a different Node.js version using
+NODE_MODULE_VERSION 119. This version of Node.js requires
+NODE_MODULE_VERSION 137. Please try re-compiling or re-installing
+the module (for instance, using `npm rebuild` or `npm install`).) — using node:sqlite
+[db] better-sqlite3 failed (The module '\\?\D:\autoclaw projects-new\AiRemote\node_modules\.pnpm\better-sqlite3@9.6.0\node_modules\better-sqlite3\build\Release\better_sqlite3.node'
+was compiled against a different Node.js version using
+NODE_MODULE_VERSION 119. This version of Node.js requires
+NODE_MODULE_VERSION 137. Please try re-compiling or re-installing
+the module (for instance, using `npm rebuild` or `npm install`).) — using node:sqlite
+[db] better-sqlite3 failed (The module '\\?\D:\autoclaw projects-new\AiRemote\node_modules\.pnpm\better-sqlite3@9.6.0\node_modules\better-sqlite3\build\Release\better_sqlite3.node'
+was compiled against a different Node.js version using
+NODE_MODULE_VERSION 119. This version of Node.js requires
+NODE_MODULE_VERSION 137. Please try re-compiling or re-installing
+the module (for instance, using `npm rebuild` or `npm install`).) — using node:sqlite
+🟢 [agent] connected name="requester-A" platform=windows ip=127.0.0.1 id=429a6fe4
+🟢 [agent] connected name="target-B" platform=windows ip=127.0.0.1 id=e7304df8
+PASS: T2a. device-token request accepted (201)
+PASS: T2b. offer carries accessLabel + passwordMode
+PASS: T2c. no session:ticket before accept
+PASS: T2d. deny reaches requester
+PASS: T2e. no ticket after deny
+PASS: T1a. accept issues session:ticket to requester
+PASS: T1b. ticket is 64 hex
+PASS: T1c. viewUrl points at /view/<target>?rt=
+PASS: T5a. first /screen with ticket opens
+PASS: T5b. reused ticket is refused
+PASS: T6. ticket bound to device (wrong device refused)
+PASS: T6b. requesterDeviceId mismatch refused
+PASS: T5c. close revokes ticket
+[db] better-sqlite3 failed (The module '\\?\D:\autoclaw projects-new\AiRemote\node_modules\.pnpm\better-sqlite3@9.6.0\node_modules\better-sqlite3\build\Release\better_sqlite3.node'
+was compiled against a different Node.js version using
+NODE_MODULE_VERSION 119. This version of Node.js requires
+NODE_MODULE_VERSION 137. Please try re-compiling or re-installing
+the module (for instance, using `npm rebuild` or `npm install`).) — using node:sqlite
+PASS: T1d. ticket issued is audited
+PASS: T1e. view opened is audited
+PASS: T5d. denied/refused access is audited
+
+ALL SESSION TICKET CHECKS PASSED

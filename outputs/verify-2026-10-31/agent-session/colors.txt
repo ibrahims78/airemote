@@ -1,0 +1,16 @@
+file                                                explicit  kit
+components/FileManager.tsx                          0         yes
+components/TransferQueue.tsx                        0         yes
+pages/AuditPage.tsx                                 0         yes
+pages/DevicesPage.tsx                               0         yes
+pages/DeviceWorkspacePage.tsx                       0         yes
+pages/HelpPage.tsx                                  0         yes
+pages/NotificationsPage.tsx                         0         yes
+pages/OverviewPage.tsx                              0         yes
+pages/SessionsPage.tsx                              0         yes
+pages/SettingsPage.tsx                              0         yes
+pages/SetupPage.tsx                                 0         yes
+pages/UsersPage.tsx                                 0         yes
+
+TOTAL explicit color utilities in src: 0
+files using the kit: 12

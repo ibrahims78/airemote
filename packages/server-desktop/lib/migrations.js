@@ -45,6 +45,33 @@ const MIGRATIONS = [
       `)
     },
   },
+  {
+    version: 3,
+    name: 'session-view-tickets',
+    up(db) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS session_view_tickets (
+          id TEXT PRIMARY KEY,
+          session_id TEXT NOT NULL,
+          device_id TEXT NOT NULL,
+          access TEXT NOT NULL,
+          token_hash TEXT NOT NULL UNIQUE,
+          expires_at TEXT NOT NULL,
+          consumed_at TEXT,
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        CREATE INDEX IF NOT EXISTS idx_svt_session ON session_view_tickets(session_id);
+        CREATE INDEX IF NOT EXISTS idx_svt_expires ON session_view_tickets(expires_at);
+      `)
+    },
+    down(db) {
+      db.exec(`
+        DROP INDEX IF EXISTS idx_svt_expires;
+        DROP INDEX IF EXISTS idx_svt_session;
+        DROP TABLE IF EXISTS session_view_tickets;
+      `)
+    },
+  },
 ]
 
 const BASELINE = 1

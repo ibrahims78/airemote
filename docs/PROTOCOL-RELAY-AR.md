@@ -1,6 +1,6 @@
 # بروتوكول Relay — جلسة وكيل‑بوكيل (R4)
 
-**الإصدار:** 1.1 · **التاريخ:** 2026-10-28 · **الحالة:** مُنفَّذ على السيرفر ومُختبر (`e2e-agent-session` 41/41، مسبار سعة 20 جلسة)
+**الإصدار:** 2.0 · **التاريخ:** 2026-10-31 (v1.1 محفوظ أدناه) · **الحالة:** مُنفَّذ على السيرفر ومُختبر (`e2e-agent-session` 41/41، مسبار سعة 20 جلسة)
 **المرجع:** `docs/PRODUCTION-PLAN-v2.0-AR.md` §4.2–§4.4 و§5 (R4)
 
 > يوصّف هذا الملف البروتوكول كما نُفِّذ في `packages/server-desktop/server.js`. أي اختلاف عن نص الخطة مذكور في §7.
@@ -133,3 +133,58 @@
 4. **حارس النطاق** يطبَّق على حجم كل رسالة في نافذة ثانية؛ لا يفرّق بين القنوات بعد.
 5. **استمرارية الجلسات** عبر إعادة تشغيل السيرفر — غير موجودة.
 6. **قياس شبكة حقيقية** بفيديو لكل جلسة — لم يُنفَّذ.
+
+---
+
+# v2.0 — تذكرة عرض الجلسة (3.9.0)
+
+**التاريخ:** 2026-10-31 · **الحالة:** السيرفر واللوحة ووكيل ويندوز مُنفَّذ ومُختبر بروتوكولياً؛ أندرويد مؤجَّل.
+
+## 11) الإضافة
+
+`v1.1` كان يوثّق آلة الحالة والرمز الثنائي للطرفين، لكن فتح الشاشة كان يحتاج JWT مستخدم. `v2.0` يضيف **تذكرة عرض** مقيّدة بالجلسة والجهاز والوصول.
+
+### 11.1 REST
+
+| المسار | المصادقة | الرد |
+|---|---|---|
+| `POST /api/relay/request` | `Authorization: Bearer <JWT>` أو `X-Device-Token` | 201 `{ sessionId, state, access, target:{id,name}, expiresInMs }` |
+| `POST /api/relay/:id/view-ticket` | `X-Device-Token` لجهاز الطالب | `{ ticket, viewUrl, expiresAt, access }` |
+
+مع `X-Device-Token` يجب أن يطابق `requesterDeviceId` الجهاز المصادق (`requester_mismatch`)، وأن يكون الهدف مملوكاً للمالك نفسه (`session_policy_denied`).
+
+### 11.2 WS
+
+| الرسالة | الاتجاه | الحمولة |
+|---|---|---|
+| `session:offer` | سيرفر→هدف | يضيف `accessLabel` · `passwordMode` · `requesterOs` |
+| `session:ticket` | سيرفر→طالب | `{ sessionId, viewUrl, ticket, expiresAt, access }` — **بعد accept فقط** |
+| `session:close/closed/expired` | سيرفر | يُبطل التذكرة ويُغلق نافذة العرض |
+
+### 11.3 التذكرة
+
+- 32 بايت عشوائي (64 hex) · تُخزَّن SHA-256 فقط · مقارنة ثابتة الزمن.
+- العمر 60s (`SESSION_VIEW_TTL_MS`) · مرة واحدة لفتح `/screen` · مقيّدة بـ(session, **target device**, access).
+- تُبطل عند إغلاق الجلسة (`expires_at` في الماضي).
+
+### 11.4 المخطط
+
+هجرة **v3** في `lib/migrations.js`: جدول `session_view_tickets(id, session_id, device_id, access, token_hash UNIQUE, expires_at, consumed_at, created_at)` + فهرسان. `down` يحذف الجدول والفهرسين.
+
+### 11.5 `/screen`
+
+- `rt` صالح ⇒ principal مُصطنع (`sessionId`, `sessionAccess`) بلا JWT.
+- `view` ⇒ كل رسائل التحكم تُرفض بـ`access_denied` وتُدقَّق `session_view_denied`.
+- الاستهلاك عند أول اتصال؛ أي اتصال ثانٍ بالتذكرة نفسها يُرفض (`ticket_reused`).
+
+### 11.6 مسارات الملفات والتسجيلات
+
+`/api/devices/:id/fs/*` و`/api/recordings*` تقبل `rt=` أو `X-AiR-Session:` بدل JWT، بشرط مطابقة الجهاز/الجلسة و`access=files`.
+
+### 11.7 أسماء التدقيق
+
+`session_view_ticket_issued` · `session_view_opened` · `session_view_denied` · `session_view_ticket_failed` · `session_password_failed` · `session_password_locked`.
+
+### 11.8 ما لا يمرّ في `relay:data`
+
+لا وسائط شاشة، لا ملفات كبيرة، لا تحكم بعد الإغلاق. القنوات: `control|files|chat` فقط.

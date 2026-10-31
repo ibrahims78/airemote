@@ -64,6 +64,7 @@ const steps = [
   { name: 'e2e: unattended access (R3)',  cmd: electronStep('packages/server-desktop/test/e2e-unattended.test.cjs') },
   { name: 'e2e: device permissions (R3)', cmd: electronStep('packages/server-desktop/test/e2e-device-permissions.test.cjs') },
   { name: 'e2e: agent session relay (R4)', cmd: electronStep('packages/server-desktop/test/e2e-agent-session.test.cjs') },
+  { name: 'e2e: session view ticket (3.9.0)', cmd: electronStep('packages/server-desktop/test/e2e-session-ticket.test.cjs') },
   { name: 'e2e: file transfer (R5)',   cmd: electronStep('packages/server-desktop/test/e2e-file-transfer.test.cjs') },
   { name: 'e2e: observability (R7)',   cmd: electronStep('packages/server-desktop/test/e2e-observability.test.cjs') },
   { name: 'e2e: backup + restore (R7)', cmd: electronStep('packages/server-desktop/test/e2e-backup.test.cjs') },
