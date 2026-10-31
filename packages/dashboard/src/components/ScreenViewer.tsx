@@ -42,6 +42,7 @@ interface Props {
   deviceName: string
   popout?:    boolean
   sessionTicket?: string
+  sessionResumeKey?: string
   sessionAccess?: '' | 'view' | 'control' | 'files'
 }
 
@@ -111,11 +112,11 @@ function fmtBytes(bytes: number): string {
   return `${(bytes/1024/1024).toFixed(2)}MB/s`
 }
 
-export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTicket, sessionAccess }: Props) {
+export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTicket, sessionResumeKey, sessionAccess }: Props) {
   const tr = useT()
   const { token, user } = useAuthStore()
   // الوضع العادي: بلا تذكرة. وضع الجلسة: التذكرة تأتي من الرابط وتُستخدم بدل JWT.
-  const ticketMode = !!sessionTicket
+  const ticketMode = !!(sessionTicket || sessionResumeKey)
   const viewOnly = ticketMode && sessionAccess !== 'control'
   const canvasRef     = useRef<HTMLCanvasElement>(null)
   const wsRef         = useRef<WebSocket | null>(null)
@@ -559,7 +560,13 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
       authParam = { token: token || '' }
     }
 
-    if (ticketMode) authParam = { rt: sessionTicket || '' }
+    if (ticketMode) {
+      // 3.9.1 — التذكرة للفتح الأول فقط، ومفتاح الإعادة (rk) يبقى صالحاً بعد إعادة التحميل.
+      // نرسل الاثنين: السيرفر يفضّل التذكرة ثم يسقط إلى المفتاح بدل ticket_reused.
+      authParam = {}
+      if (sessionTicket) authParam.rt = sessionTicket
+      if (sessionResumeKey) authParam.rk = sessionResumeKey
+    }
     if (myId !== connectIdRef.current) return
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
@@ -569,6 +576,14 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
     wsRef.current  = ws
 
     ws.onopen = () => {
+      // 3.9.1 — بعد قبول التذكرة أزل rt من العنوان: أي إعادة تحميل تستخدم rk
+      // (وإلا عاد المستخدم بتذكرة مستهلكة). الوصول يبقى محكوماً بمفتاح الجلسة.
+      if (ticketMode && sessionTicket) {
+        try {
+          const u = new URL(window.location.href)
+          if (u.searchParams.has('rt')) { u.searchParams.delete('rt'); window.history.replaceState({}, '', u.toString()) }
+        } catch {}
+      }
       setTimeout(() => sendWs({ type: 'screen:get_monitors', payload: {} }), 800)
       setTimeout(() => sendWs({ type: 'screen:clipboard_sync_state', payload: {} }), 600)
       if (pingTimerRef.current) clearInterval(pingTimerRef.current)
@@ -817,7 +832,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
       }
     }
     ws.onerror = () => { setStatus('error'); setErrorMsg(tr('viewer_ws_failed')) }
-  }, [deviceId, token, ticketMode, sessionTicket, drawFrame, startFpsCounter, startBwCounter, sendWs, startStaleWatchdog])
+  }, [deviceId, token, ticketMode, sessionTicket, sessionResumeKey, drawFrame, startFpsCounter, startBwCounter, sendWs, startStaleWatchdog])
 
   // ── Mount / unmount ───────────────────────────────────────────────────────
   useEffect(() => {

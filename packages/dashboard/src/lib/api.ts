@@ -1,6 +1,12 @@
 import axios from 'axios'
 import { useAuthStore } from '../store/authStore'
 
+// 3.9.1 — نافذة الجلسة تُفتح بتذكرة rt أو بمفتاح إعادة الاتصال rk، وكلاهما بلا JWT.
+function isSessionWindow() {
+  const q = new URLSearchParams(window.location.search)
+  return q.has('rt') || q.has('rk')
+}
+
 export const api = axios.create({
   baseURL: '',
   headers: { 'Content-Type': 'application/json' }
@@ -36,7 +42,7 @@ api.interceptors.response.use(
       if (!refreshToken) {
         localStorage.removeItem('airemote-auth')
         // 3.9.0 — نافذة جلسة بتذكرة rt تعمل بلا JWT: لا تُحوّل إلى /login.
-        if (!new URLSearchParams(window.location.search).has('rt')) window.location.href = '/login'
+        if (!isSessionWindow()) window.location.href = '/login'
         return Promise.reject(err)
       }
 
@@ -75,7 +81,7 @@ api.interceptors.response.use(
         refreshQueue = []
         localStorage.removeItem('airemote-auth')
         // 3.9.0 — نافذة جلسة بتذكرة rt تعمل بلا JWT: لا تُحوّل إلى /login.
-        if (!new URLSearchParams(window.location.search).has('rt')) window.location.href = '/login'
+        if (!isSessionWindow()) window.location.href = '/login'
         return Promise.reject(err)
       }
     }

@@ -326,6 +326,31 @@ function adminMiddleware(req, reply) {
   return user
 }
 
+// 3.9.1 (B1) — إعدادات إدارية لا تُرسل لغير admin، وحجب أي حقل سرّي متداخل.
+// القائمة السوداء للأسماء الكاملة + نمط للحقول المتداخلة: أي مفتاح جديد يشبه
+// سرّاً يُحجب تلقائياً حتى لو نُسي ذكره هنا.
+const SETTINGS_NON_ADMIN_DENY_KEYS = new Set(['ai_config', 'telegramToken', 'github_config'])
+const SETTINGS_SECRET_FIELD_RE = /(token|secret|password|passwd|api[_-]?key|private[_-]?key|credential)/i
+function redactSettingsSecretFields(value, depth) {
+  if (depth > 8 || value === null || typeof value !== 'object') return value
+  if (Array.isArray(value)) return value.map(v => redactSettingsSecretFields(v, depth + 1))
+  const out = {}
+  for (const k of Object.keys(value)) {
+    if (SETTINGS_SECRET_FIELD_RE.test(k)) continue
+    out[k] = redactSettingsSecretFields(value[k], depth + 1)
+  }
+  return out
+}
+function redactSettingsForNonAdmin(settings) {
+  const out = {}
+  for (const key of Object.keys(settings || {})) {
+    if (SETTINGS_NON_ADMIN_DENY_KEYS.has(key)) continue
+    if (SETTINGS_SECRET_FIELD_RE.test(key)) continue
+    out[key] = redactSettingsSecretFields(settings[key], 0)
+  }
+  return out
+}
+
 // v3.4.0 — AI chat auth: user JWT OR on-device agent token (agent-window AI chat)
 function aiAuth(req, reply) {
   const token = extractBearer(req)
@@ -1691,6 +1716,8 @@ const RELAY_SESSION_KBPS   = Math.max(16, parseInt(process.env.RELAY_SESSION_KBP
 const RELAY_CHANNELS       = ['screen', 'control', 'files', 'chat']
 const RELAY_ACCESS_CAPABILITY = { view: null, control: 'control', files: 'files' }
 const SESSION_VIEW_TTL_MS = Math.max(10000, parseInt(process.env.SESSION_VIEW_TTL_MS || '60000', 10) || 60000)
+// 3.9.1 — مفتاح إعادة الاتصال يعيش عمر الجلسة (12h سقفاً)، ويُبطل عند الإغلاق.
+const SESSION_VIEW_KEY_TTL_MS = Math.max(60000, parseInt(process.env.SESSION_VIEW_KEY_TTL_MS || '43200000', 10) || 43200000)
 const SESSION_VIEW_ACCESS_LABEL = { view: 'عرض فقط', control: 'تحكم كامل', files: 'ملفات' }
 const RELAY_ACTIVE_STATES  = ['requested', 'accepted', 'active', 'suspended']
 const RELAY_RECONNECT_GRACE_MS = Math.max(0, parseInt(process.env.RELAY_RECONNECT_GRACE_MS || '15000', 10) || 0)
@@ -1781,6 +1808,73 @@ function sessionViewIssue(session, deviceId, access) {
   return { ticketId: id, ticket: raw, viewUrl, expiresAt }
 }
 
+// 3.9.1 — مفتاح إعادة الاتصال (resume key): مستقل عن تذكرة الفتح الأولى،
+// مخزّن مجزّأً (SHA-256 فقط)، صالح لعمر الجلسة، مقيّد بـ(session, device, access).
+function sessionViewIssueKey(session, deviceId, access) {
+  const raw = crypto.randomBytes(32).toString('hex')
+  const hash = crypto.createHash('sha256').update(raw).digest('hex')
+  const id = uuidv4()
+  const expiresAt = new Date(Date.now() + SESSION_VIEW_KEY_TTL_MS).toISOString()
+  // مفتاح نشط واحد لكل جلسة: إبطال السابق يمنع تراكم مفاتيح صالحة.
+  try { db.prepare('UPDATE session_view_keys SET revoked_at=? WHERE session_id=? AND revoked_at IS NULL').run(new Date().toISOString(), session.id) } catch {}
+  db.prepare('INSERT INTO session_view_keys (id, session_id, device_id, access, token_hash, expires_at) VALUES (?,?,?,?,?,?)')
+    .run(id, session.id, deviceId, access, hash, expiresAt)
+  dbLogAudit({
+    userId: session.requester.userId || '', userEmail: session.requester.email || '',
+    deviceId: session.target.deviceId, action: 'session_view_key_issued',
+    details: { sessionId: session.id, keyId: id, access }, ipAddress: null,
+  })
+  return { keyId: id, resumeKey: raw, keyExpiresAt: expiresAt }
+}
+
+// يُصدر التذكرة (مرة واحدة) + مفتاح الإعادة معاً، ويعيد رابطاً واحداً يحملهما.
+function sessionViewGrant(session, deviceId, access) {
+  const ticket = sessionViewIssue(session, deviceId, access)
+  const key = sessionViewIssueKey(session, deviceId, access)
+  const viewUrl = '/view/' + session.target.deviceId + '?rt=' + ticket.ticket + '&rk=' + key.resumeKey + '&access=' + encodeURIComponent(access)
+  return { ...ticket, ...key, viewUrl }
+}
+
+function sessionViewResolveKey(raw, opts) {
+  const options = opts || {}
+  const value = String(raw || '')
+  if (!value) return { ok: false, code: 'resume_required' }
+  const hash = crypto.createHash('sha256').update(value).digest('hex')
+  let row = null
+  try { row = db.prepare('SELECT * FROM session_view_keys WHERE token_hash=?').get(hash) } catch { row = null }
+  if (!row) return { ok: false, code: 'resume_invalid' }
+  try {
+    const a = Buffer.from(hash, 'hex'); const b = Buffer.from(String(row.token_hash), 'hex')
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return { ok: false, code: 'resume_invalid' }
+  } catch { return { ok: false, code: 'resume_invalid' } }
+  if (row.revoked_at) return { ok: false, code: 'resume_revoked', row }
+  if (row.expires_at && new Date(row.expires_at).getTime() < Date.now()) return { ok: false, code: 'resume_expired', row }
+  if (options.deviceId && String(row.device_id) !== String(options.deviceId)) return { ok: false, code: 'resume_wrong_device', row }
+  const session = relayGet(row.session_id)
+  if (!session || (session.state !== 'active' && session.state !== 'suspended')) return { ok: false, code: 'session_not_active', row }
+  try { db.prepare('UPDATE session_view_keys SET last_used_at=?, uses=uses+1 WHERE id=?').run(new Date().toISOString(), row.id) } catch {}
+  return { ok: true, row, session }
+}
+
+// مسار /screen الموحّد: تذكرة الفتح أولاً (تُستهلك مرة واحدة)، ثم مفتاح الإعادة.
+function sessionViewAuthorize(q) {
+  const query = q || {}
+  const rt = String(query.rt || '')
+  const rk = String(query.rk || '')
+  if (!rt && !rk) return { ok: false, code: 'ticket_required' }
+  let first = null
+  if (rt) {
+    first = sessionViewResolve(rt, { forWs: true, deviceId: query.deviceId })
+    if (first.ok) return { ok: true, mode: 'ticket', row: first.row, session: first.session }
+  }
+  if (rk) {
+    const resumed = sessionViewResolveKey(rk, { deviceId: query.deviceId })
+    if (resumed.ok) return { ok: true, mode: 'resume', row: resumed.row, session: resumed.session }
+    return { ok: false, code: resumed.code, row: resumed.row, session: null, firstCode: first ? first.code : null }
+  }
+  return { ok: false, code: first ? first.code : 'ticket_required', row: first && first.row, session: first && first.session }
+}
+
 function sessionViewResolve(raw, opts) {
   const options = opts || {}
   const value = String(raw || '')
@@ -1810,6 +1904,8 @@ function sessionViewConsume(row) {
 
 function sessionViewRevoke(sessionId) {
   try { db.prepare('UPDATE session_view_tickets SET expires_at=? WHERE session_id=?').run(new Date(0).toISOString(), sessionId) } catch {}
+  // 3.9.1 — إغلاق الجلسة يُبطل مفتاح الإعادة أيضاً (لا فتح بعد الإغلاق).
+  try { db.prepare('UPDATE session_view_keys SET revoked_at=? WHERE session_id=? AND revoked_at IS NULL').run(new Date().toISOString(), sessionId) } catch {}
 }
 
 // جهاز مصادق بـX-Device-Token (بدل JWT) — principal مقصور على مالك الجهاز.
@@ -1912,11 +2008,11 @@ function relayDecide(session, accept, reason, decider) {
   // 3.9.0 — تذكرة العرض تُصدر بعد accept فقط، وتُرسل للطالب.
   if (session.requester.deviceId) {
     try {
-      const vt = sessionViewIssue(session, session.target.deviceId, session.access)
+      const vt = sessionViewGrant(session, session.target.deviceId, session.access)
       session.viewTicket = vt
       relaySendToDevice(session.requester.deviceId, {
         type: 'session:ticket',
-        payload: { sessionId: session.id, viewUrl: vt.viewUrl, ticket: vt.ticket, expiresAt: vt.expiresAt, access: session.access },
+        payload: { sessionId: session.id, viewUrl: vt.viewUrl, ticket: vt.ticket, expiresAt: vt.expiresAt, access: session.access, resumeKey: vt.resumeKey, resumeUrl: vt.viewUrl, keyExpiresAt: vt.keyExpiresAt },
       })
     } catch (e) {
       dbLogAudit({ userId: session.requester.userId || '', userEmail: session.requester.email || '', deviceId: session.target.deviceId, action: 'session_view_ticket_failed', details: { sessionId: session.id, error: String(e && e.message || e) }, ipAddress: null })
@@ -3174,9 +3270,9 @@ let _startedAt = null
 let TLS_ACTIVE   = false
 let TLS_CERT_PATH = null
 
-const AGENT_VERSION = '3.9.0'   // agent artifact version (downloads)
+const AGENT_VERSION = '3.9.1'   // agent artifact version (downloads)
 let serverLogger = null   // set in start(); lets WS handlers write to the app log
-const SERVER_VERSION = '3.9.0'  // server build version (/health)
+const SERVER_VERSION = '3.9.1'  // server build version (/health)
 
 async function start(config) {
   if (started) return
@@ -5001,12 +5097,13 @@ if ($target -eq $null) { 'name-not-found' } else {
       for (const k of Object.keys(cfgsAll)) out[k] = { model: cfgsAll[k].model || '', baseUrl: cfgsAll[k].baseUrl || '' }
       result.aiConfigs = out
     }
-    return result
+    // 3.9.1 (B1) — غير admin يحصل على 200 بلا أي مفاتيح سرّية.
+    return p.role === 'admin' ? result : redactSettingsForNonAdmin(result)
   })
 
   // v3.2.2 — dashboard PUT /api/settings (maps dashboard keys → storage + ai_config sync)
   fastify.put('/api/settings', async (req, reply) => {
-    const p = authMiddleware(req, reply); if (!p) return
+    const p = adminMiddleware(req, reply); if (!p) return
     const body = req.body || {}
     const upsert = db.prepare("INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?,?,datetime('now'))")
     for (const k of Object.keys(body)) {
@@ -5032,7 +5129,7 @@ if ($target -eq $null) { 'name-not-found' } else {
   })
 
   fastify.put('/api/settings/:key', async (req, reply) => {
-    const p = authMiddleware(req, reply); if (!p) return
+    const p = adminMiddleware(req, reply); if (!p) return
     db.prepare("INSERT OR REPLACE INTO settings (key, value, updated_at) VALUES (?,?,datetime('now'))").run(req.params.key, JSON.stringify(req.body))
     dbLogAudit({ userId: p.userId, userEmail: p.email, action: 'settings_updated', details: { key: req.params.key }, ipAddress: req.ip })
     return { ok: true }
@@ -6094,8 +6191,8 @@ if ($target -eq $null) { 'name-not-found' } else {
       return reply.code(403).send({ error: 'تذكرة العرض لجهاز الطالب فقط', code: 'not_party' })
     }
     if (s.state !== 'active') return reply.code(409).send({ error: 'الجلسة غير نشطة', code: 'session_not_active', state: s.state })
-    const vt = sessionViewIssue(s, p.deviceId, s.access)
-    return { ok: true, ticket: vt.ticket, viewUrl: vt.viewUrl, expiresAt: vt.expiresAt, access: s.access }
+    const vt = sessionViewGrant(s, s.target.deviceId, s.access)
+    return { ok: true, ticket: vt.ticket, viewUrl: vt.viewUrl, expiresAt: vt.expiresAt, access: s.access, resumeKey: vt.resumeKey, resumeUrl: vt.viewUrl, keyExpiresAt: vt.keyExpiresAt }
   })
 
   fastify.get('/api/relay/sessions', async (req, reply) => {
@@ -6161,8 +6258,9 @@ if ($target -eq $null) { 'name-not-found' } else {
     app.get('/screen', { websocket: true }, (socket, request) => {
       const q = request.query || {}
       const rt = String(q.rt || '')
-      if (rt) {
-        const res = sessionViewResolve(rt, { forWs: true, deviceId: q.deviceId })
+      const rk = String(q.rk || '')
+      if (rt || rk) {
+        const res = sessionViewAuthorize(q)
         if (!res.ok) {
           dbLogAudit({
             userId: res.session ? (res.session.requester.userId || '') : '',
@@ -6176,7 +6274,8 @@ if ($target -eq $null) { 'name-not-found' } else {
           socket.close()
           return
         }
-        sessionViewConsume(res.row)
+        // التذكرة تُستهلك عند أول فتح فقط؛ مفتاح الإعادة لا يُستهلك (T5 محفوظ).
+        if (res.mode === 'ticket') sessionViewConsume(res.row)
         const s = res.session
         const synthetic = {
           userId: s.requester.userId || '', email: s.requester.email || '',
@@ -6186,8 +6285,8 @@ if ($target -eq $null) { 'name-not-found' } else {
         socket._sessionAccess = res.row.access
         dbLogAudit({
           userId: synthetic.userId, userEmail: synthetic.email, deviceId: s.target.deviceId,
-          action: 'session_view_opened',
-          details: { sessionId: s.id, access: res.row.access },
+          action: res.mode === 'resume' ? 'session_view_reopened' : 'session_view_opened',
+          details: { sessionId: s.id, access: res.row.access, mode: res.mode, uses: res.row.uses || null },
           ipAddress: request && request.socket ? request.socket.remoteAddress : null,
         })
         handleScreenWs(socket, request, synthetic)

@@ -14,6 +14,14 @@
 
 ## [Unreleased]
 
+### 3.9.1 — مفتاح إعادة اتصال الجلسة + إغلاق B1 (PATCH)
+- **مفتاح إعادة اتصال (`rk`)**: مفتاح مستقل عن تذكرة الفتح الأولى، SHA-256 فقط، صالح لعمر الجلسة (سقف 12h)، مقيّد بـ(session, target device, access)، لا يُستهلك، ويُبطل عند إغلاق الجلسة. `/screen` يقبل `rk`، ويسجّل `session_view_reopened`؛ وتذكرة `rt` تبقى مرة واحدة (`ticket_reused` بلا `rk`).
+- **هجرة v4**: جدول `session_view_keys` + فهرسان (up/down مُختبران؛ `down` لا يمسّ v3).
+- **إصلاح**: `POST /api/relay/:id/view-ticket` كان يُصدر التذكرة بمعرّف جهاز الطالب فتُرفض دائماً بـ`ticket_wrong_device`؛ أصبحت تُصدر بالجهاز الهدف.
+- **الواجهة**: `ScreenViewer` يقبل `sessionResumeKey` ويرسل `rt`+`rk` معاً، ويحذف `rt` من العنوان بعد أول فتح؛ `SessionTicketGate` و`api.ts` يعتبران `rk` نافذة جلسة (لا تحويل إلى `/login`).
+- **B1 مُغلق**: `GET /api/settings` يُحجب فيه `ai_config` و`telegramToken` و`github_config` وكل حقل سرّي لغير admin (200 بلا مفاتيح)، و`PUT /api/settings` و`PUT /api/settings/:key` أصبحا `adminMiddleware` (403 لغيره)؛ وحارس في `SettingsPage` يُخفي أقسام المزوّد/Telegram وزر الحفظ لغير المدير.
+- **التحقق**: بطارية **40/40** (6 خطوات مصفوفة تذكرة/مفتاح + خطوة settings ACL) · 0 لون · 22/22 تباين · tsc 0.
+
 ### 3.9.0 — جلسات وكيل↔وكيل: تذكرة عرض + مصادقة جهاز (MINOR)
 - **تذكرة عرض**: 32 بايت · SHA-256 فقط · 60s · مرة واحدة لفتح `/screen` · مقيّدة بالجلسة والجهاز الهدف والوصول · تُبطل عند الإغلاق.
 - **مصادقة جهاز**: `POST /api/relay/request` يقبل `X-Device-Token` مع `requesterDeviceId` إلزامي، ولا عبور ملكية.

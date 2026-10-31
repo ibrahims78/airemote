@@ -1812,6 +1812,16 @@ function openSessionView (payload) {
         callback(!!fp && fp === pin.replace(/:/g, '').toLowerCase())
       } catch { callback(false) }
     })
+    // 3.9.1 — إعادة تحميل نافذة العرض (F5 / Ctrl+R). التطبيق بلا قائمة، فبدون
+    // هذا المعالج لا يستطيع المشغّل تحديث النافذة؛ التحديث يعيد الفتح بـrk.
+    v.webContents.on('before-input-event', (event, input) => {
+      if (!input || input.type !== 'keyDown') return
+      const key = String(input.key || '')
+      const isReload = key === 'F5' || ((input.control || input.meta) && key.toLowerCase() === 'r')
+      if (!isReload) return
+      try { event.preventDefault() } catch {}
+      try { v.webContents.reload() } catch {}
+    })
     v.loadURL(url).catch(() => {})
     v.on('closed', () => { sessionViews.delete(sid) })
     sessionViews.set(sid, v)

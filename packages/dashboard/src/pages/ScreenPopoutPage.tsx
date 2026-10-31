@@ -7,6 +7,7 @@ export function ScreenPopoutPage() {
   const { deviceId } = useParams<{ deviceId: string }>()
   const [search] = useSearchParams()
   const sessionTicket = search.get('rt') || ''
+  const sessionResumeKey = search.get('rk') || ''
   const sessionAccess = (search.get('access') || '') as '' | 'view' | 'control' | 'files'
   const [name, setName] = useState('')
 
@@ -28,7 +29,7 @@ export function ScreenPopoutPage() {
         window.addEventListener('beforeunload', closed)
       }
     } catch {}
-    if (!sessionTicket) {
+    if (!sessionTicket && !sessionResumeKey) {
       api.get('/api/devices').then(r => {
         const d = (r.data as Array<{ id: string; name: string }>).find(x => x.id === deviceId)
         if (d) { setName(d.name); try { document.title = d.name + ' — AiRemote' } catch {} }
@@ -44,7 +45,7 @@ export function ScreenPopoutPage() {
   if (!deviceId) return null
   return (
     <div className="fixed inset-0 bg-code">
-      <ScreenViewer deviceId={deviceId} deviceName={name || deviceId} popout sessionTicket={sessionTicket} sessionAccess={sessionAccess} />
+      <ScreenViewer deviceId={deviceId} deviceName={name || deviceId} popout sessionTicket={sessionTicket} sessionResumeKey={sessionResumeKey} sessionAccess={sessionAccess} />
     </div>
   )
 }

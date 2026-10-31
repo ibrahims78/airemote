@@ -65,6 +65,15 @@ const steps = [
   { name: 'e2e: device permissions (R3)', cmd: electronStep('packages/server-desktop/test/e2e-device-permissions.test.cjs') },
   { name: 'e2e: agent session relay (R4)', cmd: electronStep('packages/server-desktop/test/e2e-agent-session.test.cjs') },
   { name: 'e2e: session view ticket (3.9.0)', cmd: electronStep('packages/server-desktop/test/e2e-session-ticket.test.cjs') },
+  // 3.9.1 (A4) — الحالات الست المطلوبة كخطوات مستقلة، مع إثبات مفتاح الإعادة في الأولى.
+  { name: 'e2e: ticket reuse + resume key', cmd: electronStep('packages/server-desktop/test/e2e-session-ticket-matrix.cjs --case=reuse') },
+  { name: 'e2e: ticket third device', cmd: electronStep('packages/server-desktop/test/e2e-session-ticket-matrix.cjs --case=third-device') },
+  { name: 'e2e: session password lock', cmd: electronStep('packages/server-desktop/test/e2e-session-ticket-matrix.cjs --case=password-lock') },
+  { name: 'e2e: ticket + key expiry', cmd: electronStep('packages/server-desktop/test/e2e-session-ticket-matrix.cjs --case=expiry') },
+  { name: 'e2e: view mode blocks control', cmd: electronStep('packages/server-desktop/test/e2e-session-ticket-matrix.cjs --case=view-no-control') },
+  { name: 'e2e: revoke on close', cmd: electronStep('packages/server-desktop/test/e2e-session-ticket-matrix.cjs --case=revoke-on-close') },
+  // 3.9.1 (B1) — لا أسرار لغير admin، والكتابة لـadmin فقط.
+  { name: 'e2e: settings ACL (B1)', cmd: electronStep('packages/server-desktop/test/e2e-settings-acl.test.cjs') },
   { name: 'e2e: file transfer (R5)',   cmd: electronStep('packages/server-desktop/test/e2e-file-transfer.test.cjs') },
   { name: 'e2e: observability (R7)',   cmd: electronStep('packages/server-desktop/test/e2e-observability.test.cjs') },
   { name: 'e2e: backup + restore (R7)', cmd: electronStep('packages/server-desktop/test/e2e-backup.test.cjs') },

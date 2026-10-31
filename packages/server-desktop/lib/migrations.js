@@ -72,6 +72,35 @@ const MIGRATIONS = [
       `)
     },
   },
+  {
+    version: 4,
+    name: 'session-view-resume-keys',
+    up(db) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS session_view_keys (
+          id TEXT PRIMARY KEY,
+          session_id TEXT NOT NULL,
+          device_id TEXT NOT NULL,
+          access TEXT NOT NULL,
+          token_hash TEXT NOT NULL UNIQUE,
+          expires_at TEXT NOT NULL,
+          revoked_at TEXT,
+          last_used_at TEXT,
+          uses INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        );
+        CREATE INDEX IF NOT EXISTS idx_svk_session ON session_view_keys(session_id);
+        CREATE INDEX IF NOT EXISTS idx_svk_expires ON session_view_keys(expires_at);
+      `)
+    },
+    down(db) {
+      db.exec(`
+        DROP INDEX IF EXISTS idx_svk_expires;
+        DROP INDEX IF EXISTS idx_svk_session;
+        DROP TABLE IF EXISTS session_view_keys;
+      `)
+    },
+  },
 ]
 
 const BASELINE = 1

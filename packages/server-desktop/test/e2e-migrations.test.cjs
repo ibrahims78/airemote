@@ -94,18 +94,27 @@ async function main() {
   const before = firstUser.prepare('SELECT COUNT(*) AS c FROM users').get().c
   const down1 = migrations.run(firstUser, { direction: 'down', once: true, log: () => {} })
   check('C1. down moves one step back', down1.version === migrations.LATEST - 1, JSON.stringify(down1))
-  // 3.9.0 — the latest step is session-view-tickets; the query indexes go one step later.
-  const ticketTable = firstUser.prepare("SELECT COUNT(*) AS c FROM sqlite_master WHERE type='table' AND name='session_view_tickets'").get().c
-  check('C2. session_view_tickets is gone after its down', ticketTable === 0, 'table=' + ticketTable)
+  // 3.9.1 — the latest step is session-view-resume-keys; tickets and the query
+  // indexes are one and two steps further back.
+  const keyTable = firstUser.prepare("SELECT COUNT(*) AS c FROM sqlite_master WHERE type='table' AND name='session_view_keys'").get().c
+  check('C2. session_view_keys is gone after its down', keyTable === 0, 'table=' + keyTable)
+  const ticketStill = firstUser.prepare("SELECT COUNT(*) AS c FROM sqlite_master WHERE type='table' AND name='session_view_tickets'").get().c
+  check('C2a. session_view_tickets survives the v4 down', ticketStill === 1, 'table=' + ticketStill)
   const down2 = migrations.run(firstUser, { direction: 'down', once: true, log: () => {} })
-  check('C2b. the query indexes are gone after the second down', migrationIndexes(firstUser).length === 0, migrationIndexes(firstUser).join(','))
+  const ticketTable = firstUser.prepare("SELECT COUNT(*) AS c FROM sqlite_master WHERE type='table' AND name='session_view_tickets'").get().c
+  check('C2b. session_view_tickets is gone after its own down', ticketTable === 0, 'table=' + ticketTable)
+  const down3 = migrations.run(firstUser, { direction: 'down', once: true, log: () => {} })
+  check('C2c. the query indexes are gone after the third down', migrationIndexes(firstUser).length === 0, migrationIndexes(firstUser).join(','))
   check('C3. rows survive the down', firstUser.prepare('SELECT COUNT(*) AS c FROM users').get().c === before)
   const up1 = migrations.run(firstUser, { once: true, log: () => {} })
-  check('D1. up moves one step forward', up1.version === migrations.LATEST - 1, JSON.stringify(up1))
+  check('D1. up moves one step forward', up1.version === migrations.LATEST - 2, JSON.stringify(up1))
   const up2 = migrations.run(firstUser, { once: true, log: () => {} })
-  check('D1b. up restores the latest version', up2.version === migrations.LATEST, JSON.stringify(up2))
+  const up3 = migrations.run(firstUser, { once: true, log: () => {} })
+  check('D1b. up restores the latest version', up3.version === migrations.LATEST, JSON.stringify(up3))
   const ticketBack = firstUser.prepare("SELECT COUNT(*) AS c FROM sqlite_master WHERE type='table' AND name='session_view_tickets'").get().c
   check('D1c. session_view_tickets is back', ticketBack === 1, 'table=' + ticketBack)
+  const keyBack = firstUser.prepare("SELECT COUNT(*) AS c FROM sqlite_master WHERE type='table' AND name='session_view_keys'").get().c
+  check('D1d. session_view_keys is back', keyBack === 1, 'table=' + keyBack)
   check('D2. the migration indexes are back', migrationIndexes(firstUser).length === 4, migrationIndexes(firstUser).join(','))
   check('D3. rows survive the up', firstUser.prepare('SELECT COUNT(*) AS c FROM users').get().c === before)
   firstUser.close()

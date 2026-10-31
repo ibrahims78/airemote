@@ -196,7 +196,7 @@ export function SettingsPage() {
             {isAr ? 'النظام، الجلسات، التنبيهات، سجل التدقيق، والمستخدمون في مكان واحد.' : 'System, sessions, notifications, audit, and users in one place.'}
           </p>
         </div>
-        {tab === 'general' && (
+        {tab === 'general' && isAdmin && (
           <Button
             size="md"
             variant={saved ? 'secondary' : 'primary'}
@@ -236,6 +236,12 @@ export function SettingsPage() {
         </div>
       ) : (
         <div className="grid gap-4 max-w-3xl w-full mx-auto">
+
+          {!isAdmin && (
+            <Alert tone="info">
+              {isAr ? 'إعدادات مزوّد الذكاء الاصطناعي وإشعارات Telegram يديرها المدير فقط.' : 'AI provider and Telegram settings are managed by an administrator.'}
+            </Alert>
+          )}
 
           {/* Appearance & Language */}
           <Section icon={Globe} color="text-primary" title={T('appearance')}>
@@ -353,6 +359,7 @@ export function SettingsPage() {
           </Section>
 
           {/* AI Settings */}
+          {isAdmin && (<>
           <Section icon={Bot} color="text-primary" title={T('ai_settings')}>
             <div className="space-y-3">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -463,11 +470,13 @@ export function SettingsPage() {
               </div>
             </div>
           </Section>
+          </>)}
 
           {/* Notifications — Telegram (v3.3.0) */}
           <TwoFactorSection />
         <TasksSection />
 
+        {isAdmin && (<>
         <Section icon={Bell} color="text-warning" title={T('notifications')}>
             <div className="space-y-3">
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -531,6 +540,7 @@ export function SettingsPage() {
               </Alert>
             </div>
           </Section>
+        </>)}
 
           {/* Version info */}
           <div className="text-center text-xs text-muted py-2">
