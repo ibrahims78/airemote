@@ -6,9 +6,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.content.res.Configuration;
 import android.net.http.SslError;
 import android.os.Build;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.ViewGroup;
 import android.webkit.SslErrorHandler;
@@ -27,8 +29,11 @@ public class SessionWebViewActivity extends Activity {
     public static final String ACTION_CLOSED = "com.airemote.agent.SESSION_CLOSED";
     private static final String PIN_PREFS = "session_pin";
 
+    private static final String TAG = "AiR-SessionView";
     private WebView web;
     private String sessionId = "";
+    private String viewUrl = "";
+    private boolean needsReload = false;
     private BroadcastReceiver closeReceiver;
 
     @Override
@@ -40,6 +45,10 @@ public class SessionWebViewActivity extends Activity {
         String base = httpBase();
         if (url == null || url.isEmpty() || base == null) { finish(); return; }
         if (url.startsWith("/")) url = base + url;
+        viewUrl = url;
+        // شاشة العرض تبقى مضاءة أثناء الجلسة (T9/T10).
+        try { getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON); } catch (Exception ignore) {}
+        Log.i(TAG, "created hasRt=" + url.contains("rt=") + " hasRk=" + url.contains("rk=") + " sid=" + sessionId);
 
         web = new WebView(this);
         WebSettings s = web.getSettings();
@@ -77,7 +86,8 @@ public class SessionWebViewActivity extends Activity {
         closeReceiver = new BroadcastReceiver() {
             @Override public void onReceive(Context context, Intent intent) {
                 String sid = intent.getStringExtra("sessionId");
-                if (sid == null || sid.isEmpty() || sid.equals(sessionId)) finish();
+                // 3.9.2 — لا تُغلق النافذة على بث بلا معرّف (كان يغلق كل النوافذ).
+                if (sid != null && sid.equals(sessionId)) finish();
             }
         };
         IntentFilter f = new IntentFilter(ACTION_CLOSED);
@@ -103,6 +113,31 @@ public class SessionWebViewActivity extends Activity {
     }
 
     @Override
+    protected void onPause() {
+        super.onPause();
+        // 3.9.2 — مغادرة النافذة ثم العودة = إعادة تحميل حقيقية (تدفع المسار إلى rk).
+        needsReload = true;
+        Log.i(TAG, "paused");
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (needsReload && web != null) {
+            needsReload = false;
+            Log.i(TAG, "resume-reload hasRk=" + viewUrl.contains("rk="));
+            try { web.reload(); } catch (Exception e) { Log.w(TAG, "reload failed: " + e); }
+        }
+    }
+
+    @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        // configChanges في المانيفست يمنع إعادة الإنشاء، فلا تُفقد الجلسة عند التدوير (T10).
+        Log.i(TAG, "config " + newConfig.orientation);
+    }
+
+    @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_BACK && web != null && web.canGoBack()) {
             web.goBack();
@@ -113,6 +148,7 @@ public class SessionWebViewActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        Log.i(TAG, "destroy sid=" + sessionId);
         try { if (closeReceiver != null) unregisterReceiver(closeReceiver); } catch (Exception ignore) {}
         try { if (web != null) { web.loadUrl("about:blank"); web.destroy(); } } catch (Exception ignore) {}
         super.onDestroy();

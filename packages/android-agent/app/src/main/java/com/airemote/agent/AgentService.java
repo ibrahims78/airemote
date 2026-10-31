@@ -707,7 +707,8 @@ public class AgentService extends Service {
             Intent i = new Intent(this, SessionWebViewActivity.class);
             i.putExtra("url", url);
             i.putExtra("sessionId", payload.optString("sessionId", ""));
-            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            // 3.9.2 — أعِد استخدام النافذة القائمة بدل تكديس نوافذ جديدة.
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
             startActivity(i);
         } catch (Exception ignore) {}
     }
