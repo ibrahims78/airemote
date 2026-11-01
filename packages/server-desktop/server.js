@@ -1862,6 +1862,19 @@ function relayCloseForPrincipal(target) {
 
 // ── 3.9.0 — تذكرة عرض الجلسة (view ticket) ──────────────────────────────────
 // 32 bytes, hash-only storage, one-time for /screen, bound to (session, device, access).
+// 3.11.2 — منصّة الجهاز الهدف تُمرَّر في رابط العرض حتى يعرف العارض (بلا تسجيل دخول)
+// أن الهدف أندرويد فيُظهر أزرار الرجوع/الرئيسية/التطبيقات.
+function devicePlatform (deviceId) {
+  try {
+    const row = db.prepare('SELECT info FROM devices WHERE id=?').get(String(deviceId || ''))
+    const inf = row && row.info ? (JSON.parse(row.info) || {}) : {}
+    const p = String(inf.platform || '').toLowerCase()
+    if (p) return p
+    const v = String(inf.agentVersion || '').toLowerCase()
+    return v.includes('android') ? 'android' : 'windows'
+  } catch { return '' }
+}
+
 function sessionViewIssue(session, deviceId, access) {
   const raw = crypto.randomBytes(32).toString('hex')
   const hash = crypto.createHash('sha256').update(raw).digest('hex')
@@ -1869,7 +1882,7 @@ function sessionViewIssue(session, deviceId, access) {
   const id = uuidv4()
   db.prepare('INSERT INTO session_view_tickets (id, session_id, device_id, access, token_hash, expires_at) VALUES (?,?,?,?,?,?)')
     .run(id, session.id, deviceId, access, hash, expiresAt)
-  const viewUrl = '/view/' + session.target.deviceId + '?rt=' + raw + '&access=' + encodeURIComponent(access)
+  const viewUrl = '/view/' + session.target.deviceId + '?rt=' + raw + '&access=' + encodeURIComponent(access) + '&platform=' + encodeURIComponent(devicePlatform(session.target.deviceId))
   dbLogAudit({
     userId: session.requester.userId || '', userEmail: session.requester.email || '',
     deviceId: session.target.deviceId, action: 'session_view_ticket_issued',
@@ -1902,7 +1915,7 @@ function sessionViewGrant(session, deviceId, access) {
   const ticket = sessionViewIssue(session, deviceId, access)
   const key = sessionViewIssueKey(session, deviceId, access)
   // 3.9.2 (H1) — مفتاح الإعادة في fragment: لا يُرسل إلى السيرفر ولا يظهر في سجلاته.
-  const viewUrl = '/view/' + session.target.deviceId + '?rt=' + ticket.ticket + '&access=' + encodeURIComponent(access) + '#rk=' + key.resumeKey
+  const viewUrl = '/view/' + session.target.deviceId + '?rt=' + ticket.ticket + '&access=' + encodeURIComponent(access) + '&platform=' + encodeURIComponent(devicePlatform(session.target.deviceId)) + '#rk=' + key.resumeKey
   return { ...ticket, ...key, viewUrl }
 }
 

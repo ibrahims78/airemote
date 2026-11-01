@@ -253,14 +253,20 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
   }, [screenLocked])
 
   // v3.4.3 — Android devices: the stream has no built-in cursor → show the overlay
-  const [remoteIsAndroid, setRemoteIsAndroid] = useState(false)
+  // 3.11.2 — وكيل الطالب يفتح العرض بلا حساب لوحة، فـ/api/devices يعيد 401 ويبقى
+  // remoteIsAndroid=false فلا تظهر أزرار أندرويد (رجوع/رئيسية/تطبيقات). السيرفر يمرّر
+  // المنصّة في رابط العرض، وهي المصدر الأول؛ والـAPI احتياط للوحة المسجّلة.
+  const platformHint = (() => {
+    try { return (new URLSearchParams(window.location.search).get('platform') || '').toLowerCase() } catch { return '' }
+  })()
+  const [remoteIsAndroid, setRemoteIsAndroid] = useState(platformHint.includes('android'))
   useEffect(() => {
     let live = true
     api.get('/api/devices/' + deviceId)
-      .then(r => { if (live) setRemoteIsAndroid(String((r.data && r.data.info && r.data.info.platform) || '').toLowerCase().includes('android')) })
+      .then(r => { if (live && !platformHint) setRemoteIsAndroid(String((r.data && r.data.info && r.data.info.platform) || '').toLowerCase().includes('android')) })
       .catch(() => {})
     return () => { live = false }
-  }, [deviceId])
+  }, [deviceId, platformHint])
 
   // ── T001: Bandwidth meter ─────────────────────────────────────────────────
   const [bwDisplay,   setBwDisplay]   = useState(0)   // bytes/sec
