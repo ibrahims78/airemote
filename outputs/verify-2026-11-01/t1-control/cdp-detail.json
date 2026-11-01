@@ -1,0 +1,15 @@
+{
+ "rect": "{\"l\":0,\"t\":6.5,\"w\":764,\"h\":323,\"dpr\":2,\"iw\":764,\"ih\":336}",
+ "centerHit": "CANVAS.block shrink-0 transition-opacity duration-300 opacity-100 c",
+ "stackedAtCenter": [
+  "CANVAS.block shrink-0 transition-opacity durati",
+  "DIV.relative shrink-0",
+  "DIV.flex-1 min-h-0 relative flex items-cente",
+  "DIV.flex flex-col bg-code overflow-hidden fi",
+  "DIV.fixed inset-0 bg-code",
+  "HTML.dark"
+ ],
+ "visualViewport": "{\"vw\":764,\"vh\":336,\"scale\":1}",
+ "synthetic": "{\"x\":382,\"y\":168}",
+ "sent": "[]"
+}

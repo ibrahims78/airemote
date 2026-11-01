@@ -1,0 +1,43 @@
+{
+ "startedAt": "2026-11-01T07:30:46.718Z",
+ "screen": "1534x649 @0,0",
+ "sid": "ba157a89-7336-4067-8803-89161ffe19e5",
+ "top": "com.airemote.agent/.SessionWebViewActivity",
+ "attempt": 1,
+ "viewerOpen": true,
+ "tap": {
+  "screen": {
+   "w": 720,
+   "h": 1600
+  },
+  "x": 360,
+  "y": 800
+ },
+ "traceBefore": [
+  "2026-11-01T07:28:10.597Z mouse type=down sid=a9b28c15-ac23-48e0-9f7f-c80fc4d44221 granted=true x=0.3405963487100718 y=0.5086321161699509",
+  "2026-11-01T07:28:10.598Z mouse type=up sid=a9b28c15-ac23-48e0-9f7f-c80fc4d44221 granted=true x=0.3405963487100718 y=0.5086321161699509",
+  "2026-11-01T07:28:11.022Z mouse type=down sid=a9b28c15-ac23-48e0-9f7f-c80fc4d44221 granted=true x=0.3630904869022567 y=0.46512191000695075",
+  "2026-11-01T07:28:11.025Z mouse type=up sid=a9b28c15-ac23-48e0-9f7f-c80fc4d44221 granted=true x=0.3630904869022567 y=0.46512191000695075",
+  "2026-11-01T07:28:14.022Z mouse type=click sid=a9b28c15-ac23-48e0-9f7f-c80fc4d44221 granted=true x=0.27115546609541175 y=0.24679082962697632",
+  "2026-11-01T07:28:53.172Z grant sid=54735010-956c-4880-9993-eb05eb143d85 access=control total=2",
+  "2026-11-01T07:29:33.396Z grant sid=8b3ab878-f11b-4ab9-916d-e4f2322e3f49 access=control total=2",
+  "2026-11-01T07:30:54.086Z grant sid=ba157a89-7336-4067-8803-89161ffe19e5 access=control total=2"
+ ],
+ "cursorBefore": "416,160",
+ "traceAfter": [
+  "2026-11-01T07:28:10.597Z mouse type=down sid=a9b28c15-ac23-48e0-9f7f-c80fc4d44221 granted=true x=0.3405963487100718 y=0.5086321161699509",
+  "2026-11-01T07:28:10.598Z mouse type=up sid=a9b28c15-ac23-48e0-9f7f-c80fc4d44221 granted=true x=0.3405963487100718 y=0.5086321161699509",
+  "2026-11-01T07:28:11.022Z mouse type=down sid=a9b28c15-ac23-48e0-9f7f-c80fc4d44221 granted=true x=0.3630904869022567 y=0.46512191000695075",
+  "2026-11-01T07:28:11.025Z mouse type=up sid=a9b28c15-ac23-48e0-9f7f-c80fc4d44221 granted=true x=0.3630904869022567 y=0.46512191000695075",
+  "2026-11-01T07:28:14.022Z mouse type=click sid=a9b28c15-ac23-48e0-9f7f-c80fc4d44221 granted=true x=0.27115546609541175 y=0.24679082962697632",
+  "2026-11-01T07:28:53.172Z grant sid=54735010-956c-4880-9993-eb05eb143d85 access=control total=2",
+  "2026-11-01T07:29:33.396Z grant sid=8b3ab878-f11b-4ab9-916d-e4f2322e3f49 access=control total=2",
+  "2026-11-01T07:30:54.086Z grant sid=ba157a89-7336-4067-8803-89161ffe19e5 access=control total=2"
+ ],
+ "cursorAfter": "416,160",
+ "moved": false,
+ "expectedCenter": {
+  "x": 767,
+  "y": 325
+ }
+}

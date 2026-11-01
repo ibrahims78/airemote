@@ -1,0 +1,30 @@
+{
+ "vm": "win10",
+ "startedAt": "2026-11-01T06:49:31.370Z",
+ "device": "b42175d0-d0c9-428d-ab94-4e66dff56af3",
+ "screen": "1534x649 @0,0",
+ "target": {
+  "absolute": {
+   "x": 300,
+   "y": 250
+  },
+  "normalized": {
+   "x": 0.195567,
+   "y": 0.385208
+  }
+ },
+ "socket": "open",
+ "framesBeforeInput": 0,
+ "framesAfterInput": 0,
+ "clicksLog": [
+  "FORM_READY 09:49:38.297"
+ ],
+ "cursorNow": "135,0",
+ "cursorDelta": {
+  "dx": -165,
+  "dy": -250,
+  "ok": false
+ },
+ "shot": "target-win10.png",
+ "finishedAt": "2026-11-01T06:50:14.932Z"
+}

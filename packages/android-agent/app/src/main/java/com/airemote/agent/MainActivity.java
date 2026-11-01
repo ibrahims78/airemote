@@ -19,6 +19,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import org.json.JSONObject;
+import org.json.JSONArray;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
@@ -133,6 +134,9 @@ public class MainActivity extends Activity {
         pctCpu = findViewById(R.id.pct_cpu);
         pctRam = findViewById(R.id.pct_ram);
         pctDisk = findViewById(R.id.pct_disk);
+
+        // 3.9.4 — بطاقة «الأجهزة» لبدء جلسة وكيل↔وكيل من الهاتف نفسه.
+        buildDevicesCard();
 
         tabs[0] = findViewById(R.id.tab_status);
         tabs[1] = findViewById(R.id.tab_ai);
@@ -451,6 +455,188 @@ public class MainActivity extends Activity {
             } catch (Exception e) { reply = "تعذر الاتصال: " + e.getMessage(); }
             final String out = reply;
             UI.post(() -> { appendAi("المساعد: " + out + "\n"); aiStatus.setText(""); });
+        }).start();
+    }
+
+    // ── 3.9.4: الأجهزة وطلب التحكم (وكيل ↔ وكيل) ─────────────────────────────
+    private LinearLayout devRows;
+    private TextView devState;
+
+    private String apiBase() {
+        try {
+            String s = Prefs.server(this).trim();
+            if (s.startsWith("wss://")) s = "https://" + s.substring(6);
+            else if (s.startsWith("ws://")) s = "http://" + s.substring(5);
+            int i = s.indexOf("/ws");
+            if (i > 0) s = s.substring(0, i);
+            while (s.endsWith("/")) s = s.substring(0, s.length() - 1);
+            return s;
+        } catch (Exception e) { return null; }
+    }
+
+    private int dp(float v) { return Math.round(getResources().getDisplayMetrics().density * v); }
+
+    private void buildDevicesCard() {
+        try {
+            android.widget.ScrollView sv = findViewById(R.id.pane_status);
+            if (sv == null || sv.getChildCount() == 0) return;
+            LinearLayout root = (LinearLayout) sv.getChildAt(0);
+
+            LinearLayout card = new LinearLayout(this);
+            card.setOrientation(LinearLayout.VERTICAL);
+            card.setBackgroundResource(R.drawable.card_bg);
+            card.setPadding(dp(12), dp(12), dp(12), dp(12));
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            lp.bottomMargin = dp(8);
+            card.setLayoutParams(lp);
+
+            TextView title = new TextView(this);
+            title.setText("الأجهزة — اتصال وكيل بوكيل");
+            title.setTextColor(0xFF93C5FD);
+            title.setTextSize(13);
+            title.setTypeface(null, android.graphics.Typeface.BOLD);
+            card.addView(title);
+
+            devState = new TextView(this);
+            devState.setText("اضغط «تحديث» لجلب أجهزة حسابك.");
+            devState.setTextColor(0xFF94A3B8);
+            devState.setTextSize(12);
+            devState.setPadding(0, dp(4), 0, dp(6));
+            card.addView(devState);
+
+            Button refresh = new Button(this);
+            refresh.setText("تحديث الأجهزة");
+            refresh.setAllCaps(false);
+            refresh.setOnClickListener(v -> loadDevices());
+            card.addView(refresh);
+
+            devRows = new LinearLayout(this);
+            devRows.setOrientation(LinearLayout.VERTICAL);
+            card.addView(devRows);
+
+            root.addView(card, 0);
+        } catch (Exception ignore) { }
+    }
+
+    private void loadDevices() {
+        final String base = apiBase();
+        final String tok = Prefs.token(this);
+        if (base == null || tok == null || tok.isEmpty()) {
+            if (devState != null) devState.setText("لم يُهيَّأ الوكيل بعد (لا عنوان ولا رمز).");
+            return;
+        }
+        if (devState != null) devState.setText("جارٍ التحميل…");
+        if (devRows != null) devRows.removeAllViews();
+        new Thread(() -> {
+            try {
+                HttpURLConnection c = (HttpURLConnection) new URL(base + "/api/relay/devices").openConnection();
+                c.setRequestProperty("X-Device-Token", tok);
+                c.setConnectTimeout(8000);
+                c.setReadTimeout(8000);
+                int code = c.getResponseCode();
+                BufferedReader r = new BufferedReader(new InputStreamReader(code >= 400 ? c.getErrorStream() : c.getInputStream(), "UTF-8"));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = r.readLine()) != null) sb.append(line);
+                r.close();
+                if (code != 200) throw new Exception("HTTP " + code + " " + sb);
+                JSONObject j = new JSONObject(sb.toString());
+                final JSONArray arr = j.optJSONArray("devices");
+                UI.post(() -> renderDevices(arr));
+            } catch (Exception e) {
+                final String msg = e.getMessage();
+                UI.post(() -> { if (devState != null) devState.setText("تعذر جلب الأجهزة: " + msg); });
+            }
+        }).start();
+    }
+
+    private void renderDevices(JSONArray arr) {
+        if (devRows == null) return;
+        devRows.removeAllViews();
+        int n = arr == null ? 0 : arr.length();
+        if (devState != null) devState.setText(n == 0 ? "لا توجد أجهزة أخرى في حسابك." : ("متاح " + n + " جهازاً"));
+        for (int i = 0; i < n; i++) {
+            JSONObject d = arr.optJSONObject(i);
+            if (d == null) continue;
+            final String id = d.optString("id");
+            final String name = d.optString("name", "جهاز");
+            boolean online = d.optBoolean("online", false);
+            JSONObject acc = d.optJSONObject("access");
+            boolean canControl = acc == null || acc.optBoolean("control", true);
+
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setPadding(0, dp(6), 0, dp(6));
+            row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+
+            TextView tv = new TextView(this);
+            tv.setText(name + (online ? "   ● متصل" : "   ○ غير متصل"));
+            tv.setTextColor(online ? 0xFFE2E8F0 : 0xFF64748B);
+            tv.setTextSize(13);
+            LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+            tv.setLayoutParams(tlp);
+            row.addView(tv);
+
+            Button b = new Button(this);
+            b.setText("طلب تحكم");
+            b.setAllCaps(false);
+            b.setTextSize(12);
+            b.setEnabled(online && canControl);
+            b.setOnClickListener(v -> requestControl(id, name));
+            row.addView(b);
+
+            devRows.addView(row);
+        }
+    }
+
+    private void requestControl(final String targetId, final String targetName) {
+        final String base = apiBase();
+        final String tok = Prefs.token(this);
+        if (base == null || tok == null || tok.isEmpty()) { toast("الوكيل غير مهيّأ"); return; }
+        if (devState != null) devState.setText("جارٍ إرسال الطلب إلى " + targetName + "…");
+        new Thread(() -> {
+            try {
+                JSONObject body = new JSONObject();
+                body.put("targetDeviceId", targetId);
+                body.put("access", "control");
+                HttpURLConnection c = (HttpURLConnection) new URL(base + "/api/relay/request").openConnection();
+                c.setRequestMethod("POST");
+                c.setRequestProperty("Content-Type", "application/json");
+                c.setRequestProperty("X-Device-Token", tok);
+                c.setConnectTimeout(8000);
+                c.setReadTimeout(10000);
+                c.setDoOutput(true);
+                OutputStream os = c.getOutputStream();
+                os.write(body.toString().getBytes("UTF-8"));
+                os.close();
+                int code = c.getResponseCode();
+                BufferedReader r = new BufferedReader(new InputStreamReader(code >= 400 ? c.getErrorStream() : c.getInputStream(), "UTF-8"));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = r.readLine()) != null) sb.append(line);
+                r.close();
+                String js = sb.toString();
+                String msg;
+                if (code == 201) {
+                    msg = "تم إرسال الطلب إلى " + targetName + " — بانتظار الموافقة على الجهاز الهدف.";
+                } else if (code == 409) {
+                    msg = "يوجد جلسة قائمة على " + targetName + ". أغلقها أولاً.";
+                } else if (code == 503) {
+                    msg = "الجهاز الهدف غير متصل الآن.";
+                } else if (code == 403) {
+                    msg = "غير مصرح بالتحكم بهذا الجهاز.";
+                } else {
+                    String err = "";
+                    try { err = new JSONObject(js).optString("error", ""); } catch (Exception ignore) {}
+                    msg = "تعذر إرسال الطلب (HTTP " + code + ")" + (err.isEmpty() ? "" : " — " + err);
+                }
+                final String out = msg;
+                UI.post(() -> { if (devState != null) devState.setText(out); });
+            } catch (Exception e) {
+                final String msg = "تعذر الاتصال: " + e.getMessage();
+                UI.post(() -> { if (devState != null) devState.setText(msg); });
+            }
         }).start();
     }
 

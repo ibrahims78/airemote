@@ -1,0 +1,14 @@
+{
+ "request": 201,
+ "sid": "77980218-b838-473f-91ec-ac9b5f3e94f4",
+ "traceAfterAccept": [
+  "(no trace file)"
+ ],
+ "top": "com.airemote.agent/.SessionWebViewActivity",
+ "traceAfterForeground": [
+  "(no trace file)"
+ ],
+ "traceAfterTap": [
+  "(no trace file)"
+ ]
+}

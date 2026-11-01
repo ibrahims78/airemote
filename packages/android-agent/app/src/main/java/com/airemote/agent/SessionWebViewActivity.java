@@ -50,6 +50,13 @@ public class SessionWebViewActivity extends Activity {
         try { getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON); } catch (Exception ignore) {}
         Log.i(TAG, "created hasRt=" + url.contains("rt=") + " hasRk=" + url.contains("rk=") + " sid=" + sessionId);
 
+        // 3.9.4 — تشخيص: تصحيح WebView يُفتح فقط عند تعيين الإعداد العام
+        // `airemote_webview_debug=1` (adb settings put global). الافتراضي مغلق.
+        try {
+            int dbg = android.provider.Settings.Global.getInt(getContentResolver(), "airemote_webview_debug", 0);
+            if (dbg == 1) WebView.setWebContentsDebuggingEnabled(true);
+        } catch (Exception ignore) {}
+
         web = new WebView(this);
         WebSettings s = web.getSettings();
         s.setJavaScriptEnabled(true);

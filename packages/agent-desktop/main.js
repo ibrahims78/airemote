@@ -230,6 +230,16 @@ function fetchPublicIp() {
 }
 
 // ─── Logging ──────────────────────────────────────────────────────────────
+// 3.9.4 — سجل إدخال اختياري (AIRREMOTE_INPUT_DEBUG=1) في مجلد بيانات الوكيل.
+// الغرض: تشخيص «النقرة لا تصل» بلا الحاجة إلى DevTools على الجهاز الهدف.
+function traceInput(line) {
+  try {
+    const p = path.join(app.getPath('userData'), 'input-trace.log')
+    try { if (fs.statSync(p).size > 512 * 1024) fs.writeFileSync(p, '') } catch {}
+    fs.appendFileSync(p, new Date().toISOString() + ' ' + line + '\n')
+  } catch {}
+}
+
 function addLog(level, msg) {
   const ts    = new Date()
   const clock = ts.toLocaleTimeString('en', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -620,10 +630,15 @@ function handleMsg(msg) {
         capWin.webContents.send('audio-control', { sessionId: msg.payload?.sessionId, enabled: !!msg.payload?.enabled })
       }
       break
-    case 'server:screen_mouse':
+    case 'server:screen_mouse': {
       // Consent enforcement: input requires a granted control session.
-      if (grantedSessions.has(msg.payload?.sessionId)) injectMouse(msg.payload)
+      const sidIn = String(msg.payload?.sessionId || '')
+      const granted = grantedSessions.has(sidIn)
+      // 3.9.4 — أثر تشخيصي: يفصل «الحدث لم يصل» عن «وصل وأُسقط لغياب المنح».
+      if (process.env.AIRREMOTE_INPUT_DEBUG === '1') traceInput(`mouse type=${msg.payload?.type} sid=${sidIn} granted=${granted} x=${msg.payload?.x} y=${msg.payload?.y}`)
+      if (granted) injectMouse(msg.payload)
       break
+    }
     case 'server:screen_key':
       if (grantedSessions.has(msg.payload?.sessionId)) injectKey(msg.payload)
       break
@@ -812,6 +827,7 @@ function handleMsg(msg) {
       // السيرفر يبقى الحاكم (يرسل أحداث الفأرة فقط لجلسات access=control).
       const p = msg.payload || {}
       if (p.sessionId && p.access === 'control') grantedSessions.add(String(p.sessionId))
+      if (process.env.AIRREMOTE_INPUT_DEBUG === '1') traceInput(`grant sid=${p.sessionId} access=${p.access} total=${grantedSessions.size}`)
       break
     }
     case 'session:ticket': {

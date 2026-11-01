@@ -240,6 +240,14 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
   const [cursorVisible, setCursorVisible] = useState(false)
   const [screenLocked,  setScreenLocked]  = useState(false)
   const [screenLockSecure, setScreenLockSecure] = useState(false)
+  // 3.9.4 — رسالة الحالة (جهاز مقفل/بث محمي) تختفي تلقائياً بدل أن تظل فوق الصورة.
+  const [lockNoticeVisible, setLockNoticeVisible] = useState(false)
+  useEffect(() => {
+    if (!screenLocked) { setLockNoticeVisible(false); return }
+    setLockNoticeVisible(true)
+    const t = setTimeout(() => setLockNoticeVisible(false), 6000)
+    return () => clearTimeout(t)
+  }, [screenLocked])
 
   // v3.4.3 — Android devices: the stream has no built-in cursor → show the overlay
   const [remoteIsAndroid, setRemoteIsAndroid] = useState(false)
@@ -2357,17 +2365,16 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
           onDrop={handleFileDrop}
         />
         {/* 3.9.4 — على الأندرويد لا يوجد hover: حين يختفي الشريط لا سبيل لإرجاعه.
-            زر عائم صغير (44px لمس) يبقى ظاهراً فقط عندما تكون الأدوات مخفية. */}
+            الزر أعلى الشاشة، صغير (32px) وشبه شفاف كي لا يحجب البث. */}
         {started && !controlsVisible && (
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); revealControls() }}
             aria-label={tr('viewer_show_toolbar')}
             title={tr('viewer_show_toolbar')}
-            className="absolute bottom-3 left-1/2 z-[30] flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-ink/10 bg-surface2/90 px-3.5 py-2 text-[11px] font-medium text-ink shadow-lg backdrop-blur-sm transition-transform active:scale-95"
+            className="absolute top-1 left-1/2 z-[30] flex h-8 w-8 -translate-x-1/2 items-center justify-center rounded-full border border-ink/10 bg-surface2/40 text-ink/70 opacity-60 backdrop-blur-sm transition-opacity active:opacity-100"
           >
-            <ChevronUp size={14} />
-            <span>{tr('viewer_toolbar')}</span>
+            <ChevronDown size={14} />
           </button>
         )}
         {viewZoom !== 1 && (
@@ -2406,7 +2413,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
           </div>
         )}
         {screenLocked && status === 'streaming' && (
-          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-40 max-w-[92%] bg-warning/100/20 border border-warning/50 text-ink text-xs px-4 py-2 rounded-xl shadow-lg pointer-events-none text-center leading-6">
+          <div className={clsx('absolute top-11 left-1/2 z-40 max-w-[92%] -translate-x-1/2 rounded-xl border border-warning/50 bg-warning/100/20 px-4 py-2 text-center text-xs leading-6 text-ink shadow-lg pointer-events-none transition-opacity duration-700', lockNoticeVisible ? 'opacity-100' : 'opacity-0')}>
             {tr('viewer_locked_note')}
             {screenLockSecure ? tr('viewer_secure_lock_note') : ''}
           </div>

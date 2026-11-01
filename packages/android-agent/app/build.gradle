@@ -8,7 +8,7 @@ android {
         applicationId "com.airemote.agent"
         minSdk 24
         targetSdk 33
-        versionCode 33
+        versionCode 35
         versionName "3.9.4"
     }
 

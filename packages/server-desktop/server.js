@@ -6112,6 +6112,36 @@ if ($target -eq $null) { 'name-not-found' } else {
   })
 
   // ── v3.8.12 / R4 — جلسات وكيل‑بوكيل عبر Relay ──────────────────────────────
+  // 3.9.4 — قائمة الأجهزة لوكيل يريد بدء جلسة بنفسه (وكيل↔وكيل بلا لوحة تحكم).
+  // المصادقة برمز الجهاز فقط: الجهاز يرى أجهزة مالكه، ولا يرى نفسه.
+  fastify.get('/api/relay/devices', { config: { rateLimit: { max: 60, timeWindow: '1 minute' } } }, async (req, reply) => {
+    const p = relayAuth(req, reply); if (!p) return
+    if (!p.isDevice) return reply.code(403).send({ error: 'هذا المسار للوكلاء', code: 'device_only' })
+    let rows = []
+    try {
+      rows = db.prepare('SELECT id, name, info, capabilities, last_seen FROM devices WHERE owner_id=? AND id<>? ORDER BY name').all(p.ownerId, p.deviceId)
+    } catch { rows = [] }
+    const devices = rows.map(d => {
+      let caps = {}
+      let info = {}
+      try { caps = JSON.parse(d.capabilities || '{}') || {} } catch {}
+      try { info = JSON.parse(d.info || '{}') || {} } catch {}
+      return {
+        id: d.id,
+        name: d.name || 'جهاز',
+        platform: String(info.platform || info.os || info.agentVersion && (String(info.agentVersion).includes('android') ? 'android' : 'windows') || ''),
+        online: agentSockets.has(d.id),
+        lastSeen: d.last_seen || null,
+        access: {
+          view: info.screenView !== false,
+          control: caps.screenControl !== false,
+          files: caps.fs !== false,
+        },
+      }
+    })
+    return { devices, self: { id: p.deviceId } }
+  })
+
   fastify.post('/api/relay/request', { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } }, async (req, reply) => {
     const p = relayAuth(req, reply); if (!p) return
     const body = req.body || {}
@@ -6142,6 +6172,8 @@ if ($target -eq $null) { 'name-not-found' } else {
       return reply.code(403).send({ error: 'غير مصرح بهذا النوع من الوصول لهذا الجهاز', code: 'session_policy_denied' })
     }
     // 3.9.0 — الجهاز المصادق لا يطلب باسم جهاز آخر.
+    // 3.9.4 — عند الإغفال يُعيَّن الطالب = الجهاز المصادق نفسه (طلب من التطبيق).
+    if (p.isDevice && !body.requesterDeviceId) body.requesterDeviceId = p.deviceId
     if (p.isDevice && String(body.requesterDeviceId || '') !== String(p.deviceId)) {
       return reply.code(403).send({ error: 'requesterDeviceId يجب أن يطابق الجهاز المصادق', code: 'requester_mismatch' })
     }

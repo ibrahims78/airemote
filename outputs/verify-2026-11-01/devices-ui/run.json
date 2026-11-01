@@ -1,0 +1,22 @@
+{
+ "refreshButton": {
+  "x": 360,
+  "y": 473
+ },
+ "hasCard": true,
+ "afterRefresh": "متاح 3 جهازاً",
+ "shot1": 157388,
+ "requestButton": {
+  "x": 584,
+  "y": 581
+ },
+ "afterRequest": "تم إرسال الطلب إلى Android-Emulator — بانتظار الموافقة على الجهاز الهدف.",
+ "shot2": 165542,
+ "sessions": [
+  {
+   "state": "requested",
+   "access": "control"
+  }
+ ],
+ "top": "com.airemote.agent/.MainActivity"
+}

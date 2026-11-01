@@ -1,0 +1,28 @@
+{
+ "startedAt": "2026-11-01T06:51:38.016Z",
+ "screen": "1534x649 @0,0",
+ "targetCenter": {
+  "x": 767,
+  "y": 325
+ },
+ "sessionId": "a6373c42-9252-484f-be1c-cd61f6abc839",
+ "requested": "201",
+ "state": "active",
+ "viewerOpened": true,
+ "shotBefore": 1094043,
+ "phone": {
+  "w": 720,
+  "h": 1600
+ },
+ "shotAfter": 1090358,
+ "clicksLog": [
+  "FORM_READY center=767,324"
+ ],
+ "cursorNow": "805,276",
+ "cursorDelta": {
+  "dx": 38,
+  "dy": -49,
+  "ok": false
+ },
+ "finishedAt": "2026-11-01T06:52:32.039Z"
+}
