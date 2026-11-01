@@ -27,6 +27,8 @@ import java.security.MessageDigest;
  * Tracks: WebView معزول + تثبيت شهادة السيرفر (TOFU: أول بصمة تُحفظ ثم تُطابق).
  */
 public class SessionWebViewActivity extends Activity {
+    /** 3.11.2 — هل يوجد عارض مفتوح الآن؟ يُستخدم لتقييد طلب إذن الالتقاط حتى لا يحجب الجلسة. */
+    public static volatile boolean isOpen = false;
     public static final String ACTION_CLOSED = "com.airemote.agent.SESSION_CLOSED";
     private static final String PIN_PREFS = "session_pin";
 
@@ -40,6 +42,7 @@ public class SessionWebViewActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        isOpen = true;
         sessionId = getIntent().getStringExtra("sessionId");
         if (sessionId == null) sessionId = "";
         String url = getIntent().getStringExtra("url");
@@ -197,6 +200,7 @@ public class SessionWebViewActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        isOpen = false;
         Log.i(TAG, "destroy sid=" + sessionId);
         try { if (closeReceiver != null) unregisterReceiver(closeReceiver); } catch (Exception ignore) {}
         try { if (web != null) { web.loadUrl("about:blank"); web.destroy(); } } catch (Exception ignore) {}
