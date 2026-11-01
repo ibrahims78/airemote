@@ -1,18 +1,40 @@
 {
- "startedAt": "2026-11-01T10:40:21.847Z",
- "sid": "baed2313-aff5-4b72-858b-10863bf3b3c7",
- "grantSeen": false,
+ "startedAt": "2026-11-01T11:05:02.015Z",
+ "sid": "fa07b44a-6efc-43ed-b925-a1d782538fe2",
+ "grantSeen": true,
  "tap": {
-  "w": 1600,
-  "h": 720
+  "w": 720,
+  "h": 1600
  },
- "afterTap": [],
+ "afterTap": [
+  "2026-11-01T11:05:12.561Z grant sid=fa07b44a-6efc-43ed-b925-a1d782538fe2 access=control total=1",
+  "2026-11-01T11:05:19.053Z mouse type=click sid=fa07b44a-6efc-43ed-b925-a1d782538fe2 granted=true x=0.5 y=0.3815789473684211",
+  "2026-11-01T11:05:19.056Z mouse type=move sid=fa07b44a-6efc-43ed-b925-a1d782538fe2 granted=true x=0.5 y=0.3815789473684211"
+ ],
  "hasType": true,
  "padVisible": true,
- "shotPad": 51409,
- "inputValue": "",
- "shotTyped": 144357,
+ "shotPad": 642405,
+ "inputValue": "Salam",
+ "shotTyped": 125258,
  "sendClicked": "yes",
- "keyLines": [],
- "shotFinal": 140833
+ "keyLines": [
+  "2026-11-01T11:05:26.871Z key type=down key=Shift sid=fa07b44a-6efc-43ed-b925-a1d782538fe2 granted=true",
+  "2026-11-01T11:05:26.954Z key type=down key=Unidentified sid=fa07b44a-6efc-43ed-b925-a1d782538fe2 granted=true",
+  "2026-11-01T11:05:26.968Z key type=up key=Unidentified sid=fa07b44a-6efc-43ed-b925-a1d782538fe2 granted=true",
+  "2026-11-01T11:05:27.030Z key type=up key=Shift sid=fa07b44a-6efc-43ed-b925-a1d782538fe2 granted=true",
+  "2026-11-01T11:05:27.033Z key type=down key=Unidentified sid=fa07b44a-6efc-43ed-b925-a1d782538fe2 granted=true",
+  "2026-11-01T11:05:27.037Z key type=up key=Unidentified sid=fa07b44a-6efc-43ed-b925-a1d782538fe2 granted=true",
+  "2026-11-01T11:05:27.038Z key type=down key=Unidentified sid=fa07b44a-6efc-43ed-b925-a1d782538fe2 granted=true",
+  "2026-11-01T11:05:27.052Z key type=up key=Unidentified sid=fa07b44a-6efc-43ed-b925-a1d782538fe2 granted=true",
+  "2026-11-01T11:05:27.055Z key type=down key=Unidentified sid=fa07b44a-6efc-43ed-b925-a1d782538fe2 granted=true",
+  "2026-11-01T11:05:27.060Z key type=up key=Unidentified sid=fa07b44a-6efc-43ed-b925-a1d782538fe2 granted=true",
+  "2026-11-01T11:05:27.062Z key type=down key=Unidentified sid=fa07b44a-6efc-43ed-b925-a1d782538fe2 granted=true",
+  "2026-11-01T11:05:27.064Z key type=up key=Unidentified sid=fa07b44a-6efc-43ed-b925-a1d782538fe2 granted=true",
+  "2026-11-01T11:05:28.744Z key type=press key=S sid=fa07b44a-6efc-43ed-b925-a1d782538fe2 granted=true",
+  "2026-11-01T11:05:28.747Z key type=press key=a sid=fa07b44a-6efc-43ed-b925-a1d782538fe2 granted=true",
+  "2026-11-01T11:05:28.748Z key type=press key=l sid=fa07b44a-6efc-43ed-b925-a1d782538fe2 granted=true",
+  "2026-11-01T11:05:28.750Z key type=press key=a sid=fa07b44a-6efc-43ed-b925-a1d782538fe2 granted=true",
+  "2026-11-01T11:05:28.753Z key type=press key=m sid=fa07b44a-6efc-43ed-b925-a1d782538fe2 granted=true"
+ ],
+ "shotFinal": 141371
 }
