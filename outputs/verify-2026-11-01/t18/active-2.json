@@ -1,0 +1,146 @@
+{
+  "tool": "scripts/perf/measure.cjs",
+  "schema": 2,
+  "measuredAt": "2026-11-01T14:55:51.724Z",
+  "mode": "active",
+  "runs": 2,
+  "durationSec": 30,
+  "server": {
+    "version": "3.9.1",
+    "port": 3001,
+    "tls": true
+  },
+  "device": {
+    "name": "WIN10-VM",
+    "id": "b42175d0-d0c9-428d-ab94-4e66dff56af3",
+    "agentVersion": "3.9.1",
+    "platform": "windows"
+  },
+  "station": {
+    "host": "127.0.0.1",
+    "port": "3001",
+    "requestedFps": 18,
+    "quality": 60,
+    "maxWidth": 1600,
+    "binary": true
+  },
+  "windows": [
+    {
+      "seconds": 15,
+      "frames": 165,
+      "fps": 11,
+      "kbps": 72.48,
+      "avgFrameKB": 6.59
+    },
+    {
+      "seconds": 15,
+      "frames": 164,
+      "fps": 10.93,
+      "kbps": 25.69,
+      "avgFrameKB": 2.35
+    }
+  ],
+  "metrics": {
+    "fps": 10.97,
+    "kbps": 49.08,
+    "avgFrameKB": 4.47,
+    "frameGapP50ms": 87,
+    "frameGapP95ms": 123,
+    "fullFrameRatio": 0.03,
+    "firstFrameMs": 1390,
+    "silent": false,
+    "payload": {
+      "webp": 3,
+      "jpeg": 333
+    },
+    "dimsSeen": [
+      "152x120 ×68",
+      "152x121 ×61",
+      "152x128 ×23",
+      "160x128 ×23",
+      "152x112 ×22",
+      "152x113 ×20",
+      "160x121 ×16",
+      "152x129 ×14",
+      "160x120 ×14",
+      "160x129 ×14",
+      "144x121 ×13",
+      "144x120 ×9",
+      "144x112 ×5",
+      "144x113 ×4",
+      "1600x676 ×3",
+      "160x112 ×3",
+      "160x113 ×3",
+      "1472x622 ×2",
+      "1344x568 ×2",
+      "168x129 ×2",
+      "88x57 ×2",
+      "1216x514 ×1",
+      "128x105 ×1",
+      "1280x541 ×1",
+      "136x105 ×1",
+      "1408x595 ×1",
+      "144x105 ×1",
+      "1536x649 ×1",
+      "144x57 ×1",
+      "168x136 ×1",
+      "168x120 ×1",
+      "168x128 ×1",
+      "168x144 ×1",
+      "176x120 ×1"
+    ]
+  },
+  "verdict": {
+    "baseline": "docs/perf-baseline.json",
+    "mode": "active",
+    "rule": "انحدار = تجاوز التفاوت النسبي AND تجاوز أرضية الضجيج المطلقة",
+    "checks": [
+      {
+        "name": "fps",
+        "current": 10.97,
+        "baseline": 6.57,
+        "deltaPct": 67,
+        "tolerancePct": 30,
+        "noiseFloor": 0.5,
+        "regression": false
+      },
+      {
+        "name": "avgFrameKB",
+        "current": 4.47,
+        "baseline": 9.46,
+        "deltaPct": -52.7,
+        "tolerancePct": 30,
+        "noiseFloor": 10,
+        "regression": false
+      },
+      {
+        "name": "kbps",
+        "current": 49.08,
+        "baseline": 61.56,
+        "deltaPct": -20.3,
+        "tolerancePct": 30,
+        "noiseFloor": 20,
+        "regression": false
+      },
+      {
+        "name": "firstFrameMs",
+        "current": 1390,
+        "baseline": 809,
+        "deltaPct": 71.8,
+        "tolerancePct": 50,
+        "noiseFloor": 300,
+        "regression": true
+      },
+      {
+        "name": "fullFrameRatio",
+        "current": 0.03,
+        "baseline": 0.01,
+        "deltaPct": 200,
+        "tolerancePct": 50,
+        "noiseFloor": 0.1,
+        "regression": false
+      }
+    ],
+    "failed": 1
+  }
+}

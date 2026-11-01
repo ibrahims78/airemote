@@ -1262,9 +1262,11 @@ function closeScreenSession(sessionId, errMsg) {
   clearConnectTimer(session)
   if (session.stopTimer) { clearTimeout(session.stopTimer); session.stopTimer = null }
   for (const vws of session.viewers) {
-    clearScreenFrameState(vws)
     // 3.9.9 — لا تُغلق مقبساً انتقل إلى جلسة أحدث (كان إغلاق جلسة قديمة يقتل مُشاهداً حيّاً).
+    // P2 — الفحص قبل المسح: كان `clearScreenFrameState` يُنفَّذ أولاً فيُصفّر حالة إطارات
+    // مُشاهد حيّ في جلسة أحدث، فيُطبَّق delta على أساس مفقود حتى الإطار الكامل التالي.
     if (vws._screenSessionId && vws._screenSessionId !== sessionId) continue
+    clearScreenFrameState(vws)
     try {
       if (vws.readyState === 1) {
         if (errMsg) vws.send(JSON.stringify({ type: 'screen:error', payload: { message: errMsg } }))

@@ -1,0 +1,27 @@
+{
+ "target": "WIN11-VM",
+ "at": "2026-11-01T14:33:37.729Z",
+ "request": 201,
+ "sid": "6df008e7-8f1d-4f7f-8c65-032339322d96",
+ "ticketStatus": 200,
+ "framesBeforeRecord": 0,
+ "recordStartAck": true,
+ "recId": "0e6ffa41-6421-4f75-96ef-8d89b37ac4a5",
+ "wallSeconds": 12.3,
+ "framesTotal": 67,
+ "statusAfterWait": "mp4",
+ "downloadStatus": 200,
+ "downloadedBytes": 202922,
+ "videoCodec": "h264",
+ "audioCodec": "aac",
+ "width": 972,
+ "height": 410,
+ "durationSeconds": 13,
+ "durationDelta": 0.7,
+ "pass": {
+  "h264": true,
+  "aac": true,
+  "durationWithin1s": true
+ },
+ "ok": true
+}

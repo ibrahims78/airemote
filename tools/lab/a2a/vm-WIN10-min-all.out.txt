@@ -1,0 +1,3 @@
+﻿MINIMIZED ok
+visible-window-processes=7
+agent=5
