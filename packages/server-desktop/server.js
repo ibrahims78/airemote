@@ -2381,6 +2381,11 @@ function handleScreenWs(socket, request, user) {
     return
   }
 
+  // 3.9.8 — مقبس مُصادَق بتذكرة جلسة يجب أن تُوسم أوامره بجلسة التذكرة نفسها.
+  // قبل هذا كان الربط يتم عبر الجهاز فقط، فإن وُجدت جلسة أخرى للهدف (من هاتف مثلاً)
+  // تُوسم النقرة بمعرّف تلك الجلسة ويرفضها الوكيل (لا منح لها) — فيبدو التحكم معطلاً.
+  const authSessionId = (user && user.isSessionTicket && user.sessionId) ? String(user.sessionId) : null
+
   // ── Join an existing capture session, or start a new one ─────────────────
   let sessionId = deviceScreenSess.get(deviceId)
   let session   = sessionId ? screenSessions.get(sessionId) : null
@@ -2473,10 +2478,10 @@ function handleScreenWs(socket, request, user) {
 
     switch (msg.type) {
       case 'screen:mouse_event':
-        sendJson(rec.ws, { type: 'server:screen_mouse', payload: { ...payload, sessionId }, timestamp: Date.now() })
+        sendJson(rec.ws, { type: 'server:screen_mouse', payload: { ...payload, sessionId: authSessionId || sessionId }, timestamp: Date.now() })
         break
       case 'screen:key_event':
-        sendJson(rec.ws, { type: 'server:screen_key', payload: { ...payload, sessionId }, timestamp: Date.now() })
+        sendJson(rec.ws, { type: 'server:screen_key', payload: { ...payload, sessionId: authSessionId || sessionId }, timestamp: Date.now() })
         break
       case 'screen:set_quality':
         sendJson(rec.ws, {

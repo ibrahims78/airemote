@@ -1,20 +1,18 @@
 {
- "startedAt": "2026-11-01T09:45:25.451Z",
- "sid": "40234c05-0ef9-4962-912e-ca09e3f1aa96",
- "grantSeen": true,
+ "startedAt": "2026-11-01T10:40:21.847Z",
+ "sid": "baed2313-aff5-4b72-858b-10863bf3b3c7",
+ "grantSeen": false,
  "tap": {
   "w": 1600,
   "h": 720
  },
- "afterTap": [
-  "2026-11-01T09:45:27.978Z grant sid=40234c05-0ef9-4962-912e-ca09e3f1aa96 access=control total=2"
- ],
+ "afterTap": [],
  "hasType": true,
  "padVisible": true,
- "shotPad": 621032,
- "inputValue": "Salam",
- "shotTyped": 143575,
+ "shotPad": 51409,
+ "inputValue": "",
+ "shotTyped": 144357,
  "sendClicked": "yes",
  "keyLines": [],
- "shotFinal": 143916
+ "shotFinal": 140833
 }
