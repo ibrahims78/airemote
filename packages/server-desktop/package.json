@@ -1,6 +1,6 @@
 {
   "name": "airemote-server-desktop",
-  "version": "3.11.1",
+  "version": "3.11.2",
   "description": "AiRemote Server â€” Windows Desktop Application",
   "main": "main.js",
   "author": "AiRemote",

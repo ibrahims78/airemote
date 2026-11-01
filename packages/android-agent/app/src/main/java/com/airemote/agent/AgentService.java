@@ -683,10 +683,19 @@ public class AgentService extends Service {
     private void handleSessionOffer(JSONObject offer) {
         if (offer == null) return;
         if (offer.optString("sessionId", "").isEmpty()) return;
+        // 3.11.2 — كان الاختيار بين حوار أو إشعار: إن كان التطبيق في الخلفية (أو الحالة
+        // الداخلية قديمة) فلا يرى المستخدم شيئاً ويبقى الطلب معلّقاً. الآن نفعل الثلاثة:
+        // إشعار في الدرج دائماً + إظهار التطبيق بالحوار + الحوار نفسه إن كانت النافذة قائمة.
+        notifySessionOffer(offer);
+        try {
+            Intent open = new Intent(this, MainActivity.class);
+            open.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP
+                    | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+            open.putExtra("offerJson", offer.toString());
+            startActivity(open);
+        } catch (Exception ignore) { }
         if (MainActivity.foreground && MainActivity.instance != null) {
             MainActivity.instance.showSessionOffer(offer);
-        } else {
-            notifySessionOffer(offer);
         }
     }
 
@@ -984,6 +993,8 @@ public class AgentService extends Service {
             case "session:close":
             case "session:closed":
             case "session:expired": {
+                // 3.11.2 — أغلق حوار العرض العالق لهذه الجلسة إن كان معروضاً.
+                MainActivity.dismissSessionOffer(payload.optString("sessionId", ""));
                 Intent closed = new Intent(SessionWebViewActivity.ACTION_CLOSED);
                 closed.setPackage(getPackageName());
                 closed.putExtra("sessionId", payload.optString("sessionId", ""));

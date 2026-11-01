@@ -1,32 +1,32 @@
 {
   "product": "AiRemote",
-  "version": "3.11.1",
-  "generatedAt": "2026-11-01T21:21:52.141Z",
+  "version": "3.11.2",
+  "generatedAt": "2026-11-01T22:56:28.028Z",
   "artifacts": [
     {
-      "name": "agent-windows/AiRemote-Agent-Setup-v3.11.1-x64.exe",
-      "size": 76372575,
-      "sha256": "21fb631ec64ddb74508bd5235e441ff3fb7d7d4a450f4e015fd1246bac717ecc"
+      "name": "agent-windows/AiRemote-Agent-Setup-v3.11.2-x64.exe",
+      "size": 76372555,
+      "sha256": "5e05e59add5a43f395e7ff6daed24d60887141df854edefdf8aa6380f0ac72fb"
     },
     {
-      "name": "agent-windows/AiRemote-Agent-v3.11.1-Windows-x64.zip",
-      "size": 103980711,
-      "sha256": "49de382a5742c60cf21180db51029b807421d21025792e07b9a4218b879a409a"
+      "name": "agent-windows/AiRemote-Agent-v3.11.2-Windows-x64.zip",
+      "size": 103980708,
+      "sha256": "8b930096d323037fa262f55af23d02738a78e24d324951070beb67b8f4cc28d7"
     },
     {
-      "name": "android-agent/AiRemote-Agent-Android-v3.11.1.apk",
-      "size": 165047,
-      "sha256": "c02b1742729bcff44ca134c3abd542ec29ccfdfd2149e610c735a93178ab0e05"
+      "name": "android-agent/AiRemote-Agent-Android-v3.11.2.apk",
+      "size": 169143,
+      "sha256": "656139f44876312d6b7bd8e328e167804a5e73deaf53b318780ad717d8a884de"
     },
     {
-      "name": "server-windows/AiRemote-Server-Setup-v3.11.1-x64.exe",
-      "size": 159403935,
-      "sha256": "c291fef2c640e528a4d9a8ca03b3342584a026fbdd35576b01e10dce60c55a94"
+      "name": "server-windows/AiRemote-Server-Setup-v3.11.2-x64.exe",
+      "size": 159403968,
+      "sha256": "00588ca5ed5649bb67114db4255f30a46471d41e929499218430959b6c5cee13"
     },
     {
-      "name": "server-windows/AiRemote-Server-v3.11.1-Windows-x64.zip",
-      "size": 212141997,
-      "sha256": "d405803ba7c3c5a2c804948152b2a4c04822d324e759f4e2903a4881bfa963f8"
+      "name": "server-windows/AiRemote-Server-v3.11.2-Windows-x64.zip",
+      "size": 212141996,
+      "sha256": "ce958f7c8dec64dd76b25f4741656b7465d542e6a1dde55956bda9d7f2faa15d"
     }
   ]
 }

@@ -35,6 +35,23 @@ public class MainActivity extends Activity {
     public static volatile MainActivity instance;
     public static volatile boolean foreground = false;
 
+    /** 3.11.2 — حوار العرض كان يبقى معروضاً بعد انتهاء الجلسة فيحجب العارض (بلاغ مستخدم). */
+    private static volatile AlertDialog offerDialog = null;
+    private static volatile String offerSid = "";
+
+    /** يُغلق حوار العرض؛ sid فارغ = أغلق أي حوار. */
+    public static void dismissSessionOffer(final String sid) {
+        UI.post(() -> {
+            try {
+                if (offerDialog == null) return;
+                if (sid != null && !sid.isEmpty() && !sid.equals(offerSid)) return;
+                offerDialog.dismiss();
+                offerDialog = null;
+                offerSid = "";
+            } catch (Exception ignore) { }
+        });
+    }
+
     /** 3.9.0 — حوار موافقة داخل التطبيق (يُستدعى من AgentService على الخيط الرئيسي). */
     public void showSessionOffer(final JSONObject offer) {
         runOnUiThread(() -> {
@@ -47,13 +64,26 @@ public class MainActivity extends Activity {
                 // P4 — نفس جملة وكيل ويندوز حرفياً: «<الطالب> يطلب <الوصول> — المهلة N ثانية.»
                 long expiresMs = offer.optLong("expiresInMs", 60000L);
                 String secs = String.valueOf(Math.round(expiresMs / 1000.0));
-                new AlertDialog.Builder(this)
+                // حوار واحد فقط: أي عرض جديد يُغلق السابق
+                dismissSessionOffer("");
+                AlertDialog dlg = new AlertDialog.Builder(this)
                         .setTitle("طلب اتصال بجهازك")
                         .setMessage(who + " يطلب " + access + " — المهلة " + secs + " ثانية.")
-                        .setPositiveButton("سماح", (d, w) -> AgentService.sendSessionDecision(sid, true))
-                        .setNegativeButton("رفض", (d, w) -> AgentService.sendSessionDecision(sid, false))
+                        .setPositiveButton("سماح", (d, w) -> {
+                            offerDialog = null; offerSid = "";
+                            AgentService.sendSessionDecision(sid, true);
+                        })
+                        .setNegativeButton("رفض", (d, w) -> {
+                            offerDialog = null; offerSid = "";
+                            AgentService.sendSessionDecision(sid, false);
+                        })
                         .setCancelable(true)
-                        .show();
+                        .create();
+                dlg.show();
+                offerDialog = dlg;
+                offerSid = sid;
+                // إغلاق تلقائي بعد انتهاء المهلة حتى لا يبقى فوق العارض
+                UI.postDelayed(() -> dismissSessionOffer(sid), expiresMs + 2000);
             } catch (Exception ignore) {}
         });
     }
@@ -205,6 +235,15 @@ public class MainActivity extends Activity {
             Prefs.saveControlPassword(this, cpw);
         }
         footerTarget.setText(Prefs.server(this));
+        // 3.11.2 — طلب اتصال وصل والتطبيق في الخلفية: يُفتح بالحوار فوراً.
+        String offerJson = it.getStringExtra("offerJson");
+        if (offerJson != null && !offerJson.isEmpty()) {
+            it.removeExtra("offerJson");
+            try {
+                final JSONObject off = new JSONObject(offerJson);
+                UI.postDelayed(() -> showSessionOffer(off), 500);
+            } catch (Exception ignore) { }
+        }
         if (it.getBooleanExtra("autostart", false)) {
             UI.postDelayed(this::startAgent, 500);
             it.removeExtra("autostart");
