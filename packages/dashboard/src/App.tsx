@@ -17,6 +17,7 @@ const AuditPage           = lazy(() => import('./pages/AuditPage').then(m => ({ 
 const NotificationsPage   = lazy(() => import('./pages/NotificationsPage').then(m => ({ default: m.NotificationsPage })))
 const HelpPage            = lazy(() => import('./pages/HelpPage').then(m => ({ default: m.HelpPage })))
 const ScreenPopoutPage    = lazy(() => import('./pages/ScreenPopoutPage').then(m => ({ default: m.ScreenPopoutPage })))
+const FilesPage            = lazy(() => import('./pages/FilesPage').then(m => ({ default: m.FilesPage })))
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { useEffect, useState } from 'react'
 import { api } from './lib/api'
@@ -97,6 +98,8 @@ export default function App() {
           <>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/view/:deviceId" element={<SessionTicketGate><ScreenPopoutPage /></SessionTicketGate>} />
+            {/* 3.11 — وضع الملفات: تُفتح من الوكيل بتذكرة الجلسة بلا تسجيل دخول. */}
+            <Route path="/files/:deviceId" element={<FilesPage />} />
             <Route path="/" element={<RequireAuth><DashboardLayout /></RequireAuth>}>
               <Route index                             element={<ErrorBoundary><OverviewPage /></ErrorBoundary>} />
               <Route path="devices"                   element={<ErrorBoundary><DevicesPage /></ErrorBoundary>} />

@@ -21,6 +21,8 @@ interface FileEntry {
 interface Props {
   deviceId: string
   deviceName: string
+  /** 3.11 — تذكرة جلسة وكيل↔وكيل (وضع الملفات): تُمرَّر بدل JWT. */
+  rt?: string
 }
 
 type SortKey = 'name' | 'size' | 'modified'
@@ -70,7 +72,10 @@ function authToken(): string {
   } catch { return '' }
 }
 
-export function FileManager({ deviceId }: Props) {
+export function FileManager({ deviceId, rt }: Props) {
+  // كل نداءات الملفات تحمل التذكرة إن وُجدت (الوكيل بلا حساب لوحة).
+  const rq = rt ? `?rt=${encodeURIComponent(rt)}` : ''
+  const rqJoin = (sep: string) => (rt ? `${sep}rt=${encodeURIComponent(rt)}` : '')
   const [path, setPath] = useState('/')
   const [files, setFiles] = useState<FileEntry[]>([])
   const [loading, setLoading] = useState(false)
@@ -102,7 +107,7 @@ export function FileManager({ deviceId }: Props) {
     setLoading(true)
     setError('')
     try {
-      const res = await api.get(`/api/devices/${deviceId}/fs/list`, { params: { path: p }, timeout: 20000 })
+      const res = await api.get(`/api/devices/${deviceId}/fs/list`, { params: rt ? { path: p, rt } : { path: p }, timeout: 20000 })
       setFiles(res.data as FileEntry[])
       setPath(p)
       setQuery('')
@@ -137,7 +142,7 @@ export function FileManager({ deviceId }: Props) {
     setDownloadProgress({ name: entry.name, percent: 0, received: 0, total: entry.size || 0 })
     try {
       const token = authToken()
-      const res = await fetch(`/api/devices/${deviceId}/fs/download?path=${encodeURIComponent(entry.path)}`, {
+      const res = await fetch(`/api/devices/${deviceId}/fs/download?path=${encodeURIComponent(entry.path)}${rqJoin('&')}`, {
         headers: token ? { Authorization: ('Bea' + 'rer ') + token } : {}
       })
       if (!res.ok || !res.body) {
@@ -182,7 +187,7 @@ export function FileManager({ deviceId }: Props) {
     setConfirmDelete(null)
     setDeletingFile(entry.path)
     try {
-      await api.post(`/api/devices/${deviceId}/fs/delete`, { path: entry.path }, { timeout: 20000 })
+      await api.post(`/api/devices/${deviceId}/fs/delete${rq}`, { path: entry.path }, { timeout: 20000 })
       await loadDir(path)
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: string } }; message?: string }
@@ -197,7 +202,7 @@ export function FileManager({ deviceId }: Props) {
     const parent = renamingFile.path.slice(0, renamingFile.path.lastIndexOf('/')) || ''
     const newPath = `${parent}/${renameValue.trim()}`
     try {
-      await api.post(`/api/devices/${deviceId}/fs/rename`, { oldPath: renamingFile.path, newPath }, { timeout: 20000 })
+      await api.post(`/api/devices/${deviceId}/fs/rename${rq}`, { oldPath: renamingFile.path, newPath }, { timeout: 20000 })
       setRenamingFile(null)
       setRenameValue('')
       await loadDir(path)
@@ -213,7 +218,7 @@ export function FileManager({ deviceId }: Props) {
     setError('')
     const destPath = path === '/' ? `/${file.name}` : `${path}/${file.name}`
     try {
-      await api.post(`/api/devices/${deviceId}/fs/upload?path=${encodeURIComponent(destPath)}`, file, {
+      await api.post(`/api/devices/${deviceId}/fs/upload?path=${encodeURIComponent(destPath)}${rqJoin('&')}`, file, {
         headers: { 'Content-Type': 'application/octet-stream' },
         timeout: 600000
       })
@@ -232,7 +237,7 @@ export function FileManager({ deviceId }: Props) {
     if (!mkdirName.trim()) return
     const newDirPath = path === '/' ? `/${mkdirName.trim()}` : `${path}/${mkdirName.trim()}`
     try {
-      await api.post(`/api/devices/${deviceId}/fs/mkdir`, { path: newDirPath }, { timeout: 20000 })
+      await api.post(`/api/devices/${deviceId}/fs/mkdir${rq}`, { path: newDirPath }, { timeout: 20000 })
       setShowMkdir(false)
       setMkdirName('')
       await loadDir(path)

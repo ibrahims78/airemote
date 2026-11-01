@@ -730,7 +730,9 @@ public class AgentService extends Service {
 
     private void openSessionView(JSONObject payload) {
         try {
-            String url = payload.optString("viewUrl", "");
+            // 3.11 — وضع الملفات: نافذة مدير ملفات بدل بثّ الشاشة.
+            String filesUrl = payload.optString("filesUrl", "");
+            String url = filesUrl.isEmpty() ? payload.optString("viewUrl", "") : filesUrl;
             if (url.isEmpty()) return;
             Intent i = new Intent(this, SessionWebViewActivity.class);
             i.putExtra("url", url);

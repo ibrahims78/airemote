@@ -1876,15 +1876,18 @@ async function relayApi (method, path, body) {
 function openSessionView (payload) {
   const sid = String((payload && payload.sessionId) || '')
   const viewUrl = String((payload && payload.viewUrl) || '')
+  // 3.11 — وضع الملفات: نافذة مدير ملفات بدل بثّ الشاشة.
+  const filesUrl = String((payload && payload.filesUrl) || '')
+  const openPath = filesUrl || viewUrl
   const base = serverHttpBase()
-  if (!sid || !viewUrl || !base) return
+  if (!sid || !openPath || !base) return
   closeSessionView(sid)
-  const url = base + (viewUrl.startsWith('/') ? viewUrl : '/' + viewUrl)
+  const url = base + (openPath.startsWith('/') ? openPath : '/' + openPath)
   let v = null
   try {
     v = new BrowserWindow({
       width: 1280, height: 800, backgroundColor: '#0b1220',
-      title: 'AiRemote — session',
+      title: filesUrl ? 'AiRemote — ملفات الجلسة' : 'AiRemote — session',
       webPreferences: { contextIsolation: true, sandbox: true, partition: 'persist:session-' + sid },
     })
     // 3.9.0 — شهادة السيرفر ذاتية التوقيع: TOFU مقيّد بمضيف السيرفر فقط.

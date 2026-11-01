@@ -1,0 +1,31 @@
+{
+ "filesSession": {
+  "sid": "d2dd69e7-7a60-4e46-9faf-5dd74588d4c6",
+  "ticket": "29b0f50942d94e81d6b609e3c2bfeadfc6d4cbb105b48e833d153f2e60ba0881",
+  "access": "files"
+ },
+ "filesList": {
+  "status": 200,
+  "count": 2,
+  "sample": [
+   "C:",
+   "D:"
+  ]
+ },
+ "viewSession": {
+  "sid": "201dbe1d-0230-443e-96eb-c42e67371c5a",
+  "access": "view"
+ },
+ "viewTicketOnFs": {
+  "status": 403,
+  "code": "ticket_required"
+ },
+ "noAuth": {
+  "status": 403
+ },
+ "pass": {
+  "filesTicketOpensList": true,
+  "viewTicketRejected": true,
+  "anonymousRejected": true
+ }
+}

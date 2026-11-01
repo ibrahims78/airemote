@@ -2083,7 +2083,12 @@ function relayDecide(session, accept, reason, decider) {
       session.viewTicket = vt
       relaySendToDevice(session.requester.deviceId, {
         type: 'session:ticket',
-        payload: { sessionId: session.id, viewUrl: vt.viewUrl, ticket: vt.ticket, expiresAt: vt.expiresAt, access: session.access, resumeKey: vt.resumeKey, resumeUrl: vt.viewUrl, keyExpiresAt: vt.keyExpiresAt },
+        payload: {
+          sessionId: session.id, viewUrl: vt.viewUrl, ticket: vt.ticket, expiresAt: vt.expiresAt, access: session.access,
+          resumeKey: vt.resumeKey, resumeUrl: vt.viewUrl, keyExpiresAt: vt.keyExpiresAt,
+          // 3.11 — وضع الملفات: رابط مدير ملفات بدل بثّ الشاشة.
+          filesUrl: session.access === 'files' ? ('/files/' + session.target.deviceId + '?rt=' + vt.ticket) : null,
+        },
       })
     } catch (e) {
       dbLogAudit({ userId: session.requester.userId || '', userEmail: session.requester.email || '', deviceId: session.target.deviceId, action: 'session_view_ticket_failed', details: { sessionId: session.id, error: String(e && e.message || e) }, ipAddress: null })
@@ -4705,16 +4710,31 @@ async function start(config) {
   })
 
   // ── Device FS Relay ───────────────────────────────────────────────────────
+  // 3.11 — وضع «ملفات» في وكيل↔وكيل: مسارات الملفات تقبل تذكرة جلسة (rt) بشرط access=files،
+  // فلا يحتاج الوكيل حساب لوحة. مسار اللوحة (JWT) يبقى كما هو.
+  function fsAuth (req, reply, deviceId) {
+    const auth = String(req.headers.authorization || '')
+    if (auth) {
+      const p = authMiddleware(req, reply); if (!p) return null
+      if (!hasDeviceCapability(p, deviceId, 'files')) { denyCapability(reply, p, deviceId, 'files', req); return null }
+      return { via: 'jwt', principal: p }
+    }
+    const rt = String((req.query && req.query.rt) || '')
+    const r = rt ? sessionViewResolve(rt, { deviceId }) : { ok: false, code: 'ticket_required' }
+    if (!r.ok || !r.session || r.session.access !== 'files') {
+      reply.code(403).send({ error: 'وضع الملفات: تذكرة غير صالحة أو الجلسة ليست بوضع الملفات', code: (r && r.code) || 'ticket_required' })
+      return null
+    }
+    return { via: 'ticket', session: r.session }
+  }
   fastify.get('/api/devices/:id/fs', async (req, reply) => {
-    const p = authMiddleware(req, reply); if (!p) return
-    if (!hasDeviceCapability(p, req.params.id, 'files')) return denyCapability(reply, p, req.params.id, 'files', req)
+    const p = fsAuth(req, reply, req.params.id); if (!p) return
     try { return await agentFsRequest(req.params.id, 'list', { path: req.query?.path || '/' }) }
     catch (e) { return reply.code(502).send({ error: e.message }) }
   })
 
   fastify.get('/api/devices/:id/fs/download', async (req, reply) => {
-    const p = authMiddleware(req, reply); if (!p) return
-    if (!hasDeviceCapability(p, req.params.id, 'files')) return denyCapability(reply, p, req.params.id, 'files', req)
+    const p = fsAuth(req, reply, req.params.id); if (!p) return
     const { path: fsPath } = req.query || {}
     if (!fsPath) return reply.code(400).send({ error: 'path required' })
     const name = String(fsPath).split('/').pop() || 'file'
@@ -4736,8 +4756,7 @@ async function start(config) {
   })
 
   fastify.post('/api/devices/:id/fs/mkdir', async (req, reply) => {
-    const p = authMiddleware(req, reply); if (!p) return
-    if (!hasDeviceCapability(p, req.params.id, 'files')) return denyCapability(reply, p, req.params.id, 'files', req)
+    const p = fsAuth(req, reply, req.params.id); if (!p) return
     const { path: fsPath } = req.body || {}
     if (!fsPath) return reply.code(400).send({ error: 'path required' })
     try { return await agentFsRequest(req.params.id, 'mkdir', { path: fsPath }) }
@@ -4746,15 +4765,13 @@ async function start(config) {
 
   // v3.2.2 — Dashboard FS aliases (list / delete / rename)
   fastify.get('/api/devices/:id/fs/list', async (req, reply) => {
-    const p = authMiddleware(req, reply); if (!p) return
-    if (!hasDeviceCapability(p, req.params.id, 'files')) return denyCapability(reply, p, req.params.id, 'files', req)
+    const p = fsAuth(req, reply, req.params.id); if (!p) return
     try { return await agentFsRequest(req.params.id, 'list', { path: req.query?.path || '/' }) }
     catch (e) { return reply.code(502).send({ error: e.message }) }
   })
 
   fastify.post('/api/devices/:id/fs/delete', async (req, reply) => {
-    const p = authMiddleware(req, reply); if (!p) return
-    if (!hasDeviceCapability(p, req.params.id, 'files')) return denyCapability(reply, p, req.params.id, 'files', req)
+    const p = fsAuth(req, reply, req.params.id); if (!p) return
     const { path: fsPath } = req.body || {}
     if (!fsPath) return reply.code(400).send({ error: 'path required' })
     try { return await agentFsRequest(req.params.id, 'delete', { path: fsPath }) }
@@ -4762,8 +4779,7 @@ async function start(config) {
   })
 
   fastify.post('/api/devices/:id/fs/rename', async (req, reply) => {
-    const p = authMiddleware(req, reply); if (!p) return
-    if (!hasDeviceCapability(p, req.params.id, 'files')) return denyCapability(reply, p, req.params.id, 'files', req)
+    const p = fsAuth(req, reply, req.params.id); if (!p) return
     const { oldPath, newPath } = req.body || {}
     if (!oldPath || !newPath) return reply.code(400).send({ error: 'oldPath and newPath required' })
     try { return await agentFsRequest(req.params.id, 'rename', { path: oldPath, newPath }) }
@@ -4781,8 +4797,7 @@ async function start(config) {
 
   // fs upload (streaming chunks to agent)
   fastify.post('/api/devices/:id/fs/upload', { bodyLimit: 268435456 }, async (req, reply) => {
-    const p = authMiddleware(req, reply); if (!p) return
-    if (!hasDeviceCapability(p, req.params.id, 'files')) return denyCapability(reply, p, req.params.id, 'files', req)
+    const p = fsAuth(req, reply, req.params.id); if (!p) return
     const destPath = req.query?.path
     if (!destPath) return reply.code(400).send({ error: 'path required' })
     const rec = agentSockets.get(req.params.id)
