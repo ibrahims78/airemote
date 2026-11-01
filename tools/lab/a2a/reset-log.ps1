@@ -1,0 +1,1 @@
+Set-Content -Encoding UTF8 C:\Users\admin\clicks.txt 'RESET'
