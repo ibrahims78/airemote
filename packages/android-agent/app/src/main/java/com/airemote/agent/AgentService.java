@@ -712,7 +712,8 @@ public class AgentService extends Service {
                     ? new Notification.Builder(this, "sessions_v1")
                     : new Notification.Builder(this);
             b.setContentTitle("طلب اتصال بجهازك")
-                    .setContentText(who + " يطلب " + access)
+                    // P4 — نفس صياغة الحوار ووكيل ويندوز.
+                    .setContentText(who + " يطلب " + access + " — المهلة 60 ثانية.")
                     .setSmallIcon(android.R.drawable.stat_sys_warning)
                     .setContentIntent(pi)
                     .setAutoCancel(true);

@@ -44,9 +44,12 @@ public class MainActivity extends Activity {
                 String who = req != null ? req.optString("name", "جهاز") : "جهاز";
                 String access = offer.optString("accessLabel", offer.optString("access"));
                 final String sid = offer.optString("sessionId", "");
+                // P4 — نفس جملة وكيل ويندوز حرفياً: «<الطالب> يطلب <الوصول> — المهلة N ثانية.»
+                long expiresMs = offer.optLong("expiresInMs", 60000L);
+                String secs = String.valueOf(Math.round(expiresMs / 1000.0));
                 new AlertDialog.Builder(this)
                         .setTitle("طلب اتصال بجهازك")
-                        .setMessage(who + " يطلب " + access + "\nالمهلة 60 ثانية.")
+                        .setMessage(who + " يطلب " + access + " — المهلة " + secs + " ثانية.")
                         .setPositiveButton("سماح", (d, w) -> AgentService.sendSessionDecision(sid, true))
                         .setNegativeButton("رفض", (d, w) -> AgentService.sendSessionDecision(sid, false))
                         .setCancelable(true)
