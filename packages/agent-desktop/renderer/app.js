@@ -976,8 +976,39 @@ airemote.onInit(data => {
 // ── 3.9.0 — الاتصال بجهاز آخر (طلب + موافقة) ────────────────────────────────
 ;(function initAgentSessionUI () {
   const $id = (id) => document.getElementById(id)
-  const digits = (v) => String(v || '').replace(/\D/g, '')
-  const formatCode = (v) => digits(v).slice(0, 9).replace(/(\d{3})(?=\d)/g, '$1 ')
+  const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
+  // P3 — قائمة منسدلة احترافية: تُبنى من /api/relay/devices عبر IPC، بدل رمز من 9 أرقام.
+  // كل خيار يعرض الاسم والمنصّة وحالة الاتصال، وقيمته معرّف الجهاز الذي يقبله السيرفر.
+  async function loadDevices () {
+    const sel = $id('session-device')
+    if (!sel) return
+    const cur = sel.value
+    sel.disabled = true
+    sel.innerHTML = '<option value="">جارٍ جلب الأجهزة…</option>'
+    let r = null
+    try { r = await window.airemote.relayDevices() } catch (e) { r = { ok: false, error: String((e && e.message) || e) } }
+    if (!r || !r.ok) {
+      sel.innerHTML = '<option value="">تعذّر جلب الأجهزة</option>'
+      sel.disabled = false
+      setState('تعذّر جلب الأجهزة: ' + ((r && (r.error || (r.data && r.data.code))) || 'خطأ'))
+      return
+    }
+    const list = (r.data && (r.data.devices || r.data)) || []
+    const devices = Array.isArray(list) ? list : []
+    if (!devices.length) {
+      sel.innerHTML = '<option value="">لا توجد أجهزة أخرى في حسابك</option>'
+      sel.disabled = false
+      return
+    }
+    sel.innerHTML = '<option value="">— اختر جهازاً —</option>' + devices.map((d) => {
+      const name = String(d.name || d.id || '')
+      const mark = d.online ? '● متصل' : '○ غير متصل'
+      const kind = d.platform === 'android' ? 'أندرويد' : (d.platform === 'windows' ? 'ويندوز' : '')
+      return '<option value="' + esc(d.id) + '">' + esc(name + (kind ? ' · ' + kind : '') + ' — ' + mark) + '</option>'
+    }).join('')
+    if (cur && devices.some((d) => String(d.id) === cur)) sel.value = cur
+    sel.disabled = false
+  }
   let pending = null
   let pendingTimer = null
 
@@ -985,12 +1016,13 @@ airemote.onInit(data => {
   function showPw (show) { const f = $id('session-pw-field'); if (f) f.style.display = show ? '' : 'none' }
 
   async function request () {
-    const targetCode = digits($id('session-code').value)
-    if (targetCode.length !== 9) { setState('أدخل رمزاً من 9 أرقام.'); return }
+    const pick = $id('session-device')
+    const targetDeviceId = pick ? pick.value : ''
+    if (!targetDeviceId) { setState('اختر جهازاً من القائمة أولاً.'); return }
     const access = (document.querySelector('input[name="session-access"]:checked') || {}).value || 'view'
     const password = ($id('session-pw').value || '').trim()
     setState('جارٍ إرسال الطلب…')
-    const r = await window.airemote.relayRequest({ targetCode, access, password: password || undefined })
+    const r = await window.airemote.relayRequest({ targetDeviceId, access, password: password || undefined })
     if (!r || !r.ok) {
       const d = (r && r.data) || {}
       if (d.code === 'password_required') { showPw(true); setState('هذا الجهاز في وضع كلمة المرور.'); return }
@@ -1029,10 +1061,12 @@ airemote.onInit(data => {
   }
 
   function bind () {
-    const code = $id('session-code')
-    if (!code) return
-    code.addEventListener('input', () => { code.value = formatCode(code.value) })
+    const pick = $id('session-device')
+    if (!pick) return
+    const refresh = $id('session-refresh')
+    if (refresh) refresh.addEventListener('click', loadDevices)
     $id('session-request-btn').addEventListener('click', request)
+    loadDevices()
     $id('offer-accept').addEventListener('click', () => decide(true))
     $id('offer-deny').addEventListener('click', () => decide(false))
   }

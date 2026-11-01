@@ -28,6 +28,7 @@ contextBridge.exposeInMainWorld('airemote', {
   onOpenChatSection:  (fn) => ipcRenderer.on('open-chat-section', (_, d) => fn(d)),
   onControlAuthState: (fn) => ipcRenderer.on('control-auth-state', (_, d) => fn(d)),
   // 3.9.0 — agent-to-agent sessions
+  relayDevices:     () => ipcRenderer.invoke('relay-devices'),
   relayRequest:     (payload) => ipcRenderer.invoke('relay-request', payload),
   relayViewTicket:  (sessionId) => ipcRenderer.invoke('relay-view-ticket', sessionId),
   sessionDecision:  (payload) => ipcRenderer.invoke('session-decision', payload),

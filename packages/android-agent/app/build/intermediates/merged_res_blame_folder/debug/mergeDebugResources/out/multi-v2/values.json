@@ -4,7 +4,7 @@
             "outputFile": "com.airemote.agent.app-mergeDebugResources-2:/values/values.xml",
             "map": [
                 {
-                    "source": "D:\\autoclaw projects\\AiRemote\\packages\\android-agent\\app\\src\\main\\res\\values\\strings.xml",
+                    "source": "D:\\autoclaw projects-new\\AiRemote\\packages\\android-agent\\app\\src\\main\\res\\values\\strings.xml",
                     "from": {
                         "startLines": "3,2,4",
                         "startColumns": "4,4,4",

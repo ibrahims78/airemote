@@ -2461,6 +2461,8 @@ ipcMain.handle('ai-delete-conversation', async (_, id) => {
 ipcMain.handle('ai-set-conversation', (_, id) => { aiConvId = String(id || ''); saveAiConv(); return { ok: true } })
 
 // 3.9.0 — واجهة الاتصال بجهاز آخر
+// P3 — قائمة الأجهزة لواجهة الاتصال: نفس نقطة السيرفر بمصادقة الجهاز (بلا كشف الرمز للواجهة).
+ipcMain.handle('relay-devices', async () => relayApi('GET', '/api/relay/devices'))
 ipcMain.handle('relay-request', async (_evt, payload) => {
   const body = Object.assign({}, payload || {})
   if (!body.requesterDeviceId) body.requesterDeviceId = deviceId || ''

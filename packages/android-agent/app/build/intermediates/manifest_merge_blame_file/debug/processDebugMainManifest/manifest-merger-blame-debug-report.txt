@@ -1,181 +1,209 @@
 1<?xml version="1.0" encoding="utf-8"?>
 2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
 3    package="com.airemote.agent"
-4    android:versionCode="8"
-5    android:versionName="3.6.0" >
+4    android:versionCode="37"
+5    android:versionName="3.9.4" >
 6
 7    <uses-sdk
 8        android:minSdkVersion="24"
 9        android:targetSdkVersion="33" />
 10
 11    <uses-permission android:name="android.permission.INTERNET" />
-11-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:4:5-67
-11-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:4:22-64
+11-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:4:5-67
+11-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:4:22-64
 12    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-12-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:5:5-78
-12-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:5:22-75
+12-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:5:5-78
+12-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:5:22-75
 13    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-13-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:6:5-81
-13-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:6:22-78
+13-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:6:5-81
+13-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:6:22-78
 14    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-14-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:7:5-77
-14-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:7:22-74
+14-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:7:5-77
+14-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:7:22-74
 15    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
-15-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:8:5-94
-15-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:8:22-91
+15-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:8:5-94
+15-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:8:22-91
 16    <uses-permission android:name="android.permission.WAKE_LOCK" />
-16-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:9:5-68
-16-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:9:22-65
+16-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:9:5-68
+16-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:9:22-65
 17    <uses-permission android:name="android.permission.WRITE_SETTINGS" />
-17-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:10:5-73
-17-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:10:22-70
+17-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:10:5-73
+17-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:10:22-70
 18    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
-18-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:11:5-76
-18-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:11:22-73
+18-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:11:5-76
+18-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:11:22-73
 19    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
-19-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:12:5-76
-19-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:12:22-73
+19-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:12:5-76
+19-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:12:22-73
 20    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
-20-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:13:5-95
-20-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:13:22-92
+20-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:13:5-95
+20-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:13:22-92
 21    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-21-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:14:5-77
-21-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:14:22-74
+21-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:14:5-77
+21-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:14:22-74
 22    <uses-permission android:name="android.permission.RECORD_AUDIO" />
-22-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:15:5-71
-22-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:15:22-68
+22-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:15:5-71
+22-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:15:22-68
 23    <uses-permission
-23-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:16:5-108
+23-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:16:5-108
 24        android:name="android.permission.WRITE_EXTERNAL_STORAGE"
-24-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:16:22-78
+24-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:16:22-78
 25        android:maxSdkVersion="28" />
-25-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:16:79-105
+25-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:16:79-105
 26    <uses-permission
-26-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:17:5-107
+26-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:17:5-107
 27        android:name="android.permission.READ_EXTERNAL_STORAGE"
-27-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:17:22-77
+27-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:17:22-77
 28        android:maxSdkVersion="32" />
-28-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:17:78-104
+28-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:17:78-104
 29
 30    <application
-30-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:19:5-80:19
+30-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:19:5-95:19
 31        android:allowBackup="false"
-31-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:23:9-36
+31-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:24:9-36
 32        android:debuggable="true"
 33        android:extractNativeLibs="false"
 34        android:label="@string/app_name"
-34-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:20:9-41
-35        android:theme="@android:style/Theme.Material.NoActionBar"
-35-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:21:9-66
-36        android:usesCleartextTraffic="true" >
-36-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:22:9-44
-37        <activity
-37-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:25:9-33:20
-38            android:name="com.airemote.agent.MainActivity"
-38-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:26:13-41
-39            android:exported="true"
-39-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:27:13-36
-40            android:launchMode="singleTop" >
-40-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:28:13-43
-41            <intent-filter>
-41-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:29:13-32:29
-42                <action android:name="android.intent.action.MAIN" />
-42-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:30:17-69
-42-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:30:25-66
-43
-44                <category android:name="android.intent.category.LAUNCHER" />
-44-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:31:17-77
-44-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:31:27-74
-45            </intent-filter>
-46        </activity>
-47        <activity
-47-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:35:9-38:73
-48            android:name="com.airemote.agent.SetupActivity"
-48-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:36:13-42
-49            android:exported="false"
-49-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:37:13-37
-50            android:theme="@android:style/Theme.Material.NoActionBar" />
-50-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:38:13-70
-51        <activity
-51-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:40:9-45:75
-52            android:name="com.airemote.agent.WakeActivity"
-52-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:41:13-41
-53            android:excludeFromRecents="true"
-53-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:43:13-46
-54            android:exported="false"
-54-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:42:13-37
-55            android:launchMode="singleTop"
-55-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:44:13-43
-56            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
-56-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:45:13-72
-57
-58        <receiver
-58-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:47:9-57:20
-59            android:name="com.airemote.agent.AiRemoteAdmin"
-59-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:48:13-42
-60            android:exported="true"
-60-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:50:13-36
-61            android:permission="android.permission.BIND_DEVICE_ADMIN" >
-61-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:49:13-70
-62            <meta-data
-62-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:51:13-53:56
-63                android:name="android.app.device_admin"
-63-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:52:17-56
-64                android:resource="@xml/device_admin" />
-64-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:53:17-53
-65
-66            <intent-filter>
-66-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:54:13-56:29
-67                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
-67-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:55:17-82
-67-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:55:25-79
-68            </intent-filter>
-69        </receiver>
-70
-71        <service
-71-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:59:9-62:40
-72            android:name="com.airemote.agent.AgentService"
-72-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:60:13-41
-73            android:exported="false"
-73-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:62:13-37
-74            android:foregroundServiceType="mediaProjection" />
-74-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:61:13-60
-75        <service
-75-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:64:9-74:19
-76            android:name="com.airemote.agent.AiRemoteA11y"
-76-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:65:13-41
-77            android:exported="true"
-77-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:66:13-36
-78            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" >
-78-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:67:13-79
-79            <intent-filter>
-79-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:68:13-70:29
-80                <action android:name="android.accessibilityservice.AccessibilityService" />
-80-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:69:17-92
-80-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:69:25-89
-81            </intent-filter>
-82
-83            <meta-data
-83-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:71:13-73:56
-84                android:name="android.accessibilityservice"
-84-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:72:17-60
-85                android:resource="@xml/a11y_service" />
-85-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:73:17-53
-86        </service>
-87
-88        <receiver
-88-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:75:9-79:20
-89            android:name="com.airemote.agent.BootReceiver"
-89-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:75:19-47
-90            android:exported="true" >
-90-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:75:48-71
-91            <intent-filter>
-91-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:76:13-78:29
-92                <action android:name="android.intent.action.BOOT_COMPLETED" />
-92-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:77:17-79
-92-->D:\autoclaw projects\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:77:25-76
-93            </intent-filter>
-94        </receiver>
-95    </application>
+34-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:21:9-41
+35        android:networkSecurityConfig="@xml/network_security_config"
+35-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:20:9-69
+36        android:theme="@android:style/Theme.Material.NoActionBar"
+36-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:22:9-66
+37        android:usesCleartextTraffic="true" >
+37-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:23:9-44
+38        <activity
+38-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:26:9-34:20
+39            android:name="com.airemote.agent.MainActivity"
+39-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:27:13-41
+40            android:exported="true"
+40-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:28:13-36
+41            android:launchMode="singleTop" >
+41-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:29:13-43
+42            <intent-filter>
+42-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:30:13-33:29
+43                <action android:name="android.intent.action.MAIN" />
+43-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:31:17-69
+43-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:31:25-66
+44
+45                <category android:name="android.intent.category.LAUNCHER" />
+45-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:32:17-77
+45-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:32:27-74
+46            </intent-filter>
+47        </activity>
+48        <activity
+48-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:36:9-39:73
+49            android:name="com.airemote.agent.SetupActivity"
+49-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:37:13-42
+50            android:exported="false"
+50-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:38:13-37
+51            android:theme="@android:style/Theme.Material.NoActionBar" />
+51-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:39:13-70
+52        <activity
+52-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:41:9-46:75
+53            android:name="com.airemote.agent.WakeActivity"
+53-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:42:13-41
+54            android:excludeFromRecents="true"
+54-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:44:13-46
+55            android:exported="false"
+55-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:43:13-37
+56            android:launchMode="singleTop"
+56-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:45:13-43
+57            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+57-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:46:13-72
+58
+59        <receiver
+59-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:48:9-58:20
+60            android:name="com.airemote.agent.AiRemoteAdmin"
+60-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:49:13-42
+61            android:exported="true"
+61-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:51:13-36
+62            android:permission="android.permission.BIND_DEVICE_ADMIN" >
+62-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:50:13-70
+63            <meta-data
+63-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:52:13-54:56
+64                android:name="android.app.device_admin"
+64-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:53:17-56
+65                android:resource="@xml/device_admin" />
+65-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:54:17-53
+66
+67            <intent-filter>
+67-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:55:13-57:29
+68                <action android:name="android.app.action.DEVICE_ADMIN_ENABLED" />
+68-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:56:17-82
+68-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:56:25-79
+69            </intent-filter>
+70        </receiver>
+71
+72        <service
+72-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:60:9-63:40
+73            android:name="com.airemote.agent.AgentService"
+73-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:61:13-41
+74            android:exported="false"
+74-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:63:13-37
+75            android:foregroundServiceType="mediaProjection" />
+75-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:62:13-60
+76        <service
+76-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:65:9-75:19
+77            android:name="com.airemote.agent.AiRemoteA11y"
+77-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:66:13-41
+78            android:exported="true"
+78-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:67:13-36
+79            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" >
+79-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:68:13-79
+80            <intent-filter>
+80-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:69:13-71:29
+81                <action android:name="android.accessibilityservice.AccessibilityService" />
+81-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:70:17-92
+81-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:70:25-89
+82            </intent-filter>
+83
+84            <meta-data
+84-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:72:13-74:56
+85                android:name="android.accessibilityservice"
+85-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:73:17-60
+86                android:resource="@xml/a11y_service" />
+86-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:74:17-53
+87        </service>
+88
+89        <receiver
+89-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:76:9-80:20
+90            android:name="com.airemote.agent.BootReceiver"
+90-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:76:19-47
+91            android:exported="true" >
+91-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:76:48-71
+92            <intent-filter>
+92-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:77:13-79:29
+93                <action android:name="android.intent.action.BOOT_COMPLETED" />
+93-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:78:17-79
+93-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:78:25-76
+94            </intent-filter>
+95        </receiver>
 96
-97</manifest>
+97        <activity
+97-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:81:9-84:77
+98            android:name="com.airemote.agent.SessionWebViewActivity"
+98-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:82:13-51
+99            android:configChanges="orientation|screenSize|keyboardHidden"
+99-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:84:13-74
+100            android:exported="false" />
+100-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:83:13-37
+101
+102        <receiver
+102-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:86:9-93:20
+103            android:name="com.airemote.agent.SessionActionReceiver"
+103-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:87:13-50
+104            android:exported="false" >
+104-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:88:13-37
+105            <intent-filter>
+105-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:89:13-92:29
+106                <action android:name="com.airemote.agent.SESSION_ACCEPT" />
+106-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:90:17-76
+106-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:90:25-73
+107                <action android:name="com.airemote.agent.SESSION_DENY" />
+107-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:91:17-74
+107-->D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\AndroidManifest.xml:91:25-71
+108            </intent-filter>
+109        </receiver>
+110    </application>
+111
+112</manifest>

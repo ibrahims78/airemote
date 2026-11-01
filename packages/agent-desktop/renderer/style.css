@@ -785,6 +785,35 @@ body {
 .f-fixed input { text-align: center; }
 
 /* ── Checkboxes ────────────────────────────────────────── */
+/* P3 — منتقي الأجهزة: قائمة منسدلة بعرض الحقل مع زر تحديث محاذٍ. */
+.device-picker {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.device-picker select {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 9px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(100,116,139,.35);
+  background: rgba(15,23,42,.65);
+  color: var(--fg, #e2e8f0);
+  font-size: 13px;
+}
+.device-picker select:disabled { opacity: .6; }
+.device-picker .btn-ghost {
+  flex: 0 0 auto;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(100,116,139,.35);
+  background: rgba(30,41,59,.7);
+  color: var(--fg, #e2e8f0);
+  font-size: 12px;
+  cursor: pointer;
+}
+.device-picker .btn-ghost:hover { background: rgba(51,65,85,.85); }
+
 .checks-group {
   display: flex;
   flex-direction: column;

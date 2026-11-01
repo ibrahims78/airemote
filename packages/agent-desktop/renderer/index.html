@@ -340,8 +340,13 @@
       <div class="tab-panel active" id="panel-session" style="border-top:1px solid rgba(100,116,139,.18);margin-top:12px;padding-top:12px">
         <div class="field">
           <label>الاتصال بجهاز آخر</label>
-          <div class="field-hint">رمز الجهاز (9 أرقام) ثم اختر نوع الوصول.</div>
-          <input id="session-code" type="text" inputmode="numeric" maxlength="11" placeholder="123 456 789" dir="ltr" autocomplete="off" spellcheck="false" />
+          <div class="field-hint">اختر جهازاً من أجهزة حسابك، ثم نوع الوصول.</div>
+          <div class="device-picker">
+            <select id="session-device" dir="auto" aria-label="اختيار الجهاز">
+              <option value="">جارٍ جلب الأجهزة…</option>
+            </select>
+            <button id="session-refresh" type="button" class="btn-ghost" title="تحديث قائمة الأجهزة">تحديث</button>
+          </div>
         </div>
         <div class="field">
           <label>نوع الوصول</label>

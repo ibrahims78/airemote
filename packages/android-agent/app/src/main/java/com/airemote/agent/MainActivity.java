@@ -459,8 +459,15 @@ public class MainActivity extends Activity {
     }
 
     // ── 3.9.4: الأجهزة وطلب التحكم (وكيل ↔ وكيل) ─────────────────────────────
-    private LinearLayout devRows;
     private TextView devState;
+    // P3 — قائمة منسدلة واحدة بدل صفوف: اختيار جهاز + مستوى وصول + كلمة مرور عند الحاجة.
+    private android.widget.Spinner devSpinner;
+    private android.widget.ArrayAdapter<String> devAdapter;
+    private final java.util.List<String> devLabels = new java.util.ArrayList<>();
+    private final java.util.List<String> devIds = new java.util.ArrayList<>();
+    private android.widget.RadioGroup devAccess;
+    private android.widget.EditText devPw;
+    private int devPendingSeq = 0;
 
     private String apiBase() {
         try {
@@ -505,15 +512,48 @@ public class MainActivity extends Activity {
             devState.setPadding(0, dp(4), 0, dp(6));
             card.addView(devState);
 
+            devSpinner = new android.widget.Spinner(this);
+            devSpinner.setBackgroundResource(R.drawable.card_bg);
+            devAdapter = new android.widget.ArrayAdapter<>(this, android.R.layout.simple_spinner_item, devLabels);
+            devAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            devSpinner.setAdapter(devAdapter);
+            card.addView(devSpinner);
+
+            devAccess = new android.widget.RadioGroup(this);
+            devAccess.setOrientation(LinearLayout.HORIZONTAL);
+            String[][] opts = {{"view", "عرض فقط"}, {"control", "تحكم كامل"}, {"files", "ملفات"}};
+            for (int i = 0; i < opts.length; i++) {
+                android.widget.RadioButton rb = new android.widget.RadioButton(this);
+                rb.setId(1000 + i);
+                rb.setText(opts[i][1]);
+                rb.setTextSize(12);
+                rb.setTextColor(0xFFE2E8F0);
+                rb.setTag(opts[i][0]);
+                devAccess.addView(rb);
+                if (i == 1) rb.setChecked(true);
+            }
+            card.addView(devAccess);
+
+            devPw = new android.widget.EditText(this);
+            devPw.setHint("كلمة مرور الجهاز (إن لزمت)");
+            devPw.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+            devPw.setTextSize(12);
+            devPw.setVisibility(View.GONE);
+            card.addView(devPw);
+
+            LinearLayout btns = new LinearLayout(this);
+            btns.setOrientation(LinearLayout.HORIZONTAL);
             Button refresh = new Button(this);
-            refresh.setText("تحديث الأجهزة");
+            refresh.setText("تحديث");
             refresh.setAllCaps(false);
             refresh.setOnClickListener(v -> loadDevices());
-            card.addView(refresh);
-
-            devRows = new LinearLayout(this);
-            devRows.setOrientation(LinearLayout.VERTICAL);
-            card.addView(devRows);
+            btns.addView(refresh);
+            Button send = new Button(this);
+            send.setText("طلب الاتصال");
+            send.setAllCaps(false);
+            send.setOnClickListener(v -> sendRequest());
+            btns.addView(send);
+            card.addView(btns);
 
             root.addView(card, 0);
         } catch (Exception ignore) { }
@@ -527,7 +567,9 @@ public class MainActivity extends Activity {
             return;
         }
         if (devState != null) devState.setText("جارٍ التحميل…");
-        if (devRows != null) devRows.removeAllViews();
+        devLabels.clear();
+        devIds.clear();
+        if (devAdapter != null) devAdapter.notifyDataSetChanged();
         new Thread(() -> {
             try {
                 HttpURLConnection c = (HttpURLConnection) new URL(base + "/api/relay/devices").openConnection();
@@ -552,54 +594,53 @@ public class MainActivity extends Activity {
     }
 
     private void renderDevices(JSONArray arr) {
-        if (devRows == null) return;
-        devRows.removeAllViews();
+        devLabels.clear();
+        devIds.clear();
         int n = arr == null ? 0 : arr.length();
-        if (devState != null) devState.setText(n == 0 ? "لا توجد أجهزة أخرى في حسابك." : ("متاح " + n + " جهازاً"));
         for (int i = 0; i < n; i++) {
             JSONObject d = arr.optJSONObject(i);
             if (d == null) continue;
-            final String id = d.optString("id");
-            final String name = d.optString("name", "جهاز");
+            String id = d.optString("id");
+            String name = d.optString("name", "جهاز");
             boolean online = d.optBoolean("online", false);
-            JSONObject acc = d.optJSONObject("access");
-            boolean canControl = acc == null || acc.optBoolean("control", true);
-
-            LinearLayout row = new LinearLayout(this);
-            row.setOrientation(LinearLayout.HORIZONTAL);
-            row.setPadding(0, dp(6), 0, dp(6));
-            row.setGravity(android.view.Gravity.CENTER_VERTICAL);
-
-            TextView tv = new TextView(this);
-            tv.setText(name + (online ? "   ● متصل" : "   ○ غير متصل"));
-            tv.setTextColor(online ? 0xFFE2E8F0 : 0xFF64748B);
-            tv.setTextSize(13);
-            LinearLayout.LayoutParams tlp = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-            tv.setLayoutParams(tlp);
-            row.addView(tv);
-
-            Button b = new Button(this);
-            b.setText("طلب تحكم");
-            b.setAllCaps(false);
-            b.setTextSize(12);
-            b.setEnabled(online && canControl);
-            b.setOnClickListener(v -> requestControl(id, name));
-            row.addView(b);
-
-            devRows.addView(row);
+            String platform = d.optString("platform", "");
+            String kind = "android".equals(platform) ? "أندرويد" : ("windows".equals(platform) ? "ويندوز" : "");
+            devLabels.add(name + (kind.isEmpty() ? "" : " · " + kind) + (online ? "  ● متصل" : "  ○ غير متصل"));
+            devIds.add(id);
+        }
+        if (devAdapter != null) devAdapter.notifyDataSetChanged();
+        if (devState != null) {
+            devState.setText(n == 0
+                    ? "لا توجد أجهزة أخرى في حسابك."
+                    : ("اختر جهازاً ثم نوع الوصول — " + n + " جهازاً"));
         }
     }
 
-    private void requestControl(final String targetId, final String targetName) {
+    private void sendRequest() {
+        int pos = devSpinner == null ? -1 : devSpinner.getSelectedItemPosition();
+        if (pos < 0 || pos >= devIds.size()) { toast("اختر جهازاً أولاً."); return; }
+        String access = "view";
+        try {
+            int sel = devAccess == null ? -1 : devAccess.getCheckedRadioButtonId();
+            android.widget.RadioButton rb = sel >= 0 && devAccess != null ? devAccess.findViewById(sel) : null;
+            if (rb != null && rb.getTag() != null) access = String.valueOf(rb.getTag());
+        } catch (Exception ignore) { }
+        String pw = devPw == null ? "" : devPw.getText().toString().trim();
+        requestControl(devIds.get(pos), devLabels.get(pos), access, pw);
+    }
+
+    private void requestControl(final String targetId, final String targetName, final String access, final String password) {
         final String base = apiBase();
         final String tok = Prefs.token(this);
         if (base == null || tok == null || tok.isEmpty()) { toast("الوكيل غير مهيّأ"); return; }
-        if (devState != null) devState.setText("جارٍ إرسال الطلب إلى " + targetName + "…");
+        // النصوص تطابق وكيل ويندوز حرفياً (P3): نفس الحالات ونفس الترتيب.
+        if (devState != null) devState.setText("جارٍ إرسال الطلب…");
         new Thread(() -> {
             try {
                 JSONObject body = new JSONObject();
                 body.put("targetDeviceId", targetId);
-                body.put("access", "control");
+                body.put("access", access);
+                if (password != null && !password.isEmpty()) body.put("password", password);
                 HttpURLConnection c = (HttpURLConnection) new URL(base + "/api/relay/request").openConnection();
                 c.setRequestMethod("POST");
                 c.setRequestProperty("Content-Type", "application/json");
@@ -617,24 +658,40 @@ public class MainActivity extends Activity {
                 while ((line = r.readLine()) != null) sb.append(line);
                 r.close();
                 String js = sb.toString();
+                String errCode = "";
+                try { errCode = new JSONObject(js).optString("code", ""); } catch (Exception ignore) { }
                 String msg;
+                boolean askPw = false;
                 if (code == 201) {
-                    msg = "تم إرسال الطلب إلى " + targetName + " — بانتظار الموافقة على الجهاز الهدف.";
+                    msg = "بانتظار موافقة الطرف الآخر (60 ثانية)…";
+                } else if (code == 403 && ("password_required".equals(errCode) || errCode.isEmpty())) {
+                    msg = "هذا الجهاز في وضع كلمة المرور.";
+                    askPw = true;
                 } else if (code == 409) {
-                    msg = "يوجد جلسة قائمة على " + targetName + ". أغلقها أولاً.";
+                    msg = "تعذّر الطلب: session_exists";
                 } else if (code == 503) {
-                    msg = "الجهاز الهدف غير متصل الآن.";
+                    msg = "تعذّر الطلب: device_offline";
                 } else if (code == 403) {
-                    msg = "غير مصرح بالتحكم بهذا الجهاز.";
+                    msg = "تعذّر الطلب: forbidden";
                 } else {
-                    String err = "";
-                    try { err = new JSONObject(js).optString("error", ""); } catch (Exception ignore) {}
-                    msg = "تعذر إرسال الطلب (HTTP " + code + ")" + (err.isEmpty() ? "" : " — " + err);
+                    msg = "تعذّر الطلب: " + (errCode.isEmpty() ? ("HTTP " + code) : errCode);
                 }
                 final String out = msg;
-                UI.post(() -> { if (devState != null) devState.setText(out); });
+                final boolean showPw = askPw;
+                final boolean pendingNow = (code == 201);
+                // P3 — مهلة الطلب 60 ثانية كما في وكيل ويندوز، مع إبطال المؤقّت عند أي نتيجة لاحقة.
+                final int mySeq = ++devPendingSeq;
+                UI.post(() -> {
+                    if (devState != null) devState.setText(out);
+                    if (devPw != null && showPw) devPw.setVisibility(View.VISIBLE);
+                    if (pendingNow) {
+                        UI.postDelayed(() -> {
+                            if (devState != null && devPendingSeq == mySeq) devState.setText("انتهت مهلة الطلب.");
+                        }, 60000);
+                    }
+                });
             } catch (Exception e) {
-                final String msg = "تعذر الاتصال: " + e.getMessage();
+                final String msg = "تعذّر الطلب: " + e.getMessage();
                 UI.post(() -> { if (devState != null) devState.setText(msg); });
             }
         }).start();

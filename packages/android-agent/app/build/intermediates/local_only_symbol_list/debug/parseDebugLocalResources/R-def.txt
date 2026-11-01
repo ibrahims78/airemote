@@ -50,9 +50,13 @@ id tab_chat
 id tab_log
 id tab_status
 id tb_state
+id tv_ver_bottom
+id tv_ver_top
 layout activity_main
+raw airemote_ca
 string a11y_desc
 string app_name
 string notif_channel
 xml a11y_service
 xml device_admin
+xml network_security_config

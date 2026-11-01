@@ -43,7 +43,8 @@
             android:paddingEnd="6dp"
             android:paddingTop="2dp"
             android:paddingBottom="2dp"
-            android:text="v3.6.0"
+            android:id="@+id/tv_ver_top"
+                        android:text="v3.8.1"
             android:textColor="#94A3B8"
             android:textSize="9sp" />
 
@@ -675,7 +676,8 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="v3.6.0 · AiRemote Agent"
+            android:id="@+id/tv_ver_bottom"
+        android:text="v3.8.1 · AiRemote Agent"
             android:textColor="#64748B"
             android:textSize="9sp" />
 
