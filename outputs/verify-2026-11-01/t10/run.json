@@ -1,0 +1,36 @@
+{
+ "startedAt": "2026-11-01T06:27:19.127Z",
+ "baselineRotation": "ROTATION_90",
+ "sessionId": "c97a171e-85dd-440e-8096-d17fc81d7f0f",
+ "acceptedVia": "owner-api",
+ "stateAfterAccept": "active",
+ "viewerOpened": true,
+ "shotViewerBefore": {
+  "bytes": 22619,
+  "w": 1600,
+  "h": 900
+ },
+ "rotationAfter": "ROTATION_0",
+ "orientationLog": [],
+ "orientationLogged": false,
+ "shotViewerAfter": {
+  "bytes": 16004,
+  "w": 1600,
+  "h": 900
+ },
+ "stateAfterRotate": "active",
+ "shotTargetAfter": {
+  "bytes": 199182,
+  "w": 720,
+  "h": 1600
+ },
+ "rotationBack": "ROTATION_0",
+ "orientationLoggedTwice": 0,
+ "shotViewerBack": {
+  "bytes": 16026,
+  "w": 1600,
+  "h": 900
+ },
+ "stateAfterBack": "active",
+ "finishedAt": "2026-11-01T06:27:47.805Z"
+}

@@ -25,7 +25,7 @@ import {
   Monitor, Maximize2, Minimize2, RefreshCw, Wifi, WifiOff, ExternalLink, ArrowLeftRight, PenLine, Eraser, Crosshair, Trash2, Fingerprint,
   AlertTriangle, Loader2, Settings2,
   Clipboard, ClipboardPaste, EyeOff, Eye,
-  Video, Tv2, Mouse, Keyboard, ChevronDown, Undo2, Home, Layers, Circle,
+  Video, Tv2, Mouse, Keyboard, ChevronDown, ChevronUp, Undo2, Home, Layers, Circle,
   Upload, Shield, Zap, CheckCircle2, Pin, PinOff,
   MessageSquare, Send, Download, Activity, X, PlayCircle, Square, Volume2, VolumeX, RotateCw, Sun, Scaling
 } from 'lucide-react'
@@ -170,6 +170,8 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
     } catch { return popout ? 'fill' : 'fit' }
   })
   const [canvasBox,      setCanvasBox]      = useState<{ w: number; h: number } | null>(null)
+  // 3.9.4 — قياس منطقة العرض نفسها، لأن «ملاءمة» تحتاج نسبة أبعاد حقيقية لا شدّاً.
+  const [areaSize,       setAreaSize]       = useState({ w: 0, h: 0 })
   // v3.8.24 - the remote machine's own display modes (Windows), so the desktop can be
   // switched to the shape of this window instead of being cropped or letterboxed.
   const [deviceModes,    setDeviceModes]    = useState<string[]>([])
@@ -288,6 +290,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
   const selectedMonRef     = useRef(selectedMonitor)
   const connectIdRef       = useRef(0)
   const controlsHideRef    = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const cursorTrackRef     = useRef(0)   // 3.9.4 — throttle for the remote-cursor overlay
   const chatEndRef         = useRef<HTMLDivElement>(null)
   const bwBytesRef         = useRef(0)
   const bwTimerRef         = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -1015,6 +1018,19 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
     }
   }, [latency]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // 3.9.4 — قبل هذا كانت الحاوية تُقیَّد بالعرض والارتفاع معاً (max-width/max-height)،
+  // فيُشدّ الإطار إلى نسبة شاشة المُشاهد: صورة ممدودة وإحداثيات لمس تنزلق.
+  useEffect(() => {
+    const el = canvasAreaRef.current
+    if (!el) return
+    const update = () => setAreaSize({ w: el.clientWidth, h: el.clientHeight })
+    update()
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(update) : null
+    if (ro) ro.observe(el)
+    window.addEventListener('resize', update)
+    return () => { if (ro) ro.disconnect(); window.removeEventListener('resize', update) }
+  }, [started, fullscreen, popout, pinned])
+
   // ── Mouse handlers ────────────────────────────────────────────────────────
   const getContentRect = (c: HTMLCanvasElement) => {
     // 3.9.3 — اللوحة تُملأ العنصر (CSS 100%)، فمستطيل العنصر هو المساحة المرسومة بالضبط.
@@ -1095,6 +1111,25 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
     if (g.longPress) { clearTimeout(g.longPress); g.longPress = null }
   }
 
+  // 3.9.4 — بعد انتقال 3.9.3 إلى Pointer Events لم يبقَ من يحدّث المؤشّر المرسوم إلا
+  // معالج الفأرة القديم (الميت)، فتجمد المؤشّر تحت الإصبع. هنا يُحدَّث لكل نوع مؤشّر،
+  // بحدّ 30Hz كي لا يزيد عدد إعادات الرسم أثناء السحب/القرص.
+  const trackPointerCursor = (clientX: number, clientY: number) => {
+    const area = canvasAreaRef.current
+    if (!area) return
+    const now = performance.now()
+    if (now - cursorTrackRef.current < 33) return
+    cursorTrackRef.current = now
+    const r = area.getBoundingClientRect()
+    setCursorPos({ x: clientX - r.left, y: clientY - r.top })
+    const dot = localCursorRef.current
+    if (!dot) return
+    dot.style.transform = `translate(${clientX - r.left}px, ${clientY - r.top}px)`
+    dot.style.opacity = '1'
+    if (cursorIdleRef.current) clearTimeout(cursorIdleRef.current)
+    cursorIdleRef.current = setTimeout(() => { if (dot) dot.style.opacity = '0' }, 1200)
+  }
+
   const sendMouseAt = (type: string, cx: number, cy: number, button = 0, extra?: object) => {
     if (!controlEnabled) return
     const c = canvasRef.current; if (!c) return
@@ -1154,6 +1189,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const g = gestureRef.current
     if (pointersRef.current.has(e.pointerId)) pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
+    trackPointerCursor(e.clientX, e.clientY)
     if (!controlEnabled) return
 
     if (g.twoFinger && pointersRef.current.size >= 2) {
@@ -1641,6 +1677,20 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
       connect(p, selectedMonitor)
     }
   }
+
+  // 3.9.4 — حجم المسرح: «ملاءمة» = احتواء يحفظ النسبة (letterbox)، «ملء» = 100%،
+  // «فعلي» = بكسل 1:1. أي أن الإطار لم يعد يُشدّ إلى نسبة شاشة المُشاهد.
+  const stageSize = (() => {
+    if (!canvasBox) return null
+    if (fitMode === 'actual') return { w: canvasBox.w, h: canvasBox.h }
+    if (!areaSize.w || !areaSize.h) return null
+    // «ملاءمة» = احتواء (letterbox) · «ملء» = تغطية تُقصّ الزائد (crop).
+    // الاثنان يحفظان النسبة؛ الشدّ إلى نسبة الشاشة كان خطأ 3.9.3.
+    const s = fitMode === 'fill'
+      ? Math.max(areaSize.w / canvasBox.w, areaSize.h / canvasBox.h)
+      : Math.min(areaSize.w / canvasBox.w, areaSize.h / canvasBox.h)
+    return { w: Math.max(1, Math.round(canvasBox.w * s)), h: Math.max(1, Math.round(canvasBox.h * s)) }
+  })()
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
@@ -2267,14 +2317,12 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
           className="pointer-events-none absolute left-0 top-0 z-10 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border border-ink/70 bg-primary/80 opacity-0 transition-opacity duration-200 shadow-lg"
           style={{ willChange: 'transform' }}
         />
-        <div className={popout ? 'relative w-full h-full' : 'relative shrink-0'} style={popout ? {
+        <div className="relative shrink-0" style={stageSize ? {
+          width: stageSize.w + 'px',
+          height: stageSize.h + 'px',
+        } : {
           width: '100%',
           height: '100%',
-        } : {
-          width: canvasBox ? canvasBox.w + 'px' : 'auto',
-          height: canvasBox ? canvasBox.h + 'px' : 'auto',
-          maxWidth: fitMode === 'fit' ? '100%' : 'none',
-          maxHeight: fitMode === 'fit' ? '100%' : 'none',
         }}>
         <canvas ref={canvasRef}
           className={clsx(
@@ -2308,6 +2356,20 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
           onDragLeave={() => setDragOver(false)}
           onDrop={handleFileDrop}
         />
+        {/* 3.9.4 — على الأندرويد لا يوجد hover: حين يختفي الشريط لا سبيل لإرجاعه.
+            زر عائم صغير (44px لمس) يبقى ظاهراً فقط عندما تكون الأدوات مخفية. */}
+        {started && !controlsVisible && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); revealControls() }}
+            aria-label={tr('viewer_show_toolbar')}
+            title={tr('viewer_show_toolbar')}
+            className="absolute bottom-3 left-1/2 z-[30] flex -translate-x-1/2 items-center gap-1.5 rounded-full border border-ink/10 bg-surface2/90 px-3.5 py-2 text-[11px] font-medium text-ink shadow-lg backdrop-blur-sm transition-transform active:scale-95"
+          >
+            <ChevronUp size={14} />
+            <span>{tr('viewer_toolbar')}</span>
+          </button>
+        )}
         {viewZoom !== 1 && (
           <button
             type="button"

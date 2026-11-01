@@ -7,6 +7,7 @@ const fs     = require('fs')
 const https  = require('https')
 const crypto = require('crypto')
 const { blockedReason } = require('./lib/safety')
+const { displayPhysicalRect, toAbsolutePoint } = require('./lib/coords')
 const { exec, spawn, execFile } = require('child_process')
 const WebSocket = require('ws')
 
@@ -119,8 +120,11 @@ let screenSessions = new Map()
 let screenSleepBlockerId = null   // sessionId → { fps, quality }
 let psInputProc    = null
 let psInputReady   = false
-let capScreenW     = 1920   // updated from captured frame dimensions (used for abs coords)
+let capScreenW     = 1920   // physical width  of the captured display (absolute-coord space)
 let capScreenH     = 1080
+let capOriginX     = 0      // 3.9.4 — physical origin of that display inside the virtual desktop
+let capOriginY     = 0
+let capDisplayId   = null   // Electron Display.id actually captured (null → fall back to index)
 
 // ─── FPS & Frame Tracking ─────────────────────────────────────────────────
 const sessionFrameCounts  = new Map()   // sessionId → total frames sent
@@ -648,7 +652,8 @@ function handleMsg(msg) {
       if (capWin && !capWin.isDestroyed()) capWin.webContents.send('get-monitors', { sessionId: msg.payload?.sessionId })
       break
     case 'server:screen_set_monitor':
-      updateCapSize(msg.payload?.monitorId)
+      currentMonitorId = Number(msg.payload?.monitorId || 0)   // 3.9.4 — keep capture and size in sync
+      updateCapSize(currentMonitorId)
       if (capWin && !capWin.isDestroyed()) capWin.webContents.send('set-monitor', msg.payload)
       break
     case 'server:screen_set_quality':
@@ -1247,7 +1252,18 @@ function createCaptureWindow() {
   // Electron 21+: allow getUserMedia with desktop source without showing picker
   capWin.webContents.session.setDisplayMediaRequestHandler((_, callback) => {
     desktopCapturer.getSources({ types: ['screen'] }).then(sources => {
-      callback({ video: sources[0], audio: 'loopback' })
+      // 3.9.4 — capture the display the operator selected, not whatever is listed first.
+      // capScreenW/H and the click origin must describe the same screen as the frames.
+      const displays = screen.getAllDisplays()
+      const want = displays[Number(currentMonitorId) || 0] || screen.getPrimaryDisplay()
+      let src = null
+      if (want && want.id != null) {
+        src = sources.find(s => s && s.display_id && String(s.display_id) === String(want.id)) || null
+      }
+      if (!src) src = sources[Number(currentMonitorId) || 0] || sources[0]
+      capDisplayId = src && src.display_id ? src.display_id : null
+      updateCapSize(currentMonitorId)
+      callback({ video: src, audio: 'loopback' })
     }).catch(() => callback({}))
   })
 
@@ -1318,10 +1334,17 @@ function updateCapSize(monitorId) {
   try {
     const displays = screen.getAllDisplays()
     const idx = Number(monitorId || 0)
-    const dsp = displays[idx] || screen.getPrimaryDisplay()
-    const sf  = dsp.scaleFactor || 1
-    capScreenW = Math.round(dsp.size.width  * sf)
-    capScreenH = Math.round(dsp.size.height * sf)
+    // 3.9.4 — prefer the display that was actually captured: the index into
+    // screen.getAllDisplays() is not guaranteed to match desktopCapturer's order.
+    const dsp = (capDisplayId != null && displays.find(d => String(d.id) === String(capDisplayId)))
+             || displays[idx] || screen.getPrimaryDisplay()
+    const dipToScreenRect = typeof screen.dipToScreenRect === 'function'
+      ? screen.dipToScreenRect.bind(screen) : null
+    const rect = displayPhysicalRect(dsp, dipToScreenRect)
+    capOriginX = rect.x
+    capOriginY = rect.y
+    capScreenW = rect.width
+    capScreenH = rect.height
   } catch {}
 }
 
@@ -1544,8 +1567,14 @@ function injectMouse(payload) {
   if (process.platform !== 'win32') return
   // x,y are relative (0.0–1.0) — convert to absolute screen pixels
   const { type, button, deltaY } = payload
-  const xi = Math.round((payload.x || 0) * capScreenW)
-  const yi = Math.round((payload.y || 0) * capScreenH)
+  // 3.9.4 — the fraction belongs to the captured display, so it must be placed at
+  // that display's physical origin; without it every click lands on the primary one.
+  const pt = toAbsolutePoint(payload, { x: capOriginX, y: capOriginY, width: capScreenW, height: capScreenH })
+  const xi = pt.x
+  const yi = pt.y
+  if (process.env.AIREMOTE_INPUT_DEBUG === '1') {
+    try { addLog('info', `[input] ${type} x=${payload.x} y=${payload.y} -> ${xi},${yi} origin=${capOriginX},${capOriginY} size=${capScreenW}x${capScreenH}`) } catch {}
+  }
   const btn = button === 2 ? 'R' : button === 1 ? 'M' : 'L'
 
   if (type === 'move') {

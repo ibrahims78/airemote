@@ -1,0 +1,68 @@
+{
+ "startedAt": "2026-11-01T06:00:10.375Z",
+ "agentVersion": [
+  "Android-Emulator=3.9.4-android/online",
+  "TECNO-KL4=3.9.4-android/online",
+  "WIN10-VM=3.9.1/offline",
+  "WIN11-VM=3.9.1/offline"
+ ],
+ "session": {
+  "id": "2808e669-4aeb-416f-b787-105300471055",
+  "acceptedVia": "dialog",
+  "active": true,
+  "stateAfterAccept": "active",
+  "viewerOpened": true,
+  "topAfterOpen": "com.airemote.agent/.SessionWebViewActivity",
+  "shotViewer": 110541
+ },
+ "t9": {
+  "topWhileBackground": "com.transsion.hilauncher/com.android.quickstep.src.com.android.launcher3.uioverrides.QuickstepLauncher",
+  "backgroundStates": [
+   {
+    "t": 10,
+    "state": "active",
+    "agentAlive": true
+   },
+   {
+    "t": 20,
+    "state": "active",
+    "agentAlive": true
+   },
+   {
+    "t": 30,
+    "state": "active",
+    "agentAlive": true
+   },
+   {
+    "t": 40,
+    "state": "active",
+    "agentAlive": true
+   },
+   {
+    "t": 50,
+    "state": "active",
+    "agentAlive": true
+   },
+   {
+    "t": 60,
+    "state": "active",
+    "agentAlive": true
+   }
+  ],
+  "stayedActive": true,
+  "reopened": true,
+  "topAfterReturn": "com.airemote.agent/.MainActivity",
+  "shotAfterReturn": 154564,
+  "stateAfterReturn": "active"
+ },
+ "t10": {
+  "targetRotated": false,
+  "targetLogLines": [],
+  "shotAfterTargetRotate": 154228,
+  "stateAfterTargetRotate": "active",
+  "viewerRotated": "Physical size: 720x1600",
+  "shotAfterViewerRotate": 97166,
+  "stateAfterViewerRotate": "active"
+ },
+ "finishedAt": "2026-11-01T06:02:23.306Z"
+}

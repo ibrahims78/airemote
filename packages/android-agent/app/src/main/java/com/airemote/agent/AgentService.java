@@ -96,6 +96,9 @@ public class AgentService extends Service {
     private boolean streamDelta = true;
     private int[] curPixels = null, prevPixels = null;
     private int prevFw = 0, prevFh = 0, deltaRun = 0;
+    // v3.9.4 (T10) — the server asks for one full frame when a late viewer joins or the
+    // screen rotates; without this the phone keeps sending deltas the viewer cannot paint.
+    private volatile boolean forceKeyframe = false;
     private long lastFrameMs = 0, perfSkipped = 0;
     // v3.8.4 - low-end phones encode WebP slower than they can stream it; fall back to JPEG.
     private int slowEncodeStreak = 0;
@@ -940,6 +943,14 @@ public class AgentService extends Service {
                 streamDelta = payload.optBoolean("delta", true);
                 prevPixels = null;
                 break;
+            case "server:force_keyframe":
+                // v3.9.4 (T10) — 3.8.x handled this on Windows only, so an Android target
+                // kept streaming deltas to a viewer that had just joined or rotated.
+                forceKeyframe = true;
+                prevPixels = null;
+                deltaRun = 0;
+                android.util.Log.d("AiRemoteAgent", "force_keyframe requested - next frame is whole");
+                break;
             case "server:fs_write_chunk": {
                 final JSONObject chunkPayload = payload;
                 new Thread(() -> handleFsChunk(chunkPayload)).start();
@@ -1780,6 +1791,8 @@ public class AgentService extends Service {
                             // used to kill the capture loop (black screen after rotating).
                             scaleCanvas = null;
                             prevPixels = null; curPixels = null; deltaRun = 0;
+                            forceKeyframe = true;   // v3.9.4 — first frame after a rotation is whole
+                            android.util.Log.d("AiRemoteAgent", "orientation changed " + fullW + "x" + fullH + " - forcing keyframe");
                             MainActivity.log("screen orientation changed: " + fullW + "x" + fullH);
                         } catch (Exception re) {
                             MainActivity.log("screen rotation resize failed: " + re.getMessage());
@@ -1826,7 +1839,7 @@ public class AgentService extends Service {
                                 prevPixels = null;
                             }
                             scaled.getPixels(curPixels, 0, fw, 0, 0, fw, fh);
-                            boolean same = prevPixels != null && prevFw == fw && prevFh == fh;
+                            boolean same = prevPixels != null && prevFw == fw && prevFh == fh && !forceKeyframe;
                             int[] box = (same && deltaRun < DELTA_MAX_RUN)
                                     ? diffRegion(curPixels, prevPixels, fw, fh) : null;
                             if (same && box == null && SystemClock.elapsedRealtime() - lastFrameMs < KEYFRAME_INTERVAL_MS) {
@@ -1895,6 +1908,7 @@ public class AgentService extends Service {
                                     fr.put("quality", streamQuality);
                                     sendMsg("agent:screen_frame", fr);
                                 }
+                                if (!delta) forceKeyframe = false;   // v3.9.4 — served by a full frame
                                 lastFrameMs = SystemClock.elapsedRealtime();
                                 if (streamBinary && streamDelta && curPixels != null) {
                                     if (prevPixels == null || prevPixels.length != curPixels.length) {
