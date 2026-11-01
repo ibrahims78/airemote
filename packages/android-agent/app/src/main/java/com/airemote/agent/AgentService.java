@@ -761,6 +761,10 @@ public class AgentService extends Service {
         String type = msg.optString("type", "");
         JSONObject payload = msg.optJSONObject("payload");
         if (payload == null) payload = new JSONObject();
+        // 3.9.9 — أثر تشخيصي: أي رسالة تصل من السيرفر (لمعرفة أين تنقطع أحداث التحكم).
+        if (!type.startsWith("agent:screen_frame")) {
+            android.util.Log.d("AiRemoteAgent", "recv " + type + " sid=" + payload.optString("sessionId", "-"));
+        }
         switch (type) {
             case "server:registered": {
                 android.util.Log.d("AiRemoteAgent", "server:registered");
@@ -2384,6 +2388,7 @@ public class AgentService extends Service {
             else if (key.equals("Close")) act.put("action", "closeapp");
             else if (key.length() == 1) { act.put("action", "append"); act.put("text", key); }
             else { act.put("action", "key"); act.put("key", key.toLowerCase()); }
+            android.util.Log.d("AiRemoteAgent", "screen_key key=" + key + " action=" + act.optString("action"));
             AiRemoteA11y.runSync(act);
         } catch (Exception ignore) { }
     }

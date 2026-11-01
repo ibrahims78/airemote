@@ -1,0 +1,9 @@
+{
+ "topBefore": "com.android.settings/com.transsion.settings.homepage.TranSettingsHomepageActivity",
+ "request": 201,
+ "sid": "b3c7696b-64a2-47ac-a7d8-682cc15f86e1",
+ "topAfterAccept": "com.airemote.agent/.WakeActivity",
+ "topAfterHome1": "com.airemote.agent/.MainActivity",
+ "topAfterHome2": "com.airemote.agent/.MainActivity",
+ "homeWorked": false
+}

@@ -1,0 +1,156 @@
+{
+ "rect": "{\"l\":0,\"t\":6.5,\"w\":764,\"h\":323,\"dpr\":2,\"iw\":764,\"ih\":336}",
+ "screen": {
+  "w": 1600,
+  "h": 720
+ },
+ "samples": [
+  {
+   "fy": 0.3,
+   "tapPhysical": {
+    "x": 764,
+    "y": 207
+   },
+   "tapCssExpected": {
+    "x": 382,
+    "y": 103
+   },
+   "got": [
+    {
+     "t": "pointerdown",
+     "cx": 346,
+     "cy": 79.5,
+     "tag": "CANVAS"
+    },
+    {
+     "t": "touchstart",
+     "cx": null,
+     "cy": null,
+     "tag": "CANVAS"
+    },
+    {
+     "t": "pointerup",
+     "cx": 346,
+     "cy": 79.5,
+     "tag": "CANVAS"
+    },
+    {
+     "t": "touchend",
+     "cx": null,
+     "cy": null,
+     "tag": "CANVAS"
+    },
+    {
+     "t": "mousedown",
+     "cx": 346,
+     "cy": 79,
+     "tag": "CANVAS"
+    },
+    {
+     "t": "mouseup",
+     "cx": 346,
+     "cy": 79,
+     "tag": "CANVAS"
+    }
+   ]
+  },
+  {
+   "fy": 0.5,
+   "tapPhysical": {
+    "x": 764,
+    "y": 336
+   },
+   "tapCssExpected": {
+    "x": 382,
+    "y": 168
+   },
+   "got": [
+    {
+     "t": "pointerdown",
+     "cx": 346,
+     "cy": 144,
+     "tag": "CANVAS"
+    },
+    {
+     "t": "touchstart",
+     "cx": null,
+     "cy": null,
+     "tag": "CANVAS"
+    },
+    {
+     "t": "pointerup",
+     "cx": 346,
+     "cy": 144,
+     "tag": "CANVAS"
+    },
+    {
+     "t": "touchend",
+     "cx": null,
+     "cy": null,
+     "tag": "CANVAS"
+    },
+    {
+     "t": "mousedown",
+     "cx": 346,
+     "cy": 144,
+     "tag": "CANVAS"
+    },
+    {
+     "t": "mouseup",
+     "cx": 346,
+     "cy": 144,
+     "tag": "CANVAS"
+    }
+   ]
+  },
+  {
+   "fy": 0.7,
+   "tapPhysical": {
+    "x": 764,
+    "y": 465
+   },
+   "tapCssExpected": {
+    "x": 382,
+    "y": 233
+   },
+   "got": [
+    {
+     "t": "pointerdown",
+     "cx": 346,
+     "cy": 208.5,
+     "tag": "CANVAS"
+    },
+    {
+     "t": "touchstart",
+     "cx": null,
+     "cy": null,
+     "tag": "CANVAS"
+    },
+    {
+     "t": "pointerup",
+     "cx": 346,
+     "cy": 208.5,
+     "tag": "CANVAS"
+    },
+    {
+     "t": "touchend",
+     "cx": null,
+     "cy": null,
+     "tag": "CANVAS"
+    },
+    {
+     "t": "mousedown",
+     "cx": 346,
+     "cy": 208,
+     "tag": "CANVAS"
+    },
+    {
+     "t": "mouseup",
+     "cx": 346,
+     "cy": 208,
+     "tag": "CANVAS"
+    }
+   ]
+  }
+ ]
+}
