@@ -1,0 +1,6 @@
+﻿signature OK
+MISMATCH agent-windows/AiRemote-Agent-Setup-v3.9.1-x64.exe
+MISMATCH agent-windows/AiRemote-Agent-v3.9.1-Windows-x64.zip
+MISMATCH server-windows/AiRemote-Server-Setup-v3.9.1-x64.exe
+MISMATCH server-windows/AiRemote-Server-v3.9.1-Windows-x64.zip
+4 artifact(s) mismatch
