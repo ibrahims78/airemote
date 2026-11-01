@@ -29,7 +29,22 @@ const SIZE = Math.max(64, parseInt(arg('size', '2048'), 10))
 const PORT = parseInt(arg('port', '3999'), 10)
 
 let Database
-try { Database = require(require.resolve('better-sqlite3', { paths: [path.join(ROOT, 'packages', 'server-desktop')] })); new Database(':memory:').close() } catch (e) { console.error('SKIP: better-sqlite3 not usable here — ' + e.message); process.exit(0) }
+// T8 — تحمّل اختلاف ABI: better-sqlite3 المبني لـElectron 28 لا يعمل على محرّك أحدث،
+// والاختبارات كلها تستخدم محوّل lib/db-adapter كبديل. نستخدمه هنا أيضاً بدل إسقاط القياس.
+try {
+  Database = require(require.resolve('better-sqlite3', { paths: [path.join(ROOT, 'packages', 'server-desktop')] }))
+  new Database(':memory:').close()
+} catch (e) {
+  try {
+    const { createDatabase } = require(path.join(ROOT, 'packages', 'server-desktop', 'lib', 'db-adapter'))
+    Database = function (p, o) { return createDatabase(p, o) }
+    new Database(':memory:').close()
+    console.error('[db] better-sqlite3 unusable here — using lib/db-adapter fallback')
+  } catch (e2) {
+    console.error('SKIP: no usable sqlite engine — ' + e.message + ' / ' + e2.message)
+    process.exit(0)
+  }
+}
 const fromServer = (m) => require(require.resolve(m, { paths: [path.join(ROOT, 'packages', 'server-desktop')] }))
 const jwt = fromServer('jsonwebtoken')
 const bcrypt = fromServer('bcryptjs')
