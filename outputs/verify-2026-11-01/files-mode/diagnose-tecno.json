@@ -1,0 +1,17 @@
+{
+ "request": 201,
+ "sid": "0bd05b8a-fede-46eb-b2ac-61db19d1db16",
+ "ticketOk": true,
+ "list/": {
+  "status": 200,
+  "body": "[]"
+ },
+ "list/storage/emulated/0": {
+  "status": 200,
+  "body": "[{\"name\":\"Android\",\"path\":\"/storage/emulated/0/Android\",\"isDirectory\":true,\"size\":3452,\"modified\":1735189520311},{\"name\":\"Music\",\"path\":\"/storage/emulated/0/Music\",\"isDirectory\":true,\"size\":3452,\"modified\":1748533032980}"
+ },
+ "list/sdcard": {
+  "status": 200,
+  "body": "[{\"name\":\"Android\",\"path\":\"/sdcard/Android\",\"isDirectory\":true,\"size\":3452,\"modified\":1735189520311},{\"name\":\"Music\",\"path\":\"/sdcard/Music\",\"isDirectory\":true,\"size\":3452,\"modified\":1748533032980},{\"name\":\"Podcasts\",\"pat"
+ }
+}

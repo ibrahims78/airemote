@@ -12,6 +12,9 @@ export function FilesPage() {
   const [params] = useSearchParams()
   const rt = params.get('rt') || ''
   const name = params.get('name') || ''
+  // 3.11.1 — هدف أندرويد لا يعرض `/` (جذر نظام فارغ)؛ نبدأ من /sdcard.
+  const platform = (params.get('platform') || '').toLowerCase()
+  const initialPath = platform === 'android' ? '/sdcard' : '/'
   const short = deviceId ? deviceId.slice(0, 8) : ''
 
   return (
@@ -34,7 +37,7 @@ export function FilesPage() {
             </div>
           </div>
         ) : (
-          <FileManager deviceId={deviceId} deviceName={name || short} rt={rt} />
+          <FileManager deviceId={deviceId} deviceName={name || short} rt={rt} initialPath={initialPath} />
         )}
       </main>
     </div>

@@ -174,6 +174,11 @@ public class MainActivity extends Activity {
 
         log("وكيل الأندرويد جاهز — الإصدار " + com.airemote.agent.BuildConfig.VERSION_NAME);
         if (!AgentService.isRunning() && !Prefs.token(this).isEmpty()) UI.postDelayed(this::startAgent, 900);
+        // 3.12 — كل تحديث/إعادة تشغيل يُسقط إذن التقاط الشاشة (MediaProjection) فلا بثّ ولا تحكّم.
+        // نطلبه تلقائياً مرة عند فتح التطبيق بدل انتظار المستخدم.
+        if (!CaptureHolder.ready()) UI.postDelayed(this::requestCapture, 1600);
+        // 3.12 — خدمة الوصول شرط تنفيذ الإدخال؛ إن كانت معطّلة تُنبّه بوضوح بدل الفشل الصامت.
+        if (AiRemoteA11y.I == null) UI.postDelayed(() -> toast("خدمة الوصول معطّلة — فعّلها من «معالج التهيئة» ليعمل التحكّم"), 2400);
 
         Intent it = getIntent();
         handleExtras(it);

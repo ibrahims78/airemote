@@ -2348,6 +2348,28 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
 
 
       {/* ── Canvas area ── */}
+      {/* 3.12 — شريط تنقّل أندرويد ثابت: كان مستخدمو الهاتف لا يجدون الرجوع/الرئيسية/التطبيقات
+          لأنها داخل شريط الأدوات القابل للإخفاء. هذا الشريط ظاهر دائماً لهدف أندرويد. */}
+      {started && remoteIsAndroid && status === 'streaming' && (
+        <div className="flex items-center justify-center gap-2 px-3 py-1.5 bg-canvas/95 backdrop-blur border-b border-line z-10 shrink-0">
+          <button onClick={() => sendWs({ type: 'screen:key_event', payload: { type: 'press', key: 'Escape' } })}
+            disabled={!controlEnabled} title={tr('viewer_back')} aria-label={tr('viewer_back')}
+            className="flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs text-ink hover:bg-surface2 disabled:opacity-40 transition-colors">
+            <Undo2 size={14} /><span>{tr('viewer_back')}</span>
+          </button>
+          <button onClick={() => sendWs({ type: 'screen:key_event', payload: { type: 'press', key: 'Home' } })}
+            disabled={!controlEnabled} title={tr('viewer_home')} aria-label={tr('viewer_home')}
+            className="flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs text-ink hover:bg-surface2 disabled:opacity-40 transition-colors">
+            <Home size={14} /><span>{tr('viewer_home')}</span>
+          </button>
+          <button onClick={() => sendWs({ type: 'screen:key_event', payload: { type: 'press', key: 'Meta' } })}
+            disabled={!controlEnabled} title={tr('viewer_open_apps')} aria-label={tr('viewer_open_apps')}
+            className="flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-xs text-ink hover:bg-surface2 disabled:opacity-40 transition-colors">
+            <Layers size={14} /><span>{tr('viewer_apps')}</span>
+          </button>
+        </div>
+      )}
+
       {started && <div ref={canvasAreaRef} className={clsx('flex-1 min-h-0 relative flex items-center justify-center bg-canvas', fitMode === 'actual' ? 'overflow-auto' : 'overflow-hidden', popout && pinned && 'pt-14')}
         onClick={() => { setShowSettings(false); setShowMonitors(false); setShowClipboard(false) }}>
 

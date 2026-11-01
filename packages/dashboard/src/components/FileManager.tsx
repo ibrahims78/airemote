@@ -23,6 +23,8 @@ interface Props {
   deviceName: string
   /** 3.11 — تذكرة جلسة وكيل↔وكيل (وضع الملفات): تُمرَّر بدل JWT. */
   rt?: string
+  /** 3.11.1 — مسار البداية: أندرويد يبدأ من /sdcard لأن `/` غير قابل للعرض. */
+  initialPath?: string
 }
 
 type SortKey = 'name' | 'size' | 'modified'
@@ -72,11 +74,11 @@ function authToken(): string {
   } catch { return '' }
 }
 
-export function FileManager({ deviceId, rt }: Props) {
+export function FileManager({ deviceId, rt, initialPath }: Props) {
   // كل نداءات الملفات تحمل التذكرة إن وُجدت (الوكيل بلا حساب لوحة).
   const rq = rt ? `?rt=${encodeURIComponent(rt)}` : ''
   const rqJoin = (sep: string) => (rt ? `${sep}rt=${encodeURIComponent(rt)}` : '')
-  const [path, setPath] = useState('/')
+  const [path, setPath] = useState(initialPath || '/')
   const [files, setFiles] = useState<FileEntry[]>([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')

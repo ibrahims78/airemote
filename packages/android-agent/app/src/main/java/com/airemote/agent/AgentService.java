@@ -731,8 +731,13 @@ public class AgentService extends Service {
     private void openSessionView(JSONObject payload) {
         try {
             // 3.11 — وضع الملفات: نافذة مدير ملفات بدل بثّ الشاشة.
-            String filesUrl = payload.optString("filesUrl", "");
-            String url = filesUrl.isEmpty() ? payload.optString("viewUrl", "") : filesUrl;
+            // 3.11.1-fix — filesUrl يأتي JSON null في جلسات العرض، و optString يحوّله إلى "null"
+            // فيُحمَّل عنوان نسبي وينتهي بـ ERR_CLEARTEXT_NOT_PERMITTED على http://null.
+            String filesUrl = payload.isNull("filesUrl") ? "" : payload.optString("filesUrl", "");
+            if ("null".equals(filesUrl)) filesUrl = "";
+            String viewUrl = payload.isNull("viewUrl") ? "" : payload.optString("viewUrl", "");
+            if ("null".equals(viewUrl)) viewUrl = "";
+            String url = filesUrl.isEmpty() ? viewUrl : filesUrl;
             if (url.isEmpty()) return;
             Intent i = new Intent(this, SessionWebViewActivity.class);
             i.putExtra("url", url);

@@ -2087,7 +2087,18 @@ function relayDecide(session, accept, reason, decider) {
           sessionId: session.id, viewUrl: vt.viewUrl, ticket: vt.ticket, expiresAt: vt.expiresAt, access: session.access,
           resumeKey: vt.resumeKey, resumeUrl: vt.viewUrl, keyExpiresAt: vt.keyExpiresAt,
           // 3.11 — وضع الملفات: رابط مدير ملفات بدل بثّ الشاشة.
-          filesUrl: session.access === 'files' ? ('/files/' + session.target.deviceId + '?rt=' + vt.ticket) : null,
+          // 3.11.1 — نُرفق المنصّة والاسم: هدف أندرويد يبدأ من /sdcard لا من `/`.
+          filesUrl: (function () {
+            if (session.access !== 'files') return null
+            let platform = ''
+            try {
+              const row = db.prepare('SELECT info FROM devices WHERE id=?').get(session.target.deviceId)
+              const inf = row && row.info ? (JSON.parse(row.info) || {}) : {}
+              platform = String(inf.platform || (String(inf.agentVersion || '').toLowerCase().includes('android') ? 'android' : 'windows'))
+            } catch {}
+            return '/files/' + session.target.deviceId + '?rt=' + encodeURIComponent(vt.ticket) +
+              '&platform=' + encodeURIComponent(platform) + '&name=' + encodeURIComponent(session.target.name || '')
+          })(),
         },
       })
     } catch (e) {
