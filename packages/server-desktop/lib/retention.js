@@ -91,6 +91,18 @@ function createRetention(opts) {
       }
       const aud = db.prepare('DELETE FROM audit_log WHERE created_at < ?').run(p.cutoffs.audit)
       deletedAudit = Number(aud.changes) || 0
+      // P1 — deleting audit rows used to leave no trace at all: record the purge itself.
+      // The row is written after the delete, so it always survives its own cutoff.
+      if (deletedRecordings || deletedAudit) {
+        try {
+          if (typeof opts.logAudit === 'function') {
+            opts.logAudit({
+              action: 'retention_purge',
+              details: { recordings: deletedRecordings, auditRows: deletedAudit, missingFiles, cutoffs: p.cutoffs },
+            })
+          }
+        } catch (e) { log.warn('retention', 'audit failed: ' + e.message) }
+      }
       state.lastRunAt = Date.now()
       state.lastDeleted = deletedRecordings
       state.lastSummary = { deletedRecordings, deletedAudit, missingFiles, notice: !!notice }

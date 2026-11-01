@@ -215,6 +215,20 @@ async function main() {
   check('H2. login_success audited', okRows > 0, 'rows=' + okRows)
   check('I. denied screen access audited', deniedRows > 0, 'rows=' + deniedRows)
 
+  // ── L. تغيير الدور يُسجَّل كحدث مخصّص (P1) ──────────────────────────────────
+  // كان يُسجَّل `user_updated` عاماً بلا from/to، فلا يمكن إثبات من رفع من إلى.
+  const rolePatch = await fetch(BASE + '/api/users/' + viewerId, {
+    method: 'PATCH', headers: H(adminTok), body: JSON.stringify({ role: 'manager' })
+  })
+  check('L1. admin can change a role', rolePatch.status === 200, 'status=' + rolePatch.status)
+  const db3 = new Database(dbPath)
+  const roleRow = db3.prepare("SELECT details FROM audit_log WHERE action='user_role_changed' ORDER BY id DESC LIMIT 1").get()
+  db3.close()
+  check('L2. role change leaves a dedicated audit event', !!roleRow, 'no user_role_changed row')
+  let rd = {}
+  try { rd = roleRow ? JSON.parse(roleRow.details || '{}') : {} } catch {}
+  check('L3. the event records from/to', rd.from === 'viewer' && rd.to === 'manager', JSON.stringify(rd))
+
   console.log(failed ? `\n${failed} CHECK(S) FAILED` : '\nALL SECURITY CHECKS PASSED')
   process.exit(failed ? 1 : 0)
 }

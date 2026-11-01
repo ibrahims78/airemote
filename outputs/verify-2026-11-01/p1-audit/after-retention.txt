@@ -1,0 +1,12 @@
+﻿
+[db] better-sqlite3 failed (The module '\\?\D:\autoclaw projects-new\AiRemote\node_modules\.pnpm\better-sqlite3@9.6.0\n
+ode_modules\better-sqlite3\build\Release\better_sqlite3.node'
+[db] better-sqlite3 failed (The module '\\?\D:\autoclaw projects-new\AiRemote\node_modules\.pnpm\better-sqlite3@9.6.0\n
+ode_modules\better-sqlite3\build\Release\better_sqlite3.node'
+[db] better-sqlite3 failed (The module '\\?\D:\autoclaw projects-new\AiRemote\node_modules\.pnpm\better-sqlite3@9.6.0\n
+ode_modules\better-sqlite3\build\Release\better_sqlite3.node'
+PASS: G1. the purge is recorded in the audit log
+PASS: G2. it records how many audit rows went
+ALL RETENTION CHECKS PASSED
+
+

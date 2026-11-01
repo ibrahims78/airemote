@@ -3397,7 +3397,9 @@ async function start(config) {
       log: {
         info: (m) => (serverLogger && serverLogger.info ? serverLogger.info('retention', m) : console.log(m)),
         warn: (m) => (serverLogger && serverLogger.warn ? serverLogger.warn('retention', m) : console.log(m))
-      }
+      },
+      // P1 — الحذف يُسجَّل: كان تنظيف صفوف التدقيق يمرّ بلا أي أثر في السجل.
+      logAudit: (a) => dbLogAudit({ userId: 'system', userEmail: 'retention', action: a.action, details: a.details, ipAddress: null })
     })
     retention.start()
 
@@ -4121,6 +4123,8 @@ async function start(config) {
     }
     if (role && role !== existing.role) {
       try { db.prepare('DELETE FROM refresh_tokens WHERE user_id=?').run(req.params.id) } catch {}
+      // P1 — حدث تدقيق مخصّص: `user_updated` العام لا يُثبت من رُفع إلى أي دور.
+      dbLogAudit({ userId: p.userId, userEmail: p.email, action: 'user_role_changed', details: { targetId: req.params.id, targetEmail: existing.email, from: existing.role, to: role }, ipAddress: req.ip })
     }
     const updates = []; const vals = []
     if (name) { updates.push('name=?'); vals.push(name) }

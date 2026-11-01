@@ -94,7 +94,7 @@ function PasswordModal({ user, onClose }: { user: User; onClose: () => void }) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    if (password.length < 8) { toast.error(t('password_min')); return }
+    if (password.length < 12) { toast.error(t('password_min')); return }
     if (password !== confirm) { toast.error(t('passwords_mismatch')); return }
     setSaving(true)
     try {
@@ -168,7 +168,7 @@ export function UsersPage({ embedded = false }: { embedded?: boolean } = {}) {
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault()
-    if (form.password.length < 8) { toast.error(t('password_min')); return }
+    if (form.password.length < 12) { toast.error(t('password_min')); return }
     setAdding(true)
     try {
       const res = await api.post('/api/users', form)

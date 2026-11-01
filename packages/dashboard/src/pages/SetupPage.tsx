@@ -10,7 +10,7 @@ import { WindowChrome } from '../components/WindowChrome'
 import { Alert, Button, Field, Input } from '../components/ui'
 
 const REQUIREMENTS = [
-  { label: '8 أحرف على الأقل', labelEn: 'At least 8 characters', test: (p: string) => p.length >= 8 },
+  { label: '12 حرفاً على الأقل', labelEn: 'At least 12 characters', test: (p: string) => p.length >= 12 },
   { label: 'حرف كبير (A-Z)', labelEn: 'Uppercase letter (A-Z)', test: (p: string) => /[A-Z]/.test(p) },
   { label: 'رقم (0-9)', labelEn: 'Number (0-9)', test: (p: string) => /[0-9]/.test(p) },
 ]

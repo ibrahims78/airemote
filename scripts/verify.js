@@ -87,6 +87,7 @@ const steps = [
   { name: 'unit: failure alerting (R7)', cmd: electronStep('packages/server-desktop/test/alerts.test.cjs') },
   { name: 'unit: agent command guard (R9)', cmd: NODE + ' packages/agent-desktop/test/safety.test.cjs' },
   { name: 'unit: secret storage (R2)',   cmd: electronStep('packages/server-desktop/test/secrets.test.cjs') },
+  { name: 'policy: password length (P1)', cmd: NODE + ' scripts/check-password-policy.cjs' },
 ]
 
 let failures = 0

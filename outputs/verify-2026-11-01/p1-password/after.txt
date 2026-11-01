@@ -1,0 +1,8 @@
+﻿server: 12 حرفاً (4 موضعاً: 3931, 3954, 4101, 4118)
+OK   packages\dashboard\src\lib\i18n.ts:36 → 12  | password_min: '12 حرفاً على الأقل', passwords_mismatch: 'كلمتا المرور 
+OK   packages\dashboard\src\lib\i18n.ts:496 → 12  | password_min: 'At least 12 characters', passwords_mismatch: 'Passwords
+OK   packages\dashboard\src\pages\SetupPage.tsx:13 → 12  | { label: '12 حرفاً على الأقل', labelEn: 'At least 12 characters', test
+OK   packages\dashboard\src\pages\UsersPage.tsx:97 → 12  | if (password.length < 12) { toast.error(t('password_min')); return }
+OK   packages\dashboard\src\pages\UsersPage.tsx:171 → 12  | if (form.password.length < 12) { toast.error(t('password_min')); retur
+
+PASS 5 موضعاً في اللوحة كلها تطابق حدّ السيرفر (12).

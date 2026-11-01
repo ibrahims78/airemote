@@ -119,6 +119,13 @@ async function main() {
   check('F2. pending audit rows are exposed', /airemote_retention_expired_audit_rows 0/.test(metrics), 'audit')
   check('F3. failures counter is exposed', /airemote_retention_failures_total 0/.test(metrics))
 
+  // G. الحذف نفسه يجب أن يُسجَّل (P1): كان يمسح صفوف التدقيق بلا أي أثر.
+  const purgeAudit = await fetch(BASE + '/api/audit?action=retention_purge', { headers: H }).then((r) => r.json())
+  check('G1. the purge is recorded in the audit log', purgeAudit.total === 1, 'total=' + purgeAudit.total)
+  let gd = {}
+  try { gd = purgeAudit.entries && purgeAudit.entries[0] ? JSON.parse(purgeAudit.entries[0].details || '{}') : {} } catch {}
+  check('G2. it records how many audit rows went', gd.auditRows === 1, JSON.stringify(gd))
+
   await srv.stop()
   console.log(failed === 0 ? 'ALL RETENTION CHECKS PASSED' : failed + ' CHECK(S) FAILED')
   process.exit(failed === 0 ? 0 : 1)
