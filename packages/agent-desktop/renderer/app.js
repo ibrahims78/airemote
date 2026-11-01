@@ -1029,8 +1029,9 @@ airemote.onInit(data => {
     const stLabel = { requested: 'بانتظار الموافقة', active: 'نشطة', suspended: 'معلّقة' }
     const accLabel = { view: 'عرض', control: 'تحكم', files: 'ملفات' }
     box.innerHTML = rows.map((s) => {
-      const who = (s.requester && (s.requester.name || s.requester.email)) || 'جهاز'
-      const to = (s.target && (s.target.name || s.target.deviceId)) || s.targetDeviceId || ''
+      // السيرفر يعيد حقولاً مسطّحة (requesterName/targetName) لا كائناً متداخلاً.
+      const who = s.requesterName || 'جهاز'
+      const to = s.targetName || s.targetDeviceId || ''
       return '<div class="session-row">' + esc(who + ' ← ' + to) + ' · ' + esc(accLabel[s.access] || s.access || '') + ' · ' + esc(stLabel[s.state] || s.state) + '</div>'
     }).join('')
   }

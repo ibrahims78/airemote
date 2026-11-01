@@ -1,0 +1,1 @@
+﻿{"status":"ok","version":"3.9.1","tls":true,"uptime":1220,"port":3001,"isDesktop":true}

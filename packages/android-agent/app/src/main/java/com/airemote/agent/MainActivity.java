@@ -505,7 +505,7 @@ public class MainActivity extends Activity {
             card.setLayoutParams(lp);
 
             TextView title = new TextView(this);
-            title.setText("الأجهزة — اتصال وكيل بوكيل");
+            title.setText("الأجهزة");
             title.setTextColor(0xFF93C5FD);
             title.setTextSize(13);
             title.setTypeface(null, android.graphics.Typeface.BOLD);
@@ -596,6 +596,7 @@ public class MainActivity extends Activity {
 
             root.addView(sesCard, 1);
             root.addView(card, 0);
+            loadDevices();
             loadSessions();
         } catch (Exception ignore) { }
     }
@@ -675,10 +676,9 @@ public class MainActivity extends Activity {
             if (s == null) continue;
             String state = s.optString("state", "");
             if (!("requested".equals(state) || "active".equals(state) || "suspended".equals(state))) continue;
-            JSONObject rq = s.optJSONObject("requester");
-            JSONObject tg = s.optJSONObject("target");
-            String who = rq == null ? "جهاز" : rq.optString("name", rq.optString("email", "جهاز"));
-            String to = tg == null ? s.optString("targetDeviceId", "") : tg.optString("name", tg.optString("deviceId", ""));
+            // السيرفر يعيد حقولاً مسطّحة (requesterName/targetName) لا كائناً متداخلاً.
+            String who = s.optString("requesterName", "جهاز");
+            String to = s.optString("targetName", s.optString("targetDeviceId", ""));
             String acc = s.optString("access", "");
             String accLabel = "view".equals(acc) ? "عرض" : ("control".equals(acc) ? "تحكم" : ("files".equals(acc) ? "ملفات" : acc));
             String stLabel = "requested".equals(state) ? "بانتظار الموافقة" : ("active".equals(state) ? "نشطة" : "معلّقة");

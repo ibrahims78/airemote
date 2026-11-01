@@ -6333,10 +6333,15 @@ if ($target -eq $null) { 'name-not-found' } else {
   })
 
   fastify.get('/api/relay/sessions', async (req, reply) => {
-    const p = authMiddleware(req, reply); if (!p) return
+    // P4 — الوكلاء يقرأون هذا المسار برمز الجهاز (كحال /api/relay/devices في 3.9.5)؛
+    // كان يرفضهم 401 لأن authMiddleware لا يعرف رموز الأجهزة.
+    const p = relayAuth(req, reply); if (!p) return
     const rows = []
     for (const s of relaySessions.values()) {
-      if (p.role !== 'admin' && s.requester.userId !== p.userId && s.target.ownerId !== p.userId) continue
+      const mine = p.isDevice
+        ? (s.requester.deviceId === p.deviceId || s.target.deviceId === p.deviceId)
+        : (p.role === 'admin' || s.requester.userId === p.userId || s.target.ownerId === p.userId)
+      if (!mine) continue
       rows.push({
         id: s.id, state: s.state, access: s.access,
         requesterDeviceId: s.requester.deviceId, requesterName: s.requester.name,
