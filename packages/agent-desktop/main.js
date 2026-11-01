@@ -2641,6 +2641,20 @@ ipcMain.on('screen-track-ended', () => {
   if (cw.webContents.isLoading()) cw.webContents.once('did-finish-load', doSend); else doSend()
 })
 
+// 3.9.7 — autoStart كان يشغّل الاتصال فقط عند فتح التطبيق، ولا يسجّل التطبيق
+// للبدء مع ويندوز؛ فيبقى الوكيل متوقفاً بعد أي إعادة تشغيل للجهاز (سبب «غير متصل»).
+function applyLoginItem() {
+  if (process.platform !== 'win32') return
+  try {
+    if (!app.isPackaged) return
+    const open = !!config.autoStart
+    app.setLoginItemSettings({ openAtLogin: open, path: process.execPath, args: ['--autostart'] })
+    try { addLog('info', '[autostart] openAtLogin=' + open) } catch {}
+  } catch (e) {
+    try { addLog('warn', '[autostart] ' + (e && e.message)) } catch {}
+  }
+}
+
 // ─── App Lifecycle ─────────────────────────────────────────────────────────
 app.whenReady().then(() => {
   // 3.9.0 — إتاحة الوصول: تُظهر أزرار الحوار لأدوات UIA وقارئات الشاشة.
@@ -2648,8 +2662,10 @@ app.whenReady().then(() => {
   Menu.setApplicationMenu(null)
   createWindow()
   createTray()
+  // 3.9.7 — سجّل البدء مع ويندوز حسب الإعداد (يعمل مرة واحدة لكل تغيير إعداد).
+  applyLoginItem()
   // v3.2.2 — safety: auto-connect shortly after launch when configured
-  setTimeout(() => { try { if (config.autoStart && config.serverUrl && config.token && agentState === 'stopped') startAgent() } catch {} }, 4000)
+  setTimeout(() => { try { applyLoginItem(); if (config.autoStart && config.serverUrl && config.token && agentState === 'stopped') startAgent() } catch {} }, 4000)
   setTimeout(() => { try { if (config.autoStart && config.serverUrl && config.token && agentState === 'stopped') startAgent() } catch {} }, 12000)
   app.on('activate', () => { if (!win || win.isDestroyed()) createWindow() })
 })

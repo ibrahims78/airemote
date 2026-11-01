@@ -1,0 +1,4 @@
+﻿BOOT=13:12:19
+AGENT_START=13:13:08
+AGENT_PROCS=5
+RUNKEY=C:\Users\admin\AppData\Local\Programs\AiRemote Agent\AiRemote Agent.exe --autostart
