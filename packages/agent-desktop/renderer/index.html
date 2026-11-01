@@ -339,7 +339,7 @@
   </div><!-- /#upper -->
       <div class="tab-panel active" id="panel-session" style="border-top:1px solid rgba(100,116,139,.18);margin-top:12px;padding-top:12px">
         <div class="field">
-          <label>الاتصال بجهاز آخر</label>
+          <label>الأجهزة</label>
           <div class="field-hint">اختر جهازاً من أجهزة حسابك، ثم نوع الوصول.</div>
           <div class="device-picker">
             <select id="session-device" dir="auto" aria-label="اختيار الجهاز">
@@ -364,6 +364,16 @@
           <button id="session-request-btn" type="button"><span>طلب الاتصال</span></button>
         </div>
         <div class="field-hint" id="session-state" role="status"></div>
+      </div>
+      <div class="tab-panel active" id="panel-sessions" style="border-top:1px solid rgba(100,116,139,.18);margin-top:12px;padding-top:12px">
+        <div class="field">
+          <label>الجلسات</label>
+          <div class="field-hint">جلساتك النشطة على هذا الحساب.</div>
+          <div class="btn-row">
+            <button id="sessions-refresh" type="button" class="btn-ghost">تحديث الجلسات</button>
+          </div>
+          <div id="sessions-list" class="sessions-list"></div>
+        </div>
       </div>
 
   </div><!-- /#tab-status -->

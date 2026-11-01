@@ -1015,6 +1015,26 @@ airemote.onInit(data => {
   function setState (text) { const el = $id('session-state'); if (el) el.textContent = text || '' }
   function showPw (show) { const f = $id('session-pw-field'); if (f) f.style.display = show ? '' : 'none' }
 
+  // P4 — قسم «الجلسات»: نفس الصياغة على المنصّتين (الطالب ← الهدف · الوصول · الحالة).
+  async function loadSessions () {
+    const box = $id('sessions-list')
+    if (!box) return
+    box.innerHTML = '<div class="session-row muted">جارٍ التحميل…</div>'
+    let r = null
+    try { r = await window.airemote.relaySessions() } catch (e) { r = { ok: false, error: String((e && e.message) || e) } }
+    if (!r || !r.ok) { box.innerHTML = '<div class="session-row muted">تعذّر جلب الجلسات</div>'; return }
+    const list = (r.data && (r.data.sessions || r.data)) || []
+    const rows = (Array.isArray(list) ? list : []).filter((s) => ['requested', 'active', 'suspended'].includes(String(s.state || '')))
+    if (!rows.length) { box.innerHTML = '<div class="session-row muted">لا جلسات نشطة</div>'; return }
+    const stLabel = { requested: 'بانتظار الموافقة', active: 'نشطة', suspended: 'معلّقة' }
+    const accLabel = { view: 'عرض', control: 'تحكم', files: 'ملفات' }
+    box.innerHTML = rows.map((s) => {
+      const who = (s.requester && (s.requester.name || s.requester.email)) || 'جهاز'
+      const to = (s.target && (s.target.name || s.target.deviceId)) || s.targetDeviceId || ''
+      return '<div class="session-row">' + esc(who + ' ← ' + to) + ' · ' + esc(accLabel[s.access] || s.access || '') + ' · ' + esc(stLabel[s.state] || s.state) + '</div>'
+    }).join('')
+  }
+
   async function request () {
     const pick = $id('session-device')
     const targetDeviceId = pick ? pick.value : ''
@@ -1065,8 +1085,11 @@ airemote.onInit(data => {
     if (!pick) return
     const refresh = $id('session-refresh')
     if (refresh) refresh.addEventListener('click', loadDevices)
+    const sref = $id('sessions-refresh')
+    if (sref) sref.addEventListener('click', loadSessions)
     $id('session-request-btn').addEventListener('click', request)
     loadDevices()
+    loadSessions()
     $id('offer-accept').addEventListener('click', () => decide(true))
     $id('offer-deny').addEventListener('click', () => decide(false))
   }

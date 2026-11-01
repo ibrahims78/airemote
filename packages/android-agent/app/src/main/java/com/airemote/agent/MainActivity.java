@@ -468,6 +468,9 @@ public class MainActivity extends Activity {
     private android.widget.RadioGroup devAccess;
     private android.widget.EditText devPw;
     private int devPendingSeq = 0;
+    // P4 — قسم «الجلسات» بنفس مفردات وكيل ويندوز.
+    private LinearLayout sesRows;
+    private TextView sesState;
 
     private String apiBase() {
         try {
@@ -555,7 +558,42 @@ public class MainActivity extends Activity {
             btns.addView(send);
             card.addView(btns);
 
+            LinearLayout sesCard = new LinearLayout(this);
+            sesCard.setOrientation(LinearLayout.VERTICAL);
+            sesCard.setBackgroundResource(R.drawable.card_bg);
+            sesCard.setPadding(dp(12), dp(12), dp(12), dp(12));
+            LinearLayout.LayoutParams slp2 = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            slp2.bottomMargin = dp(8);
+            sesCard.setLayoutParams(slp2);
+
+            TextView sTitle = new TextView(this);
+            sTitle.setText("الجلسات");
+            sTitle.setTextColor(0xFF93C5FD);
+            sTitle.setTextSize(13);
+            sTitle.setTypeface(null, android.graphics.Typeface.BOLD);
+            sesCard.addView(sTitle);
+
+            sesState = new TextView(this);
+            sesState.setText("جارٍ تحميل الجلسات…");
+            sesState.setTextColor(0xFF94A3B8);
+            sesState.setTextSize(12);
+            sesState.setPadding(0, dp(4), 0, dp(6));
+            sesCard.addView(sesState);
+
+            sesRows = new LinearLayout(this);
+            sesRows.setOrientation(LinearLayout.VERTICAL);
+            sesCard.addView(sesRows);
+
+            Button sRefresh = new Button(this);
+            sRefresh.setText("تحديث الجلسات");
+            sRefresh.setAllCaps(false);
+            sRefresh.setOnClickListener(v -> loadSessions());
+            sesCard.addView(sRefresh);
+
+            root.addView(sesCard, 1);
             root.addView(card, 0);
+            loadSessions();
         } catch (Exception ignore) { }
     }
 
@@ -591,6 +629,64 @@ public class MainActivity extends Activity {
                 UI.post(() -> { if (devState != null) devState.setText("تعذر جلب الأجهزة: " + msg); });
             }
         }).start();
+    }
+
+    private void loadSessions() {
+        final String base = apiBase();
+        final String tok = Prefs.token(this);
+        if (base == null || tok == null || tok.isEmpty()) {
+            if (sesState != null) sesState.setText("لم يُهيَّأ الوكيل بعد.");
+            return;
+        }
+        if (sesState != null) sesState.setText("جارٍ تحميل الجلسات…");
+        new Thread(() -> {
+            try {
+                HttpURLConnection c = (HttpURLConnection) new URL(base + "/api/relay/sessions").openConnection();
+                c.setRequestProperty("X-Device-Token", tok);
+                c.setConnectTimeout(8000);
+                c.setReadTimeout(8000);
+                int code = c.getResponseCode();
+                BufferedReader r = new BufferedReader(new InputStreamReader(code >= 400 ? c.getErrorStream() : c.getInputStream(), "UTF-8"));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = r.readLine()) != null) sb.append(line);
+                r.close();
+                if (code != 200) throw new Exception("HTTP " + code);
+                JSONObject j = new JSONObject(sb.toString());
+                final JSONArray arr = j.optJSONArray("sessions");
+                UI.post(() -> renderSessions(arr));
+            } catch (Exception e) {
+                final String m = "تعذّر جلب الجلسات: " + e.getMessage();
+                UI.post(() -> { if (sesState != null) sesState.setText(m); });
+            }
+        }).start();
+    }
+
+    private void renderSessions(JSONArray arr) {
+        if (sesRows == null) return;
+        sesRows.removeAllViews();
+        int n = arr == null ? 0 : arr.length();
+        int shown = 0;
+        for (int i = 0; i < n; i++) {
+            JSONObject s = arr.optJSONObject(i);
+            if (s == null) continue;
+            String state = s.optString("state", "");
+            if (!("requested".equals(state) || "active".equals(state) || "suspended".equals(state))) continue;
+            JSONObject rq = s.optJSONObject("requester");
+            JSONObject tg = s.optJSONObject("target");
+            String who = rq == null ? "جهاز" : rq.optString("name", rq.optString("email", "جهاز"));
+            String to = tg == null ? s.optString("targetDeviceId", "") : tg.optString("name", tg.optString("deviceId", ""));
+            String acc = s.optString("access", "");
+            String accLabel = "view".equals(acc) ? "عرض" : ("control".equals(acc) ? "تحكم" : ("files".equals(acc) ? "ملفات" : acc));
+            String stLabel = "requested".equals(state) ? "بانتظار الموافقة" : ("active".equals(state) ? "نشطة" : "معلّقة");
+            TextView tv = new TextView(this);
+            tv.setText(who + " ← " + to + " · " + accLabel + " · " + stLabel);
+            tv.setTextSize(12);
+            tv.setTextColor(0xFFE2E8F0);
+            sesRows.addView(tv);
+            shown++;
+        }
+        if (sesState != null) sesState.setText(shown == 0 ? "لا جلسات نشطة" : ("جلسات نشطة: " + shown));
     }
 
     private void renderDevices(JSONArray arr) {

@@ -785,6 +785,17 @@ body {
 .f-fixed input { text-align: center; }
 
 /* ── Checkboxes ────────────────────────────────────────── */
+/* P4 — قسم الجلسات: صفوف نصّية هادئة بنفس مفردات أندرويد. */
+.sessions-list { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; }
+.session-row {
+  font-size: 12px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(15,23,42,.45);
+  color: var(--fg, #e2e8f0);
+}
+.session-row.muted { color: #94a3b8; background: transparent; padding: 2px 0; }
+
 /* P3 — منتقي الأجهزة: قائمة منسدلة بعرض الحقل مع زر تحديث محاذٍ. */
 .device-picker {
   display: flex;

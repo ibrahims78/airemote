@@ -2463,6 +2463,8 @@ ipcMain.handle('ai-set-conversation', (_, id) => { aiConvId = String(id || ''); 
 // 3.9.0 — واجهة الاتصال بجهاز آخر
 // P3 — قائمة الأجهزة لواجهة الاتصال: نفس نقطة السيرفر بمصادقة الجهاز (بلا كشف الرمز للواجهة).
 ipcMain.handle('relay-devices', async () => relayApi('GET', '/api/relay/devices'))
+// P4 — قسم «الجلسات»: قائمة جلسات الحساب النشطة لعرضها في واجهة الوكيل.
+ipcMain.handle('relay-sessions', async () => relayApi('GET', '/api/relay/sessions'))
 ipcMain.handle('relay-request', async (_evt, payload) => {
   const body = Object.assign({}, payload || {})
   if (!body.requesterDeviceId) body.requesterDeviceId = deviceId || ''
