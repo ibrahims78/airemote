@@ -1,0 +1,68 @@
+﻿{
+ "cases": [
+  {
+   "access": "view",
+   "requestStatus": 201,
+   "sid": "ae1a5212-3af7-42d2-8b7c-b51558b31da2",
+   "decisionStatus": 200,
+   "stateAfterAccept": "active",
+   "ticketStatus": 200,
+   "frames": 7,
+   "bytes": 17101,
+   "dims": [
+    "480x270",
+    "319x15",
+    "480x15"
+   ],
+   "errors": [],
+   "viewerCount": [
+    1,
+    2
+   ],
+   "stateServerDuringStream": "active",
+   "stateServerAfterClose": "active"
+  },
+  {
+   "access": "files",
+   "requestStatus": 201,
+   "sid": "bfe5f394-f91a-4233-be7a-9ddcb35964a0",
+   "decisionStatus": 200,
+   "stateAfterAccept": "active",
+   "ticketStatus": 200,
+   "frames": 4,
+   "bytes": 4318,
+   "dims": [
+    "480x270",
+    "480x252"
+   ],
+   "errors": [],
+   "viewerCount": [
+    1,
+    2
+   ],
+   "stateServerDuringStream": "active",
+   "stateServerAfterClose": "active"
+  },
+  {
+   "access": "control",
+   "requestStatus": 201,
+   "sid": "b15454a4-576e-4395-8fea-58f29b502d07",
+   "decisionStatus": 200,
+   "stateAfterAccept": "active",
+   "ticketStatus": 200,
+   "frames": 4,
+   "bytes": 4268,
+   "dims": [
+    "480x252"
+   ],
+   "errors": [],
+   "viewerCount": [
+    1,
+    2
+   ],
+   "framesAfterInput": 7,
+   "stateServerDuringStream": "active",
+   "stateServerAfterClose": "active"
+  }
+ ]
+}

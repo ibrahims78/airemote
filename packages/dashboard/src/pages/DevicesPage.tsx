@@ -359,6 +359,19 @@ export function DevicesPage() {
                       <div>
                         <div className="font-medium text-ink">{d.name}</div>
                         <div className="text-xs text-muted font-mono">{d.id.slice(0, 8)}...</div>
+                        {/* P6-fix — اتصال وكيل↔وكيل: الطرف الآخر ونوع الاتصال وحالته */}
+                        {(() => {
+                          const r = (d as unknown as { relay?: { state: string; access: string; direction: string; peerName: string } }).relay
+                          if (!r) return null
+                          const acc = r.access === 'control' ? 'تحكم' : r.access === 'files' ? 'ملفات' : 'عرض'
+                          const st = r.state === 'active' ? 'متصل الآن' : r.state === 'requested' ? 'طلب معلّق' : 'معلّقة'
+                          return (
+                            <div className="mt-1 inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-[11px] text-primary">
+                              <span aria-hidden="true">{r.direction === 'out' ? '↗' : '↙'}</span>
+                              <span>{r.peerName} · {acc} · {st}</span>
+                            </div>
+                          )
+                        })()}
                       </div>
                     </div>
                   </td>

@@ -1004,7 +1004,9 @@ airemote.onInit(data => {
       const name = String(d.name || d.id || '')
       const mark = d.online ? '● متصل' : '○ غير متصل'
       const kind = d.platform === 'android' ? 'أندرويد' : (d.platform === 'windows' ? 'ويندوز' : '')
-      return '<option value="' + esc(d.id) + '">' + esc(name + (kind ? ' · ' + kind : '') + ' — ' + mark) + '</option>'
+      // P5-fix — أظهر أن الجهاز داخل جلسة وكيل↔وكيل الآن.
+      const ses = d.session === 'active' ? ' · في جلسة' : (d.session === 'requested' ? ' · طلب معلّق' : '')
+      return '<option value="' + esc(d.id) + '">' + esc(name + (kind ? ' · ' + kind : '') + ' — ' + mark + ses) + '</option>'
     }).join('')
     if (cur && devices.some((d) => String(d.id) === cur)) sel.value = cur
     sel.disabled = false

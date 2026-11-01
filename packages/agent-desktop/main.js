@@ -1828,17 +1828,46 @@ function serverHttpBase () {
     .replace(/\/ws\/?$/, '')
 }
 
+// P5-fix — كانت relayApi تستخدم fetch الافتراضي فيرفض شهادة السيرفر الذاتية
+// (DEPTH_ZERO_SELF_SIGNED_CERT) بينما اتصال WS يعمل لأنه يستخدم buildWsOptions.
+// صار الـHTTP يتبع نفس سياسة TLS: CA مخصّص أو تثبيت بصمة أو تجاوز مختبري مُعلَن.
+function httpJson (urlStr, method, headers, body) {
+  return new Promise((resolve, reject) => {
+    const u = new URL(urlStr)
+    const mod = u.protocol === 'https:' ? https : require('http')
+    const tls = buildWsOptions(urlStr)
+    const data = body === undefined ? null : Buffer.from(JSON.stringify(body))
+    const opts = {
+      method,
+      hostname: u.hostname,
+      port: u.port || (u.protocol === 'https:' ? 443 : 80),
+      path: u.pathname + u.search,
+      headers: Object.assign({}, headers, data ? { 'Content-Length': data.length } : {}),
+      rejectUnauthorized: tls.rejectUnauthorized,
+    }
+    if (tls.ca) opts.ca = tls.ca
+    if (tls.checkServerIdentity) opts.checkServerIdentity = tls.checkServerIdentity
+    const req = mod.request(opts, (res) => {
+      let buf = ''
+      res.setEncoding('utf8')
+      res.on('data', (c) => { buf += c })
+      res.on('end', () => {
+        let json = {}
+        try { json = buf ? JSON.parse(buf) : {} } catch {}
+        resolve({ ok: res.statusCode >= 200 && res.statusCode < 300, status: res.statusCode, data: json })
+      })
+    })
+    req.on('error', (e) => reject(e))
+    if (data) req.write(data)
+    req.end()
+  })
+}
+
 async function relayApi (method, path, body) {
   const base = serverHttpBase()
   if (!base || !config.token) return { ok: false, error: 'not_configured' }
   try {
-    const res = await fetch(base + path, {
-      method,
-      headers: { 'Content-Type': 'application/json', 'X-Device-Token': config.token },
-      body: body === undefined ? undefined : JSON.stringify(body),
-    })
-    const data = await res.json().catch(() => ({}))
-    return { ok: res.ok, status: res.status, data }
+    return await httpJson(base + path, method, { 'Content-Type': 'application/json', 'X-Device-Token': config.token }, body)
   } catch (e) {
     return { ok: false, error: String((e && e.message) || e) }
   }

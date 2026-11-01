@@ -1,0 +1,22 @@
+{
+ "request": 201,
+ "sid": "145cf73e-eedb-4fbc-bd5e-298548a36f8d",
+ "frames": 0,
+ "deviceSessionWhileStreaming": null,
+ "deviceSessionField": [
+  "id",
+  "name",
+  "platform",
+  "online",
+  "session",
+  "lastSeen",
+  "access"
+ ],
+ "stateAfterViewerClose": "closed",
+ "pass": {
+  "request201": true,
+  "frames": false,
+  "showsActive": false,
+  "closedAfterClose": true
+ }
+}

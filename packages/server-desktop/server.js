@@ -1239,6 +1239,12 @@ function leaveScreenSession(sessionId, socket) {
       try { clipboardStop(s2.deviceId, 'session-ended') } catch {}
       screenSessions.delete(sessionId)
       if (deviceScreenSess.get(s2.deviceId) === sessionId) deviceScreenSess.delete(s2.deviceId)
+      // P5-fix — جلسة الـrelay كانت تبقى «نشطة» للأبد بعد إغلاق البث:
+      // فيرى الطرفان بثّاً قائماً على السيرفر ولا شيء على الجهاز. تُغلق الآن مع جلسة الشاشة.
+      try {
+        const rs = s2.relaySessionId ? relaySessions.get(s2.relaySessionId) : null
+        if (rs) relayCloseSession(rs, 'viewer_closed')
+      } catch {}
     }, 6000)
   } else {
     broadcastViewerCount(session)
@@ -1281,6 +1287,11 @@ function closeScreenSession(sessionId, errMsg) {
   if (deviceScreenSess.get(session.deviceId) === sessionId) deviceScreenSess.delete(session.deviceId)
   screenViewers.delete(session.deviceId)
   lastFullFrameByDevice.delete(session.deviceId)
+  // P5-fix — كما في leaveScreenSession: لا تترك جلسة relay حيّة بلا بث.
+  try {
+    const rs = session.relaySessionId ? relaySessions.get(session.relaySessionId) : null
+    if (rs) relayCloseSession(rs, errMsg ? 'stream_error' : 'stream_closed')
+  } catch {}
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -2448,7 +2459,7 @@ function handleScreenWs(socket, request, user) {
     }
   } else {
     sessionId = uuidv4()
-    session   = { deviceId, viewers: new Set([socket]), startedAt: Date.now(), connectTimer: null, stopTimer: null, userId: (user && user.userId) || null, dbId: null }
+    session   = { deviceId, viewers: new Set([socket]), startedAt: Date.now(), connectTimer: null, stopTimer: null, userId: (user && user.userId) || null, dbId: null, relaySessionId: authSessionId || null }
     try { session.dbId = dbLogSessionStart((user && user.userId) || '', deviceId, 'screen') } catch {}
     screenSessions.set(sessionId, session)
     deviceScreenSess.set(deviceId, sessionId)
@@ -3358,9 +3369,14 @@ let _startedAt = null
 let TLS_ACTIVE   = false
 let TLS_CERT_PATH = null
 
-const AGENT_VERSION = '3.9.1'   // agent artifact version (downloads)
+// P6-fix — كان الرقم مكتوباً بيد هنا، فأعلن السيرفر 3.9.1 بعد بناء 3.10.0
+// (حارس التوحيد كان يفحص الملفات فقط لا هذه الثوابت). صار المصدر package.json.
+function pkgVersion (rel) {
+  try { return String(require(rel).version || '0.0.0') } catch { return '0.0.0' }
+}
+const SERVER_VERSION = pkgVersion('./package.json')      // server build version (/health)
+const AGENT_VERSION = pkgVersion('../agent-desktop/package.json')  // agent artifact version (downloads)
 let serverLogger = null   // set in start(); lets WS handlers write to the app log
-const SERVER_VERSION = '3.9.1'  // server build version (/health)
 
 async function start(config) {
   if (started) return
@@ -4280,6 +4296,21 @@ async function start(config) {
         status: d.status === 'blocked' ? 'blocked' : (online ? 'online' : 'offline'),
         remoteIp: rmClean, tunnelLayer,
         stats: agentSockets.get(d.id)?.stats || null,
+        // P6-fix — البطاقة تُظهر الآن اتصال وكيل↔وكيل: الطرف الآخر ونوع الوصول والحالة.
+        relay: (function () {
+          try {
+            for (const s of relaySessions.values()) {
+              if (s.state !== 'active' && s.state !== 'requested' && s.state !== 'suspended') continue
+              if (s.requester.deviceId === d.id) {
+                return { sessionId: s.id, state: s.state, access: s.access, direction: 'out', peerDeviceId: s.target.deviceId, peerName: s.target.name }
+              }
+              if (s.target.deviceId === d.id) {
+                return { sessionId: s.id, state: s.state, access: s.access, direction: 'in', peerDeviceId: s.requester.deviceId, peerName: s.requester.name }
+              }
+            }
+          } catch {}
+          return null
+        })(),
       }
     })
   })
@@ -6189,6 +6220,16 @@ if ($target -eq $null) { 'name-not-found' } else {
         name: d.name || 'جهاز',
         platform: String(info.platform || info.os || info.agentVersion && (String(info.agentVersion).includes('android') ? 'android' : 'windows') || ''),
         online: agentSockets.has(d.id),
+        // P5-fix — البطاقة كانت لا تُظهر أن الجهاز داخل جلسة وكيل↔وكيل.
+        session: (function () {
+          try {
+            for (const s of relaySessions.values()) {
+              if (s.state === 'active' && (s.requester.deviceId === d.id || s.target.deviceId === d.id)) return 'active'
+              if ((s.state === 'requested' || s.state === 'accepted') && s.target.deviceId === d.id) return 'requested'
+            }
+          } catch {}
+          return null
+        })(),
         lastSeen: d.last_seen || null,
         access: {
           view: info.screenView !== false,

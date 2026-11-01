@@ -704,7 +704,10 @@ public class MainActivity extends Activity {
             boolean online = d.optBoolean("online", false);
             String platform = d.optString("platform", "");
             String kind = "android".equals(platform) ? "أندرويد" : ("windows".equals(platform) ? "ويندوز" : "");
-            devLabels.add(name + (kind.isEmpty() ? "" : " · " + kind) + (online ? "  ● متصل" : "  ○ غير متصل"));
+            // P5-fix — أظهر أن الجهاز داخل جلسة وكيل↔وكيل الآن.
+            String ses = "active".equals(d.optString("session")) ? "  · في جلسة"
+                    : ("requested".equals(d.optString("session")) ? "  · طلب معلّق" : "");
+            devLabels.add(name + (kind.isEmpty() ? "" : " · " + kind) + (online ? "  ● متصل" : "  ○ غير متصل") + ses);
             devIds.add(id);
         }
         if (devAdapter != null) devAdapter.notifyDataSetChanged();

@@ -59,7 +59,17 @@ try {
 } catch (e) { gradleName = 'MISSING' }
 add('android build.gradle versionName', gradleName, gradleCode ? 'versionCode=' + gradleCode : '')
 
-// 4) بيان الإصدار
+// 4) ثوابت مكتوبة بيد داخل السيرفر — كانت 3.9.1 بعد بناء 3.10.0
+let hardcoded = []
+try {
+  const s = fs.readFileSync(path.join(ROOT, 'packages/server-desktop/server.js'), 'utf8')
+  const re = /(SERVER_VERSION|AGENT_VERSION)\s*=\s*['"](\d+\.\d+\.\d+)['"]/g
+  let m
+  while ((m = re.exec(s))) hardcoded.push(m[1] + " = '" + m[2] + "'")
+} catch {}
+add('server.js hardcoded versions', hardcoded.length ? hardcoded.join(', ') : '(لا شيء)', hardcoded.length ? 'يجب أن تُقرأ من package.json' : 'سليم')
+
+// 5) بيان الإصدار
 add('releases/manifest.json', readJsonVersion('releases/manifest.json'))
 
 // 5) السيرفر الحيّ
@@ -88,7 +98,9 @@ async function serverVersion () {
   const problems = []
   if (!canonical) problems.push('ملف VERSION غير موجود — أنشئه بقيمة الإصدار الحالية')
   if (srv == null && !ALLOW_MISSING_SERVER) problems.push('السيرفر غير متاح: لم يُتحقّق من /health')
+  if (hardcoded.length) problems.push('إصدار مكتوب بيد في server.js: ' + hardcoded.join(', '))
   for (const r of rows) {
+    if (r.source === 'server.js hardcoded versions') continue
     if (r.value === 'UNREACHABLE' || r.value === 'MISSING') { problems.push(r.source + ' غير مقروء'); continue }
     if (canonical && r.value !== canonical) problems.push(r.source + ' = ' + r.value + ' ≠ ' + canonical)
   }
