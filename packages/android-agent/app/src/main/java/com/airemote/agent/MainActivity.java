@@ -82,6 +82,8 @@ public class MainActivity extends Activity {
                 dlg.show();
                 offerDialog = dlg;
                 offerSid = sid;
+                // 3.11.2 — الحوار ظاهر الآن: أخفِ إشعار الطلب لتفادي عرضين لنفس الطلب.
+                AgentService.cancelOfferNotification(sid);
                 // إغلاق تلقائي بعد انتهاء المهلة حتى لا يبقى فوق العارض
                 UI.postDelayed(() -> dismissSessionOffer(sid), expiresMs + 2000);
             } catch (Exception ignore) {}

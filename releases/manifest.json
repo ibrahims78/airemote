@@ -1,7 +1,7 @@
 {
   "product": "AiRemote",
   "version": "3.11.2",
-  "generatedAt": "2026-11-01T22:56:28.028Z",
+  "generatedAt": "2026-11-01T23:17:35.156Z",
   "artifacts": [
     {
       "name": "agent-windows/AiRemote-Agent-Setup-v3.11.2-x64.exe",
@@ -16,7 +16,7 @@
     {
       "name": "android-agent/AiRemote-Agent-Android-v3.11.2.apk",
       "size": 169143,
-      "sha256": "656139f44876312d6b7bd8e328e167804a5e73deaf53b318780ad717d8a884de"
+      "sha256": "57b43ddf1bc90ac1720f248e9b00efe948223169430ffd2e757987238ba90613"
     },
     {
       "name": "server-windows/AiRemote-Server-Setup-v3.11.2-x64.exe",

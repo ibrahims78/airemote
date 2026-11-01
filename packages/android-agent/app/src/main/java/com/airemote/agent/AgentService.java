@@ -737,6 +737,16 @@ public class AgentService extends Service {
         } catch (Exception ignore) {}
     }
 
+    /** 3.11.2 — إخفاء إشعار الطلب بعد أن يظهر الحوار (أو بعد البتّ فيه) لمنع العرض المزدوج. */
+    public static void cancelOfferNotification(String sid) {
+        try {
+            AgentService s = INSTANCE;
+            if (s == null || sid == null || sid.isEmpty()) return;
+            NotificationManager nm = (NotificationManager) s.getSystemService(NOTIFICATION_SERVICE);
+            if (nm != null) nm.cancel(sid.hashCode());
+        } catch (Exception ignore) { }
+    }
+
     private void openSessionView(JSONObject payload) {
         try {
             // 3.11 — وضع الملفات: نافذة مدير ملفات بدل بثّ الشاشة.

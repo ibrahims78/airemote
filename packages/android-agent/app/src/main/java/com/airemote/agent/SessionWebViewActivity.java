@@ -1,6 +1,7 @@
 package com.airemote.agent;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -89,9 +90,21 @@ public class SessionWebViewActivity extends Activity {
                     } else if (pinned.equalsIgnoreCase(fp)) {
                         handler.proceed();
                     } else {
-                        handler.cancel();
-                        Toast.makeText(SessionWebViewActivity.this, "شهادة السيرفر تغيّرت — أُوقف الاتصال", Toast.LENGTH_LONG).show();
-                        finish();
+                        // 3.11.2 — كان تغيّر الشهادة (بعد إعادة تثبيت السيرفر) يُغلق النشاط بصمت
+                        // فيبقى العارض فارغاً. الآن: حوار ثقة صريح، والموافقة تُعيد التثبيت.
+                        final SslErrorHandler h = handler;
+                        final String newFp = fp;
+                        runOnUiThread(() -> {
+                            try {
+                                new AlertDialog.Builder(SessionWebViewActivity.this)
+                                        .setTitle("شهادة السيرفر تغيّرت")
+                                        .setMessage("شهادة الخادم الحالية تختلف عن المحفوظة (يحدث بعد إعادة تثبيت السيرفر).\nهل تثق بهذا الخادم وتُكمل؟")
+                                        .setPositiveButton("ثق وأكمل", (d, w) -> { sp.edit().putString("pin", newFp).apply(); h.proceed(); })
+                                        .setNegativeButton("إلغاء", (d, w) -> { h.cancel(); finish(); })
+                                        .setCancelable(false)
+                                        .show();
+                            } catch (Exception e) { h.cancel(); finish(); }
+                        });
                     }
                 } catch (Exception e) {
                     handler.cancel();
