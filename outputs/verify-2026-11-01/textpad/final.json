@@ -1,0 +1,20 @@
+{
+ "startedAt": "2026-11-01T09:45:25.451Z",
+ "sid": "40234c05-0ef9-4962-912e-ca09e3f1aa96",
+ "grantSeen": true,
+ "tap": {
+  "w": 1600,
+  "h": 720
+ },
+ "afterTap": [
+  "2026-11-01T09:45:27.978Z grant sid=40234c05-0ef9-4962-912e-ca09e3f1aa96 access=control total=2"
+ ],
+ "hasType": true,
+ "padVisible": true,
+ "shotPad": 621032,
+ "inputValue": "Salam",
+ "shotTyped": 143575,
+ "sendClicked": "yes",
+ "keyLines": [],
+ "shotFinal": 143916
+}

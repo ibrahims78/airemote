@@ -1,0 +1,43 @@
+{
+ "startedAt": "2026-11-01T09:43:51.132Z",
+ "sid": "369b501c-54f6-49f8-b1f6-ae7dbb0f7a48",
+ "hasTypeButton": true,
+ "clickedType": "clicked",
+ "padVisible": true,
+ "shotPad": 622962,
+ "inputValue": "",
+ "shotTyped": 637503,
+ "sentClick": "clicked",
+ "trace": [
+  "2026-11-01T08:41:00.622Z grant sid=2d3832af-abd5-48a2-8c0c-e7fb0a9bf050 access=control total=1",
+  "2026-11-01T08:57:40.941Z grant sid=5c2ef5de-de27-44e5-bcab-6142334f42e7 access=control total=1",
+  "2026-11-01T08:59:17.482Z grant sid=223568cf-abf9-4abe-9c7f-b2b17c3dc70d access=control total=1",
+  "2026-11-01T09:01:13.182Z grant sid=2af4bded-1ac9-4ebc-89de-caeb235fa200 access=control total=1",
+  "2026-11-01T09:43:54.591Z grant sid=369b501c-54f6-49f8-b1f6-ae7dbb0f7a48 access=control total=2",
+  "2026-11-01T09:44:08.036Z key type=press key=A sid=41a1793b-b4f5-4feb-95f0-d5e8e569dc37 granted=false",
+  "2026-11-01T09:44:08.063Z key type=up key=Shift sid=41a1793b-b4f5-4feb-95f0-d5e8e569dc37 granted=false",
+  "2026-11-01T09:44:08.087Z key type=press key=i sid=41a1793b-b4f5-4feb-95f0-d5e8e569dc37 granted=false",
+  "2026-11-01T09:44:08.091Z key type=down key=Shift sid=41a1793b-b4f5-4feb-95f0-d5e8e569dc37 granted=false",
+  "2026-11-01T09:44:08.094Z key type=press key=R sid=41a1793b-b4f5-4feb-95f0-d5e8e569dc37 granted=false",
+  "2026-11-01T09:44:08.097Z key type=up key=Shift sid=41a1793b-b4f5-4feb-95f0-d5e8e569dc37 granted=false",
+  "2026-11-01T09:44:08.100Z key type=press key=e sid=41a1793b-b4f5-4feb-95f0-d5e8e569dc37 granted=false",
+  "2026-11-01T09:44:08.101Z key type=press key=m sid=41a1793b-b4f5-4feb-95f0-d5e8e569dc37 granted=false",
+  "2026-11-01T09:44:08.102Z key type=press key=o sid=41a1793b-b4f5-4feb-95f0-d5e8e569dc37 granted=false",
+  "2026-11-01T09:44:08.105Z key type=press key=t sid=41a1793b-b4f5-4feb-95f0-d5e8e569dc37 granted=false",
+  "2026-11-01T09:44:08.109Z key type=press key=e sid=41a1793b-b4f5-4feb-95f0-d5e8e569dc37 granted=false"
+ ],
+ "keyLines": [
+  "2026-11-01T09:44:08.036Z key type=press key=A sid=41a1793b-b4f5-4feb-95f0-d5e8e569dc37 granted=false",
+  "2026-11-01T09:44:08.063Z key type=up key=Shift sid=41a1793b-b4f5-4feb-95f0-d5e8e569dc37 granted=false",
+  "2026-11-01T09:44:08.087Z key type=press key=i sid=41a1793b-b4f5-4feb-95f0-d5e8e569dc37 granted=false",
+  "2026-11-01T09:44:08.091Z key type=down key=Shift sid=41a1793b-b4f5-4feb-95f0-d5e8e569dc37 granted=false",
+  "2026-11-01T09:44:08.094Z key type=press key=R sid=41a1793b-b4f5-4feb-95f0-d5e8e569dc37 granted=false",
+  "2026-11-01T09:44:08.097Z key type=up key=Shift sid=41a1793b-b4f5-4feb-95f0-d5e8e569dc37 granted=false",
+  "2026-11-01T09:44:08.100Z key type=press key=e sid=41a1793b-b4f5-4feb-95f0-d5e8e569dc37 granted=false",
+  "2026-11-01T09:44:08.101Z key type=press key=m sid=41a1793b-b4f5-4feb-95f0-d5e8e569dc37 granted=false",
+  "2026-11-01T09:44:08.102Z key type=press key=o sid=41a1793b-b4f5-4feb-95f0-d5e8e569dc37 granted=false",
+  "2026-11-01T09:44:08.105Z key type=press key=t sid=41a1793b-b4f5-4feb-95f0-d5e8e569dc37 granted=false",
+  "2026-11-01T09:44:08.109Z key type=press key=e sid=41a1793b-b4f5-4feb-95f0-d5e8e569dc37 granted=false"
+ ],
+ "shotAfter": 637702
+}

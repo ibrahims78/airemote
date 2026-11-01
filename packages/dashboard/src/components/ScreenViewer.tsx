@@ -25,7 +25,7 @@ import {
   Monitor, Maximize2, Minimize2, RefreshCw, Wifi, WifiOff, ExternalLink, ArrowLeftRight, PenLine, Eraser, Crosshair, Trash2, Fingerprint,
   AlertTriangle, Loader2, Settings2,
   Clipboard, ClipboardPaste, EyeOff, Eye,
-  Video, Tv2, Mouse, Keyboard, ChevronDown, ChevronUp, Undo2, Home, Layers, Circle,
+  Video, Tv2, Mouse, Keyboard, ChevronDown, ChevronUp, Undo2, Home, Layers, Circle, Type,
   Upload, Shield, Zap, CheckCircle2, Pin, PinOff,
   MessageSquare, Send, Download, Activity, X, PlayCircle, Square, Volume2, VolumeX, RotateCw, Sun, Scaling
 } from 'lucide-react'
@@ -189,6 +189,9 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
   const [pwBusy,          setPwBusy]          = useState(false)
   const [pwError,         setPwError]         = useState('')
   const [keyboardMode,    setKeyboardMode]    = useState(false)
+  // 3.9.5 — لوحة نص حر: على الهاتف لا توجد لوحة مفاتيح فعلية لإرسال نص.
+  const [showTextPad,     setShowTextPad]     = useState(false)
+  const [textPadValue,    setTextPadValue]    = useState('')
   const [privacyOn,       setPrivacyOn]       = useState(false)
   const [recording,       setRecording]       = useState(false)
   const [audioEnabled,    setAudioEnabled]    = useState(false)
@@ -559,7 +562,12 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
     setStatus('connecting'); setErrorMsg(''); lastSeqRef.current = -1
     setAnnoStrokes([])
     setViewerCount(1)
-    setControlEnabled(false); setPermissionState('idle')
+    // 3.9.5 — جلسة أُنشئت بـaccess=control: الموافقة تمّت على الهدف، فلا يجوز أن
+    // يُغلق connect() البوابة عند كل اتصال/إعادة اتصال — كان ذلك يُسقط كل نقرة وحرف.
+    const ticketControl = ticketMode && sessionAccess === 'control'
+    setControlEnabled(ticketControl)
+    if (ticketControl) setKeyboardMode(true)
+    setPermissionState('idle')
     setAudioEnabled(false)
     if (permissionTimerRef.current) { clearTimeout(permissionTimerRef.current); permissionTimerRef.current = null }
 
@@ -851,7 +859,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
       }
     }
     ws.onerror = () => { setStatus('error'); setErrorMsg(tr('viewer_ws_failed')) }
-  }, [deviceId, token, ticketMode, sessionTicket, sessionResumeKey, drawFrame, startFpsCounter, startBwCounter, sendWs, startStaleWatchdog])
+  }, [deviceId, token, ticketMode, sessionTicket, sessionResumeKey, sessionAccess, drawFrame, startFpsCounter, startBwCounter, sendWs, startStaleWatchdog])
 
   // ── Mount / unmount ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -1117,6 +1125,16 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
   const clearLongPress = () => {
     const g = gestureRef.current
     if (g.longPress) { clearTimeout(g.longPress); g.longPress = null }
+  }
+
+  // 3.9.5 — إرسال نص حر: كل محرف كضغطة مستقلة (الوكيل يدعم Unicode عبر SendInput،
+  // وأندرويد عبر خدمة الوصول)، ثم Enter اختياري.
+  const sendText = (text: string, submit = false) => {
+    if (!controlEnabled || !text) return
+    for (const ch of Array.from(text)) {
+      sendWs({ type: 'screen:key_event', payload: { type: 'press', key: ch } })
+    }
+    if (submit) sendWs({ type: 'screen:key_event', payload: { type: 'press', key: 'Enter' } })
   }
 
   // 3.9.4 — بعد انتقال 3.9.3 إلى Pointer Events لم يبقَ من يحدّث المؤشّر المرسوم إلا
@@ -2179,6 +2197,14 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
             </button>
           )}
 
+          {/* 3.9.5 — حقل نص حر (مهم على الهاتف حيث لا لوحة مفاتيح) */}
+          {status === 'streaming' && controlEnabled && (
+            <button onClick={() => setShowTextPad(v => !v)} title={tr('viewer_text_pad')}
+              className={clsx('p-1.5 rounded transition-colors', showTextPad ? 'bg-info/20 text-info' : 'text-muted hover:text-ink hover:bg-surface2')}>
+              <Type size={13}/>
+            </button>
+          )}
+
           {/* Quality settings — rendered in a portal so the toolbar never clips it */}
           <div className="relative">
             <button
@@ -2376,6 +2402,34 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
           >
             <ChevronDown size={14} />
           </button>
+        )}
+        {/* 3.9.5 — لوحة النص: شريط رفيع أسفل الصورة، لا يحجب المشاهدة. */}
+        {showTextPad && controlEnabled && (
+          <div className="absolute bottom-2 left-1/2 z-[31] flex w-[min(94%,560px)] -translate-x-1/2 items-center gap-1.5 rounded-xl border border-ink/10 bg-canvas/95 px-2 py-1.5 shadow-lg backdrop-blur-sm">
+            <input
+              value={textPadValue}
+              onChange={e => setTextPadValue(e.target.value)}
+              onKeyDown={e => { e.stopPropagation(); if (e.key === 'Enter') { sendText(textPadValue, true); setTextPadValue('') } }}
+              placeholder={tr('viewer_text_placeholder')}
+              className="min-w-0 flex-1 bg-transparent px-2 py-1 text-xs text-ink outline-none placeholder:text-muted"
+            />
+            <button
+              type="button"
+              onClick={() => { sendText(textPadValue); setTextPadValue('') }}
+              className="rounded-lg bg-info/20 px-2.5 py-1 text-[11px] font-medium text-info active:scale-95"
+            >{tr('viewer_text_send')}</button>
+            <button
+              type="button"
+              onClick={() => { sendText(textPadValue, true); setTextPadValue('') }}
+              className="rounded-lg bg-surface2/70 px-2 py-1 text-[10px] text-ink active:scale-95"
+            >Enter</button>
+            <button
+              type="button"
+              onClick={() => setShowTextPad(false)}
+              aria-label={tr('viewer_close')}
+              className="rounded-md p-1 text-muted hover:text-ink"
+            ><X size={12}/></button>
+          </div>
         )}
         {viewZoom !== 1 && (
           <button

@@ -640,6 +640,8 @@ function handleMsg(msg) {
       break
     }
     case 'server:screen_key':
+      // 3.9.5 — أثر تشخيصي للمفاتيح (نفس بوابة AIRREMOTE_INPUT_DEBUG).
+      if (process.env.AIRREMOTE_INPUT_DEBUG === '1') traceInput(`key type=${msg.payload?.type} key=${msg.payload?.key} sid=${msg.payload?.sessionId} granted=${grantedSessions.has(String(msg.payload?.sessionId || ''))}`)
       if (grantedSessions.has(msg.payload?.sessionId)) injectKey(msg.payload)
       break
     case 'server:screen_clipboard_read': {
