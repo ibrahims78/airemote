@@ -88,6 +88,7 @@ const steps = [
   { name: 'unit: agent command guard (R9)', cmd: NODE + ' packages/agent-desktop/test/safety.test.cjs' },
   { name: 'unit: secret storage (R2)',   cmd: electronStep('packages/server-desktop/test/secrets.test.cjs') },
   { name: 'policy: password length (P1)', cmd: NODE + ' scripts/check-password-policy.cjs' },
+  { name: 'policy: version consistency (P6)', cmd: NODE + ' scripts/check-version-consistency.cjs --allow-missing-server' },
 ]
 
 let failures = 0

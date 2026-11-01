@@ -1,5 +1,10 @@
 plugins { id 'com.android.application' }
 
+// P6 — مصدر واحد للحقيقة: اسم الإصدار من ملف VERSION في جذر المستودع، لا رقم مكتوب بيد.
+// versionCode يبقى رقمياً تصاعدياً (أندرويد يرفض التثبيت إن لم يزد).
+def versionFile = rootProject.file('../../VERSION')
+def appVersionName = versionFile.exists() ? versionFile.text.trim() : '0.0.0'
+
 android {
     namespace 'com.airemote.agent'
     compileSdk 35
@@ -8,8 +13,8 @@ android {
         applicationId "com.airemote.agent"
         minSdk 24
         targetSdk 33
-        versionCode 37
-        versionName "3.9.4"
+        versionCode 38
+        versionName appVersionName
     }
 
     buildTypes {

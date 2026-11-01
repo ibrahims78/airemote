@@ -1,0 +1,14 @@
+﻿(node:16988) Warning: Setting the NODE_TLS_REJECT_UNAUTHORIZED environment variable to '0' makes TLS connections and HTTPS requests insecure by disabling certificate verification.
+(Use `node --trace-warnings ...` to show where the warning was created)
+AiRemote — فحص توحيد الإصدار
+
+  ✓ VERSION                               3.9.1         المصدر المرجعي
+  ✓ package.json                          3.9.1       
+  ✓ packages/server-desktop/package.json  3.9.1       
+  ✓ packages/agent-desktop/package.json   3.9.1       
+  ✓ packages/dashboard/package.json       3.9.1       
+  ✓ android build.gradle versionName      3.9.1         versionCode=38
+  ✓ releases/manifest.json                3.9.1       
+  ✓ server /health                        3.9.1         من /health
+
+PASS كل المصادر تحمل 3.9.1
