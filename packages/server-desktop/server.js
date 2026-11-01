@@ -1245,13 +1245,26 @@ function leaveScreenSession(sessionId, socket) {
   }
 }
 
+// 3.9.9 — سجل تشخيصي مؤقّت لدورة حياة جلسة الشاشة (ملف صغير محدود الحجم).
+function screenDebug(line) {
+  try {
+    const p = require('path').join(require('os').tmpdir(), 'airemote-screen.log')
+    const fsx = require('fs')
+    try { if (fsx.statSync(p).size > 256 * 1024) fsx.writeFileSync(p, '') } catch {}
+    fsx.appendFileSync(p, new Date().toISOString() + ' ' + line + '\n')
+  } catch {}
+}
+
 function closeScreenSession(sessionId, errMsg) {
   const session = screenSessions.get(sessionId)
   if (!session) return
+  screenDebug('close session=' + sessionId + ' viewers=' + session.viewers.size + ' err=' + (errMsg || '-'))
   clearConnectTimer(session)
   if (session.stopTimer) { clearTimeout(session.stopTimer); session.stopTimer = null }
   for (const vws of session.viewers) {
     clearScreenFrameState(vws)
+    // 3.9.9 — لا تُغلق مقبساً انتقل إلى جلسة أحدث (كان إغلاق جلسة قديمة يقتل مُشاهداً حيّاً).
+    if (vws._screenSessionId && vws._screenSessionId !== sessionId) continue
     try {
       if (vws.readyState === 1) {
         if (errMsg) vws.send(JSON.stringify({ type: 'screen:error', payload: { message: errMsg } }))
@@ -2393,6 +2406,8 @@ function handleScreenWs(socket, request, user) {
   if (session) {
     if (session.stopTimer) { clearTimeout(session.stopTimer); session.stopTimer = null }
     session.viewers.add(socket)
+    socket._screenSessionId = sessionId
+    screenDebug('join-existing session=' + sessionId + ' viewers=' + session.viewers.size)
 
     // The agent is already streaming and only sends deltas, so send this viewer
     // the last full frame now — otherwise it renders nothing (300x150 default
@@ -2424,9 +2439,14 @@ function handleScreenWs(socket, request, user) {
     try { session.dbId = dbLogSessionStart((user && user.userId) || '', deviceId, 'screen') } catch {}
     screenSessions.set(sessionId, session)
     deviceScreenSess.set(deviceId, sessionId)
+    socket._screenSessionId = sessionId
+    screenDebug('join-new session=' + sessionId + ' device=' + String(deviceId).slice(0, 8))
 
     const rec = agentSockets.get(deviceId)
-    if (rec) sendJson(rec.ws, { type: 'server:screen_start', payload: { sessionId, fps, quality, maxWidth, binary: true }, timestamp: Date.now() })
+    if (rec) {
+      session.agentStarted = true
+      sendJson(rec.ws, { type: 'server:screen_start', payload: { sessionId, fps, quality, maxWidth, binary: true }, timestamp: Date.now() })
+    }
 
     session.connectTimer = setTimeout(() => {
       try { if (socket.readyState === 1) socket.send(JSON.stringify({ type: 'screen:error', payload: { message: 'Agent did not start screen capture — make sure the agent is v2.0.0+' } })) } catch {}
@@ -2484,6 +2504,22 @@ function handleScreenWs(socket, request, user) {
         sendJson(rec.ws, { type: 'server:screen_key', payload: { ...payload, sessionId: authSessionId || sessionId }, timestamp: Date.now() })
         break
       case 'screen:set_quality':
+        // 3.9.9 — تغيير الجودة لا يجوز أن يُعيد تشغيل الالتقاط: كان يرسل screen_start
+        // جديداً فيوقف الوكيل الالتقاط ويُغلق الجلسة، فيُقتل مقبس المُشاهد نفسه.
+        if (session && session.agentStarted) {
+          sendJson(rec.ws, {
+            type: 'server:screen_set_quality',
+            payload: {
+              sessionId,
+              fps:      clamp(payload.fps,      1,   30,   fps),
+              quality:  clamp(payload.quality,  10,  95,   quality),
+              maxWidth: clamp(payload.maxWidth, 320, 1920, maxWidth),
+            },
+            timestamp: Date.now()
+          })
+          break
+        }
+        if (session) session.agentStarted = true
         sendJson(rec.ws, {
           type: 'server:screen_start',
           payload: {
