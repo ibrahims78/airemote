@@ -2342,6 +2342,27 @@ public class AgentService extends Service {
                 + " frame " + (frame != null ? frame.getWidth() : 0) + "x" + (frame != null ? frame.getHeight() : 0));
     }
 
+    // P1.4 — كان الإدخال يُهمَل صامتاً عندما تكون خدمة الوصول معطّلة: `runSync` يُعيد
+    // "a11y-not-enabled" ولا أحد يقرأ القيمة. صرنا نُبلّغ العارض مرة كل 10 ثوانٍ (لا مع كل
+    // نقرة) عبر قناة تحذير غير قاتلة، فلا تُغلق الجلسة ويظهر السبب للمستخدم.
+    private long lastA11yWarnAt = 0;
+
+    private void runA11y(JSONObject act) {
+        String res = AiRemoteA11y.runSync(act);
+        if (!"a11y-not-enabled".equals(res)) return;
+        long now = System.currentTimeMillis();
+        if (now - lastA11yWarnAt < 10000) return;
+        lastA11yWarnAt = now;
+        try {
+            JSONObject warn = new JSONObject();
+            warn.put("code", "a11y_not_enabled");
+            warn.put("message", "خدمة الوصول (Accessibility) معطّلة على هذا الجهاز — فعّلها من معالج التهيئة، فلا يصل الإدخال بدونها");
+            warn.put("sessionId", streamSessionId == null ? "" : streamSessionId);
+            sendMsg("agent:screen_input_warning", warn);
+        } catch (Exception ignore) { }
+        MainActivity.log("تحذير: خدمة الوصول معطّلة — أُبلغ العارض");
+    }
+
     private void handleScreenMouse(JSONObject payload) {
         try {
             String t = payload.optString("type", "");
@@ -2371,7 +2392,7 @@ public class AgentService extends Service {
                 lastDownX = -1; lastDownY = -1;
             }
             else return;
-            AiRemoteA11y.runSync(act);
+            runA11y(act);
         } catch (Exception ignore) { }
     }
 
@@ -2389,7 +2410,7 @@ public class AgentService extends Service {
             else if (key.length() == 1) { act.put("action", "append"); act.put("text", key); }
             else { act.put("action", "key"); act.put("key", key.toLowerCase()); }
             android.util.Log.d("AiRemoteAgent", "screen_key key=" + key + " action=" + act.optString("action"));
-            AiRemoteA11y.runSync(act);
+            runA11y(act);
         } catch (Exception ignore) { }
     }
 

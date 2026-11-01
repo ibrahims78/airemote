@@ -186,6 +186,15 @@ async function main() {
   const pong = await waitFor(v1msgs, (m) => m.type === 'screen:pong', 4000)
   check('screen:ping → screen:pong with clientTs', !!pong && pong.payload.clientTs === 111)
 
+  // ── P1.4: تحذير إدخال غير قاتل ────────────────────────────────────────────
+  // خدمة الوصول المعطّلة تعني أن الإدخال لن يُنفَّذ؛ يجب أن يصل السبب للعارض
+  // دون إغلاق الجلسة (خلافاً لـagent:screen_error الذي يُغلقها).
+  agent.send(JSON.stringify({ type: 'agent:screen_input_warning', payload: { sessionId: sid, code: 'a11y_not_enabled', message: 'a11y off' }, timestamp: Date.now() }))
+  const iw = await waitFor(v1msgs, (m) => m.type === 'screen:input_warning', 4000)
+  check('a11y warning relayed as screen:input_warning', !!iw && iw.payload.code === 'a11y_not_enabled', iw && JSON.stringify(iw.payload))
+  await sleep(300)
+  check('a11y warning does NOT close the session', viewer1.readyState === 1 && !v1msgs.some((m) => m.type === 'screen:error'))
+
   // ── viewer #2 joins the same session ──────────────────────────────────────
   const t2 = await fetch(BASE + '/api/auth/ws-ticket', { method: 'POST', headers: { Authorization: 'Bearer ' + jwtToken } }).then((r) => r.json())
   const viewer2 = new WebSocket('ws://127.0.0.1:' + PORT + '/screen?deviceId=' + devId + '&ticket=' + t2.ticket)

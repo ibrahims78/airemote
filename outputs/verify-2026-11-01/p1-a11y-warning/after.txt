@@ -1,0 +1,6 @@
+﻿
+PASS: a11y warning relayed as screen:input_warning
+PASS: a11y warning does NOT close the session
+ALL DESKTOP-SERVER E2E TESTS PASSED
+
+

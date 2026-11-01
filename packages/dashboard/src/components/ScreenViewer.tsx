@@ -735,6 +735,12 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
             setStatus('error'); setErrorMsg(msg.payload?.message || tr('viewer_unknown_error')); break
           case 'screen:unavailable':
             setStatus('unavailable'); setErrorMsg(msg.payload?.message || tr('viewer_share_unavailable')); break
+          // P1.4 — تحذير غير قاتل: البث يعمل لكن الإدخال لا يُنفَّذ (خدمة وصول معطّلة).
+          case 'screen:input_warning': {
+            setRotateNotice(msg.payload?.message || tr('viewer_input_unavailable'))
+            setTimeout(() => setRotateNotice(null), 6000)
+            break
+          }
           case 'screen:closed':
             setStatus('disconnected')
             // Auto-reconnect unless the user explicitly clicked Stop

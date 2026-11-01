@@ -1573,6 +1573,17 @@ function handleAgentWs(socket) {
       return
     }
 
+    // P1.4 — تحذير إدخال غير قاتل: خدمة الوصول معطّلة على الهدف تمنع تنفيذ التحكّم،
+    // لكن إغلاق الجلسة (كما يفعل agent:screen_error) يعمي المستخدم عن السبب.
+    if (type === 'agent:screen_input_warning') {
+      sendToScreenViewers(deviceId, {
+        type: 'screen:input_warning',
+        payload: { code: payload.code || 'input_unavailable', message: payload.message || '' },
+        timestamp: Date.now()
+      })
+      return
+    }
+
     if (type === 'agent:screen_control_granted' || type === 'agent:screen_control_denied') {
       sendToScreenViewers(deviceId, {
         type:    type === 'agent:screen_control_granted' ? 'screen:control_granted' : 'screen:control_denied',

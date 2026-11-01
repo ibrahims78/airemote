@@ -1,0 +1,5 @@
+﻿
+FAIL: a11y warning relayed as screen:input_warning
+PASS: a11y warning does NOT close the session
+
+
