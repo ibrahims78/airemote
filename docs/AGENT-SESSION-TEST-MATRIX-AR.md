@@ -4,7 +4,7 @@
 
 | # | الاختبار | المعيار | كيف يُقاس | الأداة/الأمر | الحالة |
 |---|---|---|---|---|---|
-| T1 | طلب → موافقة → بث وتحكم | جلسة كاملة بلا منفذ وارد | WS + تذكرة + إطار | أجهزة حقيقية WIN10→WIN11 وWIN10→Android | **PASS** — موافقة حقيقية، `active`، نافذة عرض وبث حيّ (`session_view_opened`) |
+| T1 | طلب → موافقة → بث وتحكم | جلسة كاملة بلا منفذ وارد | WS + تذكرة + إطار | أجهزة حقيقية WIN10→WIN11 وWIN10→Android | **PASS (مُحدَّث 2026-11-01)** — موافقة حقيقية، `active`، نافذة عرض وبث حيّ (`session_view_opened`)؛ و**تحكّم مُنفَّذ على هدف أندرويد**: فأرة ومفاتيح **3/3** (`gotMouse`/`gotKey=true`) و`homeWorked=true` (المشغّل في المقدمة) بعد منح إذن الالتقاط وتفعيل خدمة الوصول — `outputs/verify-2026-11-01/android-control/` |
 | T2 | رفض صريح | 0 إطار و0 تحكم + تدقيق | عدّ رسائل + audit | `e2e-session-ticket` T2a–e | **PASS** |
 | T2b | قبول حقيقي (WIN11) | جلسة active | نقر «سماح» عبر UIAutomation | `outputs/.../win10-final.jpg` | **PASS** |
 | T3 | كلمة مرور: 5 محاولات خاطئة | رفض + قفل 5 دقائق + تدقيق | 5 طلبات خاطئة ثم 429 | `e2e-session-ticket-matrix --case=password-lock` | **PASS (3.9.1)** — 403 `bad_password` مع `attemptsLeft` 4→1، ثم 429 `password_locked`، والكلمة الصحيحة مرفوضة أثناء القفل، وتدقيق `session_password_failed`/`locked` |

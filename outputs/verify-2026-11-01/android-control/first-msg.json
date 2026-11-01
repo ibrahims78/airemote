@@ -1,0 +1,52 @@
+﻿{
+ "steps": [
+  {
+   "label": "open",
+   "at": 12,
+   "ready": 1,
+   "frames": 0
+  },
+  {
+   "label": "mouse#1 sent",
+   "at": 315,
+   "ready": 1,
+   "frames": 3
+  },
+  {
+   "label": "mouse#2 sent",
+   "at": 1517,
+   "ready": 1,
+   "frames": 5
+  },
+  {
+   "label": "key#1 sent",
+   "at": 2717,
+   "ready": 1,
+   "frames": 12
+  },
+  {
+   "label": "key#2 sent",
+   "at": 3919,
+   "ready": 1,
+   "frames": 15
+  }
+ ],
+ "request": 201,
+ "sid": "b28f2a58-b5aa-40b1-acaa-6b695415396b",
+ "recv": [
+  "11-01 16:24:06.117 16371 16453 D AiRemoteAgent: recv server:force_keyframe sid=35538f0f-b3d6-4675-a3e0-759f14fd55e0",
+  "11-01 16:24:06.422 16371 16453 D AiRemoteAgent: recv server:screen_mouse sid=b28f2a58-b5aa-40b1-acaa-6b695415396b",
+  "11-01 16:24:07.623 16371 16453 D AiRemoteAgent: recv server:screen_mouse sid=b28f2a58-b5aa-40b1-acaa-6b695415396b",
+  "11-01 16:24:08.508 16371 16453 D AiRemoteAgent: recv server:force_keyframe sid=35538f0f-b3d6-4675-a3e0-759f14fd55e0",
+  "11-01 16:24:08.823 16371 16453 D AiRemoteAgent: recv server:screen_key sid=b28f2a58-b5aa-40b1-acaa-6b695415396b",
+  "11-01 16:24:09.325 16371 16453 D AiRemoteAgent: recv server:screen_get_monitors sid=35538f0f-b3d6-4675-a3e0-759f14fd55e0",
+  "11-01 16:24:10.025 16371 16453 D AiRemoteAgent: recv server:screen_key sid=b28f2a58-b5aa-40b1-acaa-6b695415396b",
+  "11-01 16:24:10.847 16371 16453 D AiRemoteAgent: recv server:pong sid=-"
+ ],
+ "counts": {
+  "mouse": 2,
+  "key": 2,
+  "start": 0
+ },
+ "framesTotal": 18
+}

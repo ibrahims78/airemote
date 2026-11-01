@@ -1,0 +1,18 @@
+﻿{
+ "request": 201,
+ "sid": "daff623a-cc53-44f6-a1f6-daeadb615543",
+ "ticketStatus": 200,
+ "readyState": 1,
+ "frames": 5,
+ "framesAfter": 10,
+ "recvLines": [
+  "11-01 16:24:57.446 16371 16453 D AiRemoteAgent: recv server:force_keyframe sid=35538f0f-b3d6-4675-a3e0-759f14fd55e0",
+  "11-01 16:24:59.228 16371 16453 D AiRemoteAgent: recv server:force_keyframe sid=35538f0f-b3d6-4675-a3e0-759f14fd55e0",
+  "11-01 16:25:00.046 16371 16453 D AiRemoteAgent: recv server:screen_mouse sid=daff623a-cc53-44f6-a1f6-daeadb615543",
+  "11-01 16:25:00.055 16371 16453 D AiRemoteAgent: recv server:screen_get_monitors sid=35538f0f-b3d6-4675-a3e0-759f14fd55e0",
+  "11-01 16:25:00.969 16371 16453 D AiRemoteAgent: recv server:pong sid=-",
+  "11-01 16:25:01.444 16371 16453 D AiRemoteAgent: recv server:screen_key sid=daff623a-cc53-44f6-a1f6-daeadb615543"
+ ],
+ "gotMouse": true,
+ "gotKey": true
+}

@@ -1,9 +1,9 @@
 {
  "topBefore": "com.android.settings/com.transsion.settings.homepage.TranSettingsHomepageActivity",
  "request": 201,
- "sid": "b3c7696b-64a2-47ac-a7d8-682cc15f86e1",
+ "sid": "4ca1e5d7-e8b2-4e35-b97f-51620e39ffaa",
  "topAfterAccept": "com.airemote.agent/.WakeActivity",
- "topAfterHome1": "com.airemote.agent/.MainActivity",
- "topAfterHome2": "com.airemote.agent/.MainActivity",
- "homeWorked": false
+ "topAfterHome1": "com.transsion.hilauncher/com.android.quickstep.src.com.android.launcher3.uioverrides.QuickstepLauncher",
+ "topAfterHome2": "com.transsion.hilauncher/com.android.quickstep.src.com.android.launcher3.uioverrides.QuickstepLauncher",
+ "homeWorked": true
 }
