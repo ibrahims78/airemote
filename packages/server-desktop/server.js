@@ -1143,9 +1143,16 @@ function clipboardTellAgent(deviceId) {
   const s = clipboardState(deviceId)
   const rec = agentSockets.get(deviceId)
   if (!rec) { s.agentWatching = false; return false }
+  // 3.11.5 — داخل جلسة وكيل↔وكيل يكون معرّف الوكيل المعروف هو معرّف جلسة relay
+  // (يُمنح في session:token)، بينما deviceScreenSess يحمل معرّف جلسة الالتقاط
+  // الداخلي (uuid آخر). تمرير معرّف الالتقاط كان يجعل الوكيل يردّ no-consent
+  // فتبدو مزامنة الحافظة معطّلة في جلسات الوكيل↔الوكيل وحدها.
+  const capSid  = deviceScreenSess.get(deviceId) || ''
+  const capSess = capSid ? screenSessions.get(capSid) : null
+  const watchSessionId = (capSess && capSess.relaySessionId) ? String(capSess.relaySessionId) : capSid
   sendJson(rec.ws, {
     type: 'server:screen_clipboard_watch',
-    payload: { sessionId: deviceScreenSess.get(deviceId) || '', enabled: !!s.enabled, direction: s.direction },
+    payload: { sessionId: watchSessionId, enabled: !!s.enabled, direction: s.direction },
     timestamp: Date.now()
   })
   return true
