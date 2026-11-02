@@ -29,9 +29,6 @@ const { ipcRenderer } = require('electron')
 const video  = document.getElementById('v')
 const canvas = document.getElementById('c')
 const ctx    = canvas.getContext('2d')
-// 3.11.9 — رسم الفيديو المُقاس على VMware (بلا تسريع عتاد) يُنتج إطاراً أسود؛
-// نرسم 1:1 في مخزن بحجم المصدر ثم نصغّر canvas→canvas (مسار CPU سليم).
-let srcCanvas = null, srcCtx = null
 
 // v3.3.2 — delta engine state (small sampler for fast change detection)
 const regionCanvas = document.createElement('canvas')
@@ -57,9 +54,6 @@ let useWebp         = true   // v3.8.7 — WebP is ~30-45% smaller than JPEG at 
 let webpSlowStreak  = 0      // fall back to JPEG if this CPU is slow at WebP
 let webpDisabledAt  = 0      // v3.8.7 — retry WebP after 30s instead of giving up forever
 let qualityScale    = 1      // v3.8.7 — adaptive resolution (0.6 … 1.0) so slow CPUs stay smooth
-// 3.11.8 — حجم الإخراج يُقفل لكل جلسة: تغييره أثناء الجلسة يُبطل مسار الدلتا
-// ويرسل keyframe بمقاس جديد، فيُعيد العارض ضبط canvas (مسح الصورة) ويقفز المؤشر.
-let lockedW = 0, lockedH = 0
 let audioCtx        = null
 let audioProc       = null
 let audioSource     = null
@@ -84,7 +78,6 @@ async function startCapture(sid, fps, quality, monitorIdx, maxWidth) {
   currentFps     = Math.max(1, Math.min(30, fps     || 5))
   currentQuality = Math.max(10, Math.min(95, quality || 65))
   currentMaxWidth = Math.max(320, Math.min(3840, Number(maxWidth) || currentMaxWidth || 1280))
-  lockedW = 0; lockedH = 0   // 3.11.8 — قفل مقاس جديد لكل جلسة
   lastMonitorIdx = monitorIdx || 0
   captureStartAt = Date.now()
 
@@ -332,47 +325,11 @@ function captureFrame() {
   const vw = video.videoWidth
   const vh = video.videoHeight
   const baseScale = (currentMaxWidth && vw > currentMaxWidth) ? (currentMaxWidth / vw) : 1
-  // 3.11.8 — المقاس من المصدر + maxWidth فقط، ويُقفل حتى نهاية الجلسة.
-  const wantW = Math.max(2, Math.round(vw * baseScale))
-  const wantH = Math.max(2, Math.round(vh * baseScale))
-  if (lockedW !== wantW || lockedH !== wantH) {
-    lockedW = wantW; lockedH = wantH
-    canvas.width = lockedW; canvas.height = lockedH
-    prevSample = null   // خط أساس الدلتا يُعاد بعد أي تغيير حقيقي في المصدر
-  }
-  const cw = lockedW
-  const ch = lockedH
-  // 3.11.9 — المرحلة 1: نسخ 1:1 من الفيديو (لا تصغير)؛ المرحلة 2: تصغير canvas→canvas
-  if (!srcCanvas) { srcCanvas = document.createElement('canvas'); srcCtx = srcCanvas.getContext('2d') }
-  if (srcCanvas.width !== vw || srcCanvas.height !== vh) { srcCanvas.width = vw; srcCanvas.height = vh }
-  srcCtx.drawImage(video, 0, 0, vw, vh)
-  ctx.drawImage(srcCanvas, 0, 0, cw, ch)
-
-  // 3.11.9 — عيّنة سطوع: تدفق ميّت يُرسم أسود بنفس الأبعاد، ولا شيء يكتشفه.
-
-  // إطاران كاملان أسودان متتاليان ⇒ أبلِغ العملية الرئيسية لتُعيد إنشاء الالتقاط.
-
-  let blackStreak = 0
-
-  try {
-
-    if (!srcCanvas) { srcCanvas = document.createElement('canvas'); srcCtx = srcCanvas.getContext('2d') }
-
-    srcCanvas.width = 32; srcCanvas.height = 18
-
-    srcCtx.drawImage(canvas, 0, 0, 32, 18)
-
-    const px = srcCtx.getImageData(0, 0, 32, 18).data
-
-    let sum = 0
-
-    for (let i = 0; i < px.length; i += 4) sum += px[i] + px[i + 1] + px[i + 2]
-
-    if (sum / (px.length / 4) / 3 < 3) blackStreak++; else blackStreak = 0
-
-    if (blackStreak >= 2) { blackStreak = 0; ipcRenderer.send('capture-black', { sessionId: sid }) }
-
-  } catch (e) {}   // eslint-disable-line no-empty
+  const scale = baseScale * qualityScale
+  const cw = Math.max(2, Math.round(vw * scale))
+  const ch = Math.max(2, Math.round(vh * scale))
+  if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch }
+  ctx.drawImage(video, 0, 0, cw, ch)
 
   const sid = sessionId
   const w   = canvas.width
@@ -427,7 +384,7 @@ function captureFrame() {
       useWebp = true; webpSlowStreak = 0; webpDisabledAt = 0
     }
 
-    // 3.11.8 — تكيّف الضغط فقط (لا يمسّ أبعاد الإطار): مقاس ثابت = دلتا سليمة وبثّ مستقر.
+    // v3.8.7 — adaptive resolution: a 1600x900 encode can take 150ms+ on a VM CPU,
     // which shows up as a 1-2 fps stream. Trade a little sharpness for smoothness,
     // and climb back up as soon as the encoder is fast again.
     if (encMs > 110 && qualityScale > 0.6) qualityScale = Math.max(0.6, +(qualityScale - 0.08).toFixed(2))
@@ -502,7 +459,7 @@ async function warmCapture (monitorIdx) {
       if (sources.length) {
         s = await navigator.mediaDevices.getUserMedia({
           audio: false,
-          video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: sources[idx].id, maxWidth: 1920, maxHeight: 1080, cursor: 'never' } }
+          video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: sources[idx].id, maxWidth: 1920, maxHeight: 1080 } }
         })
       }
     } catch (e2) { s = null }

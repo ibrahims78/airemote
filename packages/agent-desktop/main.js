@@ -25,9 +25,7 @@ const ftAgent = createAgentTransfer({
 // v3.3.0 — software rendering for reliable screen capture: the GPU-accelerated
 // capture path returned black frames after display-mode changes on virtual GPUs
 // (observed on VMware SVGA); the software path is robust and measured faster there.
-// 3.11.9 — على VMware SVGA قد يُرجع الالتقاط سطحاً أسود مع البرمجة الناعمة؛
-// صار التعطيل مشروطاً: AIRREMOTE_HW_ACCEL=1 يُمكّن تسريع العتاد للتشخيص/العلاج.
-try { if (String(process.env.AIRREMOTE_HW_ACCEL || '0') !== '1') app.disableHardwareAcceleration() } catch {}
+try { app.disableHardwareAcceleration() } catch {}
 
 // v3.5 — Chromium throttles an occluded/background window's screen-capture track
 // to ~1 fps. Disable occlusion detection and backgrounding for the capture window.
@@ -107,7 +105,6 @@ let clipWatch = null
 let ctrlAuthAttempts = []
 let currentMonitorId = 0
 let lastCaptureRestartAt = 0
-let lastBlackRecoveryAt = 0   // 3.11.9 — cooldown لإعادة بناء الالتقاط بعد إطار أسود
 let sessionStart   = null
 let config         = loadConfig()
 let logEntries     = []
@@ -1288,6 +1285,11 @@ function handlePtyClose(payload) {
 
 // ─── Screen Capture (Electron desktopCapturer) ─────────────────────────────
 
+function nudgeDesktop () {
+  if (process.platform !== 'win32') return
+  try { sendPsCmd('[WinUI]::mouse_event(1,1,0,0,[IntPtr]::Zero);Start-Sleep -Milliseconds 40;[WinUI]::mouse_event(1,-1,0,0,[IntPtr]::Zero)') } catch {}
+}
+
 function createCaptureWindow() {
   if (capWin && !capWin.isDestroyed()) return capWin
   capWin = new BrowserWindow({
@@ -1296,9 +1298,8 @@ function createCaptureWindow() {
     show:        true,
     x:           0,
     y:           0,
-    // 3.11.9 — سطح 2×2 كان يمنع تركيب الإطار (بثّ أسود مع سطح ضيف سليم)
-    width:       320,
-    height:      180,
+        width:       2,
+    height:      2,
     skipTaskbar: true,
     focusable:   false,
     opacity:     0.01,
@@ -1325,9 +1326,7 @@ function createCaptureWindow() {
       if (!src) src = sources[Number(currentMonitorId) || 0] || sources[0]
       capDisplayId = src && src.display_id ? src.display_id : null
       updateCapSize(currentMonitorId)
-      // 3.11.9 — على جهاز بلا بطاقة صوت قد يُفشل loopback جلسة الالتقاط صامتاً (إطارات سوداء)
-      const captureAudio = String(process.env.AIRREMOTE_CAPTURE_AUDIO || 'loopback')
-      callback(captureAudio === 'none' ? { video: src } : { video: src, audio: 'loopback' })
+            callback({ video: src, audio: 'loopback' })
     }).catch(() => callback({}))
   })
 
@@ -1467,6 +1466,13 @@ function handleScreenStart(payload) {
   sessionFrameTimes.delete(sessionId)
   broadcastScreenSessions()
   refreshTray()
+  // 3.11.9 — على هذه الأجهزة لا يُنتج الالتقاط إطاراً حتى يُعاد رسم سطح المكتب، فيبقى البثّ أسود
+  // على سطح ساكن (مُقاس: سطح ساكن = 3,138B/سواد 100% · أي نشاط = 82KB/سواد 0%).
+  // نكزة 1px غير مرئية تُجبر المركّب على إنتاج أول إطار حقيقي.
+  try {
+    setTimeout(() => { try { nudgeDesktop() } catch {} }, 900)
+    setTimeout(() => { try { nudgeDesktop() } catch {} }, 2600)
+  } catch {}
   notify('AiRemote — بث الشاشة', `📡 بدأ البث (${fps} fps · جودة ${quality}%)`)
   const cw     = createCaptureWindow()
   const doSend = () => cw.webContents.send('start-capture', { sessionId, fps, quality, monitorIndex: monitorId || 0, maxWidth })
@@ -2742,23 +2748,6 @@ ipcMain.on('screen-monitors', (_, p) => {
 ipcMain.on('screen-resized', (_, p) => {
   // Video intrinsic size changed (e.g. VM resolution switch) — refresh real display metrics
   try { updateCapSize(currentMonitorId) } catch {}
-})
-
-// 3.11.9 — تدفق ميت يُرسم أسود بنفس الأبعاد: أعد بناء نافذة الالتقاط ثم أعد تشغيل الجلسات.
-ipcMain.on('capture-black', () => {
-  const now = Date.now()
-  if (now - lastBlackRecoveryAt < 8000) return
-  lastBlackRecoveryAt = now
-  try { addLog('warn', '[capture] المصدر يعطي إطارات سوداء — إعادة إنشاء الالتقاط') } catch {}
-  try { if (capWin && !capWin.isDestroyed()) capWin.destroy() } catch {}
-  capWin = null
-  const cw = createCaptureWindow()
-  const resend = () => {
-    for (const [id, info] of screenSessions) {
-      try { cw.webContents.send('start-capture', { sessionId: id, fps: info.fps, quality: info.quality, monitorIndex: currentMonitorId, maxWidth: info.maxWidth }) } catch {}
-    }
-  }
-  if (cw.webContents.isLoading()) cw.webContents.once('did-finish-load', resend); else resend()
 })
 
 ipcMain.on('screen-track-ended', () => {
