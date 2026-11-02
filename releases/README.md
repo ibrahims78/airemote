@@ -1,5 +1,10 @@
 # AiRemote — Releases
 
+> **ملاحظة (2026-11-02):** المشروع الآن على **3.11.7**، و`manifest.json` هو المصدر الوحيد للحزم المنشورة (5 حِزم).
+> أرشيف الإصدارات السابقة (3.8.x–3.11.5، نحو 12.9 GB) نُقل خارج المستودع إلى
+> `D:\airemote-archive\2026-11-02\releases\archive\` — التفاصيل في `ARCHIVE-MANIFEST.md`.
+> الجداول أدناه تاريخية (v3.2.0) ولا تُعبّر عن الإصدار الحالي.
+
 <div align="center">
 
 ![AiRemote](https://img.shields.io/badge/AiRemote-v3.2.0-blue?style=for-the-badge)

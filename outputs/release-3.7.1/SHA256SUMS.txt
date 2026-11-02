@@ -1,8 +1,0 @@
-0f019239b006e03462a57491783f00d1bc776e761a7f3ba72d04d770c3157bcc  android-agent/AiRemote-Agent-Android-v3.7.0.apk
-34d6c471c4ef8ece5cdc7c8ec0a69e7e70996b6ae6ae06a18574b4aa22855901  server-windows/AiRemote-Server-v3.7.1-Windows-x64.zip
-3a9a0fffdbdcdd014e9455560bbfbef957edcc8fb937a7014b3fe70c9d4159c5  agent-windows/AiRemote-Agent-v3.7.0-Windows-x64.zip
-8b921d6c89f00105ce7469c862e8907d1a3ad963c8a719c7441112f4e008424f  server-windows/AiRemote-Server-Setup-v3.7.0-x64.exe
-ab3827ec21236636bfe5d46a8f7328948db4103cbb668a7811662b25b9debc2d  server-windows/AiRemote-Server-v3.7.0-Windows-x64.zip
-defcc0d14f58266725dc5b585ee9bc0fd5b207448614c2d614b6f44ce9ce8a44  android-agent/AiRemote-Agent-Android-v3.7.0-lab.apk
-ec1ab5f3a81db6a5c7adefa2129be44722bcb324b5e48befabe79b9b71e95c27  agent-windows/AiRemote-Agent-Setup-v3.7.0-x64.exe
-f8cdc806fcf658249d0ff943159bc019647c22ba70177ba3757a70f32f2ce120  server-windows/AiRemote-Server-Setup-v3.7.1-x64.exe

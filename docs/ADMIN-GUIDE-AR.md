@@ -139,4 +139,4 @@ node scripts/release-manifest.js --verify   # signature OK · all artifacts matc
 node scripts/export-help.cjs        # يُعيد توليد دليل المستخدم
 ```
 
-البيان (`releases/manifest.json`) هو المصدر الوحيد للحزم المنشورة؛ أرشيف الإصدارات السابقة في `releases/archive/`.
+البيان (`releases/manifest.json`) هو المصدر الوحيد للحزم المنشورة؛ أرشيف الإصدارات السابقة في `D:\airemote-archive\2026-11-02\releases\archive\` (خارج المستودع — بيان الأرشفة `ARCHIVE-MANIFEST.md`).
