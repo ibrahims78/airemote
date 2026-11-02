@@ -881,6 +881,9 @@ function toOsPath(p) {
   return p.replace(/\//g, '\\')
 }
 
+// 3.11.6 — عمليات نقل أُجهضت من العميل (قطع/إغلاق الصفحة) حتى يتوقف الوكيل فوراً.
+const abortedFsOps = new Set()
+
 async function handleFsRequest(payload) {
   const { path: reqPath, newPath, content, encoding } = payload || {}
   const opId = (payload && (payload.opId || payload.requestId))
@@ -950,14 +953,36 @@ async function handleFsRequest(payload) {
         respond({ data: { base64: buf.toString('base64') }, base64: buf.toString('base64'), encoding: 'base64' })
         break
       }
-      case 'read_chunked': {
-        // v3.5 — stream the file instead of loading it fully into memory.
+      // 3.11.6 — حجم الملف: يحتاجه السيرفر لبناء Content-Range/Content-Length
+      // عند الاستكمال (HTTP Range) في وضع الملفات.
+      case 'stat': {
         const osp = toOsPath(reqPath)
         if (!osp) return respond({ error: 'Invalid path' })
-        const stream = require('fs').createReadStream(osp, { highWaterMark: 512 * 1024 })
+        try {
+          const st = require('fs').statSync(osp)
+          respond({ data: { ok: true, size: st.size, isDirectory: st.isDirectory(), mtime: st.mtimeMs } })
+        } catch (e) {
+          respond({ error: 'stat failed: ' + (e.message || 'unknown') })
+        }
+        break
+      }
+      // 3.11.6 — إجهاض نقل: بلا هذا يبقى الوكيل يرسل ملفاً كاملاً إلى عميل رحل،
+      // فيسرق النطاق ويُبطئ محاولة الاستكمال التالية (قياس: 40 محاولة = 175MB فقط).
+      case 'fs_abort': {
+        abortedFsOps.add(String(opId))
+        return
+      }
+      case 'read_chunked': {
+        // v3.5 — stream the file instead of loading it fully into memory.
+        // 3.11.6 — offset: استكمال نقل مقطوع بلا إعادة إرسال ما وصل.
+        const osp = toOsPath(reqPath)
+        if (!osp) return respond({ error: 'Invalid path' })
+        const startAt = Math.max(0, Number(payload.offset) || 0)
+        const stream = require('fs').createReadStream(osp, { start: startAt, highWaterMark: 512 * 1024 })
         let seq = 0
         try {
           for await (const chunk of stream) {
+            if (abortedFsOps.has(String(opId))) { abortedFsOps.delete(String(opId)); try { stream.destroy() } catch {} ; return }
             send({
               type:    'agent:fs_chunk',
               payload: { opId, seq: seq++, data: Buffer.from(chunk).toString('base64'), done: false },

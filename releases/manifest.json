@@ -1,32 +1,32 @@
 {
   "product": "AiRemote",
-  "version": "3.11.5",
-  "generatedAt": "2026-11-02T10:19:01.672Z",
+  "version": "3.11.6",
+  "generatedAt": "2026-11-02T11:36:22.781Z",
   "artifacts": [
     {
-      "name": "agent-windows/AiRemote-Agent-Setup-v3.11.5-x64.exe",
-      "size": 76374604,
-      "sha256": "c5fb063045168c1159bafe27b68c6083990fc9f355259ba464544290768ccf6e"
+      "name": "agent-windows/AiRemote-Agent-Setup-v3.11.6-x64.exe",
+      "size": 76374905,
+      "sha256": "cb5a316184340f571ce5998e8cfae643784966864376f275a51aa8dbad8fb59c"
     },
     {
-      "name": "agent-windows/AiRemote-Agent-v3.11.5-Windows-x64.zip",
-      "size": 103983005,
-      "sha256": "2d4e34b194f4ed5d12172a6a489cc16f79d9da29729c420cdc449cc06ba2d12a"
+      "name": "agent-windows/AiRemote-Agent-v3.11.6-Windows-x64.zip",
+      "size": 103983483,
+      "sha256": "2b8909c3e940aff584f7829866cce19577c995e17719b85472a2a69b20122e62"
     },
     {
-      "name": "android-agent/AiRemote-Agent-Android-v3.11.5.apk",
-      "size": 169143,
-      "sha256": "d9e753fd2e1c1b8a78dee6a9ae2e846e0ec9476e74d51fd1d48e1a1ff12e6e47"
+      "name": "android-agent/AiRemote-Agent-Android-v3.11.6.apk",
+      "size": 173239,
+      "sha256": "49ace8e13a54cef3dc3fbbcd1a2b66de2cc1ab7e1851769ba57310dba7deb179"
     },
     {
-      "name": "server-windows/AiRemote-Server-Setup-v3.11.5-x64.exe",
-      "size": 159405079,
-      "sha256": "3b89ac098e8ba7fd11285d272a67718595e04a0bf13609ffac904afb2949b4ab"
+      "name": "server-windows/AiRemote-Server-Setup-v3.11.6-x64.exe",
+      "size": 159405566,
+      "sha256": "809e29da0dafa97827f29e5ffe660cd9a99fc9f01a7100840257488fecedc365"
     },
     {
-      "name": "server-windows/AiRemote-Server-v3.11.5-Windows-x64.zip",
-      "size": 212141547,
-      "sha256": "d306c47a61ba75c2d5c8108780669e94b6c1d7384458640b60580f5838774be8"
+      "name": "server-windows/AiRemote-Server-v3.11.6-Windows-x64.zip",
+      "size": 212140982,
+      "sha256": "41908cae187ebf5c46341b7143455092eac5bea9c52f9e805543b8de3c1e7cad"
     }
   ]
 }

@@ -149,6 +149,8 @@ public class AgentService extends Service {
 
     /** v1.3.0 — running instance for the UI */
     public static volatile AgentService INSTANCE = null;
+    // 3.11.6 — عمليات نقل أُجهضت من العميل (قطع التنزيل) حتى يتوقف الإرسال فوراً.
+    private static final java.util.Set<String> ABORTED_FS = java.util.Collections.synchronizedSet(new java.util.HashSet<String>());
 
     @Override
     public void onCreate() {
@@ -1206,13 +1208,29 @@ public class AgentService extends Service {
                 JSONObject d = new JSONObject();
                 d.put("ok", ok);
                 out.put("data", d);
+            } else if ("fs_abort".equals(op)) {
+                // 3.11.6 — العميل أغلق التنزيل: أوقف الإرسال بدل إكمال الملف كاملاً.
+                ABORTED_FS.add(requestId);
+                return;
+            } else if ("stat".equals(op)) {
+                // 3.11.6 — حجم الملف للاستكمال (Range) في وضع الملفات.
+                File f = new File(path);
+                JSONObject d = new JSONObject();
+                d.put("ok", f.exists());
+                d.put("size", f.length());
+                d.put("isDirectory", f.isDirectory());
+                out.put("data", d);
             } else if ("read_chunked".equals(op)) {
                 // v3.5 — stream large files in 512KB chunks (parity with Windows agent)
+                // 3.11.6 — offset: قفز إلى موضع الاستكمال بدل إعادة الإرسال من البداية.
                 File f = new File(path);
                 FileInputStream fis = new FileInputStream(f);
+                long off = payload.optLong("offset", 0L);
+                if (off > 0) { try { fis.getChannel().position(off); } catch (Exception ignore) { } }
                 byte[] buf = new byte[512 * 1024];
                 int seq = 0, n;
                 while ((n = fis.read(buf)) > 0) {
+                    if (ABORTED_FS.remove(requestId)) { try { fis.close(); } catch (Exception ignore) { } return; }
                     JSONObject ch = new JSONObject();
                     ch.put("opId", requestId);
                     ch.put("seq", seq++);

@@ -2909,7 +2909,7 @@ function handleSshWs(socket, user) {
 // ─────────────────────────────────────────────────────────────────────────────
 // 14. Agent FS Request Helper
 // ─────────────────────────────────────────────────────────────────────────────
-function agentFsStream(deviceId, fsPath, res, timeoutMs = 180000) {
+function agentFsStream(deviceId, fsPath, res, timeoutMs = 180000, startOffset = 0) {
   return new Promise((resolve, reject) => {
     const rec = agentSockets.get(deviceId)
     if (!rec) return reject(new Error('Device offline'))
@@ -2917,7 +2917,16 @@ function agentFsStream(deviceId, fsPath, res, timeoutMs = 180000) {
     const st = { res, next: 0, buffer: new Map(), bytes: 0, resolve, reject }
     st.timer = setTimeout(() => { pendingFsStreams.delete(opId); try { res.destroy() } catch {} ; reject(new Error('File stream timeout')) }, timeoutMs)
     pendingFsStreams.set(opId, st)
-    sendJson(rec.ws, { type: 'server:fs_request', payload: { requestId: opId, action: 'read_chunked', path: fsPath } })
+    // 3.11.6 — إغلاق العميل (قطع/إلغاء) يجب أن يُبلَّغ الوكيل ليتوقف فوراً؛
+    // تركُه يرسل ملف 1GB إلى عميل رحل يُشبع النطاق ويُبطئ الاستكمال التالي.
+    res.on('close', () => {
+      if (!pendingFsStreams.has(opId)) return
+      pendingFsStreams.delete(opId)
+      try { clearTimeout(st.timer) } catch {}
+      try { sendJson(rec.ws, { type: 'server:fs_request', payload: { requestId: opId, action: 'fs_abort' } }) } catch {}
+    })
+    // 3.11.6 — offset يسمح باستكمال نقل مقطوع (HTTP Range) بلا إعادة إرسال ما وصل.
+    sendJson(rec.ws, { type: 'server:fs_request', payload: { requestId: opId, action: 'read_chunked', path: fsPath, offset: Math.max(0, Number(startOffset) || 0) } })
   })
 }
 
@@ -4813,15 +4822,55 @@ async function start(config) {
     // v3.5 — HTTP headers must be ASCII; support Arabic filenames via RFC 5987.
     const asciiName = name.replace(/[^\x20-\x7E]/g, '_').replace(/["\\]/g, '')
     const utf8Name = encodeURIComponent(name).replace(/'/g, '%27')
-    reply.hijack()
-    reply.raw.writeHead(200, {
+
+    // 3.11.6 — الاستكمال: Range يسمح بمتابعة تنزيل مقطوع من الموضع الذي توقف عنده
+    // (كان المسار دفقاً 200 فقط، فلا استكمال داخل جلسة وكيل↔وكيل — فجوة T13).
+    const rangeHeader = String(req.headers.range || '')
+    let startAt = 0, endAt = null
+    if (rangeHeader) {
+      const m = rangeHeader.match(/^bytes=(\d+)-(\d*)$/)
+      if (!m) {
+        reply.hijack()
+        reply.raw.writeHead(416, { 'Content-Range': 'bytes */*', 'Cache-Control': 'no-store' })
+        try { reply.raw.end() } catch {}
+        return
+      }
+      startAt = Number(m[1]) || 0
+      endAt = m[2] ? Number(m[2]) : null
+    }
+    let size = null
+    if (rangeHeader) {
+      try {
+        const st = await agentFsRequest(req.params.id, 'stat', { path: fsPath })
+        const raw = st && (st.data || st)
+        if (raw && Number.isFinite(Number(raw.size))) size = Number(raw.size)
+      } catch { size = null }
+      if (size != null && startAt >= size) {
+        reply.hijack()
+        reply.raw.writeHead(416, { 'Content-Range': 'bytes */' + size, 'Cache-Control': 'no-store' })
+        try { reply.raw.end() } catch {}
+        return
+      }
+    }
+    const headers = {
       'Content-Type': 'application/octet-stream',
       'Content-Disposition': 'attachment; filename="' + asciiName + '"; filename*=UTF-8\'\'' + utf8Name,
       'Cache-Control': 'no-store',
-      'X-Accel-Buffering': 'no'
-    })
+      'X-Accel-Buffering': 'no',
+      'Accept-Ranges': 'bytes'
+    }
+    reply.hijack()
+    if (startAt > 0) {
+      const last = endAt != null ? endAt : (size != null ? size - 1 : null)
+      const h = Object.assign({}, headers)
+      h['Content-Range'] = 'bytes ' + startAt + '-' + (last != null ? last : '') + '/' + (size != null ? size : '*')
+      if (size != null && last != null) h['Content-Length'] = String(Math.max(0, last - startAt + 1))
+      reply.raw.writeHead(206, h)
+    } else {
+      reply.raw.writeHead(200, headers)
+    }
     try {
-      await agentFsStream(req.params.id, fsPath, reply.raw)
+      await agentFsStream(req.params.id, fsPath, reply.raw, 180000, startAt)
     } catch (e) {
       try { reply.raw.destroy() } catch {}
     }
