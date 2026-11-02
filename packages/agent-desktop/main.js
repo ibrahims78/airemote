@@ -25,7 +25,9 @@ const ftAgent = createAgentTransfer({
 // v3.3.0 — software rendering for reliable screen capture: the GPU-accelerated
 // capture path returned black frames after display-mode changes on virtual GPUs
 // (observed on VMware SVGA); the software path is robust and measured faster there.
-try { app.disableHardwareAcceleration() } catch {}
+// 3.11.9 — على VMware SVGA قد يُرجع الالتقاط سطحاً أسود مع البرمجة الناعمة؛
+// صار التعطيل مشروطاً: AIRREMOTE_HW_ACCEL=1 يُمكّن تسريع العتاد للتشخيص/العلاج.
+try { if (String(process.env.AIRREMOTE_HW_ACCEL || '0') !== '1') app.disableHardwareAcceleration() } catch {}
 
 // v3.5 — Chromium throttles an occluded/background window's screen-capture track
 // to ~1 fps. Disable occlusion detection and backgrounding for the capture window.
@@ -1293,8 +1295,9 @@ function createCaptureWindow() {
     show:        true,
     x:           0,
     y:           0,
-    width:       2,
-    height:      2,
+    // 3.11.9 — سطح 2×2 كان يمنع تركيب الإطار (بثّ أسود مع سطح ضيف سليم)
+    width:       320,
+    height:      180,
     skipTaskbar: true,
     focusable:   false,
     opacity:     0.01,
@@ -1321,7 +1324,9 @@ function createCaptureWindow() {
       if (!src) src = sources[Number(currentMonitorId) || 0] || sources[0]
       capDisplayId = src && src.display_id ? src.display_id : null
       updateCapSize(currentMonitorId)
-      callback({ video: src, audio: 'loopback' })
+      // 3.11.9 — على جهاز بلا بطاقة صوت قد يُفشل loopback جلسة الالتقاط صامتاً (إطارات سوداء)
+      const captureAudio = String(process.env.AIRREMOTE_CAPTURE_AUDIO || 'loopback')
+      callback(captureAudio === 'none' ? { video: src } : { video: src, audio: 'loopback' })
     }).catch(() => callback({}))
   })
 
