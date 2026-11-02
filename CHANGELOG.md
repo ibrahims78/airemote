@@ -16,12 +16,11 @@
 
 ### 3.11.5 — مزامنة الحافظة داخل جلسة وكيل↔وكيل تعمل (PATCH · 2026-11-02)
 
-- **العيب:** داخل جلسة وكيل↔وكيل كانت مزامنة الحافظة تردّ 
-o-consent: السيرفر يمرّر sessionId من جلسة الالتقاط (uuid داخلي) بينما الوكيل يمنح الإذن بمعرّف جلسة relay (من session:token).
-- **الإصلاح:** clipboardTellAgent يمرّر معرّف جلسة relay عندما تكون جلسة الالتقاط مرتبطة بجلسة relay (elaySessionId)، ويبقى معرّف الالتقاط لمسارات JWT.
-- **الدليل:** 	ools/lab/a2a/t12-clipboard.cjs — تغيير حافظة WIN11 داخل جلسة Relay ⇒ وصل النص إلى العارض عبر screen:clipboard_apply (مرتان بعلامتين مختلفتين) · outputs/verify-2026-11-02/t12/clipboard.json.
-- **إضافة:** أداة T10 	10-rotation.cjs (PASS على المحاكي) وأداة T12.
-- **الإصدار:** VERSION = 3.11.5 · ersionCode 45.
+- **العيب:** داخل جلسة وكيل↔وكيل كانت مزامنة الحافظة تردّ `no-consent`: السيرفر يمرّر `sessionId` من جلسة الالتقاط (uuid داخلي) بينما الوكيل يمنح الإذن بمعرّف جلسة relay (من `session:token`).
+- **الإصلاح:** `clipboardTellAgent` يمرّر معرّف جلسة relay عندما تكون جلسة الالتقاط مرتبطة بجلسة relay (`relaySessionId`)، ويبقى معرّف الالتقاط لمسارات JWT.
+- **الدليل:** `tools/lab/a2a/t12-clipboard.cjs` — تغيير حافظة WIN11 داخل جلسة Relay ⇒ وصل النص إلى العارض عبر `screen:clipboard_apply` (ثلاث مرات بعلامات مختلفة) · `outputs/verify-2026-11-02/t12/clipboard.json`.
+- **إضافة:** أداة T10 `t10-rotation.cjs` (PASS على المحاكي) · أداة T12 · بوابة أداء `scripts/check-first-frame.cjs` (1800ms افتراضياً).
+- **الإصدار:** `VERSION` = 3.11.5 · `versionCode 45`.
 
 ### 3.11.4 — أول إطار أسرع، وحوار طلب مضمون على أندرويد 10+ (PATCH · 2026-11-02)
 
