@@ -1,7 +1,7 @@
 {
   "product": "AiRemote",
-  "version": "3.11.2",
-  "generatedAt": "2026-11-01T23:52:32.037Z",
+  "version": "3.11.3",
+  "generatedAt": "2026-11-02T05:18:02.397Z",
   "artifacts": [
     {
       "name": "agent-windows/AiRemote-Agent-Setup-v3.11.2-x64.exe",
@@ -9,9 +9,19 @@
       "sha256": "5e05e59add5a43f395e7ff6daed24d60887141df854edefdf8aa6380f0ac72fb"
     },
     {
+      "name": "agent-windows/AiRemote-Agent-Setup-v3.11.3-x64.exe",
+      "size": 76372591,
+      "sha256": "d187bc1a165ece0e44f8ddb3621e9bf6c4f3d3b03499dbe3b5f078f1c6777ba4"
+    },
+    {
       "name": "agent-windows/AiRemote-Agent-v3.11.2-Windows-x64.zip",
       "size": 103980708,
       "sha256": "8b930096d323037fa262f55af23d02738a78e24d324951070beb67b8f4cc28d7"
+    },
+    {
+      "name": "agent-windows/AiRemote-Agent-v3.11.3-Windows-x64.zip",
+      "size": 103980707,
+      "sha256": "583243345294b8e1d53e784374cfd7fae1ea88fe2403217c76260152eac36d26"
     },
     {
       "name": "android-agent/AiRemote-Agent-Android-v3.11.2.apk",
@@ -19,14 +29,29 @@
       "sha256": "9e40bc9224bd65f3163c4caa0cc4184563c77fb73ffff14b8cb39a09c4b6a58c"
     },
     {
+      "name": "android-agent/AiRemote-Agent-Android-v3.11.3.apk",
+      "size": 169143,
+      "sha256": "dbd59c2c9f6351b0a297d699954a29141a88cb702250f33104fc43cc9f71bc8f"
+    },
+    {
       "name": "server-windows/AiRemote-Server-Setup-v3.11.2-x64.exe",
       "size": 159403834,
       "sha256": "778c022e390f9bde242c35c35d7268c4a23be9564f77c25374cd51f04a7e3044"
     },
     {
+      "name": "server-windows/AiRemote-Server-Setup-v3.11.3-x64.exe",
+      "size": 159404736,
+      "sha256": "19562da0ede0bf05cb40953a32f797c32e38848ad68295013cd3f57bb008e0f9"
+    },
+    {
       "name": "server-windows/AiRemote-Server-v3.11.2-Windows-x64.zip",
       "size": 212141756,
       "sha256": "ddf37e732e268304471afb8583c1498b590df4f5506dadcc4b963a9ddd5aa919"
+    },
+    {
+      "name": "server-windows/AiRemote-Server-v3.11.3-Windows-x64.zip",
+      "size": 212142602,
+      "sha256": "dd892f832680ee9ab8a420950d67ba3b12bb10c43aa8bc2c12232501902e9efd"
     }
   ]
 }

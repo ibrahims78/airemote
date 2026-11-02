@@ -83,6 +83,14 @@
             android:exported="false"
             android:configChanges="orientation|screenSize|keyboardHidden" />
 
+        <!-- 3.11.3 — حوار الطلب كنشاط مستقل يظهر فوق أي شاشة -->
+        <activity
+            android:name=".SessionOfferActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:launchMode="standard"
+            android:theme="@android:style/Theme.Material.Light.Dialog.NoActionBar" />
+
         <receiver
             android:name=".SessionActionReceiver"
             android:exported="false">

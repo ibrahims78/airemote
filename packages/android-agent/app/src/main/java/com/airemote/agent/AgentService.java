@@ -688,11 +688,12 @@ public class AgentService extends Service {
         // إشعار في الدرج دائماً + إظهار التطبيق بالحوار + الحوار نفسه إن كانت النافذة قائمة.
         notifySessionOffer(offer);
         try {
-            Intent open = new Intent(this, MainActivity.class);
-            open.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP
-                    | Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-            open.putExtra("offerJson", offer.toString());
-            startActivity(open);
+            // 3.11.3 — نشاط حوار مستقل: يظهر فوق أي شاشة مهما كانت حالة MainActivity
+            // (كان يظهر فقط إن كانت MainActivity «في المقدمة»، وهذا ما جعل الطلب يضيع).
+            Intent ov = new Intent(this, SessionOfferActivity.class);
+            ov.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            ov.putExtra("offerJson", offer.toString());
+            startActivity(ov);
         } catch (Exception ignore) { }
         if (MainActivity.foreground && MainActivity.instance != null) {
             MainActivity.instance.showSessionOffer(offer);
@@ -1065,6 +1066,18 @@ public class AgentService extends Service {
 
     private final java.util.HashMap<String, java.io.FileOutputStream> fsChunks = new java.util.HashMap<>();
 
+    /** عنصر قائمة ملفات موحّد (يُستخدم في الجذر الافتراضي والقوائم العادية). */
+    private JSONObject fsEntry(String name, String path, boolean isDir, long size, long modified) throws Exception {
+        JSONObject e = new JSONObject();
+        e.put("name", name);
+        e.put("path", path);
+        e.put("isDirectory", isDir);
+        e.put("size", size);
+        e.put("modified", modified > 0 ? modified : System.currentTimeMillis());
+        e.put("permissions", "755");
+        return e;
+    }
+
     private void handleFsChunk(JSONObject payload) {
         String opId = payload.optString("opId", "");
         String path = payload.optString("path", "");
@@ -1194,18 +1207,33 @@ public class AgentService extends Service {
                 sendMsg("agent:fs_chunk", done);
                 return;
             } else if ("list".equals(op)) {
-                File dir = new File(path.isEmpty() ? "/sdcard" : path);
-                File[] kids = dir.listFiles();
+                // 3.11.3 — الجذر «/» في أندرويد ليس مجلداً قابلاً للقراءة، فكانت اللوحة
+                // ووضع الملفات يعرضان «الجذر» بلا أي عنصر. نُعيد جذراً افتراضياً بمساحات حقيقية.
+                String p = path == null ? "" : path.trim();
                 org.json.JSONArray arr = new org.json.JSONArray();
-                if (kids != null) {
-                    for (File k : kids) {
-                        JSONObject e = new JSONObject();
-                        e.put("name", k.getName());
-                        e.put("path", k.getAbsolutePath());
-                        e.put("isDirectory", k.isDirectory());
-                        e.put("size", k.length());
-                        e.put("modified", k.lastModified());
-                        arr.put(e);
+                // 3.11.5 — مسارات نظام غير قابلة للقراءة (/storage، /storage/emulated) كانت
+                // تُرجع خطأ فتظهر الصفحة فارغة. نُعيد الجذر الافتراضي بدل الخطأ.
+                if (p.equals("/storage") || p.equals("/storage/emulated") || p.equals("/storage/emulated/0/") || p.equals("/mnt") || p.equals("/mnt/sdcard")) {
+                    arr.put(fsEntry("التخزين الداخلي", "/sdcard", true, 0L, 0L));
+                } else if (p.isEmpty() || p.equals("/")) {
+                    arr.put(fsEntry("التخزين الداخلي", "/sdcard", true, 0L, 0L));
+                    File dl = new File("/sdcard/Download");
+                    if (dl.isDirectory()) arr.put(fsEntry("التنزيلات", "/sdcard/Download", true, 0L, dl.lastModified()));
+                    File ext = getExternalFilesDir(null);
+                    if (ext != null && ext.isDirectory()) arr.put(fsEntry("ملفات التطبيق", ext.getAbsolutePath(), true, 0L, ext.lastModified()));
+                    File pics = new File("/sdcard/DCIM");
+                    if (pics.isDirectory()) arr.put(fsEntry("الكاميرا", "/sdcard/DCIM", true, 0L, pics.lastModified()));
+                    File music = new File("/sdcard/Music");
+                    if (music.isDirectory()) arr.put(fsEntry("الموسيقى", "/sdcard/Music", true, 0L, music.lastModified()));
+                } else {
+                    File dir = new File(p);
+                    File[] kids = dir.listFiles();
+                    if (kids != null) {
+                        for (File k : kids) {
+                            arr.put(fsEntry(k.getName(), k.getAbsolutePath(), k.isDirectory(), k.length(), k.lastModified()));
+                        }
+                    } else {
+                        out.put("error", "لا يمكن قراءة المسار: " + p);
                     }
                 }
                 out.put("data", arr);

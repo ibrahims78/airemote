@@ -1,0 +1,14 @@
+{
+ "aRequest": 201,
+ "aSid": "7230e940-43fa-4327-b0dd-95a1acad4e0d",
+ "aStateAfterAccept": "active",
+ "aStateAfterIdle": "closed",
+ "bRequest": 201,
+ "bSid": "b363ba0f-994a-42df-bffa-b47c89967832",
+ "closeByTargetDevice": 200,
+ "bStateAfterClose": "closed",
+ "pass": {
+  "autoClosed": true,
+  "forceCloseWorks": true
+ }
+}

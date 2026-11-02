@@ -1,0 +1,30 @@
+{
+ "request": 201,
+ "sid": "b7be064f-5460-4950-8ce0-de0a6a3d6f88",
+ "ticketTtlHours": 12,
+ "access": "files",
+ "list/": {
+  "status": 200,
+  "entries": 5
+ },
+ "list/sdcard": {
+  "status": 200,
+  "entries": 19
+ },
+ "list/storage": {
+  "status": 200,
+  "entries": 1
+ },
+ "list/storage/emulated/0": {
+  "status": 200,
+  "entries": 19
+ },
+ "stateAfter5s": "active",
+ "pass": {
+  "ttl12h": true,
+  "rootHasEntries": true,
+  "sdcardHasEntries": true,
+  "storageMapped": true,
+  "sessionStaysActive": true
+ }
+}

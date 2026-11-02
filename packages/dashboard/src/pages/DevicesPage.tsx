@@ -7,6 +7,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import type { Device } from '@airemote/shared'
 import { useT } from '../lib/i18n'
 import { useAuthStore } from '../store/authStore'
+import { api } from '../lib/api'
 
 function WolModal({ device, token, onClose }: { device: Device; token: string; onClose: () => void }) {
   const t = useT()
@@ -369,6 +370,18 @@ export function DevicesPage() {
                             <div className="mt-1 inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-[11px] text-primary">
                               <span aria-hidden="true">{r.direction === 'out' ? '↗' : '↙'}</span>
                               <span>{r.peerName} · {acc} · {st}</span>
+                              {/* 3.11.4 — قطع قسري للجلسة من السيرفر */}
+                              <button
+                                type="button"
+                                className="ms-1 rounded border border-primary/40 px-1 text-[10px] hover:bg-primary/20"
+                                title="قطع الجلسة"
+                                onClick={async (ev) => {
+                                  ev.stopPropagation()
+                                  const sid = (r as unknown as { sessionId?: string }).sessionId || ''
+                                  if (!sid) return
+                                  try { await api.post('/api/relay/' + sid + '/close', { reason: 'admin_force' }); await fetchDevices() } catch {}
+                                }}
+                              >قطع</button>
                             </div>
                           )
                         })()}

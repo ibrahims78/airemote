@@ -1287,11 +1287,9 @@ function closeScreenSession(sessionId, errMsg) {
   if (deviceScreenSess.get(session.deviceId) === sessionId) deviceScreenSess.delete(session.deviceId)
   screenViewers.delete(session.deviceId)
   lastFullFrameByDevice.delete(session.deviceId)
-  // P5-fix — كما في leaveScreenSession: لا تترك جلسة relay حيّة بلا بث.
-  try {
-    const rs = session.relaySessionId ? relaySessions.get(session.relaySessionId) : null
-    if (rs) relayCloseSession(rs, errMsg ? 'stream_error' : 'stream_closed')
-  } catch {}
+  // 3.11.5 — لا تُغلق جلسة الـrelay هنا: فشل بدء الالتقاط (إذن التقاط مفقود مثلاً) كان
+  // يُنهي الجلسة فوراً بعد «سماح» فيراها المستخدم «تفصل». الإغلاق يبقى عند انتهاء مهلة
+  // المُشاهد في leaveScreenSession أو بطلب صريح من أحد الطرفين.
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1875,10 +1873,12 @@ function devicePlatform (deviceId) {
   } catch { return '' }
 }
 
-function sessionViewIssue(session, deviceId, access) {
+function sessionViewIssue(session, deviceId, access, ttlMs) {
   const raw = crypto.randomBytes(32).toString('hex')
   const hash = crypto.createHash('sha256').update(raw).digest('hex')
-  const expiresAt = new Date(Date.now() + SESSION_VIEW_TTL_MS).toISOString()
+  // 3.11.5 — وضع «ملفات» يعيش عمر الجلسة لا 60 ثانية (وإلا تنكسر الصفحة بعد دقيقة).
+  const ttl = Number(ttlMs) > 0 ? Number(ttlMs) : SESSION_VIEW_TTL_MS
+  const expiresAt = new Date(Date.now() + ttl).toISOString()
   const id = uuidv4()
   db.prepare('INSERT INTO session_view_tickets (id, session_id, device_id, access, token_hash, expires_at) VALUES (?,?,?,?,?,?)')
     .run(id, session.id, deviceId, access, hash, expiresAt)
@@ -1912,7 +1912,8 @@ function sessionViewIssueKey(session, deviceId, access) {
 
 // يُصدر التذكرة (مرة واحدة) + مفتاح الإعادة معاً، ويعيد رابطاً واحداً يحملهما.
 function sessionViewGrant(session, deviceId, access) {
-  const ticket = sessionViewIssue(session, deviceId, access)
+  const FILES_TICKET_TTL_MS = 12 * 3600 * 1000
+  const ticket = sessionViewIssue(session, deviceId, access, access === 'files' ? FILES_TICKET_TTL_MS : undefined)
   const key = sessionViewIssueKey(session, deviceId, access)
   // 3.9.2 (H1) — مفتاح الإعادة في fragment: لا يُرسل إلى السيرفر ولا يظهر في سجلاته.
   const viewUrl = '/view/' + session.target.deviceId + '?rt=' + ticket.ticket + '&access=' + encodeURIComponent(access) + '&platform=' + encodeURIComponent(devicePlatform(session.target.deviceId)) + '#rk=' + key.resumeKey
@@ -2103,13 +2104,15 @@ function relayDecide(session, accept, reason, decider) {
           // 3.11.1 — نُرفق المنصّة والاسم: هدف أندرويد يبدأ من /sdcard لا من `/`.
           filesUrl: (function () {
             if (session.access !== 'files') return null
+            // 3.11.5 — تذكرة الملفات صارت بعمر 12 ساعة (انظر sessionViewGrant) فتُستخدم rt مباشرة.
+            const fileKey = vt.ticket
             let platform = ''
             try {
               const row = db.prepare('SELECT info FROM devices WHERE id=?').get(session.target.deviceId)
               const inf = row && row.info ? (JSON.parse(row.info) || {}) : {}
               platform = String(inf.platform || (String(inf.agentVersion || '').toLowerCase().includes('android') ? 'android' : 'windows'))
             } catch {}
-            return '/files/' + session.target.deviceId + '?rt=' + encodeURIComponent(vt.ticket) +
+            return '/files/' + session.target.deviceId + '?rt=' + encodeURIComponent(fileKey) +
               '&platform=' + encodeURIComponent(platform) + '&name=' + encodeURIComponent(session.target.name || '')
           })(),
         },
@@ -3461,6 +3464,29 @@ async function start(config) {
     })
     retention.start()
 
+    // 3.11.4 — منظّف جلسات وكيل↔وكيل: عروض منتهية + جلسات ملفات بلا نبضة + جلسات بلا أطراف.
+    try {
+      if (global.__relayJanitor) clearInterval(global.__relayJanitor)
+      global.__relayJanitor = setInterval(() => {
+        const now = Date.now()
+        for (const s of relaySessions.values()) {
+          try {
+            if (s.state === 'requested' && now - s.createdAt > RELAY_OFFER_TTL_MS + 5000) {
+              relayCloseSession(s, 'offer_timeout'); continue
+            }
+            if (s.state === 'active') {
+              const hb = s.lastSeenAt || s.acceptedAt || s.createdAt
+              const idleMs = now - hb
+              const screenAlive = deviceScreenSess.get(s.target.deviceId) || screenSessions.size && [...screenSessions.values()].some(x => x.relaySessionId === s.id && x.viewers.size > 0)
+              const limit = s.access === 'files' ? 90 * 1000 : 10 * 60 * 1000
+              if (!screenAlive && idleMs > limit) relayCloseSession(s, s.access === 'files' ? 'files_idle' : 'session_idle')
+            }
+          } catch {}
+        }
+      }, 30000)
+      if (global.__relayJanitor.unref) global.__relayJanitor.unref()
+    } catch {}
+
     // v3.8.33 (R7) - a counter nobody watches is not monitoring: raise a bell on a burst.
     failureAlerter = createFailureAlerter({
       db,
@@ -3729,6 +3755,18 @@ async function start(config) {
       hasDashboard = true
     } catch {}
   }
+
+  // 3.11.4 — لا تُخزّن index.html في المتصفح: حزمة قديمة مخزَّنة كانت تُخفي إصلاحات الواجهة
+  // (مجلدات تظهر ثم تُفتح فارغة لأن الحزمة القديمة تبني مساراً خاطئاً).
+  fastify.addHook('onSend', async (req, reply, payload) => {
+    try {
+      const u = String((req.raw && req.raw.url) || req.url || '')
+      if (u === '/' || u.startsWith('/?') || /\.html($|\?)/.test(u)) {
+        reply.header('Cache-Control', 'no-store, must-revalidate')
+      }
+    } catch {}
+    return payload
+  })
 
   // SPA fallback (v3.2.2 fix — reply.sendFile unavailable with decorateReply:false)
   if (hasDashboard) {
@@ -4743,8 +4781,11 @@ async function start(config) {
       if (!hasDeviceCapability(p, deviceId, 'files')) { denyCapability(reply, p, deviceId, 'files', req); return null }
       return { via: 'jwt', principal: p }
     }
-    const rt = String((req.query && req.query.rt) || '')
-    const r = rt ? sessionViewResolve(rt, { deviceId }) : { ok: false, code: 'ticket_required' }
+    // 3.11.5 — التذكرة rt عمرها 60s فقط (لعرض الشاشة). صفحة الملفات تحتاج عمر الجلسة،
+    // فنقبل مفتاح الإعادة rk أيضاً (غير مستهلك وصالح لعمر الجلسة).
+    const rt = String((req.query && req.query.rt) || (req.headers['x-relay-key']) || '')
+    let r = rt ? sessionViewResolve(rt, { deviceId }) : { ok: false, code: 'ticket_required' }
+    if (!r.ok && rt) r = sessionViewResolveKey(rt, { deviceId })
     if (!r.ok || !r.session || r.session.access !== 'files') {
       reply.code(403).send({ error: 'وضع الملفات: تذكرة غير صالحة أو الجلسة ليست بوضع الملفات', code: (r && r.code) || 'ticket_required' })
       return null
@@ -6448,14 +6489,29 @@ if ($target -eq $null) { 'name-not-found' } else {
     }
   })
 
+  // 3.11.4 — الإغلاق القسري: يقبل JWT (اللوحة) **أو رمز الجهاز** (الوكيلان)،
+  // فكان الوكيل يعجز عن إلغاء جلسته العالقة ويُمنع من إنشاء غيرها.
   fastify.post('/api/relay/:id/close', async (req, reply) => {
-    const p = authMiddleware(req, reply); if (!p) return
+    const p = relayAuth(req, reply); if (!p) return
     const s = relayGet(req.params.id)
     if (!s) return reply.code(404).send({ error: 'لا توجد جلسة بهذا المعرّف', code: 'unknown_session' })
-    const isParty = s.requester.userId === p.userId || s.requester.deviceId === p.userId
-    if (!isParty && !canAccessDevice(p, s.target.deviceId)) return reply.code(403).send({ error: 'Forbidden' })
-    relayCloseSession(s, (req.body || {}).reason || 'user', p.userId)
+    const isParty = p.isDevice
+      ? (s.requester.deviceId === p.deviceId || s.target.deviceId === p.deviceId)
+      : (s.requester.userId === p.userId || p.role === 'admin' || s.target.ownerId === p.userId)
+    if (!isParty) return reply.code(403).send({ error: 'Forbidden' })
+    relayCloseSession(s, (req.body || {}).reason || 'user', p.userId || null)
     return { ok: true, sessionId: s.id, state: s.state }
+  })
+
+  // 3.11.4 — نبضة حياة لصفحة الملفات: جلسة بلا نبضة تُغلق تلقائياً (كانت تبقى «نشطة» للأبد).
+  fastify.post('/api/relay/:id/keepalive', async (req, reply) => {
+    const s = relayGet(req.params.id)
+    if (!s) return reply.code(404).send({ error: 'unknown_session' })
+    const rt = String((req.body && req.body.rt) || (req.query && req.query.rt) || '')
+    const r = rt ? sessionViewResolve(rt, { deviceId: s.target.deviceId }) : { ok: false }
+    if (!r.ok) return reply.code(403).send({ error: 'ticket_required' })
+    s.lastSeenAt = Date.now()
+    return { ok: true, state: s.state }
   })
 
   fastify.register(async (app) => {

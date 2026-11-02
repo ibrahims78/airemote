@@ -734,14 +734,50 @@ public class MainActivity extends Activity {
             String acc = s.optString("access", "");
             String accLabel = "view".equals(acc) ? "عرض" : ("control".equals(acc) ? "تحكم" : ("files".equals(acc) ? "ملفات" : acc));
             String stLabel = "requested".equals(state) ? "بانتظار الموافقة" : ("active".equals(state) ? "نشطة" : "معلّقة");
+            final String rowSid = s.optString("id", "");
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setGravity(android.view.Gravity.CENTER_VERTICAL);
             TextView tv = new TextView(this);
             tv.setText(who + " ← " + to + " · " + accLabel + " · " + stLabel);
             tv.setTextSize(12);
             tv.setTextColor(0xFFE2E8F0);
-            sesRows.addView(tv);
+            tv.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+            row.addView(tv);
+            // 3.11.4 — قطع قسري للجلسة من الوكيل (كانت تعلق فتمنع إنشاء جلسة جديدة).
+            Button cut = new Button(this);
+            cut.setText("قطع");
+            cut.setAllCaps(false);
+            cut.setTextSize(11);
+            cut.setOnClickListener(v -> closeSessionById(rowSid));
+            row.addView(cut);
+            sesRows.addView(row);
             shown++;
         }
         if (sesState != null) sesState.setText(shown == 0 ? "لا جلسات نشطة" : ("جلسات نشطة: " + shown));
+    }
+
+    private void closeSessionById(final String sid) {
+        if (sid == null || sid.isEmpty()) return;
+        final String base = apiBase();
+        final String tok = Prefs.token(this);
+        if (base == null || tok == null || tok.isEmpty()) return;
+        new Thread(() -> {
+            try {
+                HttpURLConnection c = (HttpURLConnection) new URL(base + "/api/relay/" + sid + "/close").openConnection();
+                c.setRequestMethod("POST");
+                c.setRequestProperty("Content-Type", "application/json");
+                c.setRequestProperty("X-Device-Token", tok);
+                c.setDoOutput(true);
+                OutputStream os = c.getOutputStream();
+                os.write("{\"reason\":\"android_force\"}".getBytes("UTF-8"));
+                os.close();
+                c.getResponseCode();
+                UI.post(() -> { toast("أُغلقت الجلسة"); loadSessions(); });
+            } catch (Exception e) {
+                UI.post(() -> toast("تعذّر إغلاق الجلسة"));
+            }
+        }).start();
     }
 
     private void renderDevices(JSONArray arr) {
