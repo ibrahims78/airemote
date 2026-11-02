@@ -1,9 +1,9 @@
 {
  "target": "d147684b-2451-4418-a628-86f11aa66a4e",
- "seconds": 10,
- "frames": 12,
- "firstFrameMs": 18,
- "fps": 1.2,
- "avgFrameKB": 8.9,
- "kbps": 87.8
+ "seconds": 12,
+ "frames": 10,
+ "firstFrameMs": 1504,
+ "fps": 0.8,
+ "avgFrameKB": 5.9,
+ "kbps": 40.1
 }
