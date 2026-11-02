@@ -5,6 +5,7 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.Intent;
 import android.media.projection.MediaProjectionManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -215,8 +216,9 @@ public class MainActivity extends Activity {
                 UI.postDelayed(this::requestCapture, 1600);
             }
         }
-        // 3.12 — خدمة الوصول شرط تنفيذ الإدخال؛ إن كانت معطّلة تُنبّه بوضوح بدل الفشل الصامت.
-        if (AiRemoteA11y.I == null) UI.postDelayed(() -> toast("خدمة الوصول معطّلة — فعّلها من «معالج التهيئة» ليعمل التحكّم"), 2400);
+        // 3.11.3 — خدمة الوصول شرط تنفيذ الإدخال ولا يمكن تفعيلها برمجياً (قيد Android).
+        // إشعار دائم يفتح إعدادات الوصول مباشرة، بدل تنبيه عابر يضيع.
+        if (AiRemoteA11y.I == null) UI.postDelayed(this::notifyA11yMissing, 2400);
 
         Intent it = getIntent();
         handleExtras(it);
@@ -307,6 +309,34 @@ public class MainActivity extends Activity {
         if (AgentService.isRunning() && !AgentService.isConnected()) {
             AgentService.restartNow();
         }
+    }
+
+    /** إشعار دائم «التحكّم معطّل» يفتح إعدادات خدمة الوصول مباشرة. */
+    private void notifyA11yMissing() {
+        try {
+            android.app.NotificationManager nm = (android.app.NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+            if (nm == null) return;
+            if (Build.VERSION.SDK_INT >= 26) {
+                android.app.NotificationChannel ch = new android.app.NotificationChannel(
+                        "setup_v1", "التهيئة والصلاحيات", android.app.NotificationManager.IMPORTANCE_DEFAULT);
+                nm.createNotificationChannel(ch);
+            }
+            Intent open = new Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS);
+            open.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            int flags = android.app.PendingIntent.FLAG_UPDATE_CURRENT;
+            if (Build.VERSION.SDK_INT >= 23) flags |= android.app.PendingIntent.FLAG_IMMUTABLE;
+            android.app.PendingIntent pi = android.app.PendingIntent.getActivity(this, 9001, open, flags);
+            android.app.Notification.Builder b = Build.VERSION.SDK_INT >= 26
+                    ? new android.app.Notification.Builder(this, "setup_v1")
+                    : new android.app.Notification.Builder(this);
+            b.setContentTitle("التحكّم معطّل على هذا الجهاز")
+                    .setContentText("خدمة الوصول غير مفعّلة — اضغط لتفعيل AiRemote ليعمل التحكّم")
+                    .setSmallIcon(android.R.drawable.stat_notify_error)
+                    .setContentIntent(pi)
+                    .setOngoing(true)
+                    .setAutoCancel(false);
+            nm.notify(9001, b.build());
+        } catch (Exception ignore) { }
     }
 
     private void refreshConnectionStatus() {
