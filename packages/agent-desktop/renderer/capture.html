@@ -79,6 +79,40 @@ async function startCapture(sid, fps, quality, monitorIdx, maxWidth) {
   currentQuality = Math.max(10, Math.min(95, quality || 65))
   currentMaxWidth = Math.max(320, Math.min(3840, Number(maxWidth) || currentMaxWidth || 1280))
   lastMonitorIdx = monitorIdx || 0
+  captureStartAt = Date.now()
+
+  // ── 3.11.4 — استهلاك التدفق المُسخَّن إن وُجد (نفس الشاشة وأقل من 45s) ──
+  const warmIdx = monitorIdx || 0
+  // إن كان التسخين ما زال جارياً (getDisplayMedia يستغرق ~850ms) ننتظره بدل بدء
+  // التقاط بارد ثانٍ — هذا هو الفرق بين «التسخين موجود» و«التسخين يُستخدم».
+  if (!warmStream && warming) await waitForWarm(2000)
+  if (warmStream && warmMonitorIdx === warmIdx && (Date.now() - warmAt) < 45000) {
+    const reuse = warmStream
+    const age   = Date.now() - warmAt
+    stopWarm('consume')
+    stopAudioRecorder()
+    if (captureTimer !== null) { clearTimeout(captureTimer); captureTimer = null }
+    stream     = reuse
+    frameSeq   = 0
+    encoding   = false
+    lastFullAt = 0
+    prevSample = null
+    if (video.srcObject !== reuse) { try { video.srcObject = reuse; await video.play() } catch {} }
+    // انتظر جهوزية الإطار (حد أقصى 2s) قبل بدء السلسلة — بدل مؤقت يعود فارغاً ويتوقف.
+    if (video.readyState < 2) {
+      await new Promise(resolve => {
+        let n = 0
+        const t = setInterval(() => {
+          if (video.readyState >= 2 || ++n > 40) { clearInterval(t); resolve() }
+        }, 50)
+      })
+    }
+    if (audioWanted) startAudioRecorder(sid)
+    captureTimer = setTimeout(captureFrame, 0)
+    ipcRenderer.send('capture-timing', { phase: 'reuse', session: String(sid).slice(0, 8), warmAgeMs: age })
+    return
+  }
+  if (warmStream) stopWarm('switch')
 
   stopCapture()
 
@@ -279,7 +313,12 @@ function computeDelta(cw, ch) {
 }
 
 function captureFrame() {
-  if (!video.videoWidth || !video.videoHeight || video.readyState < 2) return
+  // 3.11.4 — لا تُسقط السلسلة الزمنية عند عدم جهوزية الفيديو: أعد التسليح وانتظر.
+  // (كان return بلا مؤقت يوقف البث كلياً إذا وصل start-capture قبل جهوزية التدفق.)
+  if (!video.videoWidth || !video.videoHeight || video.readyState < 2) {
+    if (captureTimer !== null) armTimer(50)
+    return
+  }
   if (encoding) return   // previous encode still in progress — skip frame
 
   // v3.3.0 — scale to currentMaxWidth when needed (keeps JPEG encode fast and stream smooth)
@@ -364,9 +403,88 @@ function captureFrame() {
         y:         ry,
         buffer:    Buffer.from(buf)
       })
+      if (s === 0) ipcRenderer.send('capture-timing', { phase: 'first-frame-sent', session: String(sid).slice(0, 8), sinceStartMs: captureStartAt ? (Date.now() - captureStartAt) : -1 })
     }).catch(() => { /* ignore decode errors */ })
   }, wantWebp ? 'image/webp' : 'image/jpeg', currentQuality / 100)
 }
+
+// ── 3.11.4 — تسخين تدفق الالتقاط (سبب عيب أول إطار 2084ms) ──────────────
+// getDisplayMedia + أول إطار كانا يبدآن عند وصول screen_start، فيدفع المشاهد
+// ثمن تهيئة الالتقاط كاملة. التسخين يبدأ فور قبول الطرف الهدف (لا قبله)،
+// ويُستهلك عند screen_start بلا إعادة التقاط. عمر التسخين 45s ثم يُحرَّر
+// كي لا يبقى التقاط الشاشة عاملاً بلا جلسة (خصوصية + CPU).
+let warmStream     = null
+let warmMonitorIdx = null
+let warmAt         = 0
+let warmTimer      = null
+let captureStartAt = 0
+let warming        = false
+
+function waitForWarm (maxMs) {
+  return new Promise(resolve => {
+    const t0 = Date.now()
+    const iv = setInterval(() => {
+      if (!warming || Date.now() - t0 >= maxMs) { clearInterval(iv); resolve() }
+    }, 25)
+  })
+}
+
+function stopWarm (reason) {
+  if (warmTimer) { clearTimeout(warmTimer); warmTimer = null }
+  if (warmStream) {
+    try { warmStream.getTracks().forEach(t => t.stop()) } catch {}
+    if (String(reason) === 'expired') ipcRenderer.send('capture-timing', { phase: 'warm-expired' })
+  }
+  warmStream = null; warmMonitorIdx = null; warmAt = 0
+}
+
+async function warmCapture (monitorIdx) {
+  if (sessionId) return { ok: false, reason: 'streaming' }
+  const idx = Math.max(0, Number(monitorIdx) || 0)
+  if (warmStream && warmMonitorIdx === idx && (Date.now() - warmAt) < 45000) return { ok: true, warm: true }
+  if (warming) return { ok: false, reason: 'warming' }
+  warming = true
+  stopWarm('replace')
+
+  const t0 = Date.now()
+  let s = null
+  try {
+    s = await navigator.mediaDevices.getDisplayMedia({ video: { cursor: 'never' }, audio: true })
+  } catch (e0) {
+    try { s = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true }) } catch (e1) { s = null }
+  }
+  if (!s) {
+    try {
+      const sources = await getSources()
+      if (sources.length) {
+        s = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: sources[idx].id, maxWidth: 1920, maxHeight: 1080 } }
+        })
+      }
+    } catch (e2) { s = null }
+  }
+  if (!s) { warming = false; ipcRenderer.send('capture-timing', { phase: 'warm-failed', monitor: idx, ms: Date.now() - t0 }); return { ok: false } }
+
+  // لا يُعلن التدفق «جاهزاً» قبل أن يصبح الفيديو قابلاً للرسم: الإعلان المبكر كان
+  // يجعل مسار إعادة الاستخدام يبدأ بمؤشر على تدفق غير جاهز فيتوقف البث صامتاً.
+  video.srcObject = s
+  try {
+    await new Promise(resolve => {
+      if (video.readyState >= 1) return resolve()
+      video.onloadedmetadata = resolve
+      setTimeout(resolve, 3000)
+    })
+  } catch {}
+  try { video.muted = true; await video.play() } catch {}
+  warmStream = s; warmMonitorIdx = idx; warmAt = Date.now()
+  warming = false
+  ipcRenderer.send('capture-timing', { phase: 'warm-ready', monitor: idx, ms: Date.now() - t0 })
+  warmTimer = setTimeout(() => stopWarm('expired'), 45000)
+  return { ok: true }
+}
+
+ipcRenderer.on('warm-capture', (_, p) => { warmCapture((p && p.monitorIndex) || 0) })
 
 // ── Stop capture ─────────────────────────────────────────────────────────
 function stopCapture() {

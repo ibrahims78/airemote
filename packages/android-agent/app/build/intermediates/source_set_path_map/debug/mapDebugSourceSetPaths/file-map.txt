@@ -1,7 +1,0 @@
-com.airemote.agent.app-pngs-0 D:\autoclaw projects-new\AiRemote\packages\android-agent\app\build\generated\res\pngs\debug
-com.airemote.agent.app-resValues-1 D:\autoclaw projects-new\AiRemote\packages\android-agent\app\build\generated\res\resValues\debug
-com.airemote.agent.app-packageDebugResources-2 D:\autoclaw projects-new\AiRemote\packages\android-agent\app\build\intermediates\incremental\debug\packageDebugResources\merged.dir
-com.airemote.agent.app-packageDebugResources-3 D:\autoclaw projects-new\AiRemote\packages\android-agent\app\build\intermediates\incremental\debug\packageDebugResources\stripped.dir
-com.airemote.agent.app-debug-4 D:\autoclaw projects-new\AiRemote\packages\android-agent\app\build\intermediates\merged_res\debug\mergeDebugResources
-com.airemote.agent.app-debug-5 D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\debug\res
-com.airemote.agent.app-main-6 D:\autoclaw projects-new\AiRemote\packages\android-agent\app\src\main\res

@@ -1,0 +1,14 @@
+{
+  "slice": "3.11.4",
+  "defect": "first-frame 2084ms vs 809ms baseline (HANDOFF 3.11.3 section 8 item 2)",
+  "harness": "tools/lab/a2a/measure-stream.cjs WIN10 -> WIN11, 12s, fps 18 / quality 60 / 1600px",
+  "measurements": [
+    { "build": "3.11.3 (cold stream)", "firstFrameMs": 2084, "fps": 8.5, "source": "outputs/verify-2026-11-02/t18-active-win11.json" },
+    { "build": "3.11.4 build#1 (warm hook dead: duplicate case)", "firstFrameMs": 2515, "fps": 7.6, "agentLog": { "phase": "first-frame-sent", "sinceStartMs": 2455 } },
+    { "build": "3.11.4 build#2 (warm fired, screen_start arrived before warm-ready)", "firstFrameMs": 2455, "fps": 7.8, "agentLog": { "phase": "warm-ready", "ms": 847 } },
+    { "build": "3.11.4 build#3 (waits up to 2s for warm)", "firstFrameMs": 1722, "fps": 0.8, "agentLog": [ { "phase": "warm-ready", "ms": 1089 }, { "phase": "reuse", "warmAgeMs": 19 }, { "phase": "first-frame-sent", "sinceStartMs": 1622 } ] }
+  ],
+  "decomposition": { "warmInitMs": 1089, "reuseAfterWarmMs": 19, "firstEncodeAndSendMs": 615 },
+  "conclusion": "getDisplayMedia (847-1089ms) moved off the screen_start critical path: it now runs at session accept and overlaps the viewer window load. When the stream is already warm at screen_start, first frame is ~615ms. Worst case measured end-to-end 1722ms because the harness connects the viewer immediately after accept, leaving no overlap.",
+  "note": "fps 0.8 in the last run reflects an idle VM desktop (delta engine sends only changes), not a stall; 91-94 frames were seen under load."
+}

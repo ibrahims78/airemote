@@ -1,6 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="a11y_desc">خدمة التحكم للسماح لوحة AiRemote بالنقر والكتابة والتمرير على هذا الجهاز.</string>
-    <string name="app_name">AiRemote Android</string>
-    <string name="notif_channel">AiRemote Agent</string>
-</resources>

@@ -830,6 +830,11 @@ function handleMsg(msg) {
       const p = msg.payload || {}
       if (p.sessionId && p.access === 'control') grantedSessions.add(String(p.sessionId))
       if (process.env.AIRREMOTE_INPUT_DEBUG === '1') traceInput(`grant sid=${p.sessionId} access=${p.access} total=${grantedSessions.size}`)
+      // 3.11.4 — الجلسة صارت active (قبول من الواجهة أو من مسار آلي): سخّن تدفق
+      // الالتقاط إن كان هذا الجهاز هو الهدف. ملاحظة مقيسة: `switch` ينفّذ أول `case`
+      // مطابق فقط؛ إضافة `case` ثانٍ لنفس النوع لا تُنفَّذ أبداً — لذلك الدمج هنا.
+      const isTarget = String(p.targetDeviceId || '') === String(deviceId || '')
+      if (isTarget && (p.access === 'control' || p.access === 'view')) warmCapturer('session-token')
       break
     }
     case 'session:ticket': {
@@ -1288,6 +1293,23 @@ function createCaptureWindow() {
   capWin.loadFile(path.join(__dirname, 'renderer', 'capture.html'))
   capWin.on('closed', () => { capWin = null })
   return capWin
+}
+
+// ── 3.11.4 — تسخين تدفق الالتقاط عند قبول الجلسة ─────────────────────────
+// العيب المقيس: أول إطار 2084ms مقابل خط أساس 809ms، لأن getDisplayMedia
+// يُنشأ بارداً عند وصول screen_start. التسخين يبدأ بعد قبول الطرف الهدف فقط
+// (لا قبله)، ويُستهلك عند screen_start. عمره في الالتقاط 45s ثم يُحرَّر.
+function warmCapturer (reason) {
+  try {
+    if (!capWin || capWin.isDestroyed()) createCaptureWindow()
+    const cw = capWin
+    if (!cw) return
+    const idx = Number(currentMonitorId) || 0
+    const fire = () => { try { cw.webContents.send('warm-capture', { monitorIndex: idx }) } catch {} }
+    if (cw.webContents.isLoading()) cw.webContents.once('did-finish-load', fire)
+    else fire()
+    addLog('info', `🔥 [warm] تسخين تدفق الالتقاط (${reason || 'accept'}) — monitor=${idx}`)
+  } catch (e) { addLog('warn', `🔥 [warm] فشل التسخين: ${e.message}`) }
 }
 
 function destroyCaptureWindow() {
@@ -2512,6 +2534,9 @@ ipcMain.handle('session-decision', (_evt, payload) => {
   // 3.9.3 — قبول البطاقة («تحكم كامل») يفتح الإدخال لهذه الجلسة؛ كان grantedSessions
   // يُملأ فقط من حوار طلب التحكم المنفصل، فتُسقط كل أحداث الفأرة.
   try { if (p.accept) grantedSessions.add(sessionId) } catch {}
+  // 3.11.4 — تسخين الالتقاط فور القبول: الوقت الذي يستغرقه المشاهد في تحميل
+  // صفحة العرض يُستهلك في تهيئة التدفق بدل أن يدفعه بعد screen_start.
+  if (p.accept) warmCapturer('accept')
   return { ok: true }
 })
 
@@ -2653,6 +2678,19 @@ ipcMain.on('screen-error', (_, p) => {
   broadcastScreenSessions()
   refreshTray()
   if (screenSessions.size === 0) { releaseScreenAwakeForStream(); destroyCaptureWindow() }
+})
+
+// 3.11.4 — قياس زمن الالتقاط: يُكتب في %TEMP%\ar-capture-timing.log للقياس والانحدار.
+ipcMain.on('capture-timing', (_, p) => {
+  try {
+    const line = new Date().toISOString() + ' ' + JSON.stringify(p || {}) + '\n'
+    require('fs').appendFileSync(require('path').join(require('os').tmpdir(), 'ar-capture-timing.log'), line)
+  } catch {}
+  const q = p || {}
+  if (q.phase) addLog('info', `⏱️ [capture] ${q.phase}`
+    + (q.ms != null ? ` ms=${q.ms}` : '')
+    + (q.sinceStartMs != null ? ` منذ البدء=${q.sinceStartMs}ms` : '')
+    + (q.warmAgeMs != null ? ` عمر التسخين=${q.warmAgeMs}ms` : ''))
 })
 
 ipcMain.on('screen-monitors', (_, p) => {

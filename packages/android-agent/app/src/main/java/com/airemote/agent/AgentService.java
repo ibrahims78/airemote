@@ -687,14 +687,27 @@ public class AgentService extends Service {
         // الداخلية قديمة) فلا يرى المستخدم شيئاً ويبقى الطلب معلّقاً. الآن نفعل الثلاثة:
         // إشعار في الدرج دائماً + إظهار التطبيق بالحوار + الحوار نفسه إن كانت النافذة قائمة.
         notifySessionOffer(offer);
-        try {
-            // 3.11.3 — نشاط حوار مستقل: يظهر فوق أي شاشة مهما كانت حالة MainActivity
-            // (كان يظهر فقط إن كانت MainActivity «في المقدمة»، وهذا ما جعل الطلب يضيع).
-            Intent ov = new Intent(this, SessionOfferActivity.class);
-            ov.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
-            ov.putExtra("offerJson", offer.toString());
-            startActivity(ov);
-        } catch (Exception ignore) { }
+        // 3.11.6 — تشخيص حاسم: Android 10+ يمنع بدء نشاط من خدمة في الخلفية إلا إذا كان
+        // التطبيق يملك «الظهور فوق التطبيقات» (SYSTEM_ALERT_WINDOW). كان الفشل يُبتلع في
+        // catch صامت، فيبدو الطلب «غير مرئي» بلا أي أثر في السجل. الآن نسجّل الحالة
+        // والاستثناء، ولا نحاول بدء النشاط إن كان محكوماً — الإشعار (مع full-screen intent)
+        // هو المسار المضمون.
+        boolean canOverlay = android.os.Build.VERSION.SDK_INT < 23
+                || android.provider.Settings.canDrawOverlays(this);
+        android.util.Log.d("AiR-Offer", "handle canOverlay=" + canOverlay + " sdk=" + android.os.Build.VERSION.SDK_INT);
+        if (canOverlay || android.os.Build.VERSION.SDK_INT < 29) {
+            try {
+                Intent ov = new Intent(this, SessionOfferActivity.class);
+                ov.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                ov.putExtra("offerJson", offer.toString());
+                startActivity(ov);
+                android.util.Log.d("AiR-Offer", "startActivity ok");
+            } catch (Exception e) {
+                android.util.Log.e("AiR-Offer", "startActivity blocked: " + e.getClass().getSimpleName() + " " + e.getMessage());
+            }
+        } else {
+            android.util.Log.w("AiR-Offer", "background start skipped (no overlay) — relying on full-screen notification");
+        }
         if (MainActivity.foreground && MainActivity.instance != null) {
             MainActivity.instance.showSessionOffer(offer);
         }
@@ -718,6 +731,13 @@ public class AgentService extends Service {
             Intent open = new Intent(this, MainActivity.class);
             open.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
             android.app.PendingIntent pi = android.app.PendingIntent.getActivity(this, sid.hashCode(), open, piFlags);
+            // 3.11.6 — full-screen intent: الوسيلة الوحيدة المسموحة للنظام لفتح نشاط
+            // التطبيق من الخلفية بلا إذن «الظهور فوق التطبيقات» (تُستثنى من قيود
+            // background activity start). الحوار نفسه يبقى هو سطح القرار.
+            Intent fsiIntent = new Intent(this, SessionOfferActivity.class);
+            fsiIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+            fsiIntent.putExtra("offerJson", offer.toString());
+            android.app.PendingIntent fsi = android.app.PendingIntent.getActivity(this, sid.hashCode() + 3, fsiIntent, piFlags);
             Notification.Builder b = Build.VERSION.SDK_INT >= 26
                     ? new Notification.Builder(this, "sessions_v1")
                     : new Notification.Builder(this);
@@ -726,6 +746,8 @@ public class AgentService extends Service {
                     .setContentText(who + " يطلب " + access + " — المهلة 60 ثانية.")
                     .setSmallIcon(android.R.drawable.stat_sys_warning)
                     .setContentIntent(pi)
+                    .setCategory(Notification.CATEGORY_CALL)
+                    .setFullScreenIntent(fsi, true)
                     .setAutoCancel(true);
             Intent acc = new Intent(this, SessionActionReceiver.class).setAction(SessionActionReceiver.ACTION_ACCEPT).putExtra("sessionId", sid);
             Intent den = new Intent(this, SessionActionReceiver.class).setAction(SessionActionReceiver.ACTION_DENY).putExtra("sessionId", sid);

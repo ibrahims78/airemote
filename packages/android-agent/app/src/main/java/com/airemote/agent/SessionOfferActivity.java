@@ -25,6 +25,11 @@ public class SessionOfferActivity extends Activity {
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
+        // 3.11.6 — الظهور فوق شاشة القفل وإيقاظ الشاشة: طلب الاتصال حادثة آنية،
+        // ولا معنى لحوار يصل بعد انتهاء المهلة.
+        if (android.os.Build.VERSION.SDK_INT >= 27) {
+            try { setShowWhenLocked(true); setTurnScreenOn(true); } catch (Exception ignore) { }
+        }
         String js = getIntent() != null ? getIntent().getStringExtra("offerJson") : null;
         android.util.Log.d("AiR-Offer", "onCreate hasJson=" + (js != null && !js.isEmpty()) + " len=" + (js == null ? 0 : js.length()));
         if (js == null || js.isEmpty()) { finish(); return; }
@@ -44,6 +49,7 @@ public class SessionOfferActivity extends Activity {
                         // 3.11.5 — هدف أندرويد بلا إذن التقاط كان يبدأ الجلسة ثم يفشل البث فوراً
                         // («تفصل» بعد سماح). نطلب الإذن أولاً ثم نُرسل الموافقة.
                         if (CaptureHolder.ready()) {
+                            android.util.Log.d("AiR-Offer", "decision=allow sid=" + sid + " capture=ready");
                             AgentService.sendSessionDecision(sid, true);
                             finish();
                         } else {
@@ -58,7 +64,10 @@ public class SessionOfferActivity extends Activity {
                             }
                         }
                     })
-                    .setNegativeButton("رفض", (d, w) -> { AgentService.sendSessionDecision(sid, false); finish(); })
+                    .setNegativeButton("رفض", (d, w) -> {
+                        android.util.Log.d("AiR-Offer", "decision=deny sid=" + sid);
+                        AgentService.sendSessionDecision(sid, false); finish();
+                    })
                     .setCancelable(true)
                     .create();
             dlg.setOnCancelListener(d -> finish());
