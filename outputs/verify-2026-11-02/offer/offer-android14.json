@@ -1,0 +1,21 @@
+{
+  "slice": "3.11.6",
+  "device": "TECNO-KL4 (Android 14 / API 34)",
+  "flow": "WIN10 -> TECNO, access=view, app in background, SYSTEM_ALERT_WINDOW denied",
+  "logs": [
+    "AiR-Offer: handle canOverlay=false sdk=34",
+    "AiR-Offer: background start skipped (no overlay) - relying on full-screen notification",
+    "AiR-Offer: onCreate hasJson=true len=440"
+  ],
+  "notification": {
+    "channel": "sessions_v1",
+    "importance": 4,
+    "category": "call",
+    "actions": 2,
+    "fullscreenIntent": "PendingIntent{... startActivity (allowlist: NOTIFICATION_SERVICE/NotificationManagerService)}",
+    "title": "طلب اتصال بجهازك"
+  },
+  "result": "النظام فتح حوار الطلب عبر full-screen intent رغم حجب بدء النشاط من الخلفية (allowlist من NotificationManagerService) — وهو بالضبط المسار الذي أُضيف في 3.11.4",
+  "conclusion": "Android 10+ proof COMPLETE: القيد مكتشف، والمحاولة المباشرة تُتجاوز عمداً، والمسار المضمون يعمل بلا إذن overlay",
+  "proofLevel": "logcat + dumpsys notification"
+}
