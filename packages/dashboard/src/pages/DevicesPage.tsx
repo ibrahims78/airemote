@@ -365,11 +365,19 @@ export function DevicesPage() {
                           const r = (d as unknown as { relay?: { state: string; access: string; direction: string; peerName: string } }).relay
                           if (!r) return null
                           const acc = r.access === 'control' ? 'تحكم' : r.access === 'files' ? 'ملفات' : 'عرض'
-                          const st = r.state === 'active' ? 'متصل الآن' : r.state === 'requested' ? 'طلب معلّق' : 'معلّقة'
+                          const live = r.state === 'active'
+                          const st = live ? 'LIVE' : r.state === 'requested' ? 'طلب معلّق' : 'معلّقة'
                           return (
-                            <div className="mt-1 inline-flex items-center gap-1 rounded-md bg-primary/10 px-1.5 py-0.5 text-[11px] text-primary">
+                            <div
+                              className={clsx(
+                                'mt-1 inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[11px] font-medium',
+                                live ? 'bg-danger/15 text-danger' : 'bg-warning/15 text-warning'
+                              )}
+                              title={live ? 'اتصال وكيل↔وكيل نشط' : 'جلسة وكيل↔وكيل بانتظار الموافقة'}
+                            >
+                              <span aria-hidden="true" className={clsx('h-1.5 w-1.5 rounded-full', live ? 'animate-pulse bg-danger' : 'bg-warning')} />
                               <span aria-hidden="true">{r.direction === 'out' ? '↗' : '↙'}</span>
-                              <span>{r.peerName} · {acc} · {st}</span>
+                              <span>{st} · {r.peerName} · {acc}</span>
                               {/* 3.11.4 — قطع قسري للجلسة من السيرفر */}
                               <button
                                 type="button"

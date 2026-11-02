@@ -1,11 +1,11 @@
 {
  "request": 201,
- "sid": "12c5cbec-8803-404b-8fef-eade18a38bf2",
+ "sid": "f075e390-d1b3-4a23-8b0e-a6511d1929f6",
  "requesterRow": [
   {
    "name": "WIN10-VM",
    "relay": {
-    "sessionId": "12c5cbec-8803-404b-8fef-eade18a38bf2",
+    "sessionId": "f075e390-d1b3-4a23-8b0e-a6511d1929f6",
     "state": "active",
     "access": "view",
     "direction": "out",
@@ -18,7 +18,7 @@
   {
    "name": "WIN11-VM",
    "relay": {
-    "sessionId": "12c5cbec-8803-404b-8fef-eade18a38bf2",
+    "sessionId": "f075e390-d1b3-4a23-8b0e-a6511d1929f6",
     "state": "active",
     "access": "view",
     "direction": "in",

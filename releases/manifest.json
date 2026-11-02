@@ -1,7 +1,7 @@
 {
   "product": "AiRemote",
   "version": "3.11.3",
-  "generatedAt": "2026-11-02T05:18:02.397Z",
+  "generatedAt": "2026-11-02T05:36:13.438Z",
   "artifacts": [
     {
       "name": "agent-windows/AiRemote-Agent-Setup-v3.11.2-x64.exe",
@@ -40,8 +40,8 @@
     },
     {
       "name": "server-windows/AiRemote-Server-Setup-v3.11.3-x64.exe",
-      "size": 159404736,
-      "sha256": "19562da0ede0bf05cb40953a32f797c32e38848ad68295013cd3f57bb008e0f9"
+      "size": 159404946,
+      "sha256": "87f02b231aa84c3a1e73387e4b91f9e9783f1ded3ca1abc0ffb28006303e9529"
     },
     {
       "name": "server-windows/AiRemote-Server-v3.11.2-Windows-x64.zip",
@@ -50,8 +50,8 @@
     },
     {
       "name": "server-windows/AiRemote-Server-v3.11.3-Windows-x64.zip",
-      "size": 212142602,
-      "sha256": "dd892f832680ee9ab8a420950d67ba3b12bb10c43aa8bc2c12232501902e9efd"
+      "size": 212141605,
+      "sha256": "9d22b05a5e286d22124b9680b8c380140865b85cddf0f9c2bfce256f869cde85"
     }
   ]
 }
