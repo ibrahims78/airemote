@@ -54,6 +54,9 @@ let useWebp         = true   // v3.8.7 — WebP is ~30-45% smaller than JPEG at 
 let webpSlowStreak  = 0      // fall back to JPEG if this CPU is slow at WebP
 let webpDisabledAt  = 0      // v3.8.7 — retry WebP after 30s instead of giving up forever
 let qualityScale    = 1      // v3.8.7 — adaptive resolution (0.6 … 1.0) so slow CPUs stay smooth
+// 3.11.8 — حجم الإخراج يُقفل لكل جلسة: تغييره أثناء الجلسة يُبطل مسار الدلتا
+// ويرسل keyframe بمقاس جديد، فيُعيد العارض ضبط canvas (مسح الصورة) ويقفز المؤشر.
+let lockedW = 0, lockedH = 0
 let audioCtx        = null
 let audioProc       = null
 let audioSource     = null
@@ -78,6 +81,7 @@ async function startCapture(sid, fps, quality, monitorIdx, maxWidth) {
   currentFps     = Math.max(1, Math.min(30, fps     || 5))
   currentQuality = Math.max(10, Math.min(95, quality || 65))
   currentMaxWidth = Math.max(320, Math.min(3840, Number(maxWidth) || currentMaxWidth || 1280))
+  lockedW = 0; lockedH = 0   // 3.11.8 — قفل مقاس جديد لكل جلسة
   lastMonitorIdx = monitorIdx || 0
   captureStartAt = Date.now()
 
@@ -325,10 +329,16 @@ function captureFrame() {
   const vw = video.videoWidth
   const vh = video.videoHeight
   const baseScale = (currentMaxWidth && vw > currentMaxWidth) ? (currentMaxWidth / vw) : 1
-  const scale = baseScale * qualityScale
-  const cw = Math.max(2, Math.round(vw * scale))
-  const ch = Math.max(2, Math.round(vh * scale))
-  if (canvas.width !== cw || canvas.height !== ch) { canvas.width = cw; canvas.height = ch }
+  // 3.11.8 — المقاس من المصدر + maxWidth فقط، ويُقفل حتى نهاية الجلسة.
+  const wantW = Math.max(2, Math.round(vw * baseScale))
+  const wantH = Math.max(2, Math.round(vh * baseScale))
+  if (lockedW !== wantW || lockedH !== wantH) {
+    lockedW = wantW; lockedH = wantH
+    canvas.width = lockedW; canvas.height = lockedH
+    prevSample = null   // خط أساس الدلتا يُعاد بعد أي تغيير حقيقي في المصدر
+  }
+  const cw = lockedW
+  const ch = lockedH
   ctx.drawImage(video, 0, 0, cw, ch)
 
   const sid = sessionId
@@ -384,7 +394,7 @@ function captureFrame() {
       useWebp = true; webpSlowStreak = 0; webpDisabledAt = 0
     }
 
-    // v3.8.7 — adaptive resolution: a 1600x900 encode can take 150ms+ on a VM CPU,
+    // 3.11.8 — تكيّف الضغط فقط (لا يمسّ أبعاد الإطار): مقاس ثابت = دلتا سليمة وبثّ مستقر.
     // which shows up as a 1-2 fps stream. Trade a little sharpness for smoothness,
     // and climb back up as soon as the encoder is fast again.
     if (encMs > 110 && qualityScale > 0.6) qualityScale = Math.max(0.6, +(qualityScale - 0.08).toFixed(2))

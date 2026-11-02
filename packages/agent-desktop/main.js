@@ -13,6 +13,8 @@ const WebSocket = require('ws')
 
 // R5 — محرّك نقل الملفات على الجهاز (مقاطع، استكمال، تحقق SHA-256، حارس مسارات)
 const { createAgentTransfer } = require('./lib/file-transfer-agent')
+// 3.11.8 — مخزن إعدادات آمن: كتابة ذرّية، عزل الملف التالف، واستيراد الإقتران من مجلد userData القديم
+const { createConfigStore } = require('./lib/config-store')
 const ftAgent = createAgentTransfer({
   send,
   roots: process.env.AIREMOTE_FT_ROOTS,
@@ -160,27 +162,35 @@ let dockerAvailable  = false
 const writeChunkBufs = new Map()  // opId → accumulator for chunked file uploads
 
 // ─── Config ───────────────────────────────────────────────────────────────
-function defaultConfig() {
-  return {
-    serverUrl: '', token: '', autoStart: false, startMinimized: false,
-    _winBounds: null
+// 3.11.8 — الإعدادات يجب أن تنجو من: قتل مفاجئ أثناء الكتابة، ملف تالف، أو تغيّر
+// هوية التطبيق (userData انتقل من "AiRemote Agent" إلى "airemote-agent-desktop"
+// فهجر الإقتران القديم). lib/config-store يكتب ذرّياً، ويعزل الملف التالف بدل
+// الكتابة فوقه بالافتراضيات، ويستورد الإقتران من المجلد القديم مرة واحدة.
+// الاختبار: packages/agent-desktop/test/config-store.test.cjs
+// الحالة على الدالة نفسها لا في متغيّر وحدة: loadConfig() يُستدعى في السطر 109
+// قبل موضع هذا التعريف، فمتغيّر let هنا يقع في TDZ ويرمي ReferenceError
+// (حدث فعلاً في 3.11.8 build#1 على WIN10/WIN11 — يغطيه test/main-load.test.cjs).
+function getConfigStore() {
+  if (!getConfigStore.store) {
+    getConfigStore.store = createConfigStore({
+      file: CONFIG_FILE,
+      // مسار الإقتران القديم يُحسب عند الطلب لا في ثابت وحدة (نفس سبب TDZ أعلاه)
+      legacyFile: path.join(app.getPath('appData'), 'AiRemote Agent', 'airemote-config.json'),
+      // قد يُستدعى قبل تهيئة addLog (TDZ) — نسقط إلى console بدل ابتلاع الرسالة
+      log: (msg) => { try { addLog('warn', msg) } catch { try { console.warn('[config] ' + msg) } catch {} } }
+    })
   }
+  return getConfigStore.store
 }
 
 function loadConfig() {
-  try {
-    if (fs.existsSync(CONFIG_FILE)) {
-      // v3.2.2 — tolerate UTF-8 BOM written by external tools
-      const raw = fs.readFileSync(CONFIG_FILE, 'utf8').replace(/^\uFEFF/, '')
-      return { ...defaultConfig(), ...JSON.parse(raw) }
-    }
-  } catch {}
-  return defaultConfig()
+  return getConfigStore().config
 }
 
 function saveConfig(updates) {
-  config = { ...config, ...updates }
-  try { fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2), 'utf8') } catch {}
+  const store = getConfigStore()
+  store.save(updates)
+  config = store.config
 }
 
 function controlAuthCapability() {
@@ -2172,6 +2182,7 @@ ipcMain.on('save-control-auth', (_, { mode, password } = {}) => {
 
 ipcMain.on('save-config', (_, cfg) => {
   saveConfig(cfg)
+  try { applyLoginItem() } catch {}
   addLog('info', '💾 تم حفظ الإعدادات')
 })
 
