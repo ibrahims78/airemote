@@ -6,7 +6,21 @@
 
 ---
 
-## 0. 3.9.0 — جلسات وكيل↔وكيل (2026-10-31)
+## 0. 3.11.7 — مقاييس Relay وتنبيه الانقطاع (2026-11-02)
+
+| البند | الحالة | الدليل |
+|---|---|---|
+| عدّادات بثّ relay في `/metrics` (إطارات · بايتات · إسقاط) | مُنفَّذ | `server.js` (`sendToScreenViewers`) · `outputs/verify-2026-11-02/metrics/` |
+| تنبيه «غير متصل > 10 دقائق» مرة/انقطاع | مُنفَّذ | `fireLongOfflineAlerts` + `device_offline_long` في التدقيق · `outputs/verify-2026-11-02/metrics/` |
+| قرار: `relaySessions` ذاكرة فقط | موثَّق (قيد مقبول) | `server.js:1785` · `session_not_active` صريح للعميل |
+| قرار: لا حاجز إطارات أثناء `suspended` | موثَّق (قيد مقبول) | `queueScreenFrame` (إطار واحد/مشاهد) + `relayFrameDrops` |
+| T1 إثبات التنفيذ | **PASS** | `outputs/verify-2026-11-02/t1/home.json` (`homeWorked=true`) |
+| T11 الشاشة الثانية | **محجوب بقيد عتاد** | `outputs/verify-2026-11-02/t11/DECISION-AR.md` |
+| البطارية | **42/42** | `node scripts/verify.js` بعد البناء |
+
+---
+
+## 0.1 3.9.0 — جلسات وكيل↔وكيل (2026-10-31)
 
 | البند | الحالة | الدليل |
 |---|---|---|

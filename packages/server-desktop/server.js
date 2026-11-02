@@ -69,6 +69,9 @@ const metrics = {
   httpSecondsSum: 0,
   errors: 0,
   annotationEvents: 0,    // v3.8.37 (R8.2) — laser/pen events relayed between viewers
+  relayFrames: 0,         // 3.11.7 — إطارات شاشة مُمرَّرة إلى مشاهدين
+  relayFrameBytes: 0,     // 3.11.7 — حجم الحمولة (base64) المُمرَّرة
+  relayFrameDrops: 0,     // 3.11.7 — إطارات أُسقطت لغياب مشاهد (لا حاجز بالتصميم)
 }
 let shuttingDown = false
 
@@ -965,6 +968,44 @@ broadcastToClients({ type: 'alert:triggered', payload: { ruleId: rule.id, device
   } catch {}
 }
 
+// 3.11.7 — تنبيه «جهاز غير متصل أكثر من 10 دقائق»: يُطلق **مرة واحدة لكل انقطاع**،
+// لا مع كل سقوط مقبس (fireOfflineAlerts يبقى للتنبيه الفوري). المفتاح هو last_seen،
+// فإذا عاد الجهاز واتصل تُصفَّر العلامة، وإذا تغيّر last_seen عُدّ انقطاعاً جديداً.
+const longOfflineAlerted = new Map()
+const DEVICE_OFFLINE_ALERT_MS = Math.max(60000, parseInt(process.env.DEVICE_OFFLINE_ALERT_MS || '600000', 10) || 600000)
+function fireLongOfflineAlerts() {
+  if (!db) return
+  try {
+    const rows = db.prepare('SELECT id, name, last_seen FROM devices').all()
+    const now = Date.now()
+    for (const d of rows) {
+      if (agentSockets.has(d.id)) { longOfflineAlerted.delete(d.id); continue }
+      // last_seen يُكتب بـdatetime('now') أي UTC بلا لاحقة منطقة ⇒ يجب قراءته UTC صريحاً،
+      // وإلا انزاح الفارق بمقدار فرق المنطقة (ساعتان هنا) فخرج التنبيه فوراً وبفارق 180 دقيقة.
+      const seen = d.last_seen ? Date.parse(String(d.last_seen).replace(' ', 'T') + 'Z') : NaN
+      if (!isFinite(seen)) continue
+      const offlineMs = now - seen
+      if (offlineMs < DEVICE_OFFLINE_ALERT_MS) continue
+      if (longOfflineAlerted.get(d.id) === d.last_seen) continue
+      longOfflineAlerted.set(d.id, d.last_seen)
+      const mins = Math.round(offlineMs / 60000)
+      const msg = '📴 جهاز غير متصل منذ ' + mins + ' دقيقة: ' + (d.name || d.id)
+      let rules = []
+      try { rules = db.prepare("SELECT * FROM alert_rules WHERE enabled=1 AND type='device_offline' AND (device_id IS NULL OR device_id=?)").all(d.id) } catch {}
+      for (const rule of rules) {
+        try { telegramEvent('offline', msg) } catch {}
+        try { broadcastToClients({ type: 'alert:triggered', payload: { ruleId: rule.id, deviceId: d.id, deviceName: d.name, type: 'device_offline', event: 'offline_long', minutes: mins, message: msg } }) } catch {}
+        try { addNotification({ userId: rule.user_id, deviceId: d.id, type: 'device_offline', title: d.name || d.id, message: msg, severity: 'warning' }) } catch {}
+        if (rule.channel === 'webhook' && rule.webhook_url) {
+          fetch(rule.webhook_url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text: msg, device: d.name, type: 'device_offline', event: 'offline_long', minutes: mins, timestamp: new Date().toISOString() }) }).catch(() => {})
+        }
+      }
+      try { dbLogAudit({ userId: '', userEmail: '', deviceId: d.id, action: 'device_offline_long', details: { minutes: mins, lastSeen: d.last_seen, rules: rules.length }, ipAddress: null }) } catch {}
+    }
+  } catch {}
+}
+
 // ── Telegram notifications (v3.3.0) ─────────────────────────────────────────
 function getTelegramConfig() {
   try {
@@ -1081,9 +1122,18 @@ function screenFrameJsonFromPacket(packet) {
 
 function sendToScreenViewers(deviceId, obj) {
   const viewers = screenViewers.get(deviceId)
-  if (!viewers) return
-  const s = JSON.stringify(obj)
   const isFrame = obj && obj.type === 'screen:frame'
+  // 3.11.7 — لا حاجز بين الطرفين: عند غياب مشاهد (أو أثناء suspended) يُسقط الإطار ويُعدّ،
+  // فيبقى استهلاك الذاكرة محدوداً بإطار واحد لكل مشاهد (queueScreenFrame) لا بقائمة لا نهائية.
+  if (!viewers || !viewers.size) {
+    if (isFrame) metrics.relayFrameDrops++
+    return
+  }
+  if (isFrame) {
+    metrics.relayFrames++
+    try { metrics.relayFrameBytes += (obj.payload && obj.payload.data) ? obj.payload.data.length : 0 } catch {}
+  }
+  const s = JSON.stringify(obj)
   for (const vws of viewers) {
     try {
       if (vws.readyState !== 1) continue
@@ -3503,6 +3553,13 @@ async function start(config) {
       if (global.__relayJanitor.unref) global.__relayJanitor.unref()
     } catch {}
 
+    // 3.11.7 — مسح دوري لتنبيه الانقطاع الطويل (>10 دقائق افتراضاً؛ DEVICE_OFFLINE_ALERT_MS).
+    try {
+      if (global.__offlineAlertTimer) clearInterval(global.__offlineAlertTimer)
+      global.__offlineAlertTimer = setInterval(fireLongOfflineAlerts, 60000)
+      if (global.__offlineAlertTimer.unref) global.__offlineAlertTimer.unref()
+    } catch {}
+
     // v3.8.33 (R7) - a counter nobody watches is not monitoring: raise a bell on a burst.
     failureAlerter = createFailureAlerter({
       db,
@@ -3981,6 +4038,10 @@ async function start(config) {
       const n = relayByState.get(st) || 0
       if (known.indexOf(st) >= 0 || n > 0) out.push('airemote_relay_sessions{state="' + st + '"} ' + n)
     }
+    // 3.11.7 — مقاييس بثّ الـrelay: الإطارات المُمرَّرة وحجمها والمُسقطة لغياب مشاهد.
+    v('airemote_relay_frames_total', 'Screen frames relayed to viewers since start.', 'counter', metrics.relayFrames)
+    v('airemote_relay_frame_bytes_total', 'Base64 frame payload relayed to viewers since start.', 'counter', metrics.relayFrameBytes)
+    v('airemote_relay_frame_drops_total', 'Frames dropped because no viewer was attached.', 'counter', metrics.relayFrameDrops)
     out.push('# HELP airemote_http_requests_total HTTP responses by method and status.')
     out.push('# TYPE airemote_http_requests_total counter')
     for (const entry of [...metrics.http.entries()].sort()) {

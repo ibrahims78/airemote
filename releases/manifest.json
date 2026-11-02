@@ -1,32 +1,32 @@
 {
   "product": "AiRemote",
-  "version": "3.11.6",
-  "generatedAt": "2026-11-02T11:36:22.781Z",
+  "version": "3.11.7",
+  "generatedAt": "2026-11-02T15:05:46.809Z",
   "artifacts": [
     {
-      "name": "agent-windows/AiRemote-Agent-Setup-v3.11.6-x64.exe",
-      "size": 76374905,
-      "sha256": "cb5a316184340f571ce5998e8cfae643784966864376f275a51aa8dbad8fb59c"
+      "name": "agent-windows/AiRemote-Agent-Setup-v3.11.7-x64.exe",
+      "size": 76374895,
+      "sha256": "9bb8af5046acf710865bafc8d1ba67040e54d5ab629e9f7c548776a912595fa9"
     },
     {
-      "name": "agent-windows/AiRemote-Agent-v3.11.6-Windows-x64.zip",
-      "size": 103983483,
-      "sha256": "2b8909c3e940aff584f7829866cce19577c995e17719b85472a2a69b20122e62"
+      "name": "agent-windows/AiRemote-Agent-v3.11.7-Windows-x64.zip",
+      "size": 103983492,
+      "sha256": "6c32040e5e9621d13f0b890ac7ba0fb4f3939380c1ea7b8eba0d25a95a1ab077"
     },
     {
-      "name": "android-agent/AiRemote-Agent-Android-v3.11.6.apk",
-      "size": 173239,
-      "sha256": "49ace8e13a54cef3dc3fbbcd1a2b66de2cc1ab7e1851769ba57310dba7deb179"
+      "name": "android-agent/AiRemote-Agent-Android-v3.11.7.apk",
+      "size": 169143,
+      "sha256": "30eaab6b08a53f866d07389a28440667ac4adbcd13ce2bc7a86036965425e387"
     },
     {
-      "name": "server-windows/AiRemote-Server-Setup-v3.11.6-x64.exe",
-      "size": 159405566,
-      "sha256": "809e29da0dafa97827f29e5ffe660cd9a99fc9f01a7100840257488fecedc365"
+      "name": "server-windows/AiRemote-Server-Setup-v3.11.7-x64.exe",
+      "size": 159406254,
+      "sha256": "f26991315f73988e76115e491c83de54d84c0383d8e1610780bdfbaf9d841440"
     },
     {
-      "name": "server-windows/AiRemote-Server-v3.11.6-Windows-x64.zip",
-      "size": 212140982,
-      "sha256": "41908cae187ebf5c46341b7143455092eac5bea9c52f9e805543b8de3c1e7cad"
+      "name": "server-windows/AiRemote-Server-v3.11.7-Windows-x64.zip",
+      "size": 212141617,
+      "sha256": "d4ed47dc6c1f1d7fee550a2b22e8d5e578f032f36090323a112c6709a31363c9"
     }
   ]
 }

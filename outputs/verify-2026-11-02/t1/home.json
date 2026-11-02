@@ -1,0 +1,9 @@
+{
+ "topBefore": "com.android.settings/com.transsion.settings.homepage.TranSettingsHomepageActivity",
+ "request": 201,
+ "sid": "eff53441-bf3e-4b32-92fb-347c60a8c41d",
+ "topAfterAccept": "com.airemote.agent/.SessionOfferActivity",
+ "topAfterHome1": "com.transsion.hilauncher/com.android.quickstep.src.com.android.launcher3.uioverrides.QuickstepLauncher",
+ "topAfterHome2": "com.transsion.hilauncher/com.android.quickstep.src.com.android.launcher3.uioverrides.QuickstepLauncher",
+ "homeWorked": true
+}
