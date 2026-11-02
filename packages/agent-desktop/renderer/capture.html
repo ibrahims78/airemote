@@ -469,7 +469,7 @@ async function warmCapture (monitorIdx) {
       if (sources.length) {
         s = await navigator.mediaDevices.getUserMedia({
           audio: false,
-          video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: sources[idx].id, maxWidth: 1920, maxHeight: 1080 } }
+          video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: sources[idx].id, maxWidth: 1920, maxHeight: 1080, cursor: 'never' } }
         })
       }
     } catch (e2) { s = null }

@@ -1158,11 +1158,15 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
     const now = performance.now()
     if (now - cursorTrackRef.current < 33) return
     cursorTrackRef.current = now
-    const r = area.getBoundingClientRect()
+    // 3.11.8 — المرجع مستطيل الـcanvas لا حاوية العرض: الحاوية فيها letterbox وتمرير،
+    // فالإحداثيات منها تنزاح عن البكسل الذي سيُنفَّذ عليه الإجراء.
+    const c = canvasRef.current
+    const r = (c && c.getBoundingClientRect().width > 0 ? c.getBoundingClientRect() : area.getBoundingClientRect())
     setCursorPos({ x: clientX - r.left, y: clientY - r.top })
     const dot = localCursorRef.current
     if (!dot) return
-    dot.style.transform = `translate(${clientX - r.left}px, ${clientY - r.top}px)`
+    // 3.11.8 — الكتابة السابقة كانت تلغي -translate-1/2 من Tailwind ⇒ إزاحة ثابتة 6px
+    dot.style.transform = `translate(${clientX - r.left}px, ${clientY - r.top}px) translate(-50%, -50%)`
     dot.style.opacity = '1'
     if (cursorIdleRef.current) clearTimeout(cursorIdleRef.current)
     cursorIdleRef.current = setTimeout(() => { if (dot) dot.style.opacity = '0' }, 1200)
@@ -1227,8 +1231,10 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const g = gestureRef.current
     if (pointersRef.current.has(e.pointerId)) pointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY })
-    trackPointerCursor(e.clientX, e.clientY)
+    // 3.11.8 — لا تُحرّك المؤشّر في وضع المشاهدة فقط: النقطة كانت تنزلق بينما
+    // الطرف البعيد ساكن، وهذا أقوى ما يُقرأ كـ«عدم تزامن».
     if (!controlEnabled) return
+    trackPointerCursor(e.clientX, e.clientY)
 
     if (g.twoFinger && pointersRef.current.size >= 2) {
       const pts = Array.from(pointersRef.current.values())
