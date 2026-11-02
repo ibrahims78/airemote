@@ -29,6 +29,9 @@ const { ipcRenderer } = require('electron')
 const video  = document.getElementById('v')
 const canvas = document.getElementById('c')
 const ctx    = canvas.getContext('2d')
+// 3.11.9 — رسم الفيديو المُقاس على VMware (بلا تسريع عتاد) يُنتج إطاراً أسود؛
+// نرسم 1:1 في مخزن بحجم المصدر ثم نصغّر canvas→canvas (مسار CPU سليم).
+let srcCanvas = null, srcCtx = null
 
 // v3.3.2 — delta engine state (small sampler for fast change detection)
 const regionCanvas = document.createElement('canvas')
@@ -339,7 +342,37 @@ function captureFrame() {
   }
   const cw = lockedW
   const ch = lockedH
-  ctx.drawImage(video, 0, 0, cw, ch)
+  // 3.11.9 — المرحلة 1: نسخ 1:1 من الفيديو (لا تصغير)؛ المرحلة 2: تصغير canvas→canvas
+  if (!srcCanvas) { srcCanvas = document.createElement('canvas'); srcCtx = srcCanvas.getContext('2d') }
+  if (srcCanvas.width !== vw || srcCanvas.height !== vh) { srcCanvas.width = vw; srcCanvas.height = vh }
+  srcCtx.drawImage(video, 0, 0, vw, vh)
+  ctx.drawImage(srcCanvas, 0, 0, cw, ch)
+
+  // 3.11.9 — عيّنة سطوع: تدفق ميّت يُرسم أسود بنفس الأبعاد، ولا شيء يكتشفه.
+
+  // إطاران كاملان أسودان متتاليان ⇒ أبلِغ العملية الرئيسية لتُعيد إنشاء الالتقاط.
+
+  let blackStreak = 0
+
+  try {
+
+    if (!srcCanvas) { srcCanvas = document.createElement('canvas'); srcCtx = srcCanvas.getContext('2d') }
+
+    srcCanvas.width = 32; srcCanvas.height = 18
+
+    srcCtx.drawImage(canvas, 0, 0, 32, 18)
+
+    const px = srcCtx.getImageData(0, 0, 32, 18).data
+
+    let sum = 0
+
+    for (let i = 0; i < px.length; i += 4) sum += px[i] + px[i + 1] + px[i + 2]
+
+    if (sum / (px.length / 4) / 3 < 3) blackStreak++; else blackStreak = 0
+
+    if (blackStreak >= 2) { blackStreak = 0; ipcRenderer.send('capture-black', { sessionId: sid }) }
+
+  } catch (e) {}   // eslint-disable-line no-empty
 
   const sid = sessionId
   const w   = canvas.width
@@ -469,7 +502,7 @@ async function warmCapture (monitorIdx) {
       if (sources.length) {
         s = await navigator.mediaDevices.getUserMedia({
           audio: false,
-          video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: sources[idx].id, maxWidth: 1920, maxHeight: 1080 } }
+          video: { mandatory: { chromeMediaSource: 'desktop', chromeMediaSourceId: sources[idx].id, maxWidth: 1920, maxHeight: 1080, cursor: 'never' } }
         })
       }
     } catch (e2) { s = null }

@@ -107,6 +107,7 @@ let clipWatch = null
 let ctrlAuthAttempts = []
 let currentMonitorId = 0
 let lastCaptureRestartAt = 0
+let lastBlackRecoveryAt = 0   // 3.11.9 — cooldown لإعادة بناء الالتقاط بعد إطار أسود
 let sessionStart   = null
 let config         = loadConfig()
 let logEntries     = []
@@ -2741,6 +2742,23 @@ ipcMain.on('screen-monitors', (_, p) => {
 ipcMain.on('screen-resized', (_, p) => {
   // Video intrinsic size changed (e.g. VM resolution switch) — refresh real display metrics
   try { updateCapSize(currentMonitorId) } catch {}
+})
+
+// 3.11.9 — تدفق ميت يُرسم أسود بنفس الأبعاد: أعد بناء نافذة الالتقاط ثم أعد تشغيل الجلسات.
+ipcMain.on('capture-black', () => {
+  const now = Date.now()
+  if (now - lastBlackRecoveryAt < 8000) return
+  lastBlackRecoveryAt = now
+  try { addLog('warn', '[capture] المصدر يعطي إطارات سوداء — إعادة إنشاء الالتقاط') } catch {}
+  try { if (capWin && !capWin.isDestroyed()) capWin.destroy() } catch {}
+  capWin = null
+  const cw = createCaptureWindow()
+  const resend = () => {
+    for (const [id, info] of screenSessions) {
+      try { cw.webContents.send('start-capture', { sessionId: id, fps: info.fps, quality: info.quality, monitorIndex: currentMonitorId, maxWidth: info.maxWidth }) } catch {}
+    }
+  }
+  if (cw.webContents.isLoading()) cw.webContents.once('did-finish-load', resend); else resend()
 })
 
 ipcMain.on('screen-track-ended', () => {
