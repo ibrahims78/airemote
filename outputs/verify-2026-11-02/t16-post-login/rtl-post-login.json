@@ -1,0 +1,231 @@
+{
+ "urlBase": "https://127.0.0.1:3001",
+ "method": "CDP Emulation.setDeviceMetricsOverride + DOM probe",
+ "auth": "dashboard token in localStorage (airemote-auth)",
+ "rows": [
+  {
+   "page": "/",
+   "name": "overview",
+   "width": 360,
+   "innerWidth": 360,
+   "scrollWidth": 360,
+   "direction": "rtl",
+   "overflowX": false,
+   "clippedElements": 1,
+   "clippedDetail": [
+    {
+     "tag": "div",
+     "cls": "cr-live-tile",
+     "text": "Android-EmulatorTECNO-KL4WIN10-VMWIN11-V",
+     "scroll": 428,
+     "client": 288,
+     "ellipsis": false
+    }
+   ],
+   "shot": "overview-360.png",
+   "clippedClassified": [
+    {
+     "cls": "cr-live-tile",
+     "text": "Android-EmulatorTECNO-KL4WIN10-VMWIN11-V",
+     "delta": 140,
+     "kind": "intentional-scroll-strip"
+    }
+   ],
+   "realClipping": 0
+  },
+  {
+   "page": "/",
+   "name": "overview",
+   "width": 768,
+   "innerWidth": 768,
+   "scrollWidth": 768,
+   "direction": "rtl",
+   "overflowX": false,
+   "clippedElements": 0,
+   "clippedDetail": [],
+   "shot": "overview-768.png",
+   "clippedClassified": [],
+   "realClipping": 0
+  },
+  {
+   "page": "/",
+   "name": "overview",
+   "width": 1280,
+   "innerWidth": 1280,
+   "scrollWidth": 1280,
+   "direction": "rtl",
+   "overflowX": false,
+   "clippedElements": 0,
+   "clippedDetail": [],
+   "shot": "overview-1280.png",
+   "clippedClassified": [],
+   "realClipping": 0
+  },
+  {
+   "page": "/",
+   "name": "overview",
+   "width": 1920,
+   "innerWidth": 1920,
+   "scrollWidth": 1920,
+   "direction": "rtl",
+   "overflowX": false,
+   "clippedElements": 0,
+   "clippedDetail": [],
+   "shot": "overview-1920.png",
+   "clippedClassified": [],
+   "realClipping": 0
+  },
+  {
+   "page": "/devices",
+   "name": "devices",
+   "width": 360,
+   "innerWidth": 360,
+   "scrollWidth": 360,
+   "direction": "rtl",
+   "overflowX": false,
+   "clippedElements": 1,
+   "clippedDetail": [
+    {
+     "tag": "div",
+     "cls": "overflow-hidden rounded-xl border border-line bg-surface",
+     "text": "الأجهزةالنظاممتصلاسم المضيفآخر اتصالAndr",
+     "scroll": 625,
+     "client": 326,
+     "ellipsis": false
+    }
+   ],
+   "shot": "devices-360.png",
+   "clippedClassified": [
+    {
+     "cls": "overflow-hidden rounded-xl border border-line bg-surface",
+     "text": "الأجهزةالنظاممتصلاسم المضيفآخر اتصالAndr",
+     "delta": 299,
+     "kind": "intentional-table-scroll"
+    }
+   ],
+   "realClipping": 0
+  },
+  {
+   "page": "/devices",
+   "name": "devices",
+   "width": 768,
+   "innerWidth": 768,
+   "scrollWidth": 768,
+   "direction": "rtl",
+   "overflowX": false,
+   "clippedElements": 0,
+   "clippedDetail": [],
+   "shot": "devices-768.png",
+   "clippedClassified": [],
+   "realClipping": 0
+  },
+  {
+   "page": "/devices",
+   "name": "devices",
+   "width": 1280,
+   "innerWidth": 1280,
+   "scrollWidth": 1280,
+   "direction": "rtl",
+   "overflowX": false,
+   "clippedElements": 0,
+   "clippedDetail": [],
+   "shot": "devices-1280.png",
+   "clippedClassified": [],
+   "realClipping": 0
+  },
+  {
+   "page": "/devices",
+   "name": "devices",
+   "width": 1920,
+   "innerWidth": 1920,
+   "scrollWidth": 1920,
+   "direction": "rtl",
+   "overflowX": false,
+   "clippedElements": 0,
+   "clippedDetail": [],
+   "shot": "devices-1920.png",
+   "clippedClassified": [],
+   "realClipping": 0
+  },
+  {
+   "page": "/sessions",
+   "name": "sessions",
+   "width": 360,
+   "innerWidth": 360,
+   "scrollWidth": 360,
+   "direction": "rtl",
+   "overflowX": false,
+   "clippedElements": 1,
+   "clippedDetail": [
+    {
+     "tag": "span",
+     "cls": "text-sm font-medium text-ink truncate",
+     "text": "TECNO-KL4",
+     "scroll": 74,
+     "client": 70,
+     "ellipsis": true
+    }
+   ],
+   "shot": "sessions-360.png",
+   "clippedClassified": [
+    {
+     "cls": "text-sm font-medium text-ink truncate",
+     "text": "TECNO-KL4",
+     "delta": 4,
+     "kind": "intentional-ellipsis"
+    }
+   ],
+   "realClipping": 0
+  },
+  {
+   "page": "/sessions",
+   "name": "sessions",
+   "width": 768,
+   "innerWidth": 768,
+   "scrollWidth": 768,
+   "direction": "rtl",
+   "overflowX": false,
+   "clippedElements": 0,
+   "clippedDetail": [],
+   "shot": "sessions-768.png",
+   "clippedClassified": [],
+   "realClipping": 0
+  },
+  {
+   "page": "/sessions",
+   "name": "sessions",
+   "width": 1280,
+   "innerWidth": 1280,
+   "scrollWidth": 1280,
+   "direction": "rtl",
+   "overflowX": false,
+   "clippedElements": 0,
+   "clippedDetail": [],
+   "shot": "sessions-1280.png",
+   "clippedClassified": [],
+   "realClipping": 0
+  },
+  {
+   "page": "/sessions",
+   "name": "sessions",
+   "width": 1920,
+   "innerWidth": 1920,
+   "scrollWidth": 1920,
+   "direction": "rtl",
+   "overflowX": false,
+   "clippedElements": 0,
+   "clippedDetail": [],
+   "shot": "sessions-1920.png",
+   "clippedClassified": [],
+   "realClipping": 0
+  }
+ ],
+ "verdict": "PASS",
+ "summary": {
+  "rows": 12,
+  "allRtl": true,
+  "anyHorizontalOverflow": false,
+  "realClipping": 0,
+  "note": "العناصر «المقصوصة» عند 360px ثلاثة فقط وكلها مقصودة: شريط بطاقات أفقي (cr-live-tile) · حاوية جدول قابلة للتمرير · span.truncate بعلامة حذف (فرق 4px)."
+ }
+}
