@@ -1,0 +1,18 @@
+{
+ "target": "9b5eeaf9-b30d-449c-875e-1e21e56ac041",
+ "serial": "emulator-5554",
+ "rotationApplied": true,
+ "restored": true,
+ "adbOk": true,
+ "firstFrameMs": 236,
+ "framesBefore": 3,
+ "framesAfter": 2,
+ "avgBytesBefore": 4442,
+ "avgBytesAfter": 6475,
+ "ratioAfterBefore": 1.46,
+ "msAfterRotation": 6091,
+ "pass": {
+  "streamContinues": true,
+  "notBlack": true
+ }
+}
