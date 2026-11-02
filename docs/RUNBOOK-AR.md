@@ -106,3 +106,16 @@ GET /api/desktop/update        # lastResult: success | rolled-back | failed
 
 الأمر: `taskkill /F /IM "AiRemote Server.exe"` ثم `AiRemote-Server-Setup-v<ver>-x64.exe /S` ثم تشغيل التطبيق. الحزم المؤرشفة في `D:\airemote-archive\2026-11-02\releases\archive\server-windows\` (بيان: `D:\airemote-archive\2026-11-02\ARCHIVE-MANIFEST.md`)، وحِزمة **3.11.6** كاملة في `D:\airemote-artifacts-3.11.6`.
 الدليل: `outputs/verify-2026-10-31/r9-release/rollback-drill.txt`.
+
+## 10) التفويض للمساعدين (subagents)
+
+أدوات ملفات المساعد محصورة في مجلد مساحة العمل، و`D:\` ممنوع، والوصلة (junction) مرفوضة، والوكيل المؤقت بلا `exec`.
+لذلك قبل أي موجة تفويض:
+
+```powershell
+cd "<مجلد مساحة العمل>"
+node "D:\autoclaw projects-new\AiRemote\tools\lab\a2a\mirror-sync.cjs"   # 457 ملفاً · 10.2 MB · 0.9s
+```
+
+ثم يُكلَّف المساعد بالقراءة من `mirror/src` (مسار نسبي) فقط. البناء والاختبار وأوامر adb/VMware وGit تبقى في الجلسة الرئيسية.
+التفاصيل والقياسات: `docs/DELEGATION-AR.md`.
