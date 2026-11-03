@@ -1471,13 +1471,26 @@ let gdiSuppressRenderer = false
 let gdiSessionId = null
 let gdiSeq = 0
 let gdiWatchdog = null
+// 3.11.11 — عدد محاولات إعادة تشغيل العامل في الجلسة الواحدة (حدّ 2 ثم رجوع Chromium)
+let gdiRestartCount = 0
 let lastCursorSentAt = 0
+
+function armGdiWatchdog (sessionId, ms) {
+  if (gdiWatchdog) clearTimeout(gdiWatchdog)
+  gdiWatchdog = setTimeout(() => {
+    if (gdiSessionId === sessionId && !gdiCaptureActive) {
+      gdiSuppressRenderer = false
+      addLog('warn', '🖥️ [screen] GDI لم يُنتج إطاراً خلال ' + Math.round(ms / 1000) + 's — البقاء على مسار Chromium' + (gdiCapture.lastError ? ' (' + gdiCapture.lastError + ')' : ''))
+    }
+  }, ms)
+}
 
 function startGdiForSession (sessionId, opts) {
   gdiCaptureActive = false
   gdiSuppressRenderer = true
   gdiSessionId = sessionId
   gdiSeq = 0
+  gdiRestartCount = 0
   const info = {
     fps: Math.max(4, Math.min(15, Number(opts && opts.fps) || 12)),
     quality: Math.max(30, Math.min(90, Number(opts && opts.quality) || 60)),
@@ -1489,13 +1502,7 @@ function startGdiForSession (sessionId, opts) {
     addLog('warn', '[screen] تعذّر بدء محرّك GDI: ' + e.message)
     return
   }
-  if (gdiWatchdog) clearTimeout(gdiWatchdog)
-  gdiWatchdog = setTimeout(() => {
-    if (gdiSessionId === sessionId && !gdiCaptureActive) {
-      gdiSuppressRenderer = false
-      addLog('warn', '🖥️ [screen] GDI لم يُنتج إطاراً خلال 6s — البقاء على مسار Chromium' + (gdiCapture.lastError ? ' (' + gdiCapture.lastError + ')' : ''))
-    }
-  }, 6000)
+  armGdiWatchdog(sessionId, 6000)
 }
 
 function stopGdi (reason) {
@@ -1513,6 +1520,7 @@ gdiCapture.on('frame', ({ jpeg, cx, cy, width, height }) => {
   if (!gdiCaptureActive) {
     gdiCaptureActive = true
     gdiSuppressRenderer = false
+    gdiRestartCount = 0
     addLog('info', `🖥️ [screen] محرّك GDI نشط (${gdiCapture.engine === 'exe' ? 'exe' : 'ps1'}) — أول إطار ${width}×${height} ${(jpeg.length / 1024).toFixed(1)}KB session=${sid.slice(0, 8)}`)
     // أوقف مسار Chromium لهذه الجلسة: مصدر واحد فقط للإطارات
     try { if (capWin && !capWin.isDestroyed()) capWin.webContents.send('stop-capture', { sessionId: sid }) } catch {}
@@ -1530,8 +1538,26 @@ gdiCapture.on('exit', () => {
   if (!gdiSessionId) return
   const sid = gdiSessionId
   gdiCaptureActive = false
+  // 3.11.11 — خروج العامل أثناء جلسة نشطة: أعد تشغيله أولاً (يكلّف ~250ms+spawn)
+  // بدل السقوط إلى Chromium الذي يعيد إنشاء نافذة الالتقاط (5634ms مُقاسة).
+  if (gdiRestartCount < 2) {
+    gdiRestartCount++
+    const rinfo = screenSessions.get(sid)
+    addLog('warn', `🖥️ [screen] توقّف محرّك GDI — إعادة تشغيل العامل (${gdiRestartCount}/2)` + (gdiCapture.lastError ? ' (' + gdiCapture.lastError + ')' : ''))
+    armGdiWatchdog(sid, 5000)
+    setTimeout(() => {
+      if (gdiSessionId !== sid) return
+      try {
+        gdiCapture.setSession(sid, rinfo ? { fps: rinfo.fps, quality: rinfo.quality, maxWidth: rinfo.maxWidth } : undefined)
+      } catch (e) {
+        addLog('warn', '[screen] فشل إعادة تشغيل عامل GDI: ' + e.message)
+        gdiSuppressRenderer = false
+      }
+    }, 250)
+    return
+  }
   gdiSuppressRenderer = false
-  addLog('warn', '🖥️ [screen] توقّف محرّك GDI — عودة إلى مسار Chromium' + (gdiCapture.lastError ? ' (' + gdiCapture.lastError + ')' : ''))
+  addLog('warn', '🖥️ [screen] توقّف محرّك GDI بعد محاولتين — عودة إلى مسار Chromium' + (gdiCapture.lastError ? ' (' + gdiCapture.lastError + ')' : ''))
   const info = screenSessions.get(sid)
   try {
     const cw = createCaptureWindow()

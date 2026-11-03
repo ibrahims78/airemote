@@ -1,5 +1,5 @@
 {
- "slice": "3.11.10",
+ "slice": "3.11.11",
  "engine": "GDI/BitBlt worker — precompiled .exe (csc.exe at build time) with capture-gdi.ps1 as automatic fallback",
  "harness": "tools/lab/a2a/dump-frames.cjs WIN10 -> WIN11 (relay, binary=1) + tools/lab/a2a/frame_stats.py (Pillow decode)",
  "note": "First frame here is a CONTENT frame (decoded JPEG, mean RGB > 0). 3.11.9 rows are kept for comparison.",
@@ -31,6 +31,21 @@
    "frames": 17,
    "blackFrames": 0,
    "source": "outputs/verify-2026-11-03/final-e2e"
+  },
+  {
+   "build": "3.11.11 exe worker — WIN11 (fresh session)",
+   "firstFrameMs": 473,
+   "frames": 27,
+   "blackFrames": 0,
+   "source": "outputs/verify-2026-11-03/recovery"
+  },
+  {
+   "build": "3.11.11 — worker killed mid-session, auto-restart",
+   "firstFrameMs": 823,
+   "frames": 35,
+   "blackFrames": 0,
+   "source": "outputs/verify-2026-11-03/recovery2",
+   "note": "max gap 1150ms (= normal 1fps cadence); 3.11.10 needed 5634ms for the same kill"
   }
  ],
  "blackFrameCheck": {
@@ -48,6 +63,6 @@
    ]
   }
  },
- "conclusion": "Content profile identical to 3.11.9 (1600x677, flags=1, 66-70KB, 0.2% black, zero black frames) at 556ms of an 1800ms budget. The precompiled worker changes worker STARTUP (146-253ms vs 830-1603ms, see warm-exe/worker-startup.json), not the steady-state path — a prewarmed agent behaves as before.",
+ "conclusion": "3.11.11 keeps the content profile (1600x677, flags=1, ~69KB, 0.2% black, zero black frames) and turns the 5634ms worker-death freeze into a restart that is invisible behind the normal 1 fps cadence (max gap 1150ms).",
  "date": "2026-11-03"
 }
