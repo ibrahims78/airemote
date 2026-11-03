@@ -1861,26 +1861,31 @@ function injectMouse(payload) {
   const btn = button === 2 ? 'R' : button === 1 ? 'M' : 'L'
 
   // 3.12.2 — المسار السريع: الحقن داخل عامل GDI (نفس العملية، بلا PowerShell ولا ACK).
+  // الإحداثيات تُمرَّر مطلقة 0..65535 (فضاء SendInput) لا بكسلات، فلا يبقى أثر لـDPI/التصغير.
+  const nx = Math.max(0, Math.min(1, Number(payload.x) || 0))
+  const ny = Math.max(0, Math.min(1, Number(payload.y) || 0))
+  const ax = Math.round(nx * 65535)
+  const ay = Math.round(ny * 65535)
   const fastCmd = (c) => { try { return gdiCapture.input(c) } catch (e) { return false } }
   if (type === 'move') {
-    if (!fastCmd('M ' + xi + ' ' + yi)) queueMouseMove(xi, yi)
+    if (!fastCmd('M ' + ax + ' ' + ay)) queueMouseMove(xi, yi)
   } else if (type === 'click') {
     pendingMove = null
-    if (fastCmd('C ' + btn + ' ' + xi + ' ' + yi)) return
+    if (fastCmd('C ' + btn + ' ' + ax + ' ' + ay)) return
     const ld = `[WinUI]::${btn}D`, lu = `[WinUI]::${btn}U`
     sendPsCmd(`[WinUI]::SetCursorPos(${xi},${yi});[WinUI]::mouse_event(${ld},0,0,0,[IntPtr]::Zero);[WinUI]::mouse_event(${lu},0,0,0,[IntPtr]::Zero)`)
   } else if (type === 'down') {
-    if (fastCmd('B ' + btn + ' ' + xi + ' ' + yi)) return
+    if (fastCmd('B ' + btn + ' ' + ax + ' ' + ay)) return
     sendPsCmd(`[WinUI]::SetCursorPos(${xi},${yi});[WinUI]::mouse_event([WinUI]::${btn}D,0,0,0,[IntPtr]::Zero)`)
   } else if (type === 'up') {
-    if (fastCmd('E ' + btn + ' ' + xi + ' ' + yi)) return
+    if (fastCmd('E ' + btn + ' ' + ax + ' ' + ay)) return
     sendPsCmd(`[WinUI]::SetCursorPos(${xi},${yi});[WinUI]::mouse_event([WinUI]::${btn}U,0,0,0,[IntPtr]::Zero)`)
   } else if (type === 'dblclick') {
-    if (fastCmd('C ' + btn + ' ' + xi + ' ' + yi) && fastCmd('C ' + btn + ' ' + xi + ' ' + yi)) return
+    if (fastCmd('C ' + btn + ' ' + ax + ' ' + ay) && fastCmd('C ' + btn + ' ' + ax + ' ' + ay)) return
     sendPsCmd(`[WinUI]::SetCursorPos(${xi},${yi});[WinUI]::mouse_event([WinUI]::LD,0,0,0,[IntPtr]::Zero);[WinUI]::mouse_event([WinUI]::LU,0,0,0,[IntPtr]::Zero);Start-Sleep -Milliseconds 40;[WinUI]::mouse_event([WinUI]::LD,0,0,0,[IntPtr]::Zero);[WinUI]::mouse_event([WinUI]::LU,0,0,0,[IntPtr]::Zero)`)
   } else if (type === 'scroll' || type === 'wheel') {
     const wd = Math.round((deltaY || 0) * -120)
-    if (fastCmd('M ' + xi + ' ' + yi) && fastCmd('W ' + wd)) return
+    if (fastCmd('M ' + ax + ' ' + ay) && fastCmd('W ' + wd)) return
     sendPsCmd(`[WinUI]::SetCursorPos(${xi},${yi});[WinUI]::mouse_event([WinUI]::WH,0,0,${wd},[IntPtr]::Zero)`)
   }
 }

@@ -69,14 +69,14 @@ public class GdiStream
         catch { }
     }
 
-    static void MoveTo(int x, int y)
+    // 3.12.2 — أوامر M/C/B/E تستقبل إحداثيات **مطلقة 0..65535** (نفس فضاء SendInput)،
+    // فلا يبقى أي أثر لـDPI أو تصغير الإطار. المشاهد يرسل نسبة 0..1 والوكيل يضربها في 65535.
+    static void MoveTo(int ax, int ay)
     {
         INPUT[] a = new INPUT[1];
         a[0].type = 0;
-        // x,y في فضاء الإطار (نفس فضاء GetCursorPos). نستخدم أقصى انحراف مقيس كمرجع،
-        // فيصل النقر إلى نفس البكسل الذي رآه المستخدم بغضّ النظر عن DPI.
-        a[0].U.mi.dx = (int)Math.Round(x * 65535.0 / Math.Max(1, maxX));
-        a[0].U.mi.dy = (int)Math.Round(y * 65535.0 / Math.Max(1, maxY));
+        a[0].U.mi.dx = ax;
+        a[0].U.mi.dy = ay;
         a[0].U.mi.dwFlags = MV | AB;
         SendInput(1, a, Marshal.SizeOf(typeof(INPUT)));
     }
@@ -273,7 +273,11 @@ public class GdiStream
                         use.Save(ms, jpg, ep);
                         byte[] buf = ms.ToArray();
                         POINT p; GetCursorPos(out p);
-                        int cx = p.X - vx, cy = p.Y - vy;
+                        // 3.12.2 — مؤشر الضيف يُقاس في فضاء القراءة (maxX/maxY) بينما الإطار قد
+                        // يكون بمقاس آخر (تصغير maxWidth) ⇒ نحوّله إلى فضاء الإطار نفسه وإلا رسم
+                        // العارض المؤشر في موضع خاطئ.
+                        int cx = (int)Math.Round((p.X - vx) * (use.Width / (double)Math.Max(1, maxX)));
+                        int cy = (int)Math.Round((p.Y - vy) * (use.Height / (double)Math.Max(1, maxY)));
                         if (cx < 0) cx = 0; if (cy < 0) cy = 0;
                         if (cx > 65535) cx = 65535; if (cy > 65535) cy = 65535;
 
