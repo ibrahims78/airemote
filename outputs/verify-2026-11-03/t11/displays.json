@@ -1,0 +1,46 @@
+{
+ "test": "T11 — second display (3.11.10 re-check)",
+ "goal": "Prove whether a second monitor can be created for the WIN11 guest so viewer monitor selection can be tested",
+ "vmx_key_present": {
+  "file": "E:\\VMs\\Win11_Custom_2026-09-30\\Win11_Custom_2026-09-30.vmx",
+  "line": "svga.numDisplays = \"2\"",
+  "note": "already present before this check — the key is a CAP, not a source of displays"
+ },
+ "measurements": [
+  {
+   "when": "before reboot (running VM)",
+   "screens": 1,
+   "sm_cmonitors": 1,
+   "virtual_screen": "1918x811 at 0,0",
+   "video_controller": "VMware SVGA 3D · 1918x811 · OK"
+  },
+  {
+   "when": "after in-guest reboot (shutdown /r)",
+   "screens": 1,
+   "sm_cmonitors": 1,
+   "virtual_screen": "1918x811 at 0,0",
+   "video_controller": "VMware SVGA 3D · 1918x811 · OK"
+  },
+  {
+   "when": "after full power cycle (vmrun stop hard + start nogui, vmx re-read)",
+   "screens": 1,
+   "sm_cmonitors": 1,
+   "virtual_screen": "1918x811 at 0,0",
+   "video_controller": "VMware SVGA 3D · 1918x811 · OK"
+  }
+ ],
+ "conclusion": "BLOCKED — VMware Workstation exposes guest displays from the HOST topology; with a single physical monitor the guest always enumerates one. svga.numDisplays=\"2\" is necessary but not sufficient, so T11 cannot be run on this host.",
+ "code_finding": "When T11 unblocks, the GDI worker must first learn per-monitor capture: capture-gdi-worker.cs grabs the whole virtual screen (GetSystemMetrics 76-79) and main.js passes only fps/quality/maxWidth to setSession — monitorId is honoured by the Chromium path only.",
+ "side_effect_of_this_check": "WIN11 needed a stale .vmx.lck rename (left by an earlier hard stop) before it could start again; agent restarted after the power cycle and the stream is healthy: 20 frames, first frame 715ms, 1600x677, flags=1.",
+ "health_after": {
+  "agent": "3.11.10",
+  "worker": "capture-gdi-worker-*.exe (parent AiRemote Agent.exe)",
+  "ps1_workers": 0,
+  "e2e_first_frame_ms": 715,
+  "frames": 20,
+  "dims": "1600x677",
+  "source": "outputs/verify-2026-11-03/t11/post-boot"
+ },
+ "date": "2026-11-03",
+ "result": "T11_STILL_BLOCKED_BY_HOST_TOPOLOGY"
+}
