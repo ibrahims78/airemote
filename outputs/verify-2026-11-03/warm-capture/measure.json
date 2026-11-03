@@ -1,34 +1,53 @@
 {
- "slice": "3.11.9",
- "engine": "GDI/BitBlt worker (lib/capture-gdi) — Chromium path returns 100% black on these guests",
+ "slice": "3.11.10",
+ "engine": "GDI/BitBlt worker — precompiled .exe (csc.exe at build time) with capture-gdi.ps1 as automatic fallback",
  "harness": "tools/lab/a2a/dump-frames.cjs WIN10 -> WIN11 (relay, binary=1) + tools/lab/a2a/frame_stats.py (Pillow decode)",
- "note": "First frame here is a CONTENT frame (decoded JPEG, mean RGB > 0). The previous 1722ms sample was a black frame.",
+ "note": "First frame here is a CONTENT frame (decoded JPEG, mean RGB > 0). 3.11.9 rows are kept for comparison.",
  "measurements": [
   {
-   "build": "3.11.9 warm (GDI worker reused)",
+   "build": "3.11.9 cold (historical)",
+   "firstFrameMs": 536,
+   "frames": 12,
+   "blackFrames": 0,
+   "source": "outputs/audit-frames/v3119-cold"
+  },
+  {
+   "build": "3.11.9 warm late-joiner (historical)",
    "firstFrameMs": 31,
    "frames": 13,
    "blackFrames": 0,
    "source": "outputs/audit-frames/v3119-warm"
   },
   {
-   "build": "3.11.9 cold (first session after agent start)",
-   "firstFrameMs": 536,
-   "frames": 12,
+   "build": "3.11.10 exe worker — WIN10 spot",
+   "firstFrameMs": 656,
+   "frames": 19,
    "blackFrames": 0,
-   "source": "outputs/audit-frames/v3119-cold"
+   "source": "outputs/verify-2026-11-03/warm-exe-win10"
+  },
+  {
+   "build": "3.11.10 exe worker — WIN11 (fresh session, agent prewarmed)",
+   "firstFrameMs": 556,
+   "frames": 17,
+   "blackFrames": 0,
+   "source": "outputs/verify-2026-11-03/final-e2e"
   }
  ],
  "blackFrameCheck": {
-  "before": {
+  "before_3119": {
    "frames": 10,
    "avgBlackPct": 100
   },
-  "after": {
-   "frames": 25,
-   "avgBlackPct": 0.4
+  "after_31110": {
+   "frames": 17,
+   "avgBlackPct": 0.2,
+   "meanRGB": [
+    91.1,
+    125,
+    168.3
+   ]
   }
  },
- "conclusion": "Worst case 536ms inside the 1800ms budget; both samples are real content frames.",
+ "conclusion": "Content profile identical to 3.11.9 (1600x677, flags=1, 66-70KB, 0.2% black, zero black frames) at 556ms of an 1800ms budget. The precompiled worker changes worker STARTUP (146-253ms vs 830-1603ms, see warm-exe/worker-startup.json), not the steady-state path — a prewarmed agent behaves as before.",
  "date": "2026-11-03"
 }

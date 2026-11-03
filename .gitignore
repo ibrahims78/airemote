@@ -78,3 +78,6 @@ outputs/**/rec-long/list.txt
 
 # Lab login cache (JWT) — never commit
 tools/lab/.token.json
+
+# GDI worker المترجم بـcsc.exe وقت البناء (scripts/build-gdi-worker.cjs)
+packages/agent-desktop/lib/bin/

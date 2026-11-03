@@ -1513,7 +1513,7 @@ gdiCapture.on('frame', ({ jpeg, cx, cy, width, height }) => {
   if (!gdiCaptureActive) {
     gdiCaptureActive = true
     gdiSuppressRenderer = false
-    addLog('info', `🖥️ [screen] محرّك GDI نشط — أول إطار ${width}×${height} ${(jpeg.length / 1024).toFixed(1)}KB session=${sid.slice(0, 8)}`)
+    addLog('info', `🖥️ [screen] محرّك GDI نشط (${gdiCapture.engine === 'exe' ? 'exe' : 'ps1'}) — أول إطار ${width}×${height} ${(jpeg.length / 1024).toFixed(1)}KB session=${sid.slice(0, 8)}`)
     // أوقف مسار Chromium لهذه الجلسة: مصدر واحد فقط للإطارات
     try { if (capWin && !capWin.isDestroyed()) capWin.webContents.send('stop-capture', { sessionId: sid }) } catch {}
   }

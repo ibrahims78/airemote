@@ -1,12 +1,13 @@
 {
   "name": "airemote-agent-desktop",
-  "version": "3.11.9",
+  "version": "3.11.10",
   "description": "AiRemote Agent — Windows Desktop Application",
   "author": "AiRemote <support@airemote.io>",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
-    "build": "CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win --x64",
+    "build:gdi": "node ../../scripts/build-gdi-worker.cjs",
+    "build": "node ../../scripts/build-gdi-worker.cjs && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win --x64",
     "build:portable": "CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win --x64 --config.win.target=portable",
     "build:dir": "CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win --x64 --dir"
   },
