@@ -31,14 +31,72 @@ public class GdiStream
     [DllImport("gdi32.dll")] static extern bool DeleteObject(IntPtr obj);
     [DllImport("gdi32.dll")] static extern bool DeleteDC(IntPtr hdc);
     [DllImport("user32.dll")] static extern bool SetProcessDPIAware();
+    // 3.12.2 — ضروري قبل أي GetSystemMetrics: بدونه تُحسب الإحداثيات في فضاء 1920 بينما
+    // SendInput يطبّقها على 1280 الفعلية ⇒ كل نقرة تهبط عند 0.667 من موضعها (قيس: 400→267).
+    [DllImport("user32.dll")] static extern bool SetProcessDpiAwarenessContext(IntPtr ctx);
     [DllImport("user32.dll")] static extern int GetSystemMetrics(int i);
     [DllImport("user32.dll")] static extern bool GetCursorPos(out POINT p);
     // 3.12.2 — حقن إدخال أصلي داخل نفس العامل: مسار PowerShell كان ينتظر ACK لكل حركة
     // (~20–60ms) فيتأخر المؤشر ويضيع النقر. هنا التنفيذ في نفس العملية بلا any IPC.
-    [DllImport("user32.dll")] static extern bool SetCursorPos(int x, int y);
-    [DllImport("user32.dll")] static extern void mouse_event(uint f, int dx, int dy, int d, IntPtr e);
+    // 3.12.2 (M1) — الإدخال عبر SendInput لا SetCursorPos/mouse_event: في جلسة WIN10
+    // (headless) يعيد SetCursorPos القيمة False دائماً، بينما SendInput ينجح ويحرّك المؤشر.
+    [DllImport("user32.dll", SetLastError = true)] static extern uint SendInput(uint n, INPUT[] inputs, int cb);
     [DllImport("user32.dll")] static extern void keybd_event(byte vk, byte sc, uint f, IntPtr e);
-    const uint LD = 2, LU = 4, RD = 8, RU = 16, MD = 32, MU = 64, WH = 2048, KU = 2;
+    [StructLayout(LayoutKind.Sequential)] public struct INPUT { public uint type; public U U; }
+    [StructLayout(LayoutKind.Explicit)] public struct U { [FieldOffset(0)] public MOUSEINPUT mi; [FieldOffset(0)] public KEYBDINPUT ki; }
+    [StructLayout(LayoutKind.Sequential)] public struct MOUSEINPUT { public int dx; public int dy; public uint mouseData; public uint dwFlags; public uint time; public IntPtr dwExtraInfo; }
+    [StructLayout(LayoutKind.Sequential)] public struct KEYBDINPUT { public ushort wVk; public ushort wScan; public uint dwFlags; public uint time; public IntPtr dwExtraInfo; }
+    const uint MV = 0x0001, AB = 0x8000, LD = 2, LU = 4, RD = 8, RU = 16, MD = 32, MU = 64, WH = 0x0800, KU = 2;
+    static int scrW = 1280, scrH = 720;
+    static int maxX = 1279, maxY = 719;
+
+    // 3.12.2 — معايرة: عملية غير واعية بـDPI ترى GetSystemMetrics كبيرة (1920) بينما
+    // SendInput يطبّق على العرض الفعلي (1280) ⇒ 400 تهبط 267. نقيس النصف فعلياً ونستنتج العرض.
+    static void Calibrate()
+    {
+        try
+        {
+            INPUT[] a = new INPUT[1];
+            a[0].type = 0;
+            a[0].U.mi.dx = 65535; a[0].U.mi.dy = 65535;
+            a[0].U.mi.dwFlags = MV | AB;
+            SendInput(1, a, Marshal.SizeOf(typeof(INPUT)));
+            Thread.Sleep(50);
+            POINT p; GetCursorPos(out p);
+            if (p.X > 100) maxX = p.X;
+            if (p.Y > 100) maxY = p.Y;
+        }
+        catch { }
+    }
+
+    static void MoveTo(int x, int y)
+    {
+        INPUT[] a = new INPUT[1];
+        a[0].type = 0;
+        // x,y في فضاء الإطار (نفس فضاء GetCursorPos). نستخدم أقصى انحراف مقيس كمرجع،
+        // فيصل النقر إلى نفس البكسل الذي رآه المستخدم بغضّ النظر عن DPI.
+        a[0].U.mi.dx = (int)Math.Round(x * 65535.0 / Math.Max(1, maxX));
+        a[0].U.mi.dy = (int)Math.Round(y * 65535.0 / Math.Max(1, maxY));
+        a[0].U.mi.dwFlags = MV | AB;
+        SendInput(1, a, Marshal.SizeOf(typeof(INPUT)));
+    }
+
+    static void Btn(uint flag)
+    {
+        INPUT[] a = new INPUT[1];
+        a[0].type = 0;
+        a[0].U.mi.dwFlags = flag;
+        SendInput(1, a, Marshal.SizeOf(typeof(INPUT)));
+    }
+
+    static void Wheel(int delta)
+    {
+        INPUT[] a = new INPUT[1];
+        a[0].type = 0;
+        a[0].U.mi.mouseData = (uint)delta;
+        a[0].U.mi.dwFlags = WH;
+        SendInput(1, a, Marshal.SizeOf(typeof(INPUT)));
+    }
     public struct POINT { public int X; public int Y; }
     const int SRCCOPY = 0x00CC0020;
 
@@ -125,16 +183,16 @@ public class GdiStream
                     string[] a = line.Substring(2).Trim().Split(' ');
                     try
                     {
-                        if (c == 'M' && a.Length >= 2) { bool ok = SetCursorPos(int.Parse(a[0]), int.Parse(a[1])); ILog("M " + a[0] + " " + a[1] + " ok=" + ok); }
+                        if (c == 'M' && a.Length >= 2) MoveTo(int.Parse(a[0]), int.Parse(a[1]));
                         else if ((c == 'C' || c == 'B' || c == 'E') && a.Length >= 3)
                         {
                             uint dn = a[0] == "R" ? RD : (a[0] == "M" ? MD : LD);
                             uint up = a[0] == "R" ? RU : (a[0] == "M" ? MU : LU);
-                            SetCursorPos(int.Parse(a[1]), int.Parse(a[2]));
-                            if (c != 'E') mouse_event(dn, 0, 0, 0, IntPtr.Zero);
-                            if (c != 'B') mouse_event(up, 0, 0, 0, IntPtr.Zero);
+                            MoveTo(int.Parse(a[1]), int.Parse(a[2]));
+                            if (c != 'E') Btn(dn);
+                            if (c != 'B') Btn(up);
                         }
-                        else if (c == 'W' && a.Length >= 1) mouse_event(WH, 0, 0, int.Parse(a[0]), IntPtr.Zero);
+                        else if (c == 'W' && a.Length >= 1) Wheel(int.Parse(a[0]));
                         else if (c == 'K' && a.Length >= 2) keybd_event(byte.Parse(a[0]), 0, a[1] == "1" ? KU : 0, IntPtr.Zero);
                     }
                     catch (Exception ex) { ILog("cmd-err " + line + " :: " + ex.Message); }
@@ -150,6 +208,10 @@ public class GdiStream
     public static void Run(int fps, int quality, int maxWidth)
     {
         SetProcessDPIAware();
+        scrW = GetSystemMetrics(0); scrH = GetSystemMetrics(1);
+        if (scrW < 2) scrW = 1280;
+        if (scrH < 2) scrH = 720;
+        Calibrate();
         int vx = GetSystemMetrics(76), vy = GetSystemMetrics(77);
         int vw = GetSystemMetrics(78), vh = GetSystemMetrics(79);
         if (vw <= 0 || vh <= 0) { vw = GetSystemMetrics(0); vh = GetSystemMetrics(1); vx = 0; vy = 0; }
@@ -258,6 +320,8 @@ public class GdiStream
 
     public static int Main(string[] argv)
     {
+        try { SetProcessDpiAwarenessContext(new IntPtr(-4)); } catch { }
+        try { SetProcessDPIAware(); } catch { }
         int fps = Arg(argv, "-Fps", 12);
         int quality = Arg(argv, "-Quality", 60);
         int maxWidth = Arg(argv, "-MaxWidth", 1600);
