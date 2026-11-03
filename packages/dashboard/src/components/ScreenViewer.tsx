@@ -286,6 +286,8 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
   const statsKeyRef        = useRef(0)
   const fpsTimerRef        = useRef<ReturnType<typeof setInterval> | null>(null)
   const pingTimerRef       = useRef<ReturnType<typeof setInterval> | null>(null)
+  // 3.11.13 (M0) — آخر RTT مقيس محلياً، يُرسل مع ping التالي ليقرأه السيرفر في /metrics
+  const latencyRef         = useRef(0)
   const lastSeqRef         = useRef(-1)
   const mediaRecRef        = useRef<MediaRecorder | null>(null)
   const audioElRef         = useRef<HTMLAudioElement | null>(null)
@@ -625,7 +627,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
       if (pingTimerRef.current) clearInterval(pingTimerRef.current)
       pingTimerRef.current = setInterval(() => {
         if (wsRef.current?.readyState === WebSocket.OPEN)
-          wsRef.current.send(JSON.stringify({ type: 'screen:ping', payload: { ts: Date.now() } }))
+          wsRef.current.send(JSON.stringify({ type: 'screen:ping', payload: { ts: Date.now(), rtt: latencyRef.current } }))
       }, 3000)
       startStaleWatchdog(myId)
     }
@@ -807,7 +809,8 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
             // Pong proves the relay is alive even when the remote screen is
             // static and no video frames are produced for a while.
             lastFrameAtRef.current = Date.now()
-            setLatency(Date.now() - (msg.payload?.clientTs ?? Date.now())); break
+            latencyRef.current = Date.now() - (msg.payload?.clientTs ?? Date.now())
+            setLatency(latencyRef.current); break
           case 'screen:viewer_count':
             setViewerCount(msg.payload?.count ?? 1); break
 

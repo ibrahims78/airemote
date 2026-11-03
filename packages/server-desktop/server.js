@@ -72,6 +72,14 @@ const metrics = {
   relayFrames: 0,         // 3.11.7 — إطارات شاشة مُمرَّرة إلى مشاهدين
   relayFrameBytes: 0,     // 3.11.7 — حجم الحمولة (base64) المُمرَّرة
   relayFrameDrops: 0,     // 3.11.7 — إطارات أُسقطت لغياب مشاهد (لا حاجز بالتصميم)
+  // 3.11.13 (M0) — أساس القياس: نافذة 5s للنطاق، حجم الإطار، ضغط الطابور، وRTT من المشاهد.
+  screenWindowStart: 0,
+  screenWindowBytes: 0,
+  screenBitrateBps: 0,
+  screenFrameBytesSum: 0,
+  screenFrameCount: 0,
+  screenSuperseded: 0,
+  screenRttMs: 0,
 }
 let shuttingDown = false
 
@@ -1077,7 +1085,8 @@ function queueScreenFrame(vws, packet) {
   if (!st) { st = { packet: null, timer: null, lastSent: 0, pendingFull: false }; vws._screenFrameState = st }
   const full = isFullFramePacket(packet)
   // انتظار إطار كامل قيد الإرسال: أسقط الدلتا، ولا تُسقط الإطار الكامل.
-  if (st.packet && st.pendingFull && !full) return
+  if (st.packet && st.pendingFull && !full) { metrics.screenSuperseded++; return }
+  if (st.packet) metrics.screenSuperseded++
   st.packet = packet
   st.pendingFull = full
   if (st.timer) return
@@ -1120,6 +1129,26 @@ function screenFrameJsonFromPacket(packet) {
   } catch { return null }
 }
 
+// 3.11.13 (M0) — كل إطار يخرج من السيرفر يمرّ هنا: نافذة 5s للنطاق + حجم متوسط + عدّاد.
+// ملاحظة مهمة: الإطارات الثنائية (المسار الافتراضي) لا تمرّ بـsendToScreenViewers،
+// فعدّادات 3.11.7 كانت تعدّ مسار JSON فقط — وهذا ما جعل relay_frames_total يبقى صفراً.
+function noteScreenFrameBytes (bytes) {
+  const b = Number(bytes) || 0
+  metrics.relayFrames++
+  metrics.relayFrameBytes += b
+  metrics.screenFrameBytesSum += b
+  metrics.screenFrameCount++
+  const now = Date.now()
+  if (!metrics.screenWindowStart) metrics.screenWindowStart = now
+  metrics.screenWindowBytes += b
+  const elapsed = now - metrics.screenWindowStart
+  if (elapsed >= 5000) {
+    metrics.screenBitrateBps = Math.round((metrics.screenWindowBytes * 8 * 1000) / elapsed)
+    metrics.screenWindowStart = now
+    metrics.screenWindowBytes = 0
+  }
+}
+
 function sendToScreenViewers(deviceId, obj) {
   const viewers = screenViewers.get(deviceId)
   const isFrame = obj && obj.type === 'screen:frame'
@@ -1130,8 +1159,9 @@ function sendToScreenViewers(deviceId, obj) {
     return
   }
   if (isFrame) {
-    metrics.relayFrames++
-    try { metrics.relayFrameBytes += (obj.payload && obj.payload.data) ? obj.payload.data.length : 0 } catch {}
+    let bytes = 0
+    try { bytes = (obj.payload && obj.payload.data) ? obj.payload.data.length : 0 } catch {}
+    noteScreenFrameBytes(bytes)
   }
   const s = JSON.stringify(obj)
   for (const vws of viewers) {
@@ -1410,6 +1440,8 @@ function handleAgentWs(socket) {
         if (!isDelta) lastFullFrameByDevice.set(deviceId, { packet: Buffer.concat([header, jpeg]) })
         const packet  = Buffer.concat([header, jpeg])
         const viewers = screenViewers.get(deviceId)
+        if (viewers && viewers.size) noteScreenFrameBytes(jpeg.length)
+        else metrics.relayFrameDrops++
         if (viewers) {
           let legacyJson = null
           for (const vws of viewers) {
@@ -2948,9 +2980,13 @@ function handleScreenWs(socket, request, user) {
         finalizeScreenRecording(deviceId).catch(() => {})
         break
       }
-      case 'screen:ping':
+      case 'screen:ping': {
+        // 3.11.13 (M0) — المشاهد يقيس زمن الذهاب والعودة ويُبلّغ به في ping التالي.
+        const rtt = Number(payload.rtt)
+        if (Number.isFinite(rtt) && rtt >= 0 && rtt < 60000) { metrics.screenRttMs = Math.round(rtt); socket._rttMs = metrics.screenRttMs }
         try { if (socket.readyState === 1) socket.send(JSON.stringify({ type: 'screen:pong', payload: { clientTs: payload.ts, serverTs: Date.now() }, timestamp: Date.now() })) } catch {}
         break
+      }
       case 'screen:stop':
         leaveScreenSession(sessionId, socket)
         try { socket.close() } catch {}
@@ -4122,6 +4158,11 @@ async function start(config) {
     v('airemote_devices_online', 'Devices with a live agent socket.', 'gauge', agentSockets.size)
     v('airemote_ws_clients', 'Dashboard websocket clients.', 'gauge', clientSockets.size)
     v('airemote_screen_sessions', 'Active screen capture sessions.', 'gauge', screenSessions.size)
+    // 3.11.13 (M0) — أساس قياس البثّ: النطاق الفعلي، حجم الإطار، ضغط الطابور، وزمن الذهاب والعودة.
+    v('airemote_screen_bitrate_bps', 'Screen payload bits per second over the last 5s window.', 'gauge', Math.round(metrics.screenBitrateBps || 0))
+    v('airemote_screen_frame_bytes_avg', 'Average screen frame payload size since start.', 'gauge', metrics.screenFrameCount ? Math.round(metrics.screenFrameBytesSum / metrics.screenFrameCount) : 0)
+    v('airemote_screen_frames_superseded_total', 'Frames replaced in a viewer queue before they could be sent.', 'counter', metrics.screenSuperseded || 0)
+    v('airemote_screen_rtt_ms', 'Last round-trip time reported by a viewer.', 'gauge', Number(metrics.screenRttMs) || 0)
     v('airemote_screen_viewers', 'Sockets watching a screen session.', 'gauge', viewers)
     {
       let csEnabled = 0, csEvents = 0, csBlocked = 0, csDup = 0

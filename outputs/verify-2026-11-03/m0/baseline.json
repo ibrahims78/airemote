@@ -1,0 +1,47 @@
+{
+ "slice": "3.11.13 (M0)",
+ "purpose": "Baseline of today's JPEG/WebSocket path so the WebRTC work (M1) can be judged against numbers, not impressions.",
+ "geometry": "1600x677 (WIN11 guest 1918x811 scaled by maxWidth=1600)",
+ "path": "GDI -> JPEG -> WSS/TCP relay -> canvas",
+ "samples": [
+  {
+   "workload": "idle desktop (1 fps safety frame)",
+   "dir": "m0-probe2",
+   "frames": 8,
+   "seconds": 8,
+   "avgFrameBytes": 68256,
+   "dims": "1600x677",
+   "firstFrameMs": 24,
+   "bitrateBps": 546048
+  },
+  {
+   "workload": "typing in Notepad (100 words over 22s)",
+   "dir": "m0-typing-dump",
+   "frames": 39,
+   "seconds": 14,
+   "avgFrameBytes": 75951,
+   "dims": "1600x677",
+   "firstFrameMs": 248,
+   "bitrateBps": 1692622
+  }
+ ],
+ "derived": {
+  "idle_mbps": 0.55,
+  "typing_mbps": 1.69,
+  "typing_fps": 2.8,
+  "idle_fps": 1,
+  "extrapolated_1080p_typing_mbps": 3.2
+ },
+ "instrumentation_added": {
+  "metrics": [
+   "airemote_screen_bitrate_bps",
+   "airemote_screen_frame_bytes_avg",
+   "airemote_screen_frames_superseded_total",
+   "airemote_screen_rtt_ms"
+  ],
+  "fix": "binary frames (the default path) bypassed sendToScreenViewers, so the 3.11.7 counters never saw real traffic; they are now counted in both paths",
+  "rtt_source": "viewer measures pong round trip and reports it in the next screen:ping (measured 1-4 ms on loopback)"
+ },
+ "reference_crd": "Chrome Remote Desktop at 1080p30 is commonly 1-3 Mbps (industry estimate, not measured here) — compare with our extrapolated 1080p typing figure above.",
+ "result": "M0_BASELINE_CAPTURED"
+}
