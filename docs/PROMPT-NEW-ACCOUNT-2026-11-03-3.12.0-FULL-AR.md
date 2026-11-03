@@ -35,7 +35,7 @@
 - النطاق المقيس 0.02–0.08 Mbps على سطح شبه ساكن — **لا يُقارن** بـ1.69Mbps (خط أساس الكتابة).
 
 **الخطوات الأربع التالية بالترتيب** (تفاصيلها في §5.1):
-1. إجبار الدقة الكاملة: `sender.setParameters({ encodings: [{ scaleResolutionDownBy: 1, maxBitrate: 4e6 }] })` + `degradationPreference: 'maintain-resolution'`.
+1. إجبار الدقة الكاملة: `scaleResolutionDownBy = 1` و`maxBitrate = 4e6` في `setParameters`، و**`degradationPreference = 'maintain-resolution'` على `pc.getTransceivers()[0]`** (ليس في setParameters).
 2. تغذية الـcanvas بـ15–30fps (رسم كل إطار GDI + إطار أمان).
 3. قياس حمل الكتابة عند 1600×677 مقابل **1.69 Mbps**.
 4. بعدها فقط: دمج `ScreenViewer` خلف علم + رجوع تلقائي إلى JPEG.
@@ -146,7 +146,9 @@
 
 ### 5.1 M1 — إكمال WebRTC (الأولوية الأولى)
 1. **إجبار الدقة:** في `rtc.html` بعد `addTrack`:
-   `params.encodings[0].scaleResolutionDownBy = 1` + `maxBitrate = 4e6` + `degradationPreference='maintain-resolution'`.
+   `params.encodings[0].scaleResolutionDownBy = 1`، ثم **على المتسقّل**: `pc.getTransceivers()[0].degradationPreference = 'maintain-resolution'` — الافتراضي `balanced` يفضّل الإطارات فينزل 1600×677 إلى 400×169 (‎÷4 بالضبط، وهو ما قيس).
+   - **شكّ لم يُحسم:** نافذة الوكيل **2×2 بكسل**؛ قد يقيّد Chromium بها سقف الالتقاط. كبّرها إلى 480×270 خارج الشاشة وأعد القياس قبل نسبة الفارق إلى BWE.
+   - **زمن فتح النافذة ‎~4.8s** (من `rtc:start` إلى `did-finish-load`)، وأول `TRACK` بعد ~2s من الجهوزية — لا تُفسّره كعطل.
 2. **تغذية الـcanvas:** ارسم **كل** إطار GDI (لا تسقط)، وأضف إطار أمان 30fps عند السكون حتى لا ينهار الـfps.
 3. **القياس:** نفس سيناريو M0 (كتابة Notepad 22s) عند 1600×677 → قارن بـ**1.69 Mbps** وسجّل في `outputs/verify-<date>/m1/`.
 4. **التكامل:** علم تشغيل في `ScreenViewer` (`?rtc=1` أو إعداد)، `<video>` بدل canvas، **مع رجوع تلقائي** إلى JPEG عند فشل ICE أو غياب الفيديو 5s.
