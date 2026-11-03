@@ -627,6 +627,16 @@ function handleMsg(msg) {
       handleFsRequest(msg.payload)
       break
 
+    // 3.12.0 (M1) — إشارات WebRTC من المشاهد (يمرّرها السيرفر)
+    case 'rtc:start':
+      startRtcForSession(msg.payload)
+      break
+    case 'rtc:signal':
+      if (rtcWin && !rtcWin.isDestroyed() && msg.payload && msg.payload.data) {
+        try { rtcWin.webContents.send('rtc-signal', msg.payload.data) } catch {}
+      }
+      break
+
     // ── Screen Capture ─────────────────────────────────────────────────────
     case 'server:screen_start':
       handleScreenStart(msg.payload)
@@ -1485,6 +1495,50 @@ function armGdiWatchdog (sessionId, ms) {
   }, ms)
 }
 
+// ── 3.12.0 (M1) — جسر WebRTC: canvas مخفي يُغذّى من إطارات GDI، وcaptureStream يسلّمها
+// لـWebRTC (VP8/VP9/H.264 + GCC + NACK/FEC) بدل JPEG عبر TCP. مطفأ افتراضياً:
+// لا شيء يعمل حتى يطلب المشاهد rtc:start.
+let rtcWin = null
+let rtcSessionId = null
+let rtcFrames = 0
+
+function createRtcWindow () {
+  if (rtcWin && !rtcWin.isDestroyed()) return rtcWin
+  rtcWin = new BrowserWindow({
+    show: true, x: 0, y: 0, width: 2, height: 2, skipTaskbar: true, focusable: false, opacity: 0.01,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+      webSecurity: false,
+      backgroundThrottling: false
+    }
+  })
+  try { rtcWin.loadFile(path.join(__dirname, 'rtc.html')) } catch (e) { addLog('warn', '[rtc] load failed: ' + e.message) }
+  rtcWin.on('closed', () => { rtcWin = null; rtcSessionId = null })
+  ipcMain.on('rtc-signal-out', (_e, data) => {
+    if (!rtcSessionId || !data) return
+    try { send({ type: 'rtc:signal', payload: { sessionId: rtcSessionId, deviceId, data }, timestamp: Date.now() }) } catch {}
+  })
+  return rtcWin
+}
+
+function startRtcForSession (payload) {
+  const sid = (payload && payload.sessionId) || gdiSessionId || ('rtc-' + Date.now())
+  rtcSessionId = sid
+  rtcFrames = 0
+  const w = createRtcWindow()
+  const go = () => { try { w.webContents.send('rtc-start', { sessionId: sid }) } catch (e) {} }
+  if (w.webContents.isLoading()) w.webContents.once('did-finish-load', go)
+  else go()
+  addLog('info', '🛰️ [rtc] بدء جسر WebRTC session=' + String(sid).slice(0, 8))
+}
+
+function stopRtc () {
+  rtcSessionId = null
+  if (rtcWin && !rtcWin.isDestroyed()) { try { rtcWin.close() } catch {} }
+  rtcWin = null
+}
+
 function startGdiForSession (sessionId, opts) {
   gdiCaptureActive = false
   gdiSuppressRenderer = true
@@ -1526,6 +1580,11 @@ gdiCapture.on('frame', ({ jpeg, cx, cy, width, height }) => {
     try { if (capWin && !capWin.isDestroyed()) capWin.webContents.send('stop-capture', { sessionId: sid }) } catch {}
   }
   sendScreenFramePacket({ sessionId: sid, width, height, seq: ++gdiSeq, buffer: jpeg, flags: 1, x: 0, y: 0 })
+  // 3.12.0 (M1) — نفس الإطار يذهب إلى جسر WebRTC إن كان مفتوحاً (لا يمسّ مسار JPEG)
+  if (rtcWin && !rtcWin.isDestroyed() && rtcSessionId) {
+    rtcFrames++
+    try { rtcWin.webContents.send('rtc-frame', { jpeg, width, height }) } catch {}
+  }
   // 3.11.9 — موضع مؤشر الضيف الحقيقي (يُستخدم لرسم مؤشر واحد في العارض)
   const now = Date.now()
   if (now - lastCursorSentAt >= 80) {
@@ -1645,6 +1704,8 @@ function configureClipWatch(sessionId, enabled, direction) {
 }
 
 function handleScreenStop(payload) {
+  // 3.12.0 (M1) — إغلاق الجسر مع الجلسة
+  try { if (rtcSessionId) stopRtc() } catch {}
   if (clipWatch && clipWatch.sessionId === payload.sessionId) stopClipWatch('screen-stop')
   const { sessionId } = payload
   const sid8   = sessionId.slice(0, 8)

@@ -1,0 +1,94 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>AiRemote RTC</title>
+</head>
+<body>
+  <!-- 3.12.0 (M1) — نافذة مخفية: canvas يُغذّى من إطارات GDI، وcaptureStream يسلّمها لـWebRTC.
+       لا تلتقط الشاشة هنا: المصدر هو عامل GDI (الذي أثبت أنه يعمل على ضيوف VMware). -->
+  <canvas id="c" width="1600" height="677" style="display:none"></canvas>
+  <script>
+    const { ipcRenderer } = require('electron')
+    const canvas = document.getElementById('c')
+    const ctx = canvas.getContext('2d', { alpha: false })
+
+    let pc = null
+    let sender = null
+    let sessionId = null
+    let started = false
+    const frameQueue = []
+    let drawing = false
+
+    function out (data) { try { ipcRenderer.send('rtc-signal-out', data) } catch {} }
+
+    function drawNext () {
+      if (drawing || !frameQueue.length) return
+      drawing = true
+      const msg = frameQueue.shift()
+      const blob = new Blob([msg.jpeg], { type: 'image/jpeg' })
+      const url = URL.createObjectURL(blob)
+      const img = new Image()
+      img.onload = () => {
+        try {
+          if (msg.width && canvas.width !== msg.width) { canvas.width = msg.width; canvas.height = msg.height }
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+        } catch (e) {}
+        URL.revokeObjectURL(url)
+        drawing = false
+        drawNext()
+      }
+      img.onerror = () => { URL.revokeObjectURL(url); drawing = false; drawNext() }
+      img.src = url
+    }
+
+    async function start (sid) {
+      sessionId = sid
+      if (pc) { try { pc.close() } catch (e) {} ; pc = null }
+      pc = new RTCPeerConnection({ iceServers: [] })
+      const stream = canvas.captureStream(30)
+      sender = pc.addTrack(stream.getVideoTracks()[0], stream)
+      try {
+        const params = sender.getParameters()
+        params.encodings = params.encodings && params.encodings.length ? params.encodings : [{}]
+        params.encodings[0].maxBitrate = 4000000
+        params.encodings[0].maxFramerate = 30
+        await sender.setParameters(params)
+      } catch (e) {}
+      pc.onicecandidate = (ev) => {
+        if (ev.candidate) out({ candidate: ev.candidate.toJSON ? ev.candidate.toJSON() : ev.candidate })
+      }
+      pc.onconnectionstatechange = () => { try { console.log('[rtc] ' + pc.connectionState) } catch (e) {} }
+      const offer = await pc.createOffer()
+      await pc.setLocalDescription(offer)
+      out({ sdp: pc.localDescription })
+      started = true
+    }
+
+    ipcRenderer.on('rtc-start', (e, msg) => { start(msg && msg.sessionId).catch(() => {}) })
+
+    ipcRenderer.on('rtc-frame', (e, msg) => {
+      if (!msg || !msg.jpeg) return
+      if (frameQueue.length > 2) frameQueue.shift()   // لا نكدّس: آخر إطار يكفي
+      frameQueue.push(msg)
+      drawNext()
+    })
+
+    ipcRenderer.on('rtc-signal', async (e, data) => {
+      if (!pc || !data) return
+      try {
+        if (data.sdp) {
+          await pc.setRemoteDescription(data.sdp)
+          if (data.sdp.type === 'offer') {
+            const ans = await pc.createAnswer()
+            await pc.setLocalDescription(ans)
+            out({ sdp: pc.localDescription })
+          }
+        } else if (data.candidate) {
+          await pc.addIceCandidate(data.candidate)
+        }
+      } catch (err) { try { console.log('[rtc] signal err ' + (err && err.message)) } catch (e) {} }
+    })
+  </script>
+</body>
+</html>

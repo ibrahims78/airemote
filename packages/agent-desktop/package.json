@@ -1,6 +1,6 @@
 {
   "name": "airemote-agent-desktop",
-  "version": "3.11.13",
+  "version": "3.12.0",
   "description": "AiRemote Agent — Windows Desktop Application",
   "author": "AiRemote <support@airemote.io>",
   "main": "main.js",
@@ -29,6 +29,7 @@
     "files": [
       "main.js",
       "preload.js",
+      "rtc.html",
       "lib/**/*",
       "chat-preload.js",
       "chat-toast-preload.js",

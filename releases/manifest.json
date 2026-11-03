@@ -1,7 +1,7 @@
 {
   "product": "AiRemote",
-  "version": "3.11.13",
-  "generatedAt": "2026-11-03T15:55:13.663Z",
+  "version": "3.12.0",
+  "generatedAt": "2026-11-03T16:29:14.351Z",
   "artifacts": [
     {
       "name": "agent-windows/AiRemote-Agent-Setup-v3.11.10-x64.exe",
@@ -29,6 +29,11 @@
       "sha256": "92792d52c805f6759cc68501fd7a773b64ac1f70fc9250054fccf68dc18c16a8"
     },
     {
+      "name": "agent-windows/AiRemote-Agent-Setup-v3.12.0-x64.exe",
+      "size": 76388696,
+      "sha256": "98eef076877022f5b21cba04c642ab04d2fb4284d341149c3ecf764bf87af60b"
+    },
+    {
       "name": "agent-windows/AiRemote-Agent-v3.11.10-Windows-x64.zip",
       "size": 103997974,
       "sha256": "19c116671d5c8530d9fbcfa9e4a900184dfbaf56d2f9fbdc60fda226977899f9"
@@ -52,6 +57,11 @@
       "name": "agent-windows/AiRemote-Agent-v3.11.9-Windows-x64.zip",
       "size": 103991946,
       "sha256": "39238144f2b130ca5088633c20f71d5b02bbf50fb354fe7f56db53359f83732b"
+    },
+    {
+      "name": "agent-windows/AiRemote-Agent-v3.12.0-Windows-x64.zip",
+      "size": 104000197,
+      "sha256": "b5320402606f33be52b3819a88055d9ddab5526e31f14bbdcccad9dbc46943d1"
     },
     {
       "name": "android-agent/AiRemote-Agent-Android-v3.11.9.apk",
@@ -84,6 +94,11 @@
       "sha256": "09619e693d0a9186fbb5e355a294896eb9e946aeed38b0f8148718074b29d54b"
     },
     {
+      "name": "server-windows/AiRemote-Server-Setup-v3.12.0-x64.exe",
+      "size": 159412924,
+      "sha256": "cbe643e1d94cf032a5eb646120e8ebe2b5fab5ce936c857dc2be39e6e7cde781"
+    },
+    {
       "name": "server-windows/AiRemote-Server-v3.11.10-Windows-x64.zip",
       "size": 212142102,
       "sha256": "546127a42a984dcabee62af9183b28147c6fe1a9217990b17ebdc62f3ba02e2c"
@@ -107,6 +122,11 @@
       "name": "server-windows/AiRemote-Server-v3.11.9-Windows-x64.zip",
       "size": 212142027,
       "sha256": "6c465c246e21200978e0f722932f5cd8e196fa167dd8ff6548e5680d5f0a9583"
+    },
+    {
+      "name": "server-windows/AiRemote-Server-v3.12.0-Windows-x64.zip",
+      "size": 212147503,
+      "sha256": "f5e807ec0b50ffccc2323ac9cb3375e5e865d3feebbcfcf09dacbe35c60d1078"
     }
   ]
 }

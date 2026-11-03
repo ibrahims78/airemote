@@ -1462,6 +1462,16 @@ function handleAgentWs(socket) {
 
     let msg; try { msg = JSON.parse(raw) } catch { return }
     const { type, payload = {} } = msg
+
+    // 3.12.0 (M1) — ردّ إشارات WebRTC من الوكيل إلى مشاهدي جهازه
+    if (type === 'rtc:signal' && payload && payload.data) {
+      const vs = screenViewers.get(deviceId)
+      if (vs) for (const vws of vs) {
+        try { if (vws.readyState === 1) sendJson(vws, { type: 'rtc:signal', payload: { data: payload.data }, timestamp: Date.now() }) } catch {}
+      }
+      return
+    }
+
     clearTimeout(pongTimer); pongTimer = null
     schedulePing()
 
@@ -2980,6 +2990,15 @@ function handleScreenWs(socket, request, user) {
         finalizeScreenRecording(deviceId).catch(() => {})
         break
       }
+      // 3.12.0 (M1) — إشارات WebRTC: المشاهد ↔ الوكيل عبر نفس المقبس القائم
+      case 'rtc:start':
+      case 'rtc:signal': {
+        const arec = agentSockets.get(deviceId)
+        if (arec && arec.ws && arec.ws.readyState === 1) {
+          try { sendJson(arec.ws, { type, payload: { deviceId, data: (payload && payload.data) || null }, timestamp: Date.now() }) } catch {}
+        }
+        break
+      }
       case 'screen:ping': {
         // 3.11.13 (M0) — المشاهد يقيس زمن الذهاب والعودة ويُبلّغ به في ping التالي.
         const rtt = Number(payload.rtt)
@@ -3612,6 +3631,9 @@ const SERVER_VERSION = pkgVersion('./package.json')      // server build version
 const AGENT_VERSION = pkgVersion('../agent-desktop/package.json')  // agent artifact version (downloads)
 let serverLogger = null   // set in start(); lets WS handlers write to the app log
 
+// 3.12.0 (M1) — صفحة تشخيص WebRTC (مضمّنة: لا تعتمد على مجلد static الذي يُعاد نسخه)
+const RTC_TEST_HTML = "<!doctype html>\n<html dir=\"rtl\"><head><meta charset=\"utf-8\"><title>AiRemote RTC test</title>\n<style>body{background:#0b1220;color:#dbe4f0;font-family:system-ui;margin:0;padding:12px}video{width:100%;max-height:70vh;background:#000;border-radius:8px}pre{white-space:pre-wrap;font-size:12px;color:#9fb3c8;max-height:28vh;overflow:auto}</style>\n</head><body>\n<h3 style=\"margin:4px 0 10px\">AiRemote — WebRTC transport test (M1)</h3>\n<video id=\"v\" autoplay playsinline muted></video>\n<pre id=\"log\"></pre>\n<script>\nconst q = new URLSearchParams(location.search)\nconst deviceId = q.get('deviceId'), rt = q.get('rt') || '', rk = q.get('rk') || ''\nconst logEl = document.getElementById('log')\nconst log = function () { logEl.textContent += Array.prototype.join.call(arguments, ' ') + '\\n' }\nconst wsUrl = (location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host + '/screen?' +\n  new URLSearchParams({ rt: rt, rk: rk, deviceId: deviceId, binary: '0' }).toString()\nconst ws = new WebSocket(wsUrl)\nlet pc = null, t0 = 0, lastBytes = 0, lastAt = 0, firstTrackAt = 0\nws.onopen = function () { log('ws open'); t0 = performance.now(); ws.send(JSON.stringify({ type: 'rtc:start', payload: {} })) }\nws.onmessage = async function (ev) {\n  let m; try { m = JSON.parse(ev.data) } catch (e) { return }\n  if (m.type !== 'rtc:signal' || !m.payload || !m.payload.data) return\n  const d = m.payload.data\n  if (d.sdp && d.sdp.type === 'offer') {\n    pc = pc || new RTCPeerConnection({ iceServers: [] })\n    pc.ontrack = function (e) {\n      if (!firstTrackAt) { firstTrackAt = Math.round(performance.now() - t0); log('TRACK at ' + firstTrackAt + 'ms') }\n      document.getElementById('v').srcObject = e.streams[0]\n    }\n    pc.onicecandidate = function (e) { if (e.candidate) ws.send(JSON.stringify({ type: 'rtc:signal', payload: { data: { candidate: e.candidate.toJSON() } } })) }\n    pc.onconnectionstatechange = function () { log('pc=' + pc.connectionState) }\n    await pc.setRemoteDescription(d.sdp)\n    const ans = await pc.createAnswer(); await pc.setLocalDescription(ans)\n    ws.send(JSON.stringify({ type: 'rtc:signal', payload: { data: { sdp: pc.localDescription } } }))\n    log('answer sent')\n  } else if (d.candidate && pc) { try { await pc.addIceCandidate(d.candidate) } catch (e) {} }\n}\nsetInterval(async function () {\n  if (!pc) return\n  const s = await pc.getStats(); let v = null, cand = null\n  s.forEach(function (r) {\n    if (r.type === 'inbound-rtp' && r.kind === 'video') v = r\n    if (r.type === 'candidate-pair' && r.state === 'succeeded' && r.nominated) cand = r\n  })\n  if (v && v.bytesReceived) {\n    const now = performance.now()\n    const mbps = lastBytes ? (((v.bytesReceived - lastBytes) * 8) / ((now - lastAt) / 1000) / 1e6).toFixed(2) : '0'\n    lastBytes = v.bytesReceived; lastAt = now\n    log('VIDEO ' + (v.frameWidth || '?') + 'x' + (v.frameHeight || '?') + ' fps=' + (v.framesPerSecond || '?') +\n        ' decoded=' + (v.framesDecoded || 0) + ' mbps=' + mbps + (cand ? ' rttMs=' + Math.round((cand.currentRoundTripTime || 0) * 1000) : ''))\n  }\n}, 2000)\n</script></body></html>\n"
+
 async function start(config) {
   if (started) return
   _config = config
@@ -4133,6 +4155,11 @@ async function start(config) {
 
   // v3.8.28 (R7) - Prometheus text format. Authenticated: counts are operational
   // data, not public. Labels are fixed or derived from a bounded set.
+  // 3.12.0 (M1) — تُقاس عليها المقارنة مع خط أساس M0
+  fastify.get('/rtc-test', async (req, reply) => {
+    reply.type('text/html').send(RTC_TEST_HTML)
+  })
+
   fastify.get('/metrics', async (req, reply) => {
     const user = authMiddleware(req, reply); if (!user) return
     const out = []
