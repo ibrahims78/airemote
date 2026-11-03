@@ -33,6 +33,12 @@ public class GdiStream
     [DllImport("user32.dll")] static extern bool SetProcessDPIAware();
     [DllImport("user32.dll")] static extern int GetSystemMetrics(int i);
     [DllImport("user32.dll")] static extern bool GetCursorPos(out POINT p);
+    // 3.12.2 — حقن إدخال أصلي داخل نفس العامل: مسار PowerShell كان ينتظر ACK لكل حركة
+    // (~20–60ms) فيتأخر المؤشر ويضيع النقر. هنا التنفيذ في نفس العملية بلا any IPC.
+    [DllImport("user32.dll")] static extern bool SetCursorPos(int x, int y);
+    [DllImport("user32.dll")] static extern void mouse_event(uint f, int dx, int dy, int d, IntPtr e);
+    [DllImport("user32.dll")] static extern void keybd_event(byte vk, byte sc, uint f, IntPtr e);
+    const uint LD = 2, LU = 4, RD = 8, RU = 16, MD = 32, MU = 64, WH = 2048, KU = 2;
     public struct POINT { public int X; public int Y; }
     const int SRCCOPY = 0x00CC0020;
 
@@ -90,8 +96,19 @@ public class GdiStream
         return h;
     }
 
+    static void ILog(string s)
+    {
+        try
+        {
+            string p = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "input-worker.log");
+            File.AppendAllText(p, DateTime.Now.ToString("HH:mm:ss.fff") + " " + s + "\r\n");
+        }
+        catch { }
+    }
+
     static void CommandLoop()
     {
+        ILog("command-loop-start");
         try
         {
             StreamReader si = new StreamReader(Console.OpenStandardInput());
@@ -99,8 +116,29 @@ public class GdiStream
             while ((line = si.ReadLine()) != null)
             {
                 line = line.Trim();
-                if (line.StartsWith("A")) active = true;
-                else if (line.StartsWith("P")) active = false;
+                if (line == "A") active = true;
+                else if (line == "P") active = false;
+                else if (line.Length > 2 && line[1] == ' ')
+                {
+                    // M x y · C|B|E <L|R|M> x y · W delta · K vk 0|1
+                    char c = line[0];
+                    string[] a = line.Substring(2).Trim().Split(' ');
+                    try
+                    {
+                        if (c == 'M' && a.Length >= 2) { bool ok = SetCursorPos(int.Parse(a[0]), int.Parse(a[1])); ILog("M " + a[0] + " " + a[1] + " ok=" + ok); }
+                        else if ((c == 'C' || c == 'B' || c == 'E') && a.Length >= 3)
+                        {
+                            uint dn = a[0] == "R" ? RD : (a[0] == "M" ? MD : LD);
+                            uint up = a[0] == "R" ? RU : (a[0] == "M" ? MU : LU);
+                            SetCursorPos(int.Parse(a[1]), int.Parse(a[2]));
+                            if (c != 'E') mouse_event(dn, 0, 0, 0, IntPtr.Zero);
+                            if (c != 'B') mouse_event(up, 0, 0, 0, IntPtr.Zero);
+                        }
+                        else if (c == 'W' && a.Length >= 1) mouse_event(WH, 0, 0, int.Parse(a[0]), IntPtr.Zero);
+                        else if (c == 'K' && a.Length >= 2) keybd_event(byte.Parse(a[0]), 0, a[1] == "1" ? KU : 0, IntPtr.Zero);
+                    }
+                    catch (Exception ex) { ILog("cmd-err " + line + " :: " + ex.Message); }
+                }
             }
         }
         catch { }
@@ -151,10 +189,10 @@ public class GdiStream
                 Bitmap scaled = null;
                 try
                 {
-                    scaled = Scale(full, maxWidth);
-                    if (scaled != null) use = scaled;
-
-                    long sig = Signature(use);
+                    // 3.12.2 — البصمة تُحسب على الإطار الكامل **قبل** التصغير: التصغير هو
+                    // العمل الثقيل (1920×1080 → 1600×900 لكل إطار) ولا معنى له لإطار لم يتغيّر.
+                    // قياس WIN10: 12 محاولة/ث، 1.4 إطار مُرسل/ث ⇒ 11 تصغيراً مهدوراً كل ثانية.
+                    long sig = Signature(full);
                     long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                     bool changed = sig != lastSig;
                     if (!changed && now - lastSentAt < 1000)
@@ -164,6 +202,9 @@ public class GdiStream
                         continue;
                     }
                     lastSig = sig;
+
+                    scaled = Scale(full, maxWidth);
+                    if (scaled != null) use = scaled;
 
                     using (var ms = new MemoryStream())
                     {

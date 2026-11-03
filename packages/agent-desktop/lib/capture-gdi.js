@@ -197,6 +197,14 @@ class GdiCapture extends EventEmitter {
     }
   }
 
+  // 3.12.2 — حقن إدخال عبر العامل نفسه (SetCursorPos/mouse_event) بدل PowerShell.
+  // يُرجع false إن لم يكن العامل التنفيذي حياً، فيسقط المستدعي إلى المسار القديم.
+  input (c) {
+    if (this.engine !== 'exe') return false
+    if (!this.proc || this.proc.killed || !this.proc.stdin || !this.proc.stdin.writable) return false
+    try { this.proc.stdin.write(c + '\n'); return true } catch (e) { return false }
+  }
+
   // أمر للعامل: A=تفعيل (يبدأ الالتقاط) · P=خمول (يتوقف تماماً)
   cmd (c) {
     try {

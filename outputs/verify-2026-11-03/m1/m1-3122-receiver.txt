@@ -1,0 +1,32 @@
+﻿# 3.12.2 (M1 step 2) - receiver samples, WIN11-VM agent 3.12.2, same GDI->canvas->WebRTC path
+# Harness: RTCPeerConnection + <video>; 22s typing load in Notepad ran from ~9s to ~31s.
+# Real content check: rgb 98/125/160, black pixels 0.0%.
+
+track streams=1 kind=video
+pc=connecting
+pc=connected
+4s  1600x900 fps=8  dec=14  mbps=0     rgb=99/125/160  black%=0.0
+6s  1600x900 fps=7  dec=27  mbps=0.55  rgb=105/130/163 black%=0.0
+8s  1600x900 fps=8  dec=44  mbps=0.26  rgb=104/130/163 black%=0.0
+10s 1600x900 fps=7  dec=58  mbps=0.09  rgb=104/130/163 black%=0.0   <- typing starts
+12s 1600x900 fps=7  dec=81  mbps=0.11  rgb=98/125/160  black%=0.0
+14s 1600x900 fps=5  dec=93  mbps=0.09  rgb=98/125/160  black%=0.0
+16s 1600x900 fps=14 dec=113 mbps=0.07  rgb=98/125/160  black%=0.0
+18s 1600x900 fps=11 dec=132 mbps=0.06  rgb=98/125/160  black%=0.0
+20s 1600x900 fps=7  dec=143 mbps=0.05  rgb=98/125/160  black%=0.0
+22s 1600x900 fps=3  dec=154 mbps=0.03  rgb=98/125/160  black%=0.0
+24s 1600x900 fps=6  dec=164 mbps=0.07  rgb=98/125/160  black%=0.0
+26s 1600x900 fps=6  dec=173 mbps=0.03  rgb=98/125/160  black%=0.0
+28s 1600x900 fps=5  dec=183 mbps=0.04  rgb=98/125/160  black%=0.0
+30s 1600x900 fps=2  dec=193 mbps=0.06  rgb=98/125/160  black%=0.0
+32s 1600x900 fps=6  dec=203 mbps=0.04  rgb=98/125/160  black%=0.0
+36s 1600x900 fps=4  dec=233 mbps=0.05  rgb=98/125/160  black%=0.0
+40s 1600x900 fps=7  dec=256 mbps=0.05  rgb=98/125/160  black%=0.0
+44s 1600x900 fps=9  dec=293 mbps=0.09  rgb=98/125/160  black%=0.0
+48s 1600x900 fps=5  dec=321 mbps=0.03  rgb=98/125/160  black%=0.0
+52s 1600x900 fps=7  dec=347 mbps=0.04  rgb=98/125/160  black%=0.0
+56s 1600x900 fps=6  dec=368 mbps=0.03  rgb=98/125/160  black%=0.0
+60s 1600x900 fps=2  dec=386 mbps=0.02  rgb=98/125/160  black%=0.0
+
+# Totals: 386 frames in ~56s = 6.9 fps. Mean bitrate during typing ~0.06 Mbps.
+# Baseline (M0, JPEG path, 1600x677, same scenario): 1.69 Mbps at 2.8 fps, ~76 KB/frame.

@@ -17,35 +17,38 @@
     let sender = null
     let sessionId = null
     let started = false
-    const frameQueue = []
-    let drawing = false
+    let lastBitmap = null
+    let safetyTimer = null
     let drawn = 0
+    let decoded = 0
+    let painted = 0
 
     function out (data) { try { ipcRenderer.send('rtc-signal-out', data) } catch {} }
     function diag (m) { try { ipcRenderer.send('rtc-log', m) } catch {} }
     window.addEventListener('error', (e) => diag('pageerror ' + (e && e.message)))
     diag('rtc page loaded')
 
-    function drawNext () {
-      if (drawing || !frameQueue.length) return
-      drawing = true
-      const msg = frameQueue.shift()
-      const blob = new Blob([msg.jpeg], { type: 'image/jpeg' })
-      const url = URL.createObjectURL(blob)
-      const img = new Image()
-      img.onload = () => {
-        try {
-          if (msg.width && canvas.width !== msg.width) { canvas.width = msg.width; canvas.height = msg.height }
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-        } catch (e) {}
-        URL.revokeObjectURL(url)
-        drawn++
-        if (drawn === 1 || drawn % 60 === 0) diag('drawn=' + drawn + ' canvas=' + canvas.width + 'x' + canvas.height)
-        drawing = false
-        drawNext()
-      }
-      img.onerror = () => { URL.revokeObjectURL(url); drawing = false; drawNext() }
-      img.src = url
+    // 3.12.2 (M1) — الـcanvas يُغذّى بكل إطار GDI عبر createImageBitmap (بدل Image+objectURL)،
+    // وإطار أمان 30fps يعيد رسم آخر إطار حتى لا ينهار معدّل الإطارات عند السكون.
+    function drawBitmap (bmp) {
+      try {
+        if (canvas.width !== bmp.width || canvas.height !== bmp.height) {
+          canvas.width = bmp.width
+          canvas.height = bmp.height
+          diag('canvas ' + canvas.width + 'x' + canvas.height)
+        }
+        ctx.drawImage(bmp, 0, 0)
+        return true
+      } catch (e) { diag('draw failed ' + (e && e.message)); return false }
+    }
+
+    function startSafetyLoop () {
+      if (safetyTimer) return
+      safetyTimer = setInterval(() => {
+        if (!lastBitmap) return
+        try { ctx.drawImage(lastBitmap, 0, 0); painted++ } catch (e) {}
+      }, 33)
+      diag('safety loop 30fps started')
     }
 
     // 3.12.1 (M1) — إعادة تطبيق معاملات المُرسِل. في Chromium لا تُحفظ قيم setParameters
@@ -57,9 +60,12 @@
         p.encodings[0].maxBitrate = 4000000
         p.encodings[0].maxFramerate = 30
         p.encodings[0].scaleResolutionDownBy = 1
+        // 3.12.2 (M1) — المكان الصحيح للتفضيل هو RTCRtpSendParameters (لا المتسقّل:
+        // transceiver.degradationPreference كائن JS وهمي لا يصل المُرمّز).
+        p.degradationPreference = 'maintain-resolution'
         await sender.setParameters(p)
         const q = sender.getParameters()
-        diag('params[' + tag + '] ' + JSON.stringify(q.encodings && q.encodings[0]))
+        diag('params[' + tag + '] ' + JSON.stringify(q.encodings && q.encodings[0]) + ' pref=' + q.degradationPreference)
       } catch (e) { diag('params[' + tag + '] failed ' + (e && e.message)) }
     }
 
@@ -69,20 +75,23 @@
       if (pc) { try { pc.close() } catch (e) {} ; pc = null }
       pc = new RTCPeerConnection({ iceServers: [] })
       const stream = canvas.captureStream(30)
+      startSafetyLoop()
       const track = stream.getVideoTracks()[0]
       // 3.12.1 (M1) — sendEncodings عند إنشاء المتسقّل، لأن setParameters قبل أول عرض
       // لا يُطبَّق في Chromium. وdegradationPreference على المتسقّل (لا في setParameters).
       let tr = null
       try {
-        tr = pc.addTransceiver(track, { direction: 'sendonly', sendEncodings: [{ maxBitrate: 4000000, maxFramerate: 30, scaleResolutionDownBy: 1 }] })
+        // streams: [stream] ضروري: بدونه لا يجد المشاهد e.streams[0] فيبقى <video> بلا مصدر.
+        tr = pc.addTransceiver(track, { direction: 'sendonly', streams: [stream], sendEncodings: [{ maxBitrate: 4000000, maxFramerate: 30, scaleResolutionDownBy: 1 }] })
         sender = tr.sender
       } catch (e) {
         diag('addTransceiver failed ' + (e && e.message) + ' — fallback addTrack')
         sender = pc.addTrack(track, stream)
         tr = pc.getTransceivers()[0] || null
       }
-      try { if (tr) tr.degradationPreference = 'maintain-resolution' } catch (e) { diag('degradationPreference failed ' + (e && e.message)) }
-      diag('transceiver dir=' + (tr && tr.direction) + ' pref=' + (tr && tr.degradationPreference))
+      // ملاحظة 3.12.2: لا نضبط degradationPreference على المتسقّل — لا يصل المُرمّز.
+      try { track.contentHint = 'detail' } catch (e) {}
+      diag('transceiver dir=' + (tr && tr.direction) + ' contentHint=' + track.contentHint)
       try { diag('track settings ' + JSON.stringify(track.getSettings ? track.getSettings() : {})) } catch (e) {}
       diag('canvas ' + canvas.width + 'x' + canvas.height)
       await applyEncodingParams('pre-offer')
@@ -104,11 +113,17 @@
 
     ipcRenderer.on('rtc-start', (e, msg) => { start(msg && msg.sessionId).catch(() => {}) })
 
-    ipcRenderer.on('rtc-frame', (e, msg) => {
+    ipcRenderer.on('rtc-frame', async (e, msg) => {
       if (!msg || !msg.jpeg) return
-      if (frameQueue.length > 2) frameQueue.shift()   // لا نكدّس: آخر إطار يكفي
-      frameQueue.push(msg)
-      drawNext()
+      decoded++
+      try {
+        const bmp = await createImageBitmap(new Blob([msg.jpeg], { type: 'image/jpeg' }))
+        lastBitmap = bmp
+        if (drawBitmap(bmp)) {
+          drawn++
+          if (drawn === 1 || drawn % 90 === 0) diag('drawn=' + drawn + ' decoded=' + decoded + ' painted=' + painted + ' canvas=' + canvas.width + 'x' + canvas.height)
+        }
+      } catch (err) { diag('frame decode failed ' + (err && err.message)) }
     })
 
     ipcRenderer.on('rtc-signal', async (e, data) => {

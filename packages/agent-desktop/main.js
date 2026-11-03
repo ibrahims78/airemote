@@ -1860,20 +1860,27 @@ function injectMouse(payload) {
   }
   const btn = button === 2 ? 'R' : button === 1 ? 'M' : 'L'
 
+  // 3.12.2 — المسار السريع: الحقن داخل عامل GDI (نفس العملية، بلا PowerShell ولا ACK).
+  const fastCmd = (c) => { try { return gdiCapture.input(c) } catch (e) { return false } }
   if (type === 'move') {
-    queueMouseMove(xi, yi)
+    if (!fastCmd('M ' + xi + ' ' + yi)) queueMouseMove(xi, yi)
   } else if (type === 'click') {
     pendingMove = null
+    if (fastCmd('C ' + btn + ' ' + xi + ' ' + yi)) return
     const ld = `[WinUI]::${btn}D`, lu = `[WinUI]::${btn}U`
     sendPsCmd(`[WinUI]::SetCursorPos(${xi},${yi});[WinUI]::mouse_event(${ld},0,0,0,[IntPtr]::Zero);[WinUI]::mouse_event(${lu},0,0,0,[IntPtr]::Zero)`)
   } else if (type === 'down') {
+    if (fastCmd('B ' + btn + ' ' + xi + ' ' + yi)) return
     sendPsCmd(`[WinUI]::SetCursorPos(${xi},${yi});[WinUI]::mouse_event([WinUI]::${btn}D,0,0,0,[IntPtr]::Zero)`)
   } else if (type === 'up') {
+    if (fastCmd('E ' + btn + ' ' + xi + ' ' + yi)) return
     sendPsCmd(`[WinUI]::SetCursorPos(${xi},${yi});[WinUI]::mouse_event([WinUI]::${btn}U,0,0,0,[IntPtr]::Zero)`)
   } else if (type === 'dblclick') {
+    if (fastCmd('C ' + btn + ' ' + xi + ' ' + yi) && fastCmd('C ' + btn + ' ' + xi + ' ' + yi)) return
     sendPsCmd(`[WinUI]::SetCursorPos(${xi},${yi});[WinUI]::mouse_event([WinUI]::LD,0,0,0,[IntPtr]::Zero);[WinUI]::mouse_event([WinUI]::LU,0,0,0,[IntPtr]::Zero);Start-Sleep -Milliseconds 40;[WinUI]::mouse_event([WinUI]::LD,0,0,0,[IntPtr]::Zero);[WinUI]::mouse_event([WinUI]::LU,0,0,0,[IntPtr]::Zero)`)
   } else if (type === 'scroll' || type === 'wheel') {
     const wd = Math.round((deltaY || 0) * -120)
+    if (fastCmd('M ' + xi + ' ' + yi) && fastCmd('W ' + wd)) return
     sendPsCmd(`[WinUI]::SetCursorPos(${xi},${yi});[WinUI]::mouse_event([WinUI]::WH,0,0,${wd},[IntPtr]::Zero)`)
   }
 }
