@@ -239,7 +239,10 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
   const [svrRecMeta,   setSvrRecMeta]   = useState<RecordingMeta | null>(null)
 
   // ── Cursor overlay ────────────────────────────────────────────────────────
-  const [cursorPos,     setCursorPos]     = useState({ x: -100, y: -100 })
+  const [cursorPos,     setCursorPos]     = useState({ x: -1, y: -1 })
+  // 3.11.9 — مؤشر واحد احترافي (طراز AnyDesk): موضع مُطبَّع 0..1 في مساحة المحتوى،
+  // ويُغذّى من مؤشر الضيف الحقيقي (screen:cursor) حين لا نتحكّم — فيُرسم مؤشر واحد فقط.
+  const [remoteCursor, setRemoteCursor] = useState<{ x: number; y: number; at: number } | null>(null)
   const [cursorVisible, setCursorVisible] = useState(false)
   const [screenLocked,  setScreenLocked]  = useState(false)
   const [screenLockSecure, setScreenLockSecure] = useState(false)
@@ -702,6 +705,20 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
             if (keyframe) statsKeyRef.current++
             break
           }
+          // 3.11.9 — موضع مؤشر الضيف بالبكسل داخل الإطار ⇒ نسبة 0..1 في مساحة الرسم
+          case 'screen:cursor': {
+            const cp = (msg.payload || {}) as { x?: number; y?: number; width?: number; height?: number; visible?: boolean }
+            const cw = Number(cp.width) || 0
+            const ch = Number(cp.height) || 0
+            if (cp.visible !== false && cw > 0 && ch > 0 && Number.isFinite(Number(cp.x)) && Number.isFinite(Number(cp.y))) {
+              setRemoteCursor({
+                x: Math.min(1, Math.max(0, Number(cp.x) / cw)),
+                y: Math.min(1, Math.max(0, Number(cp.y) / ch)),
+                at: Date.now(),
+              })
+            } else { setRemoteCursor(null) }
+            break
+          }
           case 'screen:audio':
             feedAudio(msg.payload?.data || '', msg.payload?.format, msg.payload?.sampleRate)
             break
@@ -1149,27 +1166,18 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
     if (submit) sendWs({ type: 'screen:key_event', payload: { type: 'press', key: 'Enter' } })
   }
 
-  // 3.9.4 — بعد انتقال 3.9.3 إلى Pointer Events لم يبقَ من يحدّث المؤشّر المرسوم إلا
-  // معالج الفأرة القديم (الميت)، فتجمد المؤشّر تحت الإصبع. هنا يُحدَّث لكل نوع مؤشّر،
-  // بحدّ 30Hz كي لا يزيد عدد إعادات الرسم أثناء السحب/القرص.
+
+  // 3.11.9 — موضع واحد للمؤشر: نفس مستطيل المحتوى الذي تُرسل منه أحداث الفأرة،
+  // فلا يزحف المؤشر عن البكسل الذي سيُنفَّذ عليه الإجراء (كانت الإزاحة 6px + letterbox).
   const trackPointerCursor = (clientX: number, clientY: number) => {
-    const area = canvasAreaRef.current
-    if (!area) return
+    const c = canvasRef.current
+    if (!c) return
     const now = performance.now()
     if (now - cursorTrackRef.current < 33) return
     cursorTrackRef.current = now
-    // 3.11.8 — المرجع مستطيل الـcanvas لا حاوية العرض: الحاوية فيها letterbox وتمرير،
-    // فالإحداثيات منها تنزاح عن البكسل الذي سيُنفَّذ عليه الإجراء.
-    const c = canvasRef.current
-    const r = (c && c.getBoundingClientRect().width > 0 ? c.getBoundingClientRect() : area.getBoundingClientRect())
-    setCursorPos({ x: clientX - r.left, y: clientY - r.top })
-    const dot = localCursorRef.current
-    if (!dot) return
-    // 3.11.8 — الكتابة السابقة كانت تلغي -translate-1/2 من Tailwind ⇒ إزاحة ثابتة 6px
-    dot.style.transform = `translate(${clientX - r.left}px, ${clientY - r.top}px) translate(-50%, -50%)`
-    dot.style.opacity = '1'
-    if (cursorIdleRef.current) clearTimeout(cursorIdleRef.current)
-    cursorIdleRef.current = setTimeout(() => { if (dot) dot.style.opacity = '0' }, 1200)
+    const r = getContentRect(c)
+    if (!r.width || !r.height) return
+    setCursorPos({ x: (clientX - r.left) / r.width, y: (clientY - r.top) / r.height })
   }
 
   const sendMouseAt = (type: string, cx: number, cy: number, button = 0, extra?: object) => {
@@ -2366,12 +2374,6 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
       {started && <div ref={canvasAreaRef} className={clsx('flex-1 min-h-0 relative flex items-center justify-center bg-canvas', fitMode === 'actual' ? 'overflow-auto' : 'overflow-hidden', popout && pinned && 'pt-14')}
         onClick={() => { setShowSettings(false); setShowMonitors(false); setShowClipboard(false) }}>
 
-        <div
-          ref={localCursorRef}
-          aria-hidden
-          className="pointer-events-none absolute left-0 top-0 z-10 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border border-ink/70 bg-primary/80 opacity-0 transition-opacity duration-200 shadow-lg"
-          style={{ willChange: 'transform' }}
-        />
         <div className="relative shrink-0" style={stageSize ? {
           width: stageSize.w + 'px',
           height: stageSize.h + 'px',
@@ -2384,7 +2386,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
             'block shrink-0 transition-opacity duration-300',
             status === 'streaming' ? 'opacity-100' : 'opacity-20',
             dragOver && 'ring-2 ring-info/60 ring-dashed',
-            (status === 'streaming' && !controlsVisible && !pinned) ? 'cursor-none' : ''
+            status === 'streaming' ? 'cursor-none' : ''
           )}
           style={{
             width: '100%',
@@ -2411,6 +2413,28 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
           onDragLeave={() => setDragOver(false)}
           onDrop={handleFileDrop}
         />
+        {/* 3.11.9 — المؤشر الواحد: سهم بطرف حادّ على البكسل نفسه. داخل حاوية المسرح
+            لأن نسبتها = نسبة الإطار تماماً، فلا letterbox ولا إزاحة translate. */}
+        {status === 'streaming' && (controlEnabled ? cursorVisible : !!remoteCursor) && (
+          <svg
+            aria-hidden
+            viewBox="0 0 16 20"
+            width="18"
+            height="22"
+            className="pointer-events-none absolute z-30"
+            style={{
+              left: `${(controlEnabled ? cursorPos.x : (remoteCursor ? remoteCursor.x : -1)) * 100}%`,
+              top: `${(controlEnabled ? cursorPos.y : (remoteCursor ? remoteCursor.y : -1)) * 100}%`,
+              transform: 'translate(-1px, -1px)',
+              filter: 'drop-shadow(1px 1px 1.5px rgba(0,0,0,0.65))',
+              opacity: (controlEnabled ? (cursorPos.x >= 0 ? 1 : 0) : 1),
+              transition: 'opacity 120ms linear',
+            }}
+          >
+            <path d="M1 1 L1 16.2 L5.1 12.1 L8.1 19.4 L10.6 18.3 L7.6 11.1 L12.9 11.1 Z"
+              fill="#ffffff" stroke="#111111" strokeWidth="1.15" strokeLinejoin="round" strokeLinecap="round" />
+          </svg>
+        )}
         {/* 3.9.4 — على الأندرويد لا يوجد hover: حين يختفي الشريط لا سبيل لإرجاعه.
             الزر أعلى الشاشة، صغير (32px) وشبه شفاف كي لا يحجب البث. */}
         {started && !controlsVisible && (
@@ -2494,23 +2518,6 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
           </div>
         )}
 
-      {cursorVisible && status === 'streaming' && remoteIsAndroid && (
-          <div
-            className="absolute pointer-events-none z-50"
-            style={{
-              left: cursorPos.x,
-              top:  cursorPos.y,
-              willChange: 'left, top',
-            }}
-          >
-            {(
-              /* Windows arrow cursor when viewing only */
-              <svg width="16" height="20" viewBox="0 0 16 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ filter: 'drop-shadow(1px 1px 1px rgba(0,0,0,0.8))' }}>
-                <path d="M0 0 L0 16 L4 12 L7 19 L9 18 L6 11 L11 11 Z" fill="white" stroke="black" strokeWidth="1" strokeLinejoin="round"/>
-              </svg>
-            )}
-          </div>
-        )}
 
         {/* Control watermark */}
         {!popout && status === 'streaming' && controlEnabled && (

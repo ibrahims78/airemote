@@ -1,0 +1,54 @@
+{
+ "slice": "3.11.9 — GDI capture engine",
+ "why": "Chromium getDisplayMedia/desktopCapturer returns 100% black on these VMware guests; BitBlt returns the real surface.",
+ "before": {
+  "dir": "outputs/audit-frames/win11-baseline",
+  "frames": 10,
+  "meanRGB": [
+   0,
+   0,
+   0
+  ],
+  "avgBlackPct": 100,
+  "blackFrames": 10,
+  "realFrames": 0,
+  "jpegBytesAvg": 4703
+ },
+ "after": {
+  "cold": {
+   "dir": "outputs/audit-frames/v3119-cold",
+   "frames": 12,
+   "firstFrameMs": 536,
+   "meanRGB": [
+    91.1,
+    125.1,
+    168.6
+   ],
+   "avgBlackPct": 0.4,
+   "blackFrames": 0,
+   "realFrames": 12,
+   "jpegBytesAvg": 68412
+  },
+  "warm": {
+   "dir": "outputs/audit-frames/v3119-warm",
+   "frames": 13,
+   "firstFrameMs": 31,
+   "avgBlackPct": 0.4,
+   "blackFrames": 0,
+   "realFrames": 13,
+   "jpegBytesAvg": 66286
+  },
+  "win10": {
+   "dir": "outputs/audit-frames/win10-gdi",
+   "frames": 2,
+   "meanRGB": [
+    103.5,
+    101,
+    105.6
+   ],
+   "blackFrames": 0
+  }
+ },
+ "measurement": "JPEG decoded with Pillow; mean RGB + black% (<10 luminance) over a 320px downsample",
+ "date": "2026-11-03"
+}

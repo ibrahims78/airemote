@@ -1,0 +1,15 @@
+{
+ "outDir": "D:\\autoclaw projects-new\\AiRemote\\outputs\\audit-frames\\win11-final-cold",
+ "target": "d147684b-2451-4418-a628-86f11aa66a4e",
+ "requester": "b42175d0-d0c9-428d-ab94-4e66dff56af3",
+ "seconds": 6,
+ "frames": 1,
+ "firstFrameMs": 4961,
+ "dims": "1600x677",
+ "flagsSeen": [
+  1
+ ],
+ "jpegBytesMin": 69858,
+ "jpegBytesMax": 69858,
+ "jpegBytesAvg": 69858
+}

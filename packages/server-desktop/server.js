@@ -1666,6 +1666,23 @@ function handleAgentWs(socket) {
       return
     }
 
+    // 3.11.9 — موضع مؤشر الضيف: يصل مشاهد الجلسة كي يُرسم مؤشر واحد في مساحة الإطار
+    if (type === 'agent:screen_cursor') {
+      sendToScreenViewers(deviceId, {
+        type: 'screen:cursor',
+        payload: {
+          sessionId: payload.sessionId,
+          x: Number(payload.x) || 0,
+          y: Number(payload.y) || 0,
+          width: Number(payload.width) || 0,
+          height: Number(payload.height) || 0,
+          visible: payload.visible !== false,
+        },
+        timestamp: Date.now(),
+      })
+      return
+    }
+
     if (type === 'agent:screen_display_state') {
       sendToScreenViewers(deviceId, { type: 'screen:display_state', payload, timestamp: Date.now() })
       return

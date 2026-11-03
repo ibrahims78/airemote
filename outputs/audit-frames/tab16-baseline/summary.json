@@ -1,0 +1,16 @@
+{
+ "outDir": "D:\\autoclaw projects-new\\AiRemote\\outputs\\audit-frames\\tab16-baseline",
+ "target": "7fc54b40-e7c1-4db6-9f55-78f377c4f4ad",
+ "requester": "b42175d0-d0c9-428d-ab94-4e66dff56af3",
+ "seconds": 8,
+ "frames": 3,
+ "firstFrameMs": 1057,
+ "dims": "1280x800",
+ "flagsSeen": [
+  5,
+  6
+ ],
+ "jpegBytesMin": 140,
+ "jpegBytesMax": 14524,
+ "jpegBytesAvg": 9722
+}

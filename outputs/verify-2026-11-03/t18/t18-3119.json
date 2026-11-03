@@ -1,0 +1,24 @@
+{
+ "test": "T18 — first frame gate after the 3.11.9 capture-engine change",
+ "build": "3.11.9",
+ "note": "The previous 1722ms sample was a BLACK frame (measure.json slice 3.11.4). These are content frames.",
+ "results": {
+  "cold": {
+   "firstFrameMs": 536,
+   "budgetMs": 1800,
+   "frames": 12,
+   "blackFrames": 0
+  },
+  "warm": {
+   "firstFrameMs": 31,
+   "frames": 13,
+   "blackFrames": 0
+  }
+ },
+ "gate": {
+  "script": "scripts/check-first-frame.cjs",
+  "result": "PASS (content frames)",
+  "budgetMs": 1800
+ },
+ "date": "2026-11-03"
+}

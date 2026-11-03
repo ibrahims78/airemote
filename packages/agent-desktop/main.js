@@ -15,6 +15,9 @@ const WebSocket = require('ws')
 const { createAgentTransfer } = require('./lib/file-transfer-agent')
 // 3.11.8 — مخزن إعدادات آمن: كتابة ذرّية، عزل الملف التالف، واستيراد الإقتران من مجلد userData القديم
 const { createConfigStore } = require('./lib/config-store')
+// 3.11.9 — محرّك التقاط GDI بديل: مسار Chromium يُرجع إطاراً أسود 100% على أجهزة VMware
+// (مُقاس: WebRTC 0.0 سطوع/100% سواد مقابل GDI 134.9/0.1%) — نفس قناة screen-frame-binary.
+const gdiCapture = require('./lib/capture-gdi')
 const ftAgent = createAgentTransfer({
   send,
   roots: process.env.AIREMOTE_FT_ROOTS,
@@ -568,6 +571,8 @@ function doConnect() {
 function handleMsg(msg) {
   switch (msg.type) {
     case 'server:registered': {
+      // 3.11.9 — تسخين العامل الآن مجاني: خامل تماماً حتى تصل 'A' على stdin
+      try { gdiCapture.prewarm() } catch {}
       deviceId = msg.payload?.deviceId
       try { if (win && !win.isDestroyed()) win.webContents.send('ai-ready') } catch {}
       setState('connected')
@@ -687,6 +692,8 @@ function handleMsg(msg) {
       if (capWin && !capWin.isDestroyed()) capWin.webContents.send('set-quality', msg.payload)
       break
     case 'server:screen_control_request': {
+      // 3.11.9 — تسخين مبكر: طلب التحكم يسبق screen_start عادةً، فإقلاع PowerShell يقع خارج المسار الحرج
+      try { gdiCapture.prewarm() } catch {}
       const { sessionId: scSid, requestId, requesterName, password } = msg.payload || {}
       // 3.9.3 — الجلسة الممنوحة عند القبول لا تطلب موافقة ثانية (كانت تُسقط التحكم
       // لأن المستخدم لا يرى الحوار أصلاً في نافذة الجلسة).
@@ -845,6 +852,7 @@ function handleMsg(msg) {
       // مطابق فقط؛ إضافة `case` ثانٍ لنفس النوع لا تُنفَّذ أبداً — لذلك الدمج هنا.
       const isTarget = String(p.targetDeviceId || '') === String(deviceId || '')
       if (isTarget && (p.access === 'control' || p.access === 'view')) warmCapturer('session-token')
+  if (isTarget) { try { gdiCapture.prewarm() } catch {} }
       break
     }
     case 'session:ticket': {
@@ -1454,6 +1462,85 @@ function releaseScreenAwakeForStream() {
   screenSleepBlockerId = null
 }
 
+// ─── 3.11.9 — محرّك GDI: بديل مُقاس لمسار Chromium على أجهزة VMware ─────────
+// لماذا: getDisplayMedia/desktopCapturer يُرجع سطحاً أسود 100% على الضيفين، بينما
+// BitBlt يُرجع السطح الحقيقي. نُبقي مسار Chromium كبديل تلقائي عند فشل GDI.
+let gdiCaptureActive = false
+// 3.11.9 — أثناء بدء GDI نكتم إطارات Chromium (كانت تُرسل سواداً ~0.7s قبل أول إطار حقيقي)
+let gdiSuppressRenderer = false
+let gdiSessionId = null
+let gdiSeq = 0
+let gdiWatchdog = null
+let lastCursorSentAt = 0
+
+function startGdiForSession (sessionId, opts) {
+  gdiCaptureActive = false
+  gdiSuppressRenderer = true
+  gdiSessionId = sessionId
+  gdiSeq = 0
+  const info = {
+    fps: Math.max(4, Math.min(15, Number(opts && opts.fps) || 12)),
+    quality: Math.max(30, Math.min(90, Number(opts && opts.quality) || 60)),
+    maxWidth: Math.max(320, Math.min(2560, Number(opts && opts.maxWidth) || 1600))
+  }
+  try {
+    gdiCapture.setSession(sessionId, info)
+  } catch (e) {
+    addLog('warn', '[screen] تعذّر بدء محرّك GDI: ' + e.message)
+    return
+  }
+  if (gdiWatchdog) clearTimeout(gdiWatchdog)
+  gdiWatchdog = setTimeout(() => {
+    if (gdiSessionId === sessionId && !gdiCaptureActive) {
+      gdiSuppressRenderer = false
+      addLog('warn', '🖥️ [screen] GDI لم يُنتج إطاراً خلال 6s — البقاء على مسار Chromium' + (gdiCapture.lastError ? ' (' + gdiCapture.lastError + ')' : ''))
+    }
+  }, 6000)
+}
+
+function stopGdi (reason) {
+  if (gdiWatchdog) { clearTimeout(gdiWatchdog); gdiWatchdog = null }
+  gdiCaptureActive = false
+  gdiSuppressRenderer = false
+  gdiSessionId = null
+  try { gdiCapture.clearSession() } catch {}
+  if (reason) addLog('info', '[screen] إيقاف محرّك GDI (' + reason + ')')
+}
+
+gdiCapture.on('frame', ({ jpeg, cx, cy, width, height }) => {
+  const sid = gdiSessionId
+  if (!sid || !screenSessions.has(sid)) return
+  if (!gdiCaptureActive) {
+    gdiCaptureActive = true
+    gdiSuppressRenderer = false
+    addLog('info', `🖥️ [screen] محرّك GDI نشط — أول إطار ${width}×${height} ${(jpeg.length / 1024).toFixed(1)}KB session=${sid.slice(0, 8)}`)
+    // أوقف مسار Chromium لهذه الجلسة: مصدر واحد فقط للإطارات
+    try { if (capWin && !capWin.isDestroyed()) capWin.webContents.send('stop-capture', { sessionId: sid }) } catch {}
+  }
+  sendScreenFramePacket({ sessionId: sid, width, height, seq: ++gdiSeq, buffer: jpeg, flags: 1, x: 0, y: 0 })
+  // 3.11.9 — موضع مؤشر الضيف الحقيقي (يُستخدم لرسم مؤشر واحد في العارض)
+  const now = Date.now()
+  if (now - lastCursorSentAt >= 80) {
+    lastCursorSentAt = now
+    send({ type: 'agent:screen_cursor', payload: { sessionId: sid, x: cx, y: cy, width, height, visible: true }, timestamp: now })
+  }
+})
+
+gdiCapture.on('exit', () => {
+  if (!gdiSessionId) return
+  const sid = gdiSessionId
+  gdiCaptureActive = false
+  gdiSuppressRenderer = false
+  addLog('warn', '🖥️ [screen] توقّف محرّك GDI — عودة إلى مسار Chromium' + (gdiCapture.lastError ? ' (' + gdiCapture.lastError + ')' : ''))
+  const info = screenSessions.get(sid)
+  try {
+    const cw = createCaptureWindow()
+    const doSend = () => cw.webContents.send('start-capture', { sessionId: sid, fps: info ? info.fps : 15, quality: info ? info.quality : 60, monitorIndex: currentMonitorId, maxWidth: info ? info.maxWidth : 1600 })
+    if (cw.webContents.isLoading()) cw.webContents.once('did-finish-load', doSend)
+    else doSend()
+  } catch {}
+})
+
 function handleScreenStart(payload) {
   const { sessionId, fps, quality, monitorId, maxWidth } = payload
   const sid8 = sessionId.slice(0, 8)
@@ -1461,6 +1548,8 @@ function handleScreenStart(payload) {
   currentMonitorId = Number(monitorId || 0)
   keepScreenAwakeForStream()
   screenSessions.set(sessionId, { fps, quality, maxWidth, startedAt: Date.now() })
+  // 3.11.9 — ابدأ GDI بالتوازي؛ أول إطار حقيقي منه يستبدل مسار Chromium
+  startGdiForSession(sessionId, { fps, quality, maxWidth })
   updateCapSize(currentMonitorId)
   sessionFrameCounts.delete(sessionId)
   sessionFrameTimes.delete(sessionId)
@@ -1540,6 +1629,7 @@ function handleScreenStop(payload) {
   addLog('info', `🖥️ [screen] إيقاف البث — session=${sid8} frames=${total} duration=${dur}s avgFps=${avgFps}`)
   clearSessionStats(sessionId)
   screenSessions.delete(sessionId)
+  if (gdiSessionId === sessionId) stopGdi('session-stop')
   broadcastScreenSessions()
   refreshTray()
   notify('AiRemote — انتهى البث', `⏹️ انتهت الجلسة (${total} إطار · ${dur}s)`, 'none')
@@ -2585,6 +2675,7 @@ ipcMain.handle('session-decision', (_evt, payload) => {
   // 3.11.4 — تسخين الالتقاط فور القبول: الوقت الذي يستغرقه المشاهد في تحميل
   // صفحة العرض يُستهلك في تهيئة التدفق بدل أن يدفعه بعد screen_start.
   if (p.accept) warmCapturer('accept')
+  if (p.accept) { try { gdiCapture.prewarm() } catch {} }
   return { ok: true }
 })
 
@@ -2672,7 +2763,7 @@ ipcMain.on('audio-status', (_, p) => {
   } catch {}
 })
 
-ipcMain.on('screen-frame-binary', (_, { sessionId, width, height, seq, buffer, flags, x, y }) => {
+function sendScreenFramePacket ({ sessionId, width, height, seq, buffer, flags, x, y }) {
   // v3.3.0 — capScreenW/H come from display metrics; frames may be scaled (do not overwrite)
   if (!ws || ws.readyState !== WebSocket.OPEN) return
 
@@ -2715,6 +2806,12 @@ ipcMain.on('screen-frame-binary', (_, { sessionId, width, height, seq, buffer, f
     const kb   = (jpegBuf.length / 1024).toFixed(1)
     addLog('info', `📸 [screen] frame=${count} fps=${fps} size=${kb}KB ${width}×${height} session=${sessionId.slice(0,8)}`)
   }
+}
+
+// 3.11.9 — مصدر واحد للإطارات: عند نجاح GDI تُسقط إطارات Chromium لهذه الجلسة
+ipcMain.on('screen-frame-binary', (_, p) => {
+  if (gdiCaptureActive || gdiSuppressRenderer) return
+  sendScreenFramePacket(p)
 })
 
 ipcMain.on('screen-error', (_, p) => {
