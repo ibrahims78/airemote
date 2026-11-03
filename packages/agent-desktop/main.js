@@ -629,7 +629,7 @@ function handleMsg(msg) {
 
     // 3.12.0 (M1) — إشارات WebRTC من المشاهد (يمرّرها السيرفر)
     case 'rtc:start':
-      startRtcForSession(msg.payload)
+      try { startRtcForSession(msg.payload) } catch (e) { rtcLog('start threw ' + (e && e.stack || e)) }
       break
     case 'rtc:signal':
       if (rtcWin && !rtcWin.isDestroyed() && msg.payload && msg.payload.data) {
@@ -1502,6 +1502,15 @@ let rtcWin = null
 let rtcSessionId = null
 let rtcFrames = 0
 
+// 3.12.1 — تشخيص: سجل ملفّي صغير للجسر (لا يُطبع أي سرّ)
+function rtcLog (msg) {
+  try {
+    const dir = process.env.APPDATA ? path.join(process.env.APPDATA, 'AiRemote Agent') : app.getPath('userData')
+    try { fs.mkdirSync(dir, { recursive: true }) } catch {}
+    fs.appendFileSync(path.join(dir, 'rtc.log'), new Date().toISOString() + ' ' + String(msg) + '\n', 'utf8')
+  } catch {}
+}
+
 function createRtcWindow () {
   if (rtcWin && !rtcWin.isDestroyed()) return rtcWin
   rtcWin = new BrowserWindow({
@@ -1513,8 +1522,14 @@ function createRtcWindow () {
       backgroundThrottling: false
     }
   })
-  try { rtcWin.loadFile(path.join(__dirname, 'rtc.html')) } catch (e) { addLog('warn', '[rtc] load failed: ' + e.message) }
-  rtcWin.on('closed', () => { rtcWin = null; rtcSessionId = null })
+  const rtcFile = path.join(__dirname, 'rtc.html')
+  rtcLog('window created, file=' + rtcFile + ' exists=' + fs.existsSync(rtcFile))
+  rtcWin.webContents.on('did-finish-load', () => rtcLog('did-finish-load'))
+  rtcWin.webContents.on('did-fail-load', (_e, code, desc) => rtcLog('did-fail-load ' + code + ' ' + desc))
+  rtcWin.webContents.on('render-process-gone', (_e, d) => rtcLog('render-gone ' + JSON.stringify(d)))
+  try { rtcWin.loadFile(rtcFile) } catch (e) { rtcLog('load threw ' + e.message); addLog('warn', '[rtc] load failed: ' + e.message) }
+  rtcWin.on('closed', () => { rtcLog('window closed'); rtcWin = null; rtcSessionId = null })
+  ipcMain.on('rtc-log', (_e2, m) => rtcLog('renderer: ' + m))
   ipcMain.on('rtc-signal-out', (_e, data) => {
     if (!rtcSessionId || !data) return
     try { send({ type: 'rtc:signal', payload: { sessionId: rtcSessionId, deviceId, data }, timestamp: Date.now() }) } catch {}
@@ -1523,6 +1538,7 @@ function createRtcWindow () {
 }
 
 function startRtcForSession (payload) {
+  rtcLog('start requested payload=' + JSON.stringify(payload || null))
   const sid = (payload && payload.sessionId) || gdiSessionId || ('rtc-' + Date.now())
   rtcSessionId = sid
   rtcFrames = 0

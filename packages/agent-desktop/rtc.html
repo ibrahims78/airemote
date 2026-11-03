@@ -21,6 +21,9 @@
     let drawing = false
 
     function out (data) { try { ipcRenderer.send('rtc-signal-out', data) } catch {} }
+    function diag (m) { try { ipcRenderer.send('rtc-log', m) } catch {} }
+    window.addEventListener('error', (e) => diag('pageerror ' + (e && e.message)))
+    diag('rtc page loaded')
 
     function drawNext () {
       if (drawing || !frameQueue.length) return
@@ -43,6 +46,7 @@
     }
 
     async function start (sid) {
+      diag('start ' + sid)
       sessionId = sid
       if (pc) { try { pc.close() } catch (e) {} ; pc = null }
       pc = new RTCPeerConnection({ iceServers: [] })
@@ -56,12 +60,12 @@
         await sender.setParameters(params)
       } catch (e) {}
       pc.onicecandidate = (ev) => {
-        if (ev.candidate) out({ candidate: ev.candidate.toJSON ? ev.candidate.toJSON() : ev.candidate })
+        if (ev.candidate) { const cd = ev.candidate; out({ candidate: { candidate: cd.candidate, sdpMid: cd.sdpMid, sdpMLineIndex: cd.sdpMLineIndex } }) }
       }
       pc.onconnectionstatechange = () => { try { console.log('[rtc] ' + pc.connectionState) } catch (e) {} }
       const offer = await pc.createOffer()
       await pc.setLocalDescription(offer)
-      out({ sdp: pc.localDescription })
+      out({ sdp: { type: pc.localDescription.type, sdp: pc.localDescription.sdp } })
       started = true
     }
 
@@ -82,7 +86,7 @@
           if (data.sdp.type === 'offer') {
             const ans = await pc.createAnswer()
             await pc.setLocalDescription(ans)
-            out({ sdp: pc.localDescription })
+            out({ sdp: { type: pc.localDescription.type, sdp: pc.localDescription.sdp } })
           }
         } else if (data.candidate) {
           await pc.addIceCandidate(data.candidate)
