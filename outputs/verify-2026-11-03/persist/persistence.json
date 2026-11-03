@@ -1,0 +1,61 @@
+{
+ "slice": "3.11.12",
+ "test": "survive a server restart in the middle of a live relay session",
+ "date": "2026-11-03",
+ "setup": {
+  "topology": "WIN10 (requester) -> server 3.11.12 -> WIN11 (target)",
+  "sessionId": "79784a97-857b-4a26-9ebc-8522142a064c",
+  "access": "control",
+  "viewer": "tools/lab/a2a/resume-check.cjs (raw /screen?binary=1, same path as the dashboard)"
+ },
+ "phases": [
+  {
+   "phase": "start",
+   "frames": 20,
+   "firstFrameMs": 475,
+   "lastFrameMs": 5816,
+   "dims": "1600x677",
+   "ok": true
+  },
+  {
+   "phase": "persisted row (before restart)",
+   "state": "active",
+   "rows": 1,
+   "user_version": 5
+  },
+  {
+   "phase": "restart",
+   "action": "Stop-Process AiRemote Server -> start again",
+   "healthAfter": "3.11.12",
+   "uptimeReset": true
+  },
+  {
+   "phase": "persisted row (after restart)",
+   "state": "active",
+   "rows": 1,
+   "at": "2026-11-03T13:05:18.818Z",
+   "note": "the agent reconnected inside the 120s boot grace, so relayResumeForDevice moved it back to active on its own"
+  },
+  {
+   "phase": "resume",
+   "frames": 10,
+   "firstFrameMs": 621,
+   "lastFrameMs": 7661,
+   "dims": "1600x677",
+   "attempts": 1,
+   "ok": true
+  }
+ ],
+ "before_31112": {
+  "behaviour": "relaySessions lived in a Map only; a restart answered session_not_active and the viewer could not reopen",
+  "measured_by": "docs/CHANGES-2026-11-03-3.11.12-AR.md / DECISIONS-LOG D37"
+ },
+ "guarantees": {
+  "write_through": "requested, accepted/active, suspended, resumed, denied, expired, closed -> one UPSERT per transition",
+  "boot_grace_ms": 120000,
+  "stale_cutoff_ms": 86400000,
+  "pending_offers": "requested/accepted rows are dropped on boot (nobody is waiting for them)",
+  "close_path": "relayCloseSession persists closed, then the 5-minute prune deletes the row (audit_log keeps history)"
+ },
+ "result": "RESUME_OK"
+}

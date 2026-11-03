@@ -1,6 +1,6 @@
 {
   "name": "airemote",
-  "version": "3.11.11",
+  "version": "3.11.12",
   "private": true,
   "description": "AiRemote — Open Source Remote Access + AI Agent Platform",
   "scripts": {

@@ -1,7 +1,7 @@
 {
   "product": "AiRemote",
-  "version": "3.11.11",
-  "generatedAt": "2026-11-03T12:21:52.596Z",
+  "version": "3.11.12",
+  "generatedAt": "2026-11-03T13:11:37.224Z",
   "artifacts": [
     {
       "name": "agent-windows/AiRemote-Agent-Setup-v3.11.10-x64.exe",
@@ -12,6 +12,11 @@
       "name": "agent-windows/AiRemote-Agent-Setup-v3.11.11-x64.exe",
       "size": 76387235,
       "sha256": "5f95948420d6f8ce08cf7ca0e2d510d11d65d545b91278fd09e538eefff95e1c"
+    },
+    {
+      "name": "agent-windows/AiRemote-Agent-Setup-v3.11.12-x64.exe",
+      "size": 76387215,
+      "sha256": "e70394dcdb3e41e0427710147d0f3045af5bb4a06d162a6adef220689def7ab6"
     },
     {
       "name": "agent-windows/AiRemote-Agent-Setup-v3.11.9-x64.exe",
@@ -27,6 +32,11 @@
       "name": "agent-windows/AiRemote-Agent-v3.11.11-Windows-x64.zip",
       "size": 103998327,
       "sha256": "05d8ba7a0071fb7a3179db2f3edae2543bb6e00c0f6710b93add3a1d19df4c1a"
+    },
+    {
+      "name": "agent-windows/AiRemote-Agent-v3.11.12-Windows-x64.zip",
+      "size": 103998324,
+      "sha256": "4742149c51eb133fdc3f9a1355cc5cb3c113e7cd5241fc8a1b73e4e9742f875c"
     },
     {
       "name": "agent-windows/AiRemote-Agent-v3.11.9-Windows-x64.zip",
@@ -49,6 +59,11 @@
       "sha256": "32fcf8d1575c567545b1a5a34af0816100eefe705fb1153593fdefbb7bf85e1b"
     },
     {
+      "name": "server-windows/AiRemote-Server-Setup-v3.11.12-x64.exe",
+      "size": 159409282,
+      "sha256": "d793462533ba30c63241b5cacfa38adfc6749f2fda14afbc770c74aec05b20fb"
+    },
+    {
       "name": "server-windows/AiRemote-Server-Setup-v3.11.9-x64.exe",
       "size": 159406382,
       "sha256": "09619e693d0a9186fbb5e355a294896eb9e946aeed38b0f8148718074b29d54b"
@@ -62,6 +77,11 @@
       "name": "server-windows/AiRemote-Server-v3.11.11-Windows-x64.zip",
       "size": 212142085,
       "sha256": "f7a37d0a9188eda0315947d4b28ffb7908050821c6000138b8250f6f73101487"
+    },
+    {
+      "name": "server-windows/AiRemote-Server-v3.11.12-Windows-x64.zip",
+      "size": 212145159,
+      "sha256": "b6cef0e74185d6891843e33169153d50843a35ca4d207a5bfba1c4e77578a43a"
     },
     {
       "name": "server-windows/AiRemote-Server-v3.11.9-Windows-x64.zip",

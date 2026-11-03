@@ -1849,7 +1849,85 @@ const SESSION_VIEW_KEY_TTL_MS = Math.max(60000, parseInt(process.env.SESSION_VIE
 const SESSION_VIEW_ACCESS_LABEL = { view: 'عرض فقط', control: 'تحكم كامل', files: 'ملفات' }
 const RELAY_ACTIVE_STATES  = ['requested', 'accepted', 'active', 'suspended']
 const RELAY_RECONNECT_GRACE_MS = Math.max(0, parseInt(process.env.RELAY_RECONNECT_GRACE_MS || '15000', 10) || 0)
-const relaySessions = new Map()   // sessionId → session object (ذاكرة؛ الحالة الدائمة في sessions/audit_log)
+const relaySessions = new Map()   // sessionId → session object (النسخة الساخنة؛ الأصل في جدول relay_sessions)
+// 3.11.12 — إعادة تشغيل السيرفر لم تُسقط الجلسة بعد اليوم: الحالة تُكتب عند كل انتقال،
+// وتُستعاد عند الإقلاع كـsuspended بنافذة سماح، فتلتقطها relayResumeForDevice عند عودة الوكيل.
+const RELAY_BOOT_GRACE_MS = Math.max(15000, parseInt(process.env.RELAY_BOOT_GRACE_MS || '120000', 10) || 120000)
+const RELAY_STATE_MAX_AGE_MS = Math.max(3600000, parseInt(process.env.RELAY_STATE_MAX_AGE_MS || '86400000', 10) || 86400000)
+
+function relayPersist (session) {
+  if (!session || !session.id) return
+  const nn = (v) => (v === undefined ? null : v)
+  try {
+    db.prepare(`INSERT INTO relay_sessions
+      (id,state,access,capabilities,requester_user_id,requester_email,requester_device_id,requester_name,
+       target_device_id,target_name,target_owner_id,created_at,accepted_at,suspended_at,closed_at,reason,
+       bytes_in,bytes_out,dropped_bytes,updated_at)
+      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      ON CONFLICT(id) DO UPDATE SET
+        state=excluded.state, access=excluded.access, capabilities=excluded.capabilities,
+        requester_user_id=excluded.requester_user_id, requester_email=excluded.requester_email,
+        requester_device_id=excluded.requester_device_id, requester_name=excluded.requester_name,
+        target_device_id=excluded.target_device_id, target_name=excluded.target_name, target_owner_id=excluded.target_owner_id,
+        accepted_at=excluded.accepted_at, suspended_at=excluded.suspended_at, closed_at=excluded.closed_at,
+        reason=excluded.reason, bytes_in=excluded.bytes_in, bytes_out=excluded.bytes_out,
+        dropped_bytes=excluded.dropped_bytes, updated_at=excluded.updated_at`)
+      .run(
+        String(session.id), String(session.state), String(session.access), nn(JSON.stringify(session.capabilities || [])),
+        nn(session.requester && session.requester.userId), nn(session.requester && session.requester.email),
+        nn(session.requester && session.requester.deviceId), nn(session.requester && session.requester.name),
+        String(session.target.deviceId), nn(session.target && session.target.name), nn(session.target && session.target.ownerId),
+        Number(session.createdAt) || Date.now(), nn(session.acceptedAt), nn(session.suspendedAt), nn(session.closedAt),
+        nn(session.reason), Number(session.bytesIn) || 0, Number(session.bytesOut) || 0, Number(session.droppedBytes) || 0,
+        Date.now()
+      )
+  } catch (e) {
+    try { (serverLogger && serverLogger.warn ? serverLogger.warn('relay', 'persist failed: ' + e.message) : console.warn('relay persist failed: ' + e.message)) } catch {}
+  }
+}
+
+function relayForget (sessionId) {
+  try { db.prepare('DELETE FROM relay_sessions WHERE id=?').run(String(sessionId)) } catch {}
+}
+
+// يُستدعى بعد initDb: كل جلسة كانت نشطة قبل الإغلاق تعود suspended بمهلة سماح.
+function relayHydrate () {
+  let rows = []
+  try { rows = db.prepare("SELECT * FROM relay_sessions WHERE state IN ('requested','accepted','active','suspended')").all() } catch { return 0 }
+  const now = Date.now()
+  let revived = 0
+  for (const r of rows) {
+    if (now - Number(r.updated_at || 0) > RELAY_STATE_MAX_AGE_MS) { relayForget(r.id); continue }
+    // العروض غير المقبولة لا تُستأنف: من كان ينتظرها لم يعد موجوداً.
+    if (r.state === 'requested' || r.state === 'accepted') { relayForget(r.id); continue }
+    const s = {
+      id: r.id, state: 'suspended', access: r.access,
+      capabilities: (function () { try { return JSON.parse(r.capabilities || '[]') } catch { return [] } })(),
+      requester: { userId: r.requester_user_id || '', email: r.requester_email || '', deviceId: r.requester_device_id || null, name: r.requester_name || '' },
+      target: { deviceId: r.target_device_id, name: r.target_name || '', ownerId: r.target_owner_id || '' },
+      createdAt: Number(r.created_at) || now, acceptedAt: Number(r.accepted_at) || null,
+      suspendedAt: now, closedAt: null, reason: null, restored: true,
+      bytesIn: Number(r.bytes_in) || 0, bytesOut: Number(r.bytes_out) || 0, droppedBytes: Number(r.dropped_bytes) || 0,
+      tokenHash: null, tokenExpiresAt: null, tokenUses: {},
+      offerTimer: null, throttleAt: 0, windowStart: now, windowBytes: 0,
+    }
+    relaySessions.set(s.id, s)
+    relayPersist(s)
+    revived++
+    const snap = s
+    s.suspendTimer = setTimeout(() => {
+      if (snap.state !== 'suspended') return
+      snap.suspendTimer = null
+      relayCloseSession(snap, 'boot_timeout')
+    }, RELAY_BOOT_GRACE_MS)
+    if (s.suspendTimer.unref) s.suspendTimer.unref()
+    try {
+      dbLogAudit({ userId: s.requester.userId || '', userEmail: s.requester.email || '', deviceId: s.target.deviceId, action: 'session_restored', details: { sessionId: s.id, graceMs: RELAY_BOOT_GRACE_MS }, ipAddress: null })
+    } catch {}
+    relayBroadcastState(s)
+  }
+  return revived
+}
 
 function relayGet(sessionId) { return sessionId ? (relaySessions.get(String(sessionId)) || null) : null }
 
@@ -1881,7 +1959,7 @@ function relayBroadcastState(session) {
 }
 
 function relayPruneLater(session, ms) {
-  const t = setTimeout(() => { if (relaySessions.get(session.id) === session) relaySessions.delete(session.id) }, ms)
+  const t = setTimeout(() => { if (relaySessions.get(session.id) === session) { relaySessions.delete(session.id); relayForget(session.id) } }, ms)
   if (t.unref) t.unref()
 }
 
@@ -1913,6 +1991,7 @@ function relayCloseSession(session, reason, actorUserId) {
       ipAddress: null,
     })
   }
+  relayPersist(session)
   relayBroadcastState(session)
   relayPruneLater(session, 5 * 60 * 1000)
   return true
@@ -2141,6 +2220,7 @@ function relayDecide(session, accept, reason, decider) {
   if (!accept) {
     session.state = 'denied'
     session.reason = String(reason || 'denied')
+    relayPersist(session)
     relaySendToDevice(session.requester.deviceId, { type: 'session:denied', payload: { sessionId: session.id, reason: session.reason } })
     dbLogAudit({
       userId: session.requester.userId || '', userEmail: session.requester.email || '',
@@ -2154,6 +2234,7 @@ function relayDecide(session, accept, reason, decider) {
   const token = relayIssueToken(session)
   session.state = 'active'
   session.acceptedAt = Date.now()
+  relayPersist(session)
   try {
     db.prepare('INSERT INTO sessions (id, device_id, user_id, type, metadata) VALUES (?,?,?,?,?)')
       .run(session.id, session.target.deviceId, session.requester.userId || '', 'relay', JSON.stringify({ access: session.access, requesterDeviceId: session.requester.deviceId, state: 'active' }))
@@ -2296,6 +2377,7 @@ function relaySuspendForDevice(deviceId) {
     if (s.state !== 'active') continue
     s.state = 'suspended'
     s.suspendedAt = Date.now()
+    relayPersist(s)
     const peerId = s.requester.deviceId === deviceId ? s.target.deviceId : s.requester.deviceId
     relaySendToDevice(peerId, { type: 'session:suspended', payload: { sessionId: s.id, reason: 'network', graceMs: RELAY_RECONNECT_GRACE_MS } })
     dbLogAudit({
@@ -2325,6 +2407,7 @@ function relayResumeForDevice(deviceId) {
     if (s.suspendTimer) { clearTimeout(s.suspendTimer); s.suspendTimer = null }
     s.state = 'active'
     s.resumedAt = Date.now()
+    relayPersist(s)
     // الرمز القديم قد يكون انتهت صلاحيته أثناء الغياب — يُصدر رمز جديد للطرفين.
     const token = relayIssueToken(s)
     const payload = {
@@ -3502,6 +3585,12 @@ async function start(config) {
   _desktopCallbacks = desktopCallbacks
 
   initDb(dbPath)
+
+  // 3.11.12 — استعادة جلسات relay من القرص قبل فتح المنافذ
+  try {
+    const revived = relayHydrate()
+    if (revived) console.log('[relay] restored ' + revived + ' session(s) as suspended, grace ' + RELAY_BOOT_GRACE_MS + 'ms')
+  } catch (e) { try { console.warn('[relay] hydrate failed: ' + e.message) } catch {} }
 
   // v3.8.12 / R2 — مفتاح أسرار مستقل + هجرة القيم القديمة إلى GCM
   initSecretKey(dbPath)
@@ -6529,6 +6618,7 @@ if ($target -eq $null) { 'name-not-found' } else {
       offerTimer: null, throttleAt: 0, windowStart: Date.now(), windowBytes: 0,
     }
     relaySessions.set(id, session)
+    relayPersist(session)
 
     const offerSent = relaySendToDevice(target.id, {
       type: 'session:offer',
@@ -6549,6 +6639,7 @@ if ($target -eq $null) { 'name-not-found' } else {
       if (session.state !== 'requested') return
       session.state = 'expired'
       session.reason = 'timeout'
+      relayPersist(session)
       session.offerTimer = null
       relaySendToDevice(session.requester.deviceId, { type: 'session:expired', payload: { sessionId: id, reason: 'timeout' } })
       relaySendToDevice(session.target.deviceId, { type: 'session:expired', payload: { sessionId: id, reason: 'timeout' } })

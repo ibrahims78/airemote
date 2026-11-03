@@ -94,27 +94,35 @@ async function main() {
   const before = firstUser.prepare('SELECT COUNT(*) AS c FROM users').get().c
   const down1 = migrations.run(firstUser, { direction: 'down', once: true, log: () => {} })
   check('C1. down moves one step back', down1.version === migrations.LATEST - 1, JSON.stringify(down1))
-  // 3.9.1 — the latest step is session-view-resume-keys; tickets and the query
-  // indexes are one and two steps further back.
-  const keyTable = firstUser.prepare("SELECT COUNT(*) AS c FROM sqlite_master WHERE type='table' AND name='session_view_keys'").get().c
-  check('C2. session_view_keys is gone after its down', keyTable === 0, 'table=' + keyTable)
-  const ticketStill = firstUser.prepare("SELECT COUNT(*) AS c FROM sqlite_master WHERE type='table' AND name='session_view_tickets'").get().c
-  check('C2a. session_view_tickets survives the v4 down', ticketStill === 1, 'table=' + ticketStill)
+  // 3.11.12 — the latest step is relay-session-persistence; below it come the
+  // session-view resume keys, the tickets, and the query indexes.
+  const relayTable = firstUser.prepare("SELECT COUNT(*) AS c FROM sqlite_master WHERE type='table' AND name='relay_sessions'").get().c
+  check('C2. relay_sessions is gone after its down', relayTable === 0, 'table=' + relayTable)
+  const keysStill = firstUser.prepare("SELECT COUNT(*) AS c FROM sqlite_master WHERE type='table' AND name='session_view_keys'").get().c
+  check('C2a. session_view_keys survives the v5 down', keysStill === 1, 'table=' + keysStill)
   const down2 = migrations.run(firstUser, { direction: 'down', once: true, log: () => {} })
-  const ticketTable = firstUser.prepare("SELECT COUNT(*) AS c FROM sqlite_master WHERE type='table' AND name='session_view_tickets'").get().c
-  check('C2b. session_view_tickets is gone after its own down', ticketTable === 0, 'table=' + ticketTable)
+  const keyTable = firstUser.prepare("SELECT COUNT(*) AS c FROM sqlite_master WHERE type='table' AND name='session_view_keys'").get().c
+  check('C2b. session_view_keys is gone after its own down', keyTable === 0, 'table=' + keyTable)
+  const ticketStill = firstUser.prepare("SELECT COUNT(*) AS c FROM sqlite_master WHERE type='table' AND name='session_view_tickets'").get().c
+  check('C2c. session_view_tickets survives the v4 down', ticketStill === 1, 'table=' + ticketStill)
   const down3 = migrations.run(firstUser, { direction: 'down', once: true, log: () => {} })
-  check('C2c. the query indexes are gone after the third down', migrationIndexes(firstUser).length === 0, migrationIndexes(firstUser).join(','))
+  const ticketTable = firstUser.prepare("SELECT COUNT(*) AS c FROM sqlite_master WHERE type='table' AND name='session_view_tickets'").get().c
+  check('C2d. session_view_tickets is gone after its own down', ticketTable === 0, 'table=' + ticketTable)
+  const down4 = migrations.run(firstUser, { direction: 'down', once: true, log: () => {} })
+  check('C2e. the query indexes are gone after the fourth down', migrationIndexes(firstUser).length === 0, migrationIndexes(firstUser).join(','))
   check('C3. rows survive the down', firstUser.prepare('SELECT COUNT(*) AS c FROM users').get().c === before)
   const up1 = migrations.run(firstUser, { once: true, log: () => {} })
-  check('D1. up moves one step forward', up1.version === migrations.LATEST - 2, JSON.stringify(up1))
+  check('D1. up moves one step forward', up1.version === migrations.LATEST - 3, JSON.stringify(up1))
   const up2 = migrations.run(firstUser, { once: true, log: () => {} })
   const up3 = migrations.run(firstUser, { once: true, log: () => {} })
-  check('D1b. up restores the latest version', up3.version === migrations.LATEST, JSON.stringify(up3))
+  const up4 = migrations.run(firstUser, { once: true, log: () => {} })
+  check('D1b. up restores the latest version', up4.version === migrations.LATEST, JSON.stringify(up4))
   const ticketBack = firstUser.prepare("SELECT COUNT(*) AS c FROM sqlite_master WHERE type='table' AND name='session_view_tickets'").get().c
   check('D1c. session_view_tickets is back', ticketBack === 1, 'table=' + ticketBack)
   const keyBack = firstUser.prepare("SELECT COUNT(*) AS c FROM sqlite_master WHERE type='table' AND name='session_view_keys'").get().c
   check('D1d. session_view_keys is back', keyBack === 1, 'table=' + keyBack)
+  const relayBack = firstUser.prepare("SELECT COUNT(*) AS c FROM sqlite_master WHERE type='table' AND name='relay_sessions'").get().c
+  check('D1e. relay_sessions is back', relayBack === 1, 'table=' + relayBack)
   check('D2. the migration indexes are back', migrationIndexes(firstUser).length === 4, migrationIndexes(firstUser).join(','))
   check('D3. rows survive the up', firstUser.prepare('SELECT COUNT(*) AS c FROM users').get().c === before)
   firstUser.close()

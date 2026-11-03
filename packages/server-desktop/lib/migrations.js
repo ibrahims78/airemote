@@ -101,6 +101,47 @@ const MIGRATIONS = [
       `)
     },
   },
+  {
+    version: 5,
+    name: 'relay-session-persistence',
+    up(db) {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS relay_sessions (
+          id TEXT PRIMARY KEY,
+          state TEXT NOT NULL,
+          access TEXT NOT NULL,
+          capabilities TEXT,
+          requester_user_id TEXT,
+          requester_email TEXT,
+          requester_device_id TEXT,
+          requester_name TEXT,
+          target_device_id TEXT NOT NULL,
+          target_name TEXT,
+          target_owner_id TEXT,
+          created_at INTEGER NOT NULL,
+          accepted_at INTEGER,
+          suspended_at INTEGER,
+          closed_at INTEGER,
+          reason TEXT,
+          bytes_in INTEGER NOT NULL DEFAULT 0,
+          bytes_out INTEGER NOT NULL DEFAULT 0,
+          dropped_bytes INTEGER NOT NULL DEFAULT 0,
+          updated_at INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_relay_state   ON relay_sessions(state);
+        CREATE INDEX IF NOT EXISTS idx_relay_target  ON relay_sessions(target_device_id, state);
+        CREATE INDEX IF NOT EXISTS idx_relay_updated ON relay_sessions(updated_at);
+      `)
+    },
+    down(db) {
+      db.exec(`
+        DROP INDEX IF EXISTS idx_relay_updated;
+        DROP INDEX IF EXISTS idx_relay_target;
+        DROP INDEX IF EXISTS idx_relay_state;
+        DROP TABLE IF EXISTS relay_sessions;
+      `)
+    },
+  },
 ]
 
 const BASELINE = 1
