@@ -1514,7 +1514,9 @@ function rtcLog (msg) {
 function createRtcWindow () {
   if (rtcWin && !rtcWin.isDestroyed()) return rtcWin
   rtcWin = new BrowserWindow({
-    show: true, x: 0, y: 0, width: 2, height: 2, skipTaskbar: true, focusable: false, opacity: 0.01,
+    // 3.12.1 (M1) — كانت 2×2؛ كُبّرت إلى 480×270 خارج الشاشة لاستبعاد سقف الالتقاط
+    // الذي قد يفرضه Chromium على نافذة صغيرة، قبل نسبة أي فارق إلى تقدير النطاق (BWE).
+    show: true, x: -4000, y: -4000, width: 480, height: 270, useContentSize: true, skipTaskbar: true, focusable: false, opacity: 0.01,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
@@ -1524,6 +1526,7 @@ function createRtcWindow () {
   })
   const rtcFile = path.join(__dirname, 'rtc.html')
   rtcLog('window created, file=' + rtcFile + ' exists=' + fs.existsSync(rtcFile))
+  try { rtcLog('window bounds ' + JSON.stringify(rtcWin.getBounds()) + ' content ' + JSON.stringify(rtcWin.getContentSize())) } catch {}
   rtcWin.webContents.on('did-finish-load', () => rtcLog('did-finish-load'))
   rtcWin.webContents.on('did-fail-load', (_e, code, desc) => rtcLog('did-fail-load ' + code + ' ' + desc))
   rtcWin.webContents.on('render-process-gone', (_e, d) => rtcLog('render-gone ' + JSON.stringify(d)))

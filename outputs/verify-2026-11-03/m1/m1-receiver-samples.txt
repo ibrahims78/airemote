@@ -1,0 +1,26 @@
+﻿# M1 step 1 — receiver samples (harness, same GDI->canvas->WebRTC path)
+# WIN11-VM agent 3.12.1 / server 3.12.1 / 2026-11-03 22:06 local
+
+ws open
+TRACK 800
+TRACK 849
+pc=connecting
+pc=connected
+8s  400x169 fps=1 dec=2  mbps=0
+10s 400x169 fps=1 dec=4  mbps=0.01
+12s 400x169 fps=1 dec=5  mbps=0.00
+14s 400x169 fps=1 dec=7  mbps=0.00
+16s 400x169 fps=1 dec=9  mbps=0.00
+18s 400x169 fps=1 dec=11 mbps=0.00
+20s 400x169 fps=? dec=12 mbps=0.00
+22s 400x169 fps=1 dec=14 mbps=0.00
+24s 400x169 fps=1 dec=16 mbps=0.00
+26s 400x169 fps=1 dec=18 mbps=0.00
+28s 400x169 fps=1 dec=19 mbps=0.00
+30s 400x169 fps=1 dec=21 mbps=0.01
+32s 400x169 fps=1 dec=23 mbps=0.00
+34s 400x169 fps=1 dec=25 mbps=0.01
+36s 400x169 fps=1 dec=27 mbps=0.01
+38s 400x169 fps=1 dec=28 mbps=0.01
+40s 400x169 fps=2 dec=31 mbps=0.02
+# 22s typing load (Notepad, 27 words) ran inside this window: resolution did not move.

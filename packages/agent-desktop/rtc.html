@@ -19,6 +19,7 @@
     let started = false
     const frameQueue = []
     let drawing = false
+    let drawn = 0
 
     function out (data) { try { ipcRenderer.send('rtc-signal-out', data) } catch {} }
     function diag (m) { try { ipcRenderer.send('rtc-log', m) } catch {} }
@@ -38,11 +39,28 @@
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
         } catch (e) {}
         URL.revokeObjectURL(url)
+        drawn++
+        if (drawn === 1 || drawn % 60 === 0) diag('drawn=' + drawn + ' canvas=' + canvas.width + 'x' + canvas.height)
         drawing = false
         drawNext()
       }
       img.onerror = () => { URL.revokeObjectURL(url); drawing = false; drawNext() }
       img.src = url
+    }
+
+    // 3.12.1 (M1) — إعادة تطبيق معاملات المُرسِل. في Chromium لا تُحفظ قيم setParameters
+    // قبل التفاوض (encodings تُبنى عنده)، فتُطبَّق هنا بعد إنشاء المتسقّل وبعد الاتصال.
+    async function applyEncodingParams (tag) {
+      try {
+        const p = sender.getParameters()
+        if (!p.encodings || !p.encodings.length) p.encodings = [{}]
+        p.encodings[0].maxBitrate = 4000000
+        p.encodings[0].maxFramerate = 30
+        p.encodings[0].scaleResolutionDownBy = 1
+        await sender.setParameters(p)
+        const q = sender.getParameters()
+        diag('params[' + tag + '] ' + JSON.stringify(q.encodings && q.encodings[0]))
+      } catch (e) { diag('params[' + tag + '] failed ' + (e && e.message)) }
     }
 
     async function start (sid) {
@@ -51,18 +69,33 @@
       if (pc) { try { pc.close() } catch (e) {} ; pc = null }
       pc = new RTCPeerConnection({ iceServers: [] })
       const stream = canvas.captureStream(30)
-      sender = pc.addTrack(stream.getVideoTracks()[0], stream)
+      const track = stream.getVideoTracks()[0]
+      // 3.12.1 (M1) — sendEncodings عند إنشاء المتسقّل، لأن setParameters قبل أول عرض
+      // لا يُطبَّق في Chromium. وdegradationPreference على المتسقّل (لا في setParameters).
+      let tr = null
       try {
-        const params = sender.getParameters()
-        params.encodings = params.encodings && params.encodings.length ? params.encodings : [{}]
-        params.encodings[0].maxBitrate = 4000000
-        params.encodings[0].maxFramerate = 30
-        await sender.setParameters(params)
-      } catch (e) {}
+        tr = pc.addTransceiver(track, { direction: 'sendonly', sendEncodings: [{ maxBitrate: 4000000, maxFramerate: 30, scaleResolutionDownBy: 1 }] })
+        sender = tr.sender
+      } catch (e) {
+        diag('addTransceiver failed ' + (e && e.message) + ' — fallback addTrack')
+        sender = pc.addTrack(track, stream)
+        tr = pc.getTransceivers()[0] || null
+      }
+      try { if (tr) tr.degradationPreference = 'maintain-resolution' } catch (e) { diag('degradationPreference failed ' + (e && e.message)) }
+      diag('transceiver dir=' + (tr && tr.direction) + ' pref=' + (tr && tr.degradationPreference))
+      try { diag('track settings ' + JSON.stringify(track.getSettings ? track.getSettings() : {})) } catch (e) {}
+      diag('canvas ' + canvas.width + 'x' + canvas.height)
+      await applyEncodingParams('pre-offer')
       pc.onicecandidate = (ev) => {
         if (ev.candidate) { const cd = ev.candidate; out({ candidate: { candidate: cd.candidate, sdpMid: cd.sdpMid, sdpMLineIndex: cd.sdpMLineIndex } }) }
       }
-      pc.onconnectionstatechange = () => { try { console.log('[rtc] ' + pc.connectionState) } catch (e) {} }
+      pc.onconnectionstatechange = () => {
+        try { diag('pc=' + pc.connectionState) } catch (e) {}
+        if (pc.connectionState === 'connected') {
+          applyEncodingParams('connected').catch(() => {})
+          setTimeout(() => { applyEncodingParams('t+4s').catch(() => {}) }, 4000)
+        }
+      }
       const offer = await pc.createOffer()
       await pc.setLocalDescription(offer)
       out({ sdp: { type: pc.localDescription.type, sdp: pc.localDescription.sdp } })
