@@ -1,0 +1,15 @@
+LOG_COUNT_BEFORE=120
+CANVAS=true
+PASSWORD_MODAL=true
+PW_TYPED_LEN=6
+CONTROL_STATE= pwStill=false
+SHOT_CONTROL=D:\autoclaw projects-new\AiRemote\outputs\verify-2026-11-04\ui\control-granted.png
+RIGHT_CLICK_AT=800,549
+SHOT_RIGHTCLICK=D:\autoclaw projects-new\AiRemote\outputs\verify-2026-11-04\ui\tc-001-002-rightclick.png
+LOG_COUNT_AFTER=122
+NEW_LOG_LINES=2
+  NEW 22:33:54.875 B R 32768 32792 ok=True
+  NEW 22:33:54.876 E R 32768 32792 ok=True
+RIGHT_EVENTS=2  LEFT_EVENTS=0
+VERDICT_TC001=PASS (right click reached the agent)
+VERDICT_TC002=PASS (no left click leaked)

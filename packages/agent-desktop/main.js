@@ -861,6 +861,18 @@ function handleMsg(msg) {
     // ── 3.9.0 — session:offer / ticket / close ─────────────────────────────
     case 'session:offer': {
       const offer = msg.payload || {}
+      // 3.13.1 — وكيل↔وكيل بكلمة سر: نفس تحقق مسار السيرفر→وكيل، بلا حوار إن صحّت.
+      if (offer.controlPassword && controlAuthCapability() === 'password') {
+        if (verifyControlPassword(String(offer.controlPassword))) {
+          grantedSessions.add(String(offer.sessionId))
+          send({ type: 'session:accept', payload: { sessionId: offer.sessionId, reason: 'relay_password' }, timestamp: Date.now() })
+          addLog('info', '[control] relay session granted via password')
+          break
+        }
+        send({ type: 'session:deny', payload: { sessionId: offer.sessionId, reason: 'bad_password' }, timestamp: Date.now() })
+        addLog('warn', '[control] relay session denied - wrong password')
+        break
+      }
       try {
         if (win && !win.isDestroyed()) {
           if (win.isMinimized()) win.restore()

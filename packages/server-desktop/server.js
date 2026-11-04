@@ -6676,6 +6676,16 @@ if ($target -eq $null) { 'name-not-found' } else {
       if (passwordCheck.code === 'password_locked') reply.header('Retry-After', String(Math.ceil((passwordCheck.retryAfterMs || 300000) / 1000)))
       return reply.code(passwordCheck.code === 'password_locked' ? 429 : 403).send({ error: 'كلمة مرور الجهاز مطلوبة أو غير صحيحة', code: passwordCheck.code, attemptsLeft: passwordCheck.attemptsLeft })
     }
+    // 3.13.1 — وكيل↔وكيل: كلمة سر التحكم نفسها التي يطلبها مسار السيرفر→وكيل.
+    // الوكيل الهدف يحتفظ بالبصمة محليًا ويعلنها كقدرة controlAuth='password'،
+    // فالسيرفر يطلبها هنا ويمرّرها في العرض ليتحقق منها الوكيل بنفس الدالة.
+    let targetCaps = {}
+    try { targetCaps = JSON.parse(target.capabilities || '{}') || {} } catch {}
+    const agentPwMode = access === 'control' && targetCaps.controlAuth === 'password'
+    const agentPw = agentPwMode ? String(body.password || '') : ''
+    if (agentPwMode && !agentPw) {
+      return reply.code(403).send({ error: 'كلمة مرور التحكم مطلوبة لهذا الجهاز', code: 'control_password_required' })
+    }
     if (!agentSockets.has(target.id)) {
       return reply.code(503).send({ error: 'الجهاز الهدف غير متصل', code: 'target_offline' })
     }
@@ -6718,6 +6728,8 @@ if ($target -eq $null) { 'name-not-found' } else {
         sessionId: id, access,
         accessLabel: SESSION_VIEW_ACCESS_LABEL[access] || access,
         passwordMode: !!(unattendedRow(target.id) && unattendedRow(target.id).enabled),
+        // 3.13.1 — تُمرَّر للوكيل الهدف فقط، ولا تُسجَّل في أي تدقيق أو سجل.
+        controlPassword: agentPw || undefined,
         requester: { name: requesterName, email: p.email || '', userId: p.userId, deviceId: requesterDeviceId },
         requesterOs: (function () { try { const rd = requesterDeviceId ? db.prepare('SELECT info FROM devices WHERE id=?').get(requesterDeviceId) : null; return rd && rd.info ? (JSON.parse(rd.info).platform || '') : '' } catch { return '' } })(),
         target: { deviceId: target.id, name: target.name },

@@ -1049,6 +1049,9 @@ airemote.onInit(data => {
     if (!r || !r.ok) {
       const d = (r && r.data) || {}
       if (d.code === 'password_required') { showPw(true); setState('هذا الجهاز في وضع كلمة المرور.'); return }
+      // 3.13.1 — رسائل واضحة لبقية حالات كلمة السر بدل رمز خام (bad_password / password_locked).
+      if (d.code === 'bad_password') { showPw(true); setState('كلمة المرور غير صحيحة' + (d.attemptsLeft ? ' — تبقّى ' + d.attemptsLeft + ' محاولة' : '')); return }
+      if (d.code === 'password_locked') { setState('مقفل مؤقتًا بعد محاولات فاشلة — أعد المحاولة بعد دقائق.'); return }
       setState('تعذّر الطلب: ' + (d.code || (r && r.error) || 'خطأ'))
       return
     }
