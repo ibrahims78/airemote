@@ -151,6 +151,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
   const [pinned,         setPinned]         = useState(false)
   const [showMore,       setShowMore]       = useState(false)
   const [showRecordMenu, setShowRecordMenu] = useState(false)
+  const [showDeviceRes,  setShowDeviceRes]  = useState(false)
   const [controlsVisible, setControlsVisible] = useState(true)
   const [showSettings,   setShowSettings]   = useState(false)
   const [showMonitors,   setShowMonitors]   = useState(false)
@@ -2128,27 +2129,6 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
                      onClick={e => e.stopPropagation()}>
                 <div className="px-3 py-2 border-b border-line">
                   <label className="block text-[10px] uppercase tracking-wider text-muted mb-1.5">
-                    {tr('viewer_device_resolution')}
-                  </label>
-                  <select
-                    value={deviceRes}
-                    disabled={resBusy || deviceModes.length === 0}
-                    onChange={e => {
-                      const [w, h] = String(e.target.value).split('x').map(Number)
-                      if (!w || !h) return
-                      setResBusy(true)
-                      sendWs({ type: 'screen:set_resolution', payload: { width: w, height: h } })
-                    }}
-                    className="w-full text-xs rounded-lg px-2 py-1.5 bg-surface2 text-ink border border-line outline-none focus:border-primary disabled:opacity-60">
-                    {deviceModes.length === 0 && <option value="">{tr('viewer_device_resolution_na')}</option>}
-                    {deviceModes.map(m => <option key={m} value={m}>{m}</option>)}
-                  </select>
-                  <p className="text-[10px] text-muted mt-1">
-                    {resBusy ? tr('viewer_device_resolution_busy') : tr('viewer_device_resolution_hint')}
-                  </p>
-                </div>
-                <div className="px-3 py-2 border-b border-line">
-                  <label className="block text-[10px] uppercase tracking-wider text-muted mb-1.5">
                     {tr('viewer_quality_resolution')}
                   </label>
                   <select
@@ -2234,6 +2214,10 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
               role="menu"
             >
               <div className="flex flex-col gap-1">
+                <button onClick={() => { setShowMore(false); setShowDeviceRes(true) }}
+                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-ink hover:bg-surface2">
+                  <Monitor size={12}/> {tr('viewer_device_resolution')}
+                </button>
         {/* 3.11.3 — أزرار أندرويد داخل شريط الأدوات (كما كانت) في مجموعة مقسّمة واضحة:
             أيقونات ظاهرة دائماً، والنصّ في الشاشات العريضة فقط، فلا تزاحم نافذة البث. */}
         {remoteIsAndroid && status === 'streaming' && (
@@ -2407,6 +2391,38 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
           )}
         </div>
       </div>}
+
+      {showDeviceRes && createPortal(
+        <div className="fixed inset-0 z-[140] grid place-items-center bg-overlay/55 p-4" onClick={() => setShowDeviceRes(false)}>
+          <div className="w-full max-w-sm rounded-2xl border border-line bg-canvas p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="mb-3 flex items-center justify-between">
+              <div className="text-sm font-bold text-ink">{tr('viewer_device_resolution')}</div>
+              <button onClick={() => setShowDeviceRes(false)} className="text-muted hover:text-ink"><X size={14}/></button>
+            </div>
+            <select
+              value={deviceRes}
+              disabled={resBusy || deviceModes.length === 0}
+              onChange={e => {
+                const [w, h] = String(e.target.value).split('x').map(Number)
+                if (!w || !h) return
+                setResBusy(true)
+                sendWs({ type: 'screen:set_resolution', payload: { width: w, height: h } })
+              }}
+              className="w-full text-xs rounded-lg px-2 py-1.5 bg-surface2 text-ink border border-line outline-none focus:border-primary disabled:opacity-60">
+              {deviceModes.length === 0 && <option value="">{tr('viewer_device_resolution_na')}</option>}
+              {deviceModes.map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+            <p className="text-[10px] text-muted mt-1">
+              {resBusy ? tr('viewer_device_resolution_busy') : tr('viewer_device_resolution_hint')}
+            </p>
+            <div className="mt-4 flex justify-end">
+              <button onClick={() => setShowDeviceRes(false)} className="rounded-lg bg-surface2 px-4 py-2 text-xs text-ink hover:bg-line">{tr('viewer_close')}</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
       {started && <div ref={canvasAreaRef} className={clsx('flex-1 min-h-0 relative flex items-center justify-center bg-canvas', fitMode === 'actual' ? 'overflow-auto' : 'overflow-hidden', popout && pinned && 'pt-14')}
         onClick={() => { setShowSettings(false); setShowMonitors(false); setShowClipboard(false); setShowMore(false); setShowRecordMenu(false) }}>
 
