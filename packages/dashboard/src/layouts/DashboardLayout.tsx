@@ -39,6 +39,18 @@ export function DashboardLayout() {
   const [serverVersion, setServerVersion] = useState('')
   const [unreadCount, setUnreadCount] = useState(0)
 
+  // 3.13.1 — مخرج احتياطي: لو ابتُلع النقر (منطقة سحب إلكترون) فـEscape يُغلق القوائم.
+  useEffect(() => {
+    if (!appMenuOpen && !userMenuOpen) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      setAppMenuOpen(false)
+      setUserMenuOpen(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [appMenuOpen, userMenuOpen])
+
   const desktopApi = typeof window !== 'undefined'
     ? (window as unknown as { airemote?: { windowCtl?: WindowCtl } }).airemote
     : undefined

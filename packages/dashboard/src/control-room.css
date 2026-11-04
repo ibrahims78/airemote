@@ -1104,6 +1104,12 @@ html.light .cr-page-subtitle { color: #4f6474; }
   color: var(--cr-text-2); font-size: 10.5px; cursor: pointer; text-align: start;
 }
 .app-menu-pop button:hover { background: rgba(56,214,196,.08); color: var(--cr-teal); }
+
+/* 3.13.1 — الشريط العلوي منطقة سحب في إلكترون، وأي عنصر داخله بلا no-drag يبتلع النقر:
+   كان غطاء القائمة يبتلع كل نقرة فلا تُغلق القائمة وتبقى تحجب الواجهة كلها. */
+.app-menu-backdrop,
+.app-menu-pop,
+.app-user-pop { -webkit-app-region: no-drag; }
 html.light .app-titlebar { background: #f4f9fa; border-color: #dbe5ea; }
 html.light .app-titlebar-link, html.light .app-titlebar-action, html.light .app-user-btn { color: #304957; }
 html.light .app-titlebar-link:hover, html.light .app-titlebar-action:hover, html.light .app-user-btn:hover { background: rgba(15,118,110,.06); }
