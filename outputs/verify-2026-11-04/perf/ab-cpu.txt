@@ -1,0 +1,16 @@
+BEFORE agent=64.8% worker=9.3% total=74.1% fps=1
+  AGENT pid=3792 cpu=0%
+  AGENT pid=4004 cpu=0.9%
+  AGENT pid=5220 cpu=40.2%
+  AGENT pid=5916 cpu=7.3%
+  AGENT pid=6188 cpu=3.9%
+  AGENT pid=7064 cpu=12.5%
+  WORKER capture-gdi-worker-1d9573f1 cpu=9.3%
+AFTER agent=28.0% worker=10.5% total=38.5% fps=1
+  AGENT pid=3792 cpu=0%
+  AGENT pid=4004 cpu=1.3%
+  AGENT pid=5916 cpu=7.6%
+  AGENT pid=6188 cpu=3.8%
+  AGENT pid=7064 cpu=15.3%
+  WORKER capture-gdi-worker-1d9573f1 cpu=10.5%
+CPU_DROP=48%

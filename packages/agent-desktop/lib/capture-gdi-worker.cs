@@ -139,17 +139,42 @@ public class GdiStream
         return dst;
     }
 
+    // 3.13.1 — بصمة التغيّر بلا GetPixel: قفل بتّات الصورة وقراءة العيّنات من الذاكرة مباشرة.
+    // كان GetPixel يكلّف نداء GDI+ لكل بكسل (~289 عيّنة × 12 مرة/ث) ويستحوذ على معظم حمل العامل.
     static long Signature(Bitmap b)
     {
         long h = 17;
         int sx = Math.Max(1, b.Width / 16), sy = Math.Max(1, b.Height / 16);
-        for (int y = 0; y < b.Height; y += sy)
+        PixelFormat pf = b.PixelFormat;
+        int bpp = (pf == PixelFormat.Format24bppRgb) ? 3 : 4;
+        BitmapData bd = b.LockBits(new Rectangle(0, 0, b.Width, b.Height), ImageLockMode.ReadOnly, pf);
+        try
         {
-            for (int x = 0; x < b.Width; x += sx)
+            IntPtr base0 = bd.Scan0;
+            int stride = bd.Stride;
+            for (int y = 0; y < b.Height; y += sy)
             {
-                Color c = b.GetPixel(x, y);
-                h = h * 31 + (c.R + c.G + c.B) / 3;
+                int row = y * stride;
+                for (int x = 0; x < b.Width; x += sx)
+                {
+                    int off = row + x * bpp;
+                    int gray;
+                    if (bpp == 4)
+                    {
+                        int v = Marshal.ReadInt32(base0, off);
+                        gray = ((v & 0xFF) + ((v >> 8) & 0xFF) + ((v >> 16) & 0xFF)) / 3;
+                    }
+                    else
+                    {
+                        gray = (Marshal.ReadByte(base0, off) + Marshal.ReadByte(base0, off + 1) + Marshal.ReadByte(base0, off + 2)) / 3;
+                    }
+                    h = h * 31 + gray;
+                }
             }
+        }
+        finally
+        {
+            b.UnlockBits(bd);
         }
         return h;
     }
