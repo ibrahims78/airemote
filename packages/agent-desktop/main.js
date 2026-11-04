@@ -862,7 +862,13 @@ function handleMsg(msg) {
     case 'session:offer': {
       const offer = msg.payload || {}
       // 3.13.1 — وكيل↔وكيل بكلمة سر: نفس تحقق مسار السيرفر→وكيل، بلا حوار إن صحّت.
-      if (offer.controlPassword && controlAuthCapability() === 'password') {
+      if (controlAuthCapability() === 'password') {
+        // 3.13.1 — وضع «كلمة سر محفوظة»: لا تُقبل الجلسة بلا كلمة صحيحة، ولا يكفي القبول اليدوي.
+        if (!offer.controlPassword) {
+          send({ type: 'session:deny', payload: { sessionId: offer.sessionId, reason: 'password_required' }, timestamp: Date.now() })
+          addLog('warn', '[control] relay session denied - password required')
+          break
+        }
         if (verifyControlPassword(String(offer.controlPassword))) {
           grantedSessions.add(String(offer.sessionId))
           send({ type: 'session:accept', payload: { sessionId: offer.sessionId, reason: 'relay_password' }, timestamp: Date.now() })

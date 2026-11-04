@@ -1,0 +1,6 @@
+A_CONSENT_REQUEST status=201 code=
+A_CONSENT_WAITING state=requested reason= => PASS (needs manual approval)
+A_CONSENT_AFTER_ACCEPT decision=401 state=requested => FAIL
+B_NO_PASSWORD status=201 state=denied reason=password_required => PASS
+B_WRONG_PASSWORD status=201 state=denied reason=bad_password => PASS
+B_RIGHT_PASSWORD status=201 state=active => PASS

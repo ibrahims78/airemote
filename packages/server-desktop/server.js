@@ -6681,10 +6681,11 @@ if ($target -eq $null) { 'name-not-found' } else {
     // فالسيرفر يطلبها هنا ويمرّرها في العرض ليتحقق منها الوكيل بنفس الدالة.
     let targetCaps = {}
     try { targetCaps = JSON.parse(target.capabilities || '{}') || {} } catch {}
-    const agentPwMode = access === 'control' && targetCaps.controlAuth === 'password'
-    const agentPw = agentPwMode ? String(body.password || '') : ''
-    if (agentPwMode && !agentPw) {
-      return reply.code(403).send({ error: 'كلمة مرور التحكم مطلوبة لهذا الجهاز', code: 'control_password_required' })
+    // 3.13.1 — القدرة المسجّلة قد تكون قديمة بعد تغيير الوضع من واجهة الوكيل،
+    // لذلك الحَكَم هو الوكيل الهدف: نمرّر الكلمة إن وُجدت ونتركه يقرر (كلمة سر أو موافقة يدوية).
+    const agentPw = access === 'control' ? String(body.password || '') : ''
+    if (access === 'control' && !targetCaps.controlAuth) {
+      try { dbLogAudit({ userId: p.userId, userEmail: p.email, deviceId: target.id, action: 'relay_control_no_capability', details: {}, ipAddress: req.ip }) } catch {}
     }
     if (!agentSockets.has(target.id)) {
       return reply.code(503).send({ error: 'الجهاز الهدف غير متصل', code: 'target_offline' })

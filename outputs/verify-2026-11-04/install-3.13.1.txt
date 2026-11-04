@@ -1,5 +1,5 @@
-SETUP_SIZE=159411903
+SETUP_SIZE=159411904
 AFTER_KILL=0
 INSTALLER_EXIT=0
 STARTED=C:/Users/admin/AppData/Local/Programs/AiRemote Server/AiRemote Server.exe
-HEALTH={"status":"ok","version":"3.13.1","tls":true,"uptime":1,"port":3001,"isDesktop":true}
+HEALTH={"status":"ok","version":"3.13.1","tls":true,"uptime":2,"port":3001,"isDesktop":true}
