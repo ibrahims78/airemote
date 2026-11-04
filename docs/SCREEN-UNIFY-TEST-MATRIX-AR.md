@@ -5,7 +5,7 @@
 | TC-001 | زر أيمن يفتح قائمة سياق بلا نقرة يسرى | L4 | PENDING (جهاز) |
 | TC-002 | زر أيمن قرب نقرة سابقة | L4 | PENDING |
 | TC-003 | «عرض فقط» يخفي التحكم/المفاتيح/النص | L3 | PENDING (جلسة) |
-| TC-004 | محاولة تحكم من «عرض فقط» مرفوضة | L3 | PENDING |
+| TC-004 | محاولة تحكم من «عرض فقط» مرفوضة | L3 | **PASS** (e2e view-no-control) |
 | TC-005 | لا زر صوت ميت في اللوحة | L0 | PASS (الكود) |
 | TC-006 | إيقاف/تشغيل المربع عبر واجهة المكوّن | L0 | PASS (لا DOM click) |
 | TC-007 | كل نقاط الفتح بمقاس 1400×900 | L0 | PASS (دالة واحدة) |
@@ -17,7 +17,7 @@
 | TC-013 | معاينة بلا أزرار إدارة | L0 | PASS (زران) |
 | TC-014 | جدار المراقبة لا يبدأ بلا جلسة | L3 | PENDING |
 | TC-015 | تسجيل من قائمة واحدة | L3 | PENDING |
-| TC-016 | إيقاف بمستويين | L3 | PENDING |
+| TC-016 | إيقاف بمستويين | L3 | **PASS جزئي** (آخر مشاهد يوقف الالتقاط — e2e) |
 | TC-017 | الجلسات في `/sessions` فقط | L0 | PASS |
 | TC-018 | دقة الجهاز خارج قائمة الجودة | — | DEFERRED (المرحلة 2) |
 | TC-019 | لا بث في تبويب مخفي | L3 | PENDING |
@@ -29,13 +29,27 @@
 | TC-025 | التوثيق | — | PASS (هذا الملف + CHANGELOG) |
 | TC-026 | لا كود ميت (LivePreview) | L0 | PASS (محذوف) |
 | TC-027 | تباين AA | L5 | PENDING |
-| TC-028 | تحذير الإدخال (انحدار 3.12.3) | L3 | PENDING |
+| TC-028 | تحذير الإدخال (انحدار 3.12.3) | L3 | **PASS** (relay في e2e؛ وكيل سطح المكتب PENDING) |
 | TC-029 | تسجيل أوامر العامل | L4 | PENDING |
-| TC-030 | تذاكر الجلسة والصلاحيات | L2 | PENDING (e2e) |
-| TC-031 | Relay وكيل↔وكيل | L4 | PENDING |
+| TC-030 | تذاكر الجلسة والصلاحيات | L2 | **PASS** (matrix view-no-control) |
+| TC-031 | Relay وكيل↔وكيل | L4 | **PASS** (e2e-agent-session) |
 | TC-032 | إعادة الربط بعد انقطاع | L3 | PENDING |
-| TC-033 | تعدد المشاهدين | L3 | PENDING |
+| TC-033 | تعدد المشاهدين | L3 | **PASS** (viewer_count=2 في e2e) |
 | TC-034 | أداة القياس تفشل عند التجاوز | L0 | PASS |
 
 **البوابات المنفذة:** `tsc --noEmit` PASS · `vite build` PASS · `audit-screen-surface --check` PASS.
-**ملاحظة:** كل PENDING يحتاج نافذة اختبار على WIN10/WIN11/TECNO مع السيرفر المثبَّت.
+**ملاحظة:** ما تبقّى PENDING يحتاج نافذة اختبار على WIN10/WIN11/TECNO مع السيرفر المثبَّت.
+
+## نتائج منفّذة — 2026-11-04
+
+| الأمر | النتيجة |
+|---|---|
+| `pnpm --filter @airemote/dashboard typecheck` | PASS (0 أخطاء) |
+| `pnpm --filter @airemote/dashboard build` | PASS (17.83s) |
+| `node scripts/check-imports.js` | PASS (60 ملفًا، 135 استيرادًا) |
+| `node scripts/check-contrast.cjs` | PASS (22/22) |
+| `node scripts/audit-screen-surface.cjs --check` | PASS (11 زرًا ظاهرًا، 0 فتح مباشر) |
+| `electron test/e2e-screen-control.test.cjs` | PASS — كل الحالات (بث، مشاهد متأخر، keyframe، تعدد مشاهدين، إيقاف آخر مشاهد، تحذير a11y) |
+| `electron test/e2e-agent-session.test.cjs` | PASS — Relay طلب/قبول/رفض/إغلاق/انتهاء + تدقيق |
+| `electron test/e2e-session-ticket-matrix.cjs --case=view-no-control` | PASS |
+
