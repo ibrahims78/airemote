@@ -36,6 +36,7 @@
 | TC-032 | إعادة الربط بعد انقطاع | L3 | PENDING |
 | TC-033 | تعدد المشاهدين | L3 | **PASS** (viewer_count=2 في e2e) |
 | TC-034 | أداة القياس تفشل عند التجاوز | L0 | PASS |
+| `node scripts/verify.js` (البطارية الكاملة) | **43/44 PASS** — الفشل الوحيد: توحيد الإصدار (`manifest` و`/health` = 3.12.3) وهو متوقع قبل بناء وتثبيت 3.13.0 |
 
 **البوابات المنفذة:** `tsc --noEmit` PASS · `vite build` PASS · `audit-screen-surface --check` PASS.
 **ملاحظة:** ما تبقّى PENDING يحتاج نافذة اختبار على WIN10/WIN11/TECNO مع السيرفر المثبَّت.
