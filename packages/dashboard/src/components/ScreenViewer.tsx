@@ -43,6 +43,8 @@ interface Props {
   deviceName: string
   popout?:    boolean
   preview?:   boolean
+  /** 3.13.1 — a preview tile never connects on its own; the wall passes true only after a click. */
+  autoStart?: boolean
   sessionTicket?: string
   sessionResumeKey?: string
   sessionAccess?: '' | 'view' | 'control' | 'files'
@@ -114,7 +116,7 @@ function fmtBytes(bytes: number): string {
   return `${(bytes/1024/1024).toFixed(2)}MB/s`
 }
 
-export function ScreenViewer({ deviceId, deviceName, popout = false, preview = false, sessionTicket, sessionResumeKey, sessionAccess }: Props) {
+export function ScreenViewer({ deviceId, deviceName, popout = false, preview = false, autoStart = false, sessionTicket, sessionResumeKey, sessionAccess }: Props) {
   const tr = useT()
   const { token, user } = useAuthStore()
   // الوضع العادي: بلا تذكرة. وضع الجلسة: التذكرة تأتي من الرابط وتُستخدم بدل JWT.
@@ -281,9 +283,12 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
   const [frameStats,  setFrameStats]  = useState({ keyframes: 0, total: 0 })
 
   // ── Start gate — user must press "Start" before any WS connection opens ───
-  // Persist per-device: auto-restart if the user was streaming before leaving
+  // Persist per-device: auto-restart if the user was streaming before leaving.
+  // 3.13.1 — a preview tile must never start on its own: it waits for an explicit click.
   const sessionKey = `screen:active:${deviceId}`
-  const [started, setStarted] = useState(() => popout || preview || sessionStorage.getItem(sessionKey) === '1')
+  const [started, setStarted] = useState(() => (
+    popout ? true : (preview ? !!autoStart : sessionStorage.getItem(sessionKey) === '1')
+  ))
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const fpsCountRef        = useRef(0)
@@ -1765,7 +1770,21 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
 
   // ── Render ────────────────────────────────────────────────────────────────
   // 3.13.0 — وضع المعاينة: نفس عميل WS ونفس العارض، بلا شريط أدوات ولا تحكم.
+  // 3.13.1 — مع بوّابة: لا اتصال قبل ضغطة صريحة على «تشغيل البث».
   if (preview) {
+    if (!started) {
+      return (
+        <button
+          type="button"
+          onClick={() => setStarted(true)}
+          className="group flex h-full w-full flex-col items-center justify-center gap-2 rounded-lg bg-code text-muted transition-colors hover:text-ink"
+          title={tr('viewer_start_share')}
+        >
+          <PlayCircle size={26} className="text-info/70 transition-transform group-hover:scale-110" />
+          <span className="text-[11px] font-medium">{tr('viewer_start_share')}</span>
+        </button>
+      )
+    }
     return (
       <div className="relative h-full w-full overflow-hidden rounded-lg bg-code">
         <canvas ref={canvasRef} className="block h-full w-full" style={{ objectFit: 'contain' }} />
@@ -2209,183 +2228,220 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
           </button>
           {showMore && (
             <div
-              className="absolute top-full end-0 z-40 mt-1 max-h-[70vh] w-72 overflow-y-auto rounded-xl border border-line bg-canvas p-2 shadow-2xl"
+              className="absolute top-full end-0 z-40 mt-1.5 w-[248px] overflow-hidden rounded-xl border border-line bg-canvas shadow-2xl shadow-black/40"
               onClick={e => e.stopPropagation()}
               role="menu"
+              aria-label={tr('viewer_more')}
             >
-              <div className="flex flex-col gap-1">
-                <button onClick={() => { setShowMore(false); setShowDeviceRes(true) }}
-                  className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs text-ink hover:bg-surface2">
-                  <Monitor size={12}/> {tr('viewer_device_resolution')}
+              <div className="flex items-center justify-between border-b border-line/70 px-3 py-2">
+                <span className="text-[10px] font-semibold uppercase tracking-[.08em] text-muted">{tr('viewer_more')}</span>
+                <button
+                  type="button"
+                  onClick={() => setShowMore(false)}
+                  className="rounded p-0.5 text-muted transition-colors hover:bg-surface2 hover:text-ink"
+                  title={tr('viewer_close')}
+                >
+                  <X size={12} />
                 </button>
-        {/* 3.11.3 — أزرار أندرويد داخل شريط الأدوات (كما كانت) في مجموعة مقسّمة واضحة:
-            أيقونات ظاهرة دائماً، والنصّ في الشاشات العريضة فقط، فلا تزاحم نافذة البث. */}
-        {remoteIsAndroid && status === 'streaming' && (
-          <div className="flex items-center gap-0.5 shrink-0 rounded-lg border border-line/70 bg-surface2/50 p-0.5"
-               role="group" aria-label={tr('viewer_android_keys')}>
-            <button onClick={() => sendWs({ type: 'screen:key_event', payload: { type: 'press', key: 'Escape' } })}
-              disabled={!controlEnabled} title={tr('viewer_back')}
-              className="flex items-center gap-1 px-1.5 py-1 rounded text-ink hover:text-ink hover:bg-surface2 disabled:opacity-40 transition-colors">
-              <Undo2 size={11} /><span className="hidden 2xl:inline text-[10px]">{tr('viewer_back')}</span>
-            </button>
-            <button onClick={() => sendWs({ type: 'screen:key_event', payload: { type: 'press', key: 'Home' } })}
-              disabled={!controlEnabled} title={tr('viewer_home')}
-              className="flex items-center gap-1 px-1.5 py-1 rounded text-ink hover:text-ink hover:bg-surface2 disabled:opacity-40 transition-colors">
-              <Home size={11} /><span className="hidden 2xl:inline text-[10px]">{tr('viewer_home')}</span>
-            </button>
-            <button onClick={() => sendWs({ type: 'screen:key_event', payload: { type: 'press', key: 'Meta' } })}
-              disabled={!controlEnabled} title={tr('viewer_open_apps')}
-              className="flex items-center gap-1 px-1.5 py-1 rounded text-ink hover:text-ink hover:bg-surface2 disabled:opacity-40 transition-colors">
-              <Layers size={11} /><span className="hidden 2xl:inline text-[10px]">{tr('viewer_apps')}</span>
-            </button>
-            <button
-              onClick={() => sendWs({ type: 'screen:rotate', payload: {} })}
-              title={tr('viewer_rotate_90')}
-              className="flex items-center gap-1 px-1.5 py-1 rounded text-ink hover:text-ink hover:bg-surface2 disabled:opacity-40 transition-colors">
-              <RotateCw size={11} /><span className="hidden 2xl:inline text-[10px]">{tr('viewer_rotate')}</span>
-            </button>
-            <button
-              onClick={() => {
-                const next = !autoRotate
-                setAutoRotate(next)
-                sendWs({ type: 'screen:rotate_auto', payload: { enabled: next } })
-              }}
-              title={autoRotate ? tr('viewer_autorotate_on') : tr('viewer_autorotate_off')}
-              className={clsx('flex items-center gap-1 px-1.5 py-1 rounded transition-colors disabled:opacity-40',
-                autoRotate ? 'text-success bg-success/100/10 hover:bg-success/100/20' : 'text-ink hover:text-ink hover:bg-surface2')}>
-              <RefreshCw size={11} />
-              <span className="hidden 2xl:inline text-[10px]">{tr('viewer_auto')}</span>
-            </button>
-            <button
-              onClick={() => setShowBrightness(v => !v)}
-              title={tr('viewer_brightness_title')}
-              className={clsx('flex items-center gap-1 px-1.5 py-1 rounded transition-colors',
-                showBrightness ? 'text-warning bg-warning/100/15' : 'text-ink hover:text-ink hover:bg-surface2')}>
-              <Sun size={11} /><span className="hidden xl:inline text-[10px]">{tr('viewer_brightness')}</span>
-            </button>
-            {showBrightness && createPortal(
-              <div className="fixed inset-0 z-[120] flex items-center justify-center bg-overlay/55 p-4" onClick={() => setShowBrightness(false)}>
-                <div className="w-full max-w-sm rounded-2xl border border-line bg-canvas p-5 shadow-2xl" onClick={e => e.stopPropagation()}>
-                  <div className="flex items-center justify-between mb-4">
-                    <div>
-                      <div className="text-sm font-bold text-ink">{tr('viewer_android_brightness')}</div>
-                      <div className="text-[11px] text-muted mt-1">{tr('viewer_brightness_desc')}</div>
-                    </div>
-                    <div className="text-2xl font-bold text-warning">{brightness}</div>
-                  </div>
-                  <input
-                    type="range" min={0} max={255} step={1} value={brightness}
-                    onChange={e => {
-                      const value = Number(e.target.value)
-                      setBrightness(value)
-                      sendWs({ type: 'screen:brightness', payload: { value } })
+              </div>
+
+              <div className="max-h-[62vh] overflow-y-auto p-1.5">
+                <button
+                  type="button" role="menuitem"
+                  onClick={() => { setShowMore(false); setShowDeviceRes(true) }}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-start text-[11.5px] text-ink transition-colors hover:bg-surface2"
+                >
+                  <Monitor size={13} className="shrink-0 text-muted" />
+                  <span className="flex-1 truncate">{tr('viewer_device_resolution')}</span>
+                </button>
+                {!popout && status === 'streaming' && (
+                  <button
+                    type="button" role="menuitem"
+                    onClick={() => { setShowMore(false); openScreenWindow(deviceId) }}
+                    className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-start text-[11.5px] text-ink transition-colors hover:bg-surface2"
+                  >
+                    <ExternalLink size={13} className="shrink-0 text-muted" />
+                    <span className="flex-1 truncate">{tr('viewer_popout')}</span>
+                  </button>
+                )}
+                {status === 'streaming' && (
+                  <button
+                    type="button" role="menuitemcheckbox" aria-checked={wmOn}
+                    onClick={() => {
+                      const next = !wmOn
+                      setWmOn(next)
+                      try { localStorage.setItem('airemote.screen.watermark', next ? '1' : '0') } catch {}
                     }}
-                    className="w-full accent-warning"
-                    autoFocus
-                  />
-                  <div className="flex justify-between text-[10px] text-muted mt-2"><span>0</span><span>255</span></div>
-                  <div className="flex justify-end mt-4">
-                    <button onClick={() => setShowBrightness(false)}
-                      className="px-4 py-2 rounded-lg bg-surface2 text-ink text-xs hover:bg-line">
-                      {tr('viewer_close')}
-                    </button>
-                  </div>
-                </div>
-              </div>,
-              document.body
-            )}
-            {rotateNotice && (
-              <span className="text-[10px] text-warning max-w-[180px] truncate" title={rotateNotice}>{rotateNotice}</span>
-            )}
-          </div>
-        )}
-
-          {/* v3.5 — standalone viewer window */}
-          {!popout && status === 'streaming' && (
-            <button onClick={() => openScreenWindow(deviceId)}
-              title={tr('viewer_popout_title')}
-              className="flex items-center gap-1 px-2 py-1 rounded text-xs text-muted hover:text-ink hover:bg-surface2 transition-colors">
-              <ExternalLink size={12}/> {tr('viewer_popout')}
-            </button>
-          )}
-
-          {/* Viewer watermark (R8.3) */}
-          {status === 'streaming' && (
-            <button
-              onClick={() => {
-                const next = !wmOn
-                setWmOn(next)
-                try { localStorage.setItem('airemote.screen.watermark', next ? '1' : '0') } catch {}
-              }}
-              title={wmOn ? tr('viewer_watermark_off') : tr('viewer_watermark_on')}
-              className={clsx('p-1.5 rounded transition-colors', wmOn ? 'bg-surface2 text-ink' : 'text-muted hover:text-ink hover:bg-surface2')}>
-              <Fingerprint size={13}/>
-            </button>
-          )}
-
-          {/* Keyboard mode */}
-          {status === 'streaming' && controlEnabled && !viewOnly && (
-            <button onClick={() => setKeyboardMode(k => !k)} title={keyboardMode ? tr('viewer_keyboard_off') : tr('viewer_keyboard_on')}
-              className={clsx('p-1.5 rounded transition-colors', keyboardMode ? 'bg-warning/100/20 text-warning' : 'text-muted hover:text-ink hover:bg-surface2')}>
-              <Keyboard size={13}/>
-            </button>
-          )}
-
-          {/* 3.9.5 — حقل نص حر (مهم على الهاتف حيث لا لوحة مفاتيح) */}
-          {status === 'streaming' && controlEnabled && !viewOnly && (
-            <button onClick={() => setShowTextPad(v => !v)} title={tr('viewer_text_pad')}
-              className={clsx('p-1.5 rounded transition-colors', showTextPad ? 'bg-info/20 text-info' : 'text-muted hover:text-ink hover:bg-surface2')}>
-              <Type size={13}/>
-            </button>
-          )}
-
-                <button onClick={() => {
-                  const next = !audioEnabled
-                  setAudioEnabled(next)
-                  if (next) ensurePcmContext(16000)
-                  sendWs({ type: 'screen:audio_control', payload: { enabled: next } })
-                }}
-                  title={audioEnabled ? tr('viewer_audio_off') : tr('viewer_audio_on')}
-                  className={clsx('flex w-full items-center gap-2 rounded px-2 py-1.5 text-xs transition-colors',
-                    audioEnabled ? 'bg-primary/100/20 text-primary' : 'text-ink hover:bg-surface2')}>
-                  {audioEnabled ? <Volume2 size={12}/> : <VolumeX size={12}/>}
-                  {audioEnabled ? tr('viewer_device_audio') : tr('viewer_play_audio')}
+                    className={clsx('flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-start text-[11.5px] transition-colors hover:bg-surface2',
+                      wmOn ? 'text-info' : 'text-ink')}
+                  >
+                    <Fingerprint size={13} className="shrink-0 text-muted" />
+                    <span className="flex-1 truncate">{wmOn ? tr('viewer_watermark_off') : tr('viewer_watermark_on')}</span>
+                    {wmOn && <CheckCircle2 size={12} className="shrink-0 text-info" />}
+                  </button>
+                )}
+                <button
+                  type="button" role="menuitemcheckbox" aria-checked={pinned}
+                  onClick={() => setPinned(v => !v)}
+                  className={clsx('flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-start text-[11.5px] transition-colors hover:bg-surface2',
+                    pinned ? 'text-warning' : 'text-ink')}
+                >
+                  {pinned ? <Pin size={13} className="shrink-0 text-muted" /> : <PinOff size={13} className="shrink-0 text-muted" />}
+                  <span className="flex-1 truncate">{pinned ? tr('viewer_unpin_toolbar') : tr('viewer_pin_toolbar')}</span>
                 </button>
 
-          {/* Privacy (Windows agent only; Android has its own screen-off control) */}
-          {status === 'streaming' && !remoteIsAndroid && (
-            <button onClick={togglePrivacy} title={privacyOn ? tr('viewer_privacy_off') : tr('viewer_privacy_on')}
-              className={clsx('p-1.5 rounded transition-colors', privacyOn ? 'bg-primary/20 text-primary' : 'text-muted hover:text-ink hover:bg-surface2')}>
-              {privacyOn ? <Eye size={13}/> : <EyeOff size={13}/>}
-            </button>
-          )}
+                {(status === 'streaming') && (
+                  <>
+                    <div className="mt-1 border-t border-line/60" />
+                    {controlEnabled && !viewOnly && (
+                      <button
+                        type="button" role="menuitemcheckbox" aria-checked={keyboardMode}
+                        onClick={() => setKeyboardMode(k => !k)}
+                        className={clsx('flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-start text-[11.5px] transition-colors hover:bg-surface2',
+                          keyboardMode ? 'text-warning' : 'text-ink')}
+                      >
+                        <Keyboard size={13} className="shrink-0 text-muted" />
+                        <span className="flex-1 truncate">{tr('viewer_keyboard_on')}</span>
+                        {keyboardMode && <CheckCircle2 size={12} className="shrink-0" />}
+                      </button>
+                    )}
+                    {controlEnabled && !viewOnly && (
+                      <button
+                        type="button" role="menuitemcheckbox" aria-checked={showTextPad}
+                        onClick={() => setShowTextPad(v => !v)}
+                        className={clsx('flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-start text-[11.5px] transition-colors hover:bg-surface2',
+                          showTextPad ? 'text-info' : 'text-ink')}
+                      >
+                        <Type size={13} className="shrink-0 text-muted" />
+                        <span className="flex-1 truncate">{tr('viewer_text_pad')}</span>
+                        {showTextPad && <CheckCircle2 size={12} className="shrink-0" />}
+                      </button>
+                    )}
+                    <button
+                      type="button" role="menuitemcheckbox" aria-checked={audioEnabled}
+                      onClick={() => {
+                        const next = !audioEnabled
+                        setAudioEnabled(next)
+                        if (next) ensurePcmContext(16000)
+                        sendWs({ type: 'screen:audio_control', payload: { enabled: next } })
+                      }}
+                      className={clsx('flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-start text-[11.5px] transition-colors hover:bg-surface2',
+                        audioEnabled ? 'text-primary' : 'text-ink')}
+                    >
+                      {audioEnabled ? <Volume2 size={13} className="shrink-0 text-muted" /> : <VolumeX size={13} className="shrink-0 text-muted" />}
+                      <span className="flex-1 truncate">{audioEnabled ? tr('viewer_device_audio') : tr('viewer_play_audio')}</span>
+                      {audioEnabled && <CheckCircle2 size={12} className="shrink-0" />}
+                    </button>
+                    {!remoteIsAndroid && (
+                      <button
+                        type="button" role="menuitemcheckbox" aria-checked={privacyOn}
+                        onClick={togglePrivacy}
+                        className={clsx('flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-start text-[11.5px] transition-colors hover:bg-surface2',
+                          privacyOn ? 'text-primary' : 'text-ink')}
+                      >
+                        {privacyOn ? <Eye size={13} className="shrink-0 text-muted" /> : <EyeOff size={13} className="shrink-0 text-muted" />}
+                        <span className="flex-1 truncate">{tr('viewer_privacy_on')}</span>
+                        {privacyOn && <CheckCircle2 size={12} className="shrink-0" />}
+                      </button>
+                    )}
+                  </>
+                )}
 
-          {/* T006: Chat button */}
-          {status === 'streaming' && (
-            <button onClick={openChat}
-              title={tr('viewer_chat_during_session')}
-              className={clsx('relative flex items-center gap-1 px-2 py-1 rounded text-xs transition-colors',
-                chatOpen ? 'bg-info/20 text-info' : 'text-muted hover:text-ink hover:bg-surface2'
-              )}>
-              <MessageSquare size={12}/>
-              {unreadChat > 0 && !chatOpen && (
-                <span className="absolute -top-1 -right-1 bg-info text-primary-fg rounded-full w-3.5 h-3.5 flex items-center justify-center text-[9px] font-bold">
-                  {unreadChat > 9 ? '9+' : unreadChat}
-                </span>
-              )}
-            </button>
-          )}
+                {remoteIsAndroid && status === 'streaming' && (
+                  <>
+                    <div className="mt-1 border-t border-line/60" />
+                    <div className="grid grid-cols-2 gap-1 px-1 pb-1">
+                      <button
+                        type="button" role="menuitem" disabled={!controlEnabled}
+                        onClick={() => sendWs({ type: 'screen:key_event', payload: { type: 'press', key: 'Escape' } })}
+                        title={tr('viewer_back')}
+                        className="flex items-center justify-center gap-1.5 rounded-lg border border-line/70 px-2 py-1.5 text-[10.5px] text-ink transition-colors hover:bg-surface2 disabled:opacity-40"
+                      >
+                        <Undo2 size={11} /> {tr('viewer_back')}
+                      </button>
+                      <button
+                        type="button" role="menuitem" disabled={!controlEnabled}
+                        onClick={() => sendWs({ type: 'screen:key_event', payload: { type: 'press', key: 'Home' } })}
+                        title={tr('viewer_home')}
+                        className="flex items-center justify-center gap-1.5 rounded-lg border border-line/70 px-2 py-1.5 text-[10.5px] text-ink transition-colors hover:bg-surface2 disabled:opacity-40"
+                      >
+                        <Home size={11} /> {tr('viewer_home')}
+                      </button>
+                      <button
+                        type="button" role="menuitem" disabled={!controlEnabled}
+                        onClick={() => sendWs({ type: 'screen:key_event', payload: { type: 'press', key: 'Meta' } })}
+                        title={tr('viewer_open_apps')}
+                        className="flex items-center justify-center gap-1.5 rounded-lg border border-line/70 px-2 py-1.5 text-[10.5px] text-ink transition-colors hover:bg-surface2 disabled:opacity-40"
+                      >
+                        <Layers size={11} /> {tr('viewer_apps')}
+                      </button>
+                      <button
+                        type="button" role="menuitem"
+                        onClick={() => sendWs({ type: 'screen:rotate', payload: {} })}
+                        title={tr('viewer_rotate_90')}
+                        className="flex items-center justify-center gap-1.5 rounded-lg border border-line/70 px-2 py-1.5 text-[10.5px] text-ink transition-colors hover:bg-surface2"
+                      >
+                        <RotateCw size={11} /> {tr('viewer_rotate')}
+                      </button>
+                      <button
+                        type="button" role="menuitemcheckbox" aria-checked={autoRotate}
+                        onClick={() => {
+                          const next = !autoRotate
+                          setAutoRotate(next)
+                          sendWs({ type: 'screen:rotate_auto', payload: { enabled: next } })
+                        }}
+                        title={autoRotate ? tr('viewer_autorotate_on') : tr('viewer_autorotate_off')}
+                        className={clsx('flex items-center justify-center gap-1.5 rounded-lg border px-2 py-1.5 text-[10.5px] transition-colors',
+                          autoRotate ? 'border-success/40 bg-success/10 text-success' : 'border-line/70 text-ink hover:bg-surface2')}
+                      >
+                        <RefreshCw size={11} /> {tr('viewer_auto')}
+                      </button>
+                      <button
+                        type="button" role="menuitem"
+                        onClick={() => { setShowMore(false); setShowBrightness(true) }}
+                        title={tr('viewer_brightness_title')}
+                        className="flex items-center justify-center gap-1.5 rounded-lg border border-line/70 px-2 py-1.5 text-[10.5px] text-ink transition-colors hover:bg-surface2"
+                      >
+                        <Sun size={11} /> {tr('viewer_brightness')}
+                      </button>
+                    </div>
+                    {rotateNotice && (
+                      <div className="mx-1 mb-1 rounded-md bg-warning/10 px-2 py-1 text-[10px] leading-snug text-warning">{rotateNotice}</div>
+                    )}
+                  </>
+                )}
 
-          {viewerCount > 1 && (
-            <div title={tr('viewer_viewers_active', { n: viewerCount })}
-              className="flex items-center gap-1 px-2 py-0.5 rounded bg-info/20 text-info text-[11px] font-medium select-none">
-              <Eye size={10}/>{viewerCount}
-            </div>
-          )}
-          <button onClick={refreshStream} className="p-1.5 rounded text-muted hover:text-ink hover:bg-surface2 transition-colors" title={tr('viewer_reconnect')}><RefreshCw size={13}/></button>
-          <button onClick={() => setPinned(v => !v)} className={clsx('p-1.5 rounded transition-colors', pinned ? 'bg-warning/100/20 text-warning' : 'text-muted hover:text-ink hover:bg-surface2')} title={pinned ? tr('viewer_unpin_toolbar') : tr('viewer_pin_toolbar')}>
-            {pinned ? <Pin size={13}/> : <PinOff size={13}/>}
-          </button>
+                {status === 'streaming' && (
+                  <>
+                    <div className="mt-1 border-t border-line/60" />
+                    <button
+                      type="button" role="menuitem"
+                      onClick={() => { setShowMore(false); openChat() }}
+                      className={clsx('flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-start text-[11.5px] transition-colors hover:bg-surface2',
+                        chatOpen ? 'text-info' : 'text-ink')}
+                    >
+                      <MessageSquare size={13} className="shrink-0 text-muted" />
+                      <span className="flex-1 truncate">{tr('viewer_chat_during_session')}</span>
+                      {unreadChat > 0 && (
+                        <span className="rounded-full bg-info px-1.5 text-[9px] font-bold text-primary-fg">{unreadChat > 9 ? '9+' : unreadChat}</span>
+                      )}
+                    </button>
+                    {viewerCount > 1 && (
+                      <div className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-[11.5px] text-muted">
+                        <Eye size={13} className="shrink-0" />
+                        <span className="flex-1 truncate">{tr('viewer_viewers_active', { n: viewerCount })}</span>
+                      </div>
+                    )}
+                    <button
+                      type="button" role="menuitem"
+                      onClick={() => { setShowMore(false); refreshStream() }}
+                      className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-start text-[11.5px] text-ink transition-colors hover:bg-surface2"
+                    >
+                      <RefreshCw size={13} className="shrink-0 text-muted" />
+                      <span className="flex-1 truncate">{tr('viewer_reconnect')}</span>
+                    </button>
+                  </>
+                )}
               </div>
             </div>
           )}

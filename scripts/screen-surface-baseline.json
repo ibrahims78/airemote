@@ -2,16 +2,16 @@
   "note": "خط أساس سطح بث الشاشة — حدّثه بـ --write بعد كل مرحلة مقصودة فقط.",
   "limits": {
     "buttons": {
-      "packages/dashboard/src/components/ScreenViewer.tsx": 60,
+      "packages/dashboard/src/components/ScreenViewer.tsx": 61,
       "packages/dashboard/src/components/LivePreview.tsx": 0,
-      "packages/dashboard/src/components/LivePreviewBoard.tsx": 4,
+      "packages/dashboard/src/components/LivePreviewBoard.tsx": 6,
       "packages/dashboard/src/pages/OverviewPage.tsx": 5,
       "packages/dashboard/src/pages/DeviceWorkspacePage.tsx": 1,
       "packages/dashboard/src/pages/SessionsPage.tsx": 6,
       "packages/dashboard/src/pages/DevicesPage.tsx": 6,
-      "__total": 82
+      "__total": 85
     },
-    "toolbarVisible": 12,
+    "toolbarVisible": 11,
     "viewOpenCalls": 0,
     "screenStopSends": 2
   }
