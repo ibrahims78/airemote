@@ -1,0 +1,11 @@
+A1_IDLE ws=0 tiles=0 playButtons=3
+A2_PLAY=clicked
+A3_LIVE ws=1 px={"canvas":"1600x675","mean":105.6,"darkPct":0}
+A4_STOP=clicked wsAfter=0
+VERDICT_WALL_NO_AUTOSTART=PASS
+VERDICT_WALL_PLAY=PASS
+VERDICT_WALL_STOP=PASS
+SHOT_WALL=D:\autoclaw projects-new\AiRemote\outputs\verify-2026-11-04\ui\wall-3131.png
+B_RECORDING={"started":1,"chunks":6,"bytes":82602,"stopped":1,"blobs":[82602]}
+VERDICT_RECORDING=PASS
+SHOT_REC=D:\autoclaw projects-new\AiRemote\outputs\verify-2026-11-04\ui\recording-3131.png

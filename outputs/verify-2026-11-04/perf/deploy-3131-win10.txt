@@ -1,0 +1,16 @@
+=== win10 copy over install ===
+(no output file: | Error: A file was not found)
+resetting win10 ...
+--- win10 after boot ---
+ASAR_LEN=668035
+ASAR_WRITE=2026-11-04T21:36:49
+ASAR_SHA=802788c6b31ebb06355578f9a02d4ea1a94786e817ec85ca732eb98ee226a4ac
+AGENT_COUNT=4
+AGENT pid=3916 start=2026-11-04T21:48:34
+AGENT pid=4744 start=2026-11-04T21:48:06
+AGENT pid=7244 start=2026-11-04T21:48:35
+AGENT pid=7424 start=2026-11-04T21:48:35
+WORKER_COUNT=1
+WORKER capture-gdi-worker-115b9f27 pid=8432 start=2026-11-04T21:48:45
+NOW=2026-11-04T21:50:00
+RESULT=ok

@@ -331,6 +331,9 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
   // createImageBitmap promises that complete out-of-order (race condition fix).
   const drawSeqRef         = useRef(0)
   const reconnectCountRef  = useRef(0)
+  // 3.13.1 — خطأ قاتل (منح الالتقاط مثلًا) لا يُعاد المحاولة بعده: كان الشاهد يعيد
+  // الاتصال كل 1.5–8s إلى الأبد، فيُنشئ جلسة جديدة كل مرة بلا أي فائدة.
+  const fatalRef           = useRef<string | null>(null)
   const intentionalCloseRef = useRef(false)
   const lastFrameAtRef     = useRef(0)
   const staleTimerRef      = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -592,6 +595,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
     setAudioEnabled(false)
     if (permissionTimerRef.current) { clearTimeout(permissionTimerRef.current); permissionTimerRef.current = null }
 
+    fatalRef.current = null
     let authParam: Record<string, string> = {}
     try {
       const r = await fetch('/api/auth/ws-ticket', {
@@ -767,8 +771,10 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
             }
             break
           case 'screen:error':
+            fatalRef.current = msg.payload?.message || tr('viewer_unknown_error')
             setStatus('error'); setErrorMsg(msg.payload?.message || tr('viewer_unknown_error')); break
           case 'screen:unavailable':
+            fatalRef.current = msg.payload?.message || tr('viewer_share_unavailable')
             setStatus('unavailable'); setErrorMsg(msg.payload?.message || tr('viewer_share_unavailable')); break
           // P1.4 — تحذير غير قاتل: البث يعمل لكن الإدخال لا يُنفَّذ (خدمة وصول معطّلة).
           case 'screen:input_warning': {
@@ -885,6 +891,8 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
         return 'disconnected'
       })
 
+      // 3.13.1 — بعد خطأ قاتل لا نعيد المحاولة تلقائيًا (إعادة الاتصال اليدوية تُصفّر العلم).
+      if (fatalRef.current) return
       if (!intentionalCloseRef.current && myId === connectIdRef.current) {
         const attempt = reconnectCountRef.current + 1
         // No cap on reconnect attempts — keep trying until intentional stop
