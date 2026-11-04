@@ -73,6 +73,13 @@ const LANG = {
     ctrlSaved:  'تم حفظ إعدادات التحكم',
     ctrlShort:  'كلمة السر قصيرة — 4 أحرف على الأقل',
     ctrlPwSet:  'كلمة السر مضبوطة ومفعّلة',
+    ctrlClear:  'مسح كلمة السر',
+    ctrlStateOn: 'محمي بكلمة سر — تُطلب من أي متحكم (سيرفر أو وكيل)',
+    ctrlStateOff: 'يطلب موافقة يدوية في كل مرة',
+    ctrlStateUnknown: 'جارٍ قراءة حالة الحماية…',
+    ctrlWeak: 'ضعيفة', ctrlMedium: 'متوسطة', ctrlStrong: 'قوية',
+    ctrlCleared: 'تم مسح كلمة السر — عاد الجهاز إلى الموافقة اليدوية',
+    ctrlShow: 'إظهار', ctrlHide: 'إخفاء',
   },
   en: {
     stopped:        'Stopped',
@@ -129,6 +136,13 @@ const LANG = {
     ctrlSaved:  'Control settings saved',
     ctrlShort:  'Password too short — at least 4 characters',
     ctrlPwSet:  'Password is set and active',
+    ctrlClear:  'Clear password',
+    ctrlStateOn: 'Password protected — required from any controller (server or agent)',
+    ctrlStateOff: 'Manual approval is requested each time',
+    ctrlStateUnknown: 'Reading protection state…',
+    ctrlWeak: 'Weak', ctrlMedium: 'Medium', ctrlStrong: 'Strong',
+    ctrlCleared: 'Password cleared — the device is back to manual approval',
+    ctrlShow: 'Show', ctrlHide: 'Hide',
   }
 }
 
@@ -458,6 +472,30 @@ const ctrlPwField = $('ctrl-pw-field')
 const ctrlPwInput = $('inp-ctrl-pw')
 const ctrlStateEl = $('ctrl-pw-state')
 
+function paintCtrlBadge(mode, hasPw) {
+  const t = LANG[currentLang]
+  const txt = $('ctrl-status-text'); const dot = $('ctrl-status-dot')
+  const on = mode === 'password' && !!hasPw
+  if (txt) txt.textContent = on ? t.ctrlStateOn : t.ctrlStateOff
+  if (dot) dot.style.background = on ? '#22c55e' : '#f59e0b'
+}
+function paintCtrlStrength() {
+  const t = LANG[currentLang]
+  const bar = $('ctrl-pw-bar'); if (!bar) return
+  const pw = ctrlPwInput ? String(ctrlPwInput.value || '') : ''
+  let score = 0
+  if (pw.length >= 4) score++
+  if (pw.length >= 8) score++
+  if (/[A-Z]/.test(pw) && /[a-z]/.test(pw)) score++
+  if (/[0-9]/.test(pw)) score++
+  if (/[^A-Za-z0-9]/.test(pw)) score++
+  const level = pw ? Math.min(3, Math.max(1, Math.ceil(score / 2))) : 0
+  const colors = ['#64748b', '#ef4444', '#f59e0b', '#22c55e']
+  const labels = ['', t.ctrlWeak, t.ctrlMedium, t.ctrlStrong]
+  bar.style.width = (level ? level * 34 : 0) + '%'
+  bar.style.background = colors[level]
+  if (ctrlStateEl) ctrlStateEl.textContent = level ? labels[level] : ''
+}
 function applyCtrlMode(mode, hasPw) {
   const t = LANG[currentLang]
   const rb1 = $('ctrl-mode-consent'); const rb2 = $('ctrl-mode-password')
@@ -465,6 +503,7 @@ function applyCtrlMode(mode, hasPw) {
   if (rb2) rb2.checked = mode === 'password'
   if (ctrlPwField) ctrlPwField.style.display = mode === 'password' ? '' : 'none'
   if (ctrlStateEl) ctrlStateEl.textContent = (mode === 'password' && hasPw) ? t.ctrlPwSet : ''
+  paintCtrlBadge(mode, hasPw)
 }
 function refreshCtrlPwVisibility() {
   const rb2 = $('ctrl-mode-password')
@@ -496,6 +535,31 @@ if (typeof airemote.onControlAuthState === 'function') {
     }
   })
 }
+// 3.13.2 — الحقل الاحترافي: مؤشّر قوة + إظهار/إخفاء + مسح.
+if (ctrlPwInput) ctrlPwInput.addEventListener('input', paintCtrlStrength)
+{
+  const eye = $('ctrl-pw-eye')
+  if (eye && ctrlPwInput) {
+    eye.addEventListener('click', () => {
+      const t = LANG[currentLang]
+      const show = ctrlPwInput.type === 'password'
+      ctrlPwInput.type = show ? 'text' : 'password'
+      eye.textContent = show ? t.ctrlHide : t.ctrlShow
+    })
+  }
+  const clearBtn = $('clear-ctrl-btn')
+  if (clearBtn) {
+    clearBtn.addEventListener('click', () => {
+      const t = LANG[currentLang]
+      if (ctrlPwInput) ctrlPwInput.value = ''
+      paintCtrlStrength()
+      applyCtrlMode('consent', false)
+      if (typeof airemote.saveControlAuth === 'function') airemote.saveControlAuth({ mode: 'consent', password: '' })
+      showToast(t.ctrlCleared, 'success')
+    })
+  }
+}
+
 if (typeof airemote.getState === 'function') {
   airemote.getState().then(st => {
     try { applyCtrlMode((st && st.config && st.config.controlAuthMode) || 'consent', !!(st && st.config && st.config.hasControlPassword)) } catch {}
