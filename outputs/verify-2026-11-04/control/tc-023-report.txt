@@ -1,0 +1,11 @@
+/ -> AiRemote — Remote Access + AI | AiRemote v3.13.0 الأجهزة المساعد الذكي سجل الجلسات المساعدة  | newErrors=0
+/devices -> AiRemote — Remote Access + AI | AiRemote v3.13.0 الأجهزة المساعد الذكي سجل الجلسات المساعدة  | newErrors=0
+/devices/b42175d0-d0c9-428d-ab94-4e66dff56af3 -> AiRemote — Remote Access + AI | AiRemote v3.13.0 الأجهزة المساعد الذكي سجل الجلسات المساعدة  | newErrors=0
+/sessions -> AiRemote — Remote Access + AI | AiRemote v3.13.0 الأجهزة المساعد الذكي سجل الجلسات المساعدة  | newErrors=0
+/settings -> AiRemote — Remote Access + AI | AiRemote v3.13.0 الأجهزة المساعد الذكي سجل الجلسات المساعدة  | newErrors=0
+/notifications -> AiRemote — Remote Access + AI | AiRemote v3.13.0 الأجهزة المساعد الذكي سجل الجلسات المساعدة  | newErrors=0
+/audit -> AiRemote — Remote Access + AI | AiRemote v3.13.0 الأجهزة المساعد الذكي سجل الجلسات المساعدة  | newErrors=0
+/users -> AiRemote — Remote Access + AI | AiRemote v3.13.0 الأجهزة المساعد الذكي سجل الجلسات المساعدة  | newErrors=0
+/help -> AiRemote — Remote Access + AI | AiRemote v3.13.0 الأجهزة المساعد الذكي سجل الجلسات المساعدة  | newErrors=0
+TOTAL_ERRORS=0
+VERDICT_TC023=PASS (no console errors or uncaught exceptions)

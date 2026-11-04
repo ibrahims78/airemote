@@ -1,0 +1,4 @@
+WIN11_LOG_COUNT_BEFORE=29
+CANVAS=true
+PASSWORD_MODAL=true
+VERDICT=BLOCKED on WIN11 too (control password required)
