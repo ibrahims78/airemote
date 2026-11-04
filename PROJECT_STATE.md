@@ -1090,3 +1090,5 @@ AiRemote/
 - **الإصدار:** VERSION و4 حزم = 3.13.0 · Android versionCode 58.
 - **اختبارات منفّذة 2026-11-04:** `e2e-screen-control` PASS · `e2e-agent-session` PASS · `e2e-session-ticket-matrix --case=view-no-control` PASS · `check-imports` PASS · `check-contrast` 22/22 PASS.
 - **متبقٍ للإصدار:** بناء/تثبيت السيرفر والوكيل 3.13.0 · تجديد `releases/manifest.json` · اختبارات الأجهزة TC-001/002/003/008/012/015/019/020/021/022/024.
+- **نشر 3.13.0 (2026-11-04):** بُني المثبّت (159MB) وثُبّت بصمت (exit=0)، والسيرفر يعمل: /health = 3.13.0 · البيان أُعيد توليده و--verify = signature OK / all artifacts match · توحيد الإصدار PASS · الحزمة الجديدة تُقدَّم فعليًا (ScreenViewer-BECNyttN.js 87,230 بايت).
+- **متبقٍ:** بناء/تثبيت وكيل 3.13.0 على WIN10/WIN11 · الاختبارات البصرية على الأجهزة (المتصفح غير متاح في جلسة التنفيذ).
