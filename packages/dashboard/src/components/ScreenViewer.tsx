@@ -2408,7 +2408,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
         </div>
       </div>}
       {started && <div ref={canvasAreaRef} className={clsx('flex-1 min-h-0 relative flex items-center justify-center bg-canvas', fitMode === 'actual' ? 'overflow-auto' : 'overflow-hidden', popout && pinned && 'pt-14')}
-        onClick={() => { setShowSettings(false); setShowMonitors(false); setShowClipboard(false) }}>
+        onClick={() => { setShowSettings(false); setShowMonitors(false); setShowClipboard(false); setShowMore(false); setShowRecordMenu(false) }}>
 
         <div className="relative shrink-0" style={stageSize ? {
           width: stageSize.w + 'px',
