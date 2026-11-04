@@ -1,0 +1,10 @@
+ADD_TILE=clicked
+CANVASES=2
+VIEW_ONLY_TEXT_HITS=0
+TILE1 canvas=300x150 dataTb=0 badge=false buttons=[مصغّر / متوسط / كبير / إضافة بث / فتح / فتح الشاشة / إزالة / فتح / فتح الشاشة / إزالة / إظهار / إظهار / إرسال السؤال]
+TILE2 canvas=1280x720 dataTb=0 badge=false buttons=[مصغّر / متوسط / كبير / إضافة بث / فتح / فتح الشاشة / إزالة / فتح / فتح الشاشة / إزالة / إظهار / إظهار / إرسال السؤال]
+TOTAL_DATA_TB_IN_TILES=0
+VERDICT_TC003=PASS (no control toolbar in preview tiles)
+VERDICT_BADGE=PARTIAL (badge missing on some tiles)
+PAGE_TEXT=AiRemote v3.13.0 الأجهزة المساعد الذكي سجل الجلسات المساعدة الإعدادات L Lab مسؤول غرفة العمليات شاشتك ومساعدك في مساحة واحدة. راقب أجهزتك، ابدأ البث فوراً، واسأل المساعد الذكي عن ما تراه على الشاشة دو
+SHOT=D:\autoclaw projects-new\AiRemote\outputs\verify-2026-11-04\ui\overview-monitor-wall.png
