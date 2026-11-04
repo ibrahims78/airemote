@@ -6531,9 +6531,22 @@ if ($target -eq $null) { 'name-not-found' } else {
     try { verdict = await runCheck() } catch (e) { return reply.code(500).send({ ok: false, error: e.message }) }
     if (!verdict.available || !verdict.verified) return reply.code(409).send({ error: 'no verified update available', verdict })
     if (target && target !== verdict.latest) return reply.code(409).send({ error: 'target mismatch', expected: verdict.latest })
+    // 3.13.1 — كانت كل محاولة (ولو تكرّرت كل ساعة) تنسخ حزمة ~223MB جديدة وتبقيها.
+    // الآن: تبريد لكل حزمة، قفل يمنع التزامن، وتنظيف للمخلّفات.
+    const dataDir = path.dirname(_config.dbPath || '.')
+    const sha = verdict.artifact && verdict.artifact.sha256
+    const cooldownMs = Number(body.cooldownMs) > 0 ? Number(body.cooldownMs) : 6 * 3600 * 1000
+    if (body.force !== true) {
+      const last = updater.recentAttempt(dataDir, verdict.latest, sha, cooldownMs)
+      if (last) return reply.code(409).send({ error: 'already attempted recently', code: 'update_throttled', last, hint: 'send force:true to retry' })
+    }
+    const lock = updater.acquireLock(dataDir)
+    if (!lock.ok) return reply.code(409).send({ error: 'another update is in progress', code: 'update_locked', lock })
     let staged
-    try { staged = updater.stage(verdict, path.dirname(_config.dbPath || '.')) }
-    catch (e) { return reply.code(500).send({ error: 'staging failed: ' + e.message }) }
+    try {
+      staged = updater.stage(verdict, dataDir)
+      updater.cleanup(dataDir, { keepPath: staged.path })
+    } catch (e) { updater.releaseLock(dataDir); return reply.code(500).send({ error: 'staging failed: ' + e.message }) }
 
     // Rollback needs an older package. A release share usually keeps them, so pick the
     // highest version below the target; otherwise the helper reports a clean failure.
@@ -6553,13 +6566,20 @@ if ($target -eq $null) { 'name-not-found' } else {
     } catch (e) { previous = null; rollbackNote = 'scan failed: ' + e.message }
 
     const appExe = path.join(path.dirname(process.execPath), 'AiRemote Server.exe')
-    const started = updater.apply({
+    updater.recordAttempt(dataDir, { target: verdict.latest, sha, at: new Date().toISOString(), action: 'apply', forced: body.force === true })
+    let started
+    try {
+      started = updater.apply({
       dataDir: path.dirname(_config.dbPath || '.'),
       stagedPath: staged.path,
       previousInstaller: previous,
       target: verdict.latest,
-      appExe,
-    })
+        appExe,
+      })
+    } catch (e) {
+      updater.releaseLock(dataDir)
+      return reply.code(500).send({ error: 'apply failed: ' + e.message })
+    }
     dbLogAudit({ userId: p.userId, userEmail: p.email, action: 'update_started', details: { from: SERVER_VERSION, to: verdict.latest, staged: staged.path, rollback: previous }, ipAddress: req.ip })
     return { ok: true, from: SERVER_VERSION, to: verdict.latest, staged: staged.path, rollback: previous, rollbackNote, helper: started }
   })
@@ -6880,6 +6900,11 @@ if ($target -eq $null) { 'name-not-found' } else {
     })
   })
 
+  // 3.13.1 — نظّف مخلّفات التحديث (نسخ staged ومجلدات ns*.tmp من تثبيت مقاطَع) عند الإقلاع.
+  try {
+    const sweep = updater.cleanup(path.dirname(_config.dbPath || '.'), { tempAgeMs: 6 * 3600 * 1000 })
+    if (sweep && sweep.removed && sweep.removed.length) console.log('[update] cleaned ' + sweep.removed.length + ' leftover(s)')
+  } catch {}
   await fastify.listen({ port, host: '0.0.0.0' })
   shuttingDown = false
   started    = true

@@ -79,6 +79,7 @@ const steps = [
   { name: 'e2e: backup + restore (R7)', cmd: electronStep('packages/server-desktop/test/e2e-backup.test.cjs') },
   { name: 'e2e: schema migrations (R7)', cmd: electronStep('packages/server-desktop/test/e2e-migrations.test.cjs') },
   { name: 'e2e: updater from folder (R7)', cmd: electronStep('packages/server-desktop/test/e2e-updater.test.cjs') },
+  { name: 'e2e: updater loop guard (3.13.1)', cmd: NODE + ' packages/server-desktop/test/e2e-updater-loop.test.cjs' },
   { name: 'e2e: retention policy (R7)', cmd: electronStep('packages/server-desktop/test/e2e-retention.test.cjs') },
   { name: 'e2e: clipboard sync (R8)', cmd: electronStep('packages/server-desktop/test/e2e-clipboard-sync.test.cjs') },
   { name: 'e2e: annotations relay (R8)', cmd: electronStep('packages/server-desktop/test/e2e-annotations.test.cjs') },

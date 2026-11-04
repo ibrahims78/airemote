@@ -114,15 +114,126 @@ async function check(opts) {
   return out
 }
 
-/** Copies a verified package into the staging area; returns the staged path. */
+/**
+ * Copies a verified package into the staging area; returns the staged path.
+ *
+ * 3.13.1 — the old version copied the package unconditionally on every apply, and kept
+ * every copy. A retried update therefore wrote a fresh 223MB file per attempt and never
+ * removed one. Staging is now idempotent (same size => reuse) and the directory is pruned
+ * to a single package before writing.
+ */
 function stage(result, dataDir) {
   if (!result || !result.verified || !result.artifact) throw new Error('nothing verified to stage')
   const dir = path.join(dataDir, 'updates', 'staged')
   fs.mkdirSync(dir, { recursive: true })
   const dest = path.join(dir, path.basename(result.artifact.path))
-  fs.copyFileSync(result.artifact.path, dest)
-  return { path: dest, bytes: fs.statSync(dest).size }
+  const want = Number(result.artifact.size) || 0
+  let reused = false
+  try {
+    if (want && fs.existsSync(dest) && fs.statSync(dest).size === want) reused = true
+  } catch {}
+  if (!reused) {
+    for (const f of fs.readdirSync(dir)) {
+      if (f === path.basename(dest)) continue
+      try { fs.unlinkSync(path.join(dir, f)) } catch {}
+    }
+    const tmp = dest + '.part'
+    fs.copyFileSync(result.artifact.path, tmp)
+    fs.renameSync(tmp, dest)
+  }
+  return { path: dest, bytes: fs.statSync(dest).size, reused }
 }
+
+// ── 3.13.1 — سجل محاولات + تنظيف + قفل: كانت كل محاولة تحديث تنسخ ~223MB وتبقيها للأبد.
+const ATTEMPTS_FILE = 'attempts.json'
+
+function updDir (dataDir) { return path.join(dataDir, 'updates') }
+
+function readAttempts (dataDir) {
+  try {
+    const raw = fs.readFileSync(path.join(updDir(dataDir), ATTEMPTS_FILE), 'utf8')
+    const parsed = JSON.parse(raw)
+    return { items: Array.isArray(parsed.items) ? parsed.items : [] }
+  } catch { return { items: [] } }
+}
+
+function recordAttempt (dataDir, rec) {
+  try {
+    fs.mkdirSync(updDir(dataDir), { recursive: true })
+    const all = readAttempts(dataDir)
+    all.items = all.items.concat([rec]).slice(-60)
+    fs.writeFileSync(path.join(updDir(dataDir), ATTEMPTS_FILE), JSON.stringify(all, null, 2), 'utf8')
+  } catch {}
+}
+
+/** Returns the last attempt for this exact package, if it is still inside the cooldown. */
+function recentAttempt (dataDir, target, sha, cooldownMs) {
+  const all = readAttempts(dataDir)
+  const now = Date.now()
+  for (let i = all.items.length - 1; i >= 0; i--) {
+    const it = all.items[i]
+    if (String(it.target) !== String(target)) continue
+    if (sha && it.sha && String(it.sha) !== String(sha)) continue
+    const at = Date.parse(it.at || 0)
+    if (!at) continue
+    if (now - at <= (cooldownMs || 6 * 3600 * 1000)) return it
+    return null
+  }
+  return null
+}
+
+/** Removes staged packages, half copies and installer temp dumps left behind by failures. */
+function cleanup (dataDir, opts) {
+  const keep = (opts && opts.keepPath) || null
+  const removed = []
+  const staged = path.join(updDir(dataDir), 'staged')
+  try {
+    for (const f of fs.readdirSync(staged)) {
+      const full = path.join(staged, f)
+      if (keep && path.resolve(full) === path.resolve(keep)) continue
+      try { fs.unlinkSync(full); removed.push(full) } catch {}
+    }
+  } catch {}
+  // NSIS extracts its payload to %TEMP%\nsXXXX.tmp; a killed install leaves it behind.
+  const cutoff = Date.now() - (opts && opts.tempAgeMs ? opts.tempAgeMs : 2 * 3600 * 1000)
+  for (const root of [process.env.TEMP, process.env.TMP]) {
+    if (!root) continue
+    let entries = []
+    try { entries = fs.readdirSync(root, { withFileTypes: true }) } catch { continue }
+    for (const e of entries) {
+      if (!e.isDirectory() || !/^ns[A-Za-z0-9_]+.tmp$/i.test(e.name)) continue
+      const full = path.join(root, e.name)
+      try {
+        const st = fs.statSync(full)
+        if (st.mtimeMs > cutoff) continue
+        let big = 0
+        for (const f of fs.readdirSync(full)) {
+          try { big = Math.max(big, fs.statSync(path.join(full, f)).size) } catch {}
+        }
+        if (big < 20 * 1024 * 1024) continue
+        fs.rmSync(full, { recursive: true, force: true })
+        removed.push(full)
+      } catch {}
+    }
+  }
+  return { ok: true, removed }
+}
+
+// ── apply lock: two applies must never overlap (a crash loop must not stack copies).
+function lockPath (dataDir) { return path.join(updDir(dataDir), 'apply.lock') }
+
+function acquireLock (dataDir, ttlMs) {
+  const p = lockPath(dataDir)
+  try { fs.mkdirSync(updDir(dataDir), { recursive: true }) } catch {}
+  try {
+    const st = fs.statSync(p)
+    if (Date.now() - st.mtimeMs < (ttlMs || 15 * 60 * 1000)) return { ok: false, reason: 'locked', since: new Date(st.mtimeMs).toISOString() }
+  } catch {}
+  try { fs.writeFileSync(p, JSON.stringify({ pid: process.pid, at: new Date().toISOString() }), 'utf8') } catch (e) { return { ok: false, reason: 'lock-write-failed', detail: e.message } }
+  return { ok: true }
+}
+
+function releaseLock (dataDir) { try { fs.unlinkSync(lockPath(dataDir)) } catch {} }
 
 const HELPER_SOURCE = String.raw`'use strict'
 // apply-update.cjs — written by lib/updater.js at apply time. Runs detached from the server
@@ -310,4 +421,5 @@ function readResult(dataDir) {
 module.exports = {
   check, stage, apply, readResult, writeHelper, ensureHelperBinary, readSignedManifest,
   compareVersions, parseVersion, sha256File, SERVER_PUBLIC_KEY,
+  readAttempts, recordAttempt, recentAttempt, cleanup, acquireLock, releaseLock,
 }
