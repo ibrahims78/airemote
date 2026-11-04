@@ -1,0 +1,20 @@
+﻿# TC-015 — recording (INCONCLUSIVE in headless)
+
+What was verified:
+- The record menu is the single list from 3.13.0 and shows exactly two entries:
+  "تسجيل الجلسة كفيديو WebM" and "تسجيل الجلسة: فيديو MP4 بصوت + نسخة ZIP".
+- Clicking "تسجيل الجلسة كفيديو WebM" is accepted (the button exists and is clickable), and the
+  stop path ("إيقاف التسجيل") is reachable from the same menu.
+
+What could not be verified:
+- No recording indicator/timer text appeared while recording, and no artifact was produced
+  (no file in the download folder, no `a[download]` link after stopping).
+
+Why this is INCONCLUSIVE rather than FAIL:
+- The run used headless Chrome (`--headless=new`) with `--disable-gpu`. The viewer records by
+  capturing the stream canvas through MediaRecorder; with no compositor/GPU the capture can
+  yield no frames, which would produce exactly what we observed.
+- The same limitation does not apply to the quality/tab/RTL tests, which passed on the same run.
+
+Verdict: NOT PROVEN — needs a headed browser window (the original handoff note says the same).
+Next step: re-run work/tc-015.cjs with `--headless=new` removed (headed) and a desktop session.

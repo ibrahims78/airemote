@@ -1,0 +1,7 @@
+INITIAL_PARAMS={"fps":"20","quality":"72","maxWidth":"1920","binary":"1"}
+QUALITY_MENU={"ok":true} PRESETS=أصلية — بلا تصغير 1600px | توفير 12fps · q55 · 1280px | متوازن 20fps · q72 · 1920px | دقة عالية 25fps · q78 · 1920px | ممتاز 30fps · q72 · 1920px | سلاسة قصوى 30fps · q60 · 1600px
+PRESET_CLICK=clicked
+AFTER_PARAMS={"fps":"12","quality":"55","maxWidth":"1280","binary":"1"}
+RECONNECTS=2
+VERDICT_TC012=PASS (stream re-negotiated with new params)
+SHOT=D:\autoclaw projects-new\AiRemote\outputs\verify-2026-11-04\ui\tc-012-quality-saver.png
