@@ -1,16 +1,33 @@
-BEFORE agent=64.8% worker=9.3% total=74.1% fps=1
+BEFORE agent=28.6% worker=17.0% total=45.6% fps=1
+  AGENT pid=308 cpu=14%
   AGENT pid=3792 cpu=0%
-  AGENT pid=4004 cpu=0.9%
-  AGENT pid=5220 cpu=40.2%
-  AGENT pid=5916 cpu=7.3%
-  AGENT pid=6188 cpu=3.9%
-  AGENT pid=7064 cpu=12.5%
-  WORKER capture-gdi-worker-1d9573f1 cpu=9.3%
-AFTER agent=28.0% worker=10.5% total=38.5% fps=1
-  AGENT pid=3792 cpu=0%
-  AGENT pid=4004 cpu=1.3%
-  AGENT pid=5916 cpu=7.6%
-  AGENT pid=6188 cpu=3.8%
-  AGENT pid=7064 cpu=15.3%
-  WORKER capture-gdi-worker-1d9573f1 cpu=10.5%
-CPU_DROP=48%
+  AGENT pid=4004 cpu=0.7%
+  AGENT pid=5916 cpu=5.8%
+  AGENT pid=6188 cpu=4.8%
+  AGENT pid=7064 cpu=3.3%
+  WORKER capture-gdi-worker-1d9573f1 cpu=17%
+--- deploying new asar ---
+SRC_SIZE=667652
+TARGET_SIZE=667652
+SIZE_MATCH=True
+RUNNING=5
+WORKER_PROCS=1
+WORKER_PID=4088 NAME=capture-gdi-worker-1d9573f1
+DATA_FILES=8
+DATA_FILE=capture-gdi-worker-098abca6.exe 11776
+DATA_FILE=capture-gdi-worker-14f6f70b.exe 11264
+DATA_FILE=capture-gdi-worker-1d9573f1.exe 12288
+DATA_FILE=capture-gdi-worker-4751af4e.exe 11776
+DATA_FILE=capture-gdi-worker-7be2bda9.exe 8704
+DATA_FILE=capture-gdi-worker-e4f646d2.exe 9728
+DATA_FILE=capture-gdi-worker-e75e5b41.exe 11264
+DATA_FILE=capture-gdi.ps1 7260
+RESULT=ok
+AFTER agent=12.6% worker=10.0% total=22.6% fps=1
+  AGENT pid=972 cpu=0%
+  AGENT pid=1356 cpu=5.7%
+  AGENT pid=6848 cpu=5.7%
+  AGENT pid=7852 cpu=0%
+  AGENT pid=8156 cpu=1.2%
+  WORKER capture-gdi-worker-1d9573f1 cpu=10%
+CPU_DROP=50%

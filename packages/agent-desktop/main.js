@@ -1377,7 +1377,14 @@ function createCaptureWindow() {
 // العيب المقيس: أول إطار 2084ms مقابل خط أساس 809ms، لأن getDisplayMedia
 // يُنشأ بارداً عند وصول screen_start. التسخين يبدأ بعد قبول الطرف الهدف فقط
 // (لا قبله)، ويُستهلك عند screen_start. عمره في الالتقاط 45s ثم يُحرَّر.
+// 3.13.1 — على ويندوز محرّك GDI هو الأساس، وماسح Chromium كان يعمل بالتوازي
+// وتُهمَل إطاراته (قياس: gpu-process ~17% من 4 أنوية بلا فائدة).
+function chromiumCapturePrimary () {
+  return process.platform !== 'win32' || process.env.AIRemote_FORCE_CHROMIUM === '1'
+}
+
 function warmCapturer (reason) {
+  if (!chromiumCapturePrimary()) return
   try {
     if (!capWin || capWin.isDestroyed()) createCaptureWindow()
     const cw = capWin
@@ -1687,10 +1694,26 @@ function handleScreenStart(payload) {
     setTimeout(() => { try { nudgeDesktop() } catch {} }, 2600)
   } catch {}
   notify('AiRemote — بث الشاشة', `📡 بدأ البث (${fps} fps · جودة ${quality}%)`)
-  const cw     = createCaptureWindow()
-  const doSend = () => cw.webContents.send('start-capture', { sessionId, fps, quality, monitorIndex: monitorId || 0, maxWidth })
-  if (cw.webContents.isLoading()) cw.webContents.once('did-finish-load', doSend)
-  else doSend()
+  // 3.13.1 — لا نشغّل ماسح Chromium بالتوازي مع GDI: إطاراته تُهمَل أصلاً.
+  const startChromiumCapture = () => {
+    try {
+      const cw = createCaptureWindow()
+      const doSend = () => cw.webContents.send('start-capture', { sessionId, fps, quality, monitorIndex: monitorId || 0, maxWidth })
+      if (cw.webContents.isLoading()) cw.webContents.once('did-finish-load', doSend)
+      else doSend()
+    } catch (e) { addLog('warn', '[screen] تعذّر بدء مسار Chromium: ' + e.message) }
+  }
+  if (chromiumCapturePrimary()) {
+    startChromiumCapture()
+  } else {
+    // GDI أولاً: نمنحه 2.5s لإنتاج أول إطار قبل تشغيل الماسح المكلف.
+    setTimeout(() => {
+      if (!screenSessions.has(sessionId)) return
+      if (gdiCaptureActive) return
+      addLog('warn', '🖥️ [screen] GDI لم يبدأ خلال 2.5s — تشغيل مسار Chromium كبديل')
+      startChromiumCapture()
+    }, 2500)
+  }
   if (process.platform === 'win32') ensurePsInput()
 }
 
