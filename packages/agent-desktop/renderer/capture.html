@@ -319,6 +319,12 @@ function captureFrame() {
     if (captureTimer !== null) armTimer(50)
     return
   }
+  // 3.13.1 — بعد stop-capture لا يُعاد التسليح: كان المؤقّت يُعاد قبل فحص sid
+  // فيستمر الترميز بكامل الدقة إلى الأبد بلا جلسة (تسريب مُقاس بالكود).
+  if (!sessionId) {
+    if (captureTimer !== null) { clearTimeout(captureTimer); captureTimer = null }
+    return
+  }
   if (encoding) return   // previous encode still in progress — skip frame
 
   // v3.3.0 — scale to currentMaxWidth when needed (keeps JPEG encode fast and stream smooth)
@@ -373,7 +379,7 @@ function captureFrame() {
     const encMs = performance.now() - tEnc
     encoding = false
     // v3.3.1: re-arm right after encode completes — even frame intervals
-    if (captureTimer !== null) armTimer((1000 / currentFps) - (performance.now() - tEnc))
+    if (captureTimer !== null && sessionId) armTimer((1000 / currentFps) - (performance.now() - tEnc))
 
     // v3.8.7 — WebP keeps quality but cuts bytes; on a slow CPU it can cost frames,
     // so three slow encodes in a row switch to JPEG, and we retry WebP a minute later.

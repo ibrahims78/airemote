@@ -1,0 +1,48 @@
+=== win11 swap ===
+SRC_SIZE=668035
+TARGET_SIZE=668035
+SIZE_MATCH=True
+RUNNING=5
+WORKER_PROCS=1
+WORKER_PID=7740 NAME=capture-gdi-worker-1d9573f1
+DATA_FILES=8
+DATA_FILE=capture-gdi-worker-098abca6.exe 11776
+DATA_FILE=capture-gdi-worker-14f6f70b.exe 11264
+DATA_FILE=capture-gdi-worker-1d9573f1.exe 12288
+DATA_FILE=capture-gdi-worker-4751af4e.exe 11776
+DATA_FILE=capture-gdi-worker-7be2bda9.exe 8704
+DATA_FILE=capture-gdi-worker-e4f646d2.exe 9728
+DATA_FILE=capture-gdi-worker-e75e5b41.exe 11264
+DATA_FILE=capture-gdi.ps1 7260
+RESULT=ok
+ASAR_LEN=668035
+ASAR_WRITE=2026-11-04T20:30:15
+ASAR_SHA=dae630a72ec63e6d724c052634c70d67dc614d5c8b6a47fa577a28ce3234dd91
+AGENT_COUNT=5
+AGENT pid=368 start=2026-11-04T20:33:47
+AGENT pid=5844 start=2026-11-04T20:33:42
+AGENT pid=6548 start=2026-11-04T20:33:41
+AGENT pid=7484 start=2026-11-04T20:33:42
+AGENT pid=7736 start=2026-11-04T20:33:41
+WORKER_COUNT=1
+WORKER capture-gdi-worker-1d9573f1 pid=7740 start=2026-11-04T20:33:45
+NOW=2026-11-04T20:34:27
+RESULT=ok
+=== win10 copy + reboot ===
+copied new-app.asar to win10
+(no output file: | Error: A file was not found)
+resetting win10 ...
+--- win10 after boot ---
+ASAR_LEN=668035
+ASAR_WRITE=2026-11-04T20:30:15
+ASAR_SHA=dae630a72ec63e6d724c052634c70d67dc614d5c8b6a47fa577a28ce3234dd91
+AGENT_COUNT=5
+AGENT pid=4332 start=2026-11-04T20:35:03
+AGENT pid=7508 start=2026-11-04T20:35:16
+AGENT pid=7536 start=2026-11-04T20:35:17
+AGENT pid=7616 start=2026-11-04T20:35:17
+AGENT pid=8800 start=2026-11-04T20:35:28
+WORKER_COUNT=1
+WORKER capture-gdi-worker-1d9573f1 pid=8468 start=2026-11-04T20:35:26
+NOW=2026-11-04T20:37:01
+RESULT=ok

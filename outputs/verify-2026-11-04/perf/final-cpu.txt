@@ -1,0 +1,2 @@
+WIN10 agent=6.3% worker=6.4% total=12.7% fps=2 frames={"mean":106,"darkPct":0}
+WIN11 agent=11.6% worker=10.8% total=22.4% fps=1 frames={"mean":152.3,"darkPct":0}
