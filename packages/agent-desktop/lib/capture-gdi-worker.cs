@@ -71,31 +71,31 @@ public class GdiStream
 
     // 3.12.2 — أوامر M/C/B/E تستقبل إحداثيات **مطلقة 0..65535** (نفس فضاء SendInput)،
     // فلا يبقى أي أثر لـDPI أو تصغير الإطار. المشاهد يرسل نسبة 0..1 والوكيل يضربها في 65535.
-    static void MoveTo(int ax, int ay)
+    static uint MoveTo(int ax, int ay)
     {
         INPUT[] a = new INPUT[1];
         a[0].type = 0;
         a[0].U.mi.dx = ax;
         a[0].U.mi.dy = ay;
         a[0].U.mi.dwFlags = MV | AB;
-        SendInput(1, a, Marshal.SizeOf(typeof(INPUT)));
+        return SendInput(1, a, Marshal.SizeOf(typeof(INPUT)));
     }
 
-    static void Btn(uint flag)
+    static uint Btn(uint flag)
     {
         INPUT[] a = new INPUT[1];
         a[0].type = 0;
         a[0].U.mi.dwFlags = flag;
-        SendInput(1, a, Marshal.SizeOf(typeof(INPUT)));
+        return SendInput(1, a, Marshal.SizeOf(typeof(INPUT)));
     }
 
-    static void Wheel(int delta)
+    static uint Wheel(int delta)
     {
         INPUT[] a = new INPUT[1];
         a[0].type = 0;
         a[0].U.mi.mouseData = (uint)delta;
         a[0].U.mi.dwFlags = WH;
-        SendInput(1, a, Marshal.SizeOf(typeof(INPUT)));
+        return SendInput(1, a, Marshal.SizeOf(typeof(INPUT)));
     }
     public struct POINT { public int X; public int Y; }
     const int SRCCOPY = 0x00CC0020;
@@ -183,17 +183,32 @@ public class GdiStream
                     string[] a = line.Substring(2).Trim().Split(' ');
                     try
                     {
-                        if (c == 'M' && a.Length >= 2) MoveTo(int.Parse(a[0]), int.Parse(a[1]));
+                        if (c == 'M' && a.Length >= 2)
+                        {
+                            uint rm = MoveTo(int.Parse(a[0]), int.Parse(a[1]));
+                            if (rm == 0) ILog("M " + a[0] + " " + a[1] + " ok=False");
+                        }
                         else if ((c == 'C' || c == 'B' || c == 'E') && a.Length >= 3)
                         {
                             uint dn = a[0] == "R" ? RD : (a[0] == "M" ? MD : LD);
                             uint up = a[0] == "R" ? RU : (a[0] == "M" ? MU : LU);
-                            MoveTo(int.Parse(a[1]), int.Parse(a[2]));
-                            if (c != 'E') Btn(dn);
-                            if (c != 'B') Btn(up);
+                            uint rm = MoveTo(int.Parse(a[1]), int.Parse(a[2]));
+                            uint r1 = 0, r2 = 0;
+                            if (c != 'E') r1 = Btn(dn);
+                            if (c != 'B') r2 = Btn(up);
+                            bool ok = rm > 0 && (c == 'E' || r1 > 0) && (c == 'B' || r2 > 0);
+                            ILog(c + " " + a[0] + " " + a[1] + " " + a[2] + " ok=" + ok);
                         }
-                        else if (c == 'W' && a.Length >= 1) Wheel(int.Parse(a[0]));
-                        else if (c == 'K' && a.Length >= 2) keybd_event(byte.Parse(a[0]), 0, a[1] == "1" ? KU : 0, IntPtr.Zero);
+                        else if (c == 'W' && a.Length >= 1)
+                        {
+                            uint rw = Wheel(int.Parse(a[0]));
+                            ILog("W " + a[0] + " ok=" + (rw > 0));
+                        }
+                        else if (c == 'K' && a.Length >= 2)
+                        {
+                            keybd_event(byte.Parse(a[0]), 0, a[1] == "1" ? KU : 0, IntPtr.Zero);
+                            ILog("K " + a[0] + " " + a[1] + " sent");
+                        }
                     }
                     catch (Exception ex) { ILog("cmd-err " + line + " :: " + ex.Message); }
                 }

@@ -253,6 +253,24 @@ function traceInput(line) {
   } catch {}
 }
 
+// 3.12.3 — الإسقاط الصامت كان يُعمي المشاهد: عند إسقاط إدخال لغياب المنح نُبلّغ الواجهة
+// (D26: قناة غير قاتلة، لا screen:error). نخنق التكرار: مرة كل 5 ثوانٍ لكل جلسة.
+let lastInputWarnAt = 0
+let lastInputWarnSid = ''
+function warnInputDropped (sid) {
+  const now = Date.now()
+  if (sid === lastInputWarnSid && now - lastInputWarnAt < 5000) return
+  lastInputWarnSid = sid
+  lastInputWarnAt = now
+  try {
+    send({
+      type: 'agent:screen_input_warning',
+      payload: { code: 'control_not_granted', message: 'الإدخال لم يُنفَّذ: جلسة التحكم غير ممنوحة — أعد طلب التحكم.' },
+      timestamp: now,
+    })
+  } catch {}
+}
+
 function addLog(level, msg) {
   const ts    = new Date()
   const clock = ts.toLocaleTimeString('en', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })
@@ -662,12 +680,14 @@ function handleMsg(msg) {
       // 3.9.4 — أثر تشخيصي: يفصل «الحدث لم يصل» عن «وصل وأُسقط لغياب المنح».
       if (process.env.AIRREMOTE_INPUT_DEBUG === '1') traceInput(`mouse type=${msg.payload?.type} sid=${sidIn} granted=${granted} x=${msg.payload?.x} y=${msg.payload?.y}`)
       if (granted) injectMouse(msg.payload)
+      else warnInputDropped(sidIn)
       break
     }
     case 'server:screen_key':
       // 3.9.5 — أثر تشخيصي للمفاتيح (نفس بوابة AIRREMOTE_INPUT_DEBUG).
       if (process.env.AIRREMOTE_INPUT_DEBUG === '1') traceInput(`key type=${msg.payload?.type} key=${msg.payload?.key} sid=${msg.payload?.sessionId} granted=${grantedSessions.has(String(msg.payload?.sessionId || ''))}`)
       if (grantedSessions.has(msg.payload?.sessionId)) injectKey(msg.payload)
+      else warnInputDropped(String(msg.payload?.sessionId || ''))
       break
     case 'server:screen_clipboard_read': {
       if (!grantedSessions.has(msg.payload?.sessionId)) break

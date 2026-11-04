@@ -1203,6 +1203,13 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, sessionTick
     if (!controlEnabled) return
     resetIdle()
 
+    // 3.12.3 — الزر الأيمن من الفأرة كان يُبتلع (preventDefault فقط): نرسله كضغطة كاملة.
+    if (e.pointerType === 'mouse' && e.button === 2) {
+      sendMouseAt('down', e.clientX, e.clientY, 2)
+      sendMouseAt('up', e.clientX, e.clientY, 2)
+      return
+    }
+
     if (pointersRef.current.size === 1) {
       g.downX = e.clientX; g.downY = e.clientY
       g.moved = false; g.dragging = false; g.longFired = false; g.twoFinger = false
