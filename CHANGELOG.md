@@ -32,6 +32,11 @@
 - `scripts/audit-screen-surface.cjs`: بوابة تقيس أزرار الشريط الظاهرة (≤12)، و`window.open(/view/)` (=0)، وإرسال `screen:stop`.
 - `scripts/screen-surface-baseline.json`: خط أساس مثبّت.
 
+### الأداء (2026-11-04)
+- **بصمة الإطار بلا GetPixel:** قفل بتّات الصورة وقراءة العيّنات بـMarshal.ReadInt32 بدل GetPixel لكل بكسل ⇒ عامل الالتقاط **16.2% → 10.5%** من 4 أنوية.
+- **إيقاف ماسح Chromium أثناء GDI:** كان handleScreenStart يشغّل مسار Chromium بالتوازي مع عامل GDI وتُهمَل إطاراته (gpu-process وحدها ~17%). صار GDI أولًا ومهلة 2.5s قبل بدء Chromium كبديل ⇒ الإجمالي **45.6% → 22.6%** (−50%) مع إطارات سليمة (سطوع 158.5 · 0% سواد).
+- الدليل: outputs/verify-2026-11-04/perf/ab-cpu.txt · الالتزامات bebffa و3840f62.
+
 ### النشر (2026-11-04)
 - **وكيل 3.13.0 على الضيفين:** بُني `app.asar` (664,761 بايت · worker GDI `098abca6…`) ونُقل إلى WIN10/WIN11؛ `devs.cjs` ⇒ 3.13.0 على الجهازين.
 - **البيان:** أُعيد توليده بعد إضافة حزم الوكيل ⇒ 43 عنصرًا · `--verify` = signature OK / all artifacts match.
