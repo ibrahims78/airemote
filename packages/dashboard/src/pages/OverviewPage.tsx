@@ -9,6 +9,7 @@ import { useT } from '../lib/i18n'
 import { clsx } from 'clsx'
 import { Link, useNavigate } from 'react-router-dom'
 import { api } from '../lib/api'
+import { openScreenWindow } from '../lib/screenWindow'
 import type { Device } from '@airemote/shared'
 import { LivePreviewBoard } from '../components/LivePreviewBoard'
 import { Alert, Badge, Button, Card, EmptyState, Skeleton, SkeletonRows } from '../components/ui'
@@ -88,7 +89,7 @@ function DeviceCard({ device, activeStream, viewLabel, streamLabel }: {
   function openStream(event: React.MouseEvent) {
     event.preventDefault()
     event.stopPropagation()
-    window.open(`/view/${device.id}`, `airemote-stream-${device.id}`, 'width=1400,height=900')
+    openScreenWindow(device.id)
   }
 
   return (
@@ -200,7 +201,7 @@ export function OverviewPage() {
   }, [fetchDevices])
 
   function openLive(deviceId: string) {
-    window.open(`/view/${deviceId}`, `airemote-stream-${deviceId}`, 'width=1400,height=900')
+    openScreenWindow(deviceId)
   }
 
   function submitAiPrompt(event: React.FormEvent) {
@@ -221,11 +222,6 @@ export function OverviewPage() {
         </div>
         <div className="cr-overview-actions">
           <Link to="/devices" className="cr-btn"><Monitor size={12} /> {T('devices')}</Link>
-          <button type="button" className="cr-btn is-primary" onClick={() => {
-            const device = primaryDevice || onlineDevices[0]
-            if (device) openLive(device.id)
-            else navigate('/devices')
-          }}><Play size={12} /> {T('ov_start_stream')}</button>
           <Link to="/settings" className="cr-btn"><Settings size={12} /> {T('settings')}</Link>
         </div>
       </section>

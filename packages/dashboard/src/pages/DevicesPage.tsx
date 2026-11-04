@@ -8,6 +8,7 @@ import type { Device } from '@airemote/shared'
 import { useT } from '../lib/i18n'
 import { useAuthStore } from '../store/authStore'
 import { api } from '../lib/api'
+import { openScreenWindow } from '../lib/screenWindow'
 
 function WolModal({ device, token, onClose }: { device: Device; token: string; onClose: () => void }) {
   const t = useT()
@@ -415,6 +416,15 @@ export function DevicesPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                      {d.status === 'online' && (
+                        <button
+                          onClick={() => openScreenWindow(d.id)}
+                          className="p-1.5 text-muted/70 hover:text-info transition-colors rounded"
+                          title="فتح الشاشة" aria-label="Open screen"
+                        >
+                          <Monitor size={13} />
+                        </button>
+                      )}
                       <button
                         onClick={() => setInstallDevice(d)}
                         className="p-1.5 text-muted/70 hover:text-primary transition-colors rounded"

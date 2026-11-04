@@ -116,7 +116,7 @@ export function DashboardLayout() {
   const navItems = [
     { to: '/devices', label: T('devices'), icon: Monitor },
     { to: '/ai', label: T('ai_assistant'), icon: Bot },
-    { to: '/settings?tab=sessions', label: isRtl ? 'سجل الجلسات' : 'Session log', icon: History },
+    { to: '/sessions', label: isRtl ? 'سجل الجلسات' : 'Session log', icon: History },
   ]
 
   const menuAction = (action: () => void) => {
@@ -145,7 +145,7 @@ export function DashboardLayout() {
 
           {navItems.map(item => {
             const Icon = item.icon
-            const active = item.to === '/settings?tab=sessions' ? isTab('/settings', 'sessions') : isPath(item.to)
+            const active = isPath(item.to)
             return (
               <button
                 key={item.to}

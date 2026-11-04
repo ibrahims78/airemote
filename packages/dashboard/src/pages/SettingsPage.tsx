@@ -76,7 +76,6 @@ export function SettingsPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const tabItems = [
     { id: 'general', label: isAr ? 'عام' : 'General', icon: Settings },
-    { id: 'sessions', label: T('sessions'), icon: History },
     { id: 'notifications', label: T('nav_notifications'), icon: Bell },
     { id: 'audit', label: T('nav_audit'), icon: Shield, adminOnly: true },
     { id: 'users', label: T('users'), icon: Users, adminOnly: true },
@@ -550,7 +549,6 @@ export function SettingsPage() {
 
       ))}
 
-      {tab === 'sessions' && <SessionsPage embedded />}
       {tab === 'notifications' && <NotificationsPage embedded />}
       {tab === 'audit' && isAdmin && <AuditPage embedded />}
       {tab === 'users' && isAdmin && <UsersPage embedded />}

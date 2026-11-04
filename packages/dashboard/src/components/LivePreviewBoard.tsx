@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ExternalLink, Eye, EyeOff, Maximize2, Plus, RotateCw, Square, Trash2, Volume2, VolumeX, X } from 'lucide-react'
-import { Link } from 'react-router-dom'
+import { ExternalLink, MonitorPlay, Plus, X } from 'lucide-react'
 import type { Device } from '@airemote/shared'
 import { useUIStore } from '../store/uiStore'
 import { clsx } from 'clsx'
-import { LivePreview } from './LivePreview'
+import { ScreenViewer } from './ScreenViewer'
 
 interface ActiveScreen { sessionId: string; viewers?: number }
 
 const MAX_TILES = 6
+const BOARD_STORAGE_KEY = 'airemote-live-board-v1'
+
+type Size = 'sm' | 'md' | 'lg'
+interface Tile { key: string; deviceId: string }
 
 interface Props {
   devices: Device[]
@@ -16,20 +19,11 @@ interface Props {
   onOpen: (deviceId: string) => void
 }
 
-type Size = 'sm' | 'md' | 'lg'
-
-interface Tile {
-  key: string
-  deviceId: string
-  hidden: boolean
-  rotated: boolean
-  audioMuted: boolean
+function newKey (): string {
+  return Math.random().toString(36).slice(2, 10)
 }
 
-type BoardSnapshot = { tiles: Tile[]; size: Size }
-const BOARD_STORAGE_KEY = 'airemote-live-board-v1'
-
-function loadBoardSnapshot(): BoardSnapshot {
+function loadBoardSnapshot (): { tiles: Tile[]; size: Size } {
   try {
     const raw = localStorage.getItem(BOARD_STORAGE_KEY)
     if (!raw) return { tiles: [], size: 'lg' }
@@ -37,13 +31,7 @@ function loadBoardSnapshot(): BoardSnapshot {
     const tiles = (parsed.tiles || [])
       .filter(t => t && typeof t.key === 'string' && typeof t.deviceId === 'string')
       .slice(0, MAX_TILES)
-      .map(t => ({
-        key: String(t.key),
-        deviceId: String(t.deviceId),
-        hidden: !!t.hidden,
-        rotated: !!t.rotated,
-        audioMuted: t.audioMuted !== false,
-      }))
+      .map(t => ({ key: String(t.key), deviceId: String(t.deviceId) }))
     const size: Size = parsed.size === 'sm' || parsed.size === 'md' || parsed.size === 'lg' ? parsed.size : 'lg'
     return { tiles, size }
   } catch {
@@ -51,11 +39,12 @@ function loadBoardSnapshot(): BoardSnapshot {
   }
 }
 
-function newKey() {
-  try { return crypto.randomUUID() } catch { return 'tile-' + Math.random().toString(36).slice(2) }
-}
-
-export function LivePreviewBoard({ devices, activeScreens, onOpen }: Props) {
+/**
+ * 3.13.0 — جدار مراقبة للقراءة فقط.
+ * كل مربع يعرض نفس `ScreenViewer` في وضع `preview` (نفس عميل WS ونفس الجودة)،
+ * وبلا أزرار إدارة: «فتح» و«إزالة» فقط.
+ */
+export function LivePreviewBoard ({ devices, activeScreens: _activeScreens, onOpen }: Props) {
   const { lang } = useUIStore()
   const isRtl = lang === 'ar'
   const tr = (ar: string, en: string) => (isRtl ? ar : en)
@@ -78,182 +67,108 @@ export function LivePreviewBoard({ devices, activeScreens, onOpen }: Props) {
     if (!preferred) return
     setTiles(prev => {
       if (prev.length > 0) {
-        // Keep selections valid if a device disappears.
         return prev.map(t => devices.some(d => d.id === t.deviceId) ? t : { ...t, deviceId: preferred.id })
       }
-      return [{ key: newKey(), deviceId: preferred.id, hidden: false, rotated: false, audioMuted: true }]
+      return [{ key: newKey(), deviceId: preferred.id }]
     })
   }, [preferred, devices])
 
-  function addTile() {
+  function addTile () {
     if (tiles.length >= MAX_TILES) return
     const used = new Set(tiles.map(t => t.deviceId))
     const next = onlineDevices.find(d => !used.has(d.id)) || preferred
     if (!next) return
-    setTiles(prev => [...prev, { key: newKey(), deviceId: next.id, hidden: false, rotated: false, audioMuted: true }])
+    setTiles(prev => [...prev, { key: newKey(), deviceId: next.id }])
   }
 
-  function removeTile(key: string) {
+  function removeTile (key: string) {
     setTiles(prev => prev.length > 1 ? prev.filter(t => t.key !== key) : prev)
   }
 
-  function setDevice(key: string, deviceId: string) {
-    setTiles(prev => prev.map(t => t.key === key ? { ...t, deviceId } : t))
-  }
-
-  function toggleHidden(key: string) {
-    setTiles(prev => prev.map(t => t.key === key ? { ...t, hidden: !t.hidden } : t))
-  }
-
-  function toggleRotate(key: string) {
-    setTiles(prev => prev.map(t => t.key === key ? { ...t, rotated: !t.rotated } : t))
-  }
-
-  function toggleAudio(key: string) {
-    setTiles(prev => prev.map(t => t.key === key ? { ...t, audioMuted: !t.audioMuted } : t))
-  }
-
-  function toggleFullscreen(event: React.MouseEvent<HTMLButtonElement>) {
-    const node = event.currentTarget.closest('.cr-live-tile') as HTMLElement | null
-    const wc = (window as unknown as { airemote?: { windowCtl?: { setFullscreen?: (on: boolean) => void } } }).airemote?.windowCtl
-    if (wc?.setFullscreen) {
-      const next = node?.dataset.fullscreen !== 'true'
-      wc.setFullscreen(next)
-      if (node) node.dataset.fullscreen = String(next)
-      return
-    }
-    if (!document.fullscreenElement) node?.requestFullscreen?.().catch(() => {})
-    else document.exitFullscreen?.().catch(() => {})
-  }
-
-  function toggleStream(event: React.MouseEvent<HTMLButtonElement>) {
-    const tile = event.currentTarget.closest('.cr-live-tile') as HTMLElement | null
-    if (!tile) return
-    const stop = tile.querySelector('.cr-live-stop') as HTMLButtonElement | null
-    if (stop) { stop.click(); return }
-    const start = tile.querySelector('.cr-live-preview .cr-btn.is-primary') as HTMLButtonElement | null
-    start?.click()
-  }
-
-  function renderControls(tile: Tile, deviceId: string) {
-    return (
-      <div className="cr-live-tile-controls">
-        <button type="button" className="cr-live-ctl" onClick={toggleStream} title={tr('إيقاف/تشغيل البث', 'Stop/start stream')}>
-          <Square size={9} /> {tr('إيقاف', 'Stop')}
-        </button>
-        <button type="button" className={clsx('cr-live-ctl', tile.audioMuted && 'is-muted')} onClick={() => toggleAudio(tile.key)} title={tr('كتم/تشغيل الصوت', 'Mute/unmute audio')}>
-          {tile.audioMuted ? <VolumeX size={11} /> : <Volume2 size={11} />} {tile.audioMuted ? tr('الصوت مكتوم', 'Muted') : tr('الصوت', 'Audio')}
-        </button>
-        <button type="button" className="cr-live-ctl" onClick={() => toggleRotate(tile.key)} title={tr('تدوير العرض', 'Rotate view')}>
-          <RotateCw size={11} /> {tr('تدوير', 'Rotate')}
-        </button>
-        <button type="button" className="cr-live-ctl" onClick={toggleFullscreen} title={tr('ملء الشاشة', 'Fullscreen')}>
-          <Maximize2 size={11} /> {tr('ملء الشاشة', 'Fullscreen')}
-        </button>
-        <button type="button" className="cr-live-ctl" onClick={() => onOpen(deviceId)} title={tr('فتح النافذة المستقلة', 'Open standalone window')}>
-          <ExternalLink size={11} /> {tr('نافذة مستقلة', 'Standalone')}
-        </button>
-      </div>
-    )
-  }
-
   return (
-    <div className="cr-live-board">
-      <div className="cr-live-board-tools">
-        <span className="cr-live-board-count">{tiles.length} {tr('شاشات', 'screens')}</span>
-        <div className="cr-live-size-group" role="group" aria-label={tr('حجم العرض', 'Preview size')}>
+    <div>
+      <div className="mb-2 flex items-center gap-2">
+        <MonitorPlay size={13} className="text-info" />
+        <span className="text-xs font-semibold text-ink">{tr('جدار المراقبة', 'Monitor wall')}</span>
+        <span className="text-[10px] text-muted" dir="ltr">{tiles.length}/{MAX_TILES}</span>
+        <div className="ms-auto flex items-center gap-1">
           {(['sm', 'md', 'lg'] as Size[]).map(s => (
             <button
               key={s}
               type="button"
-              className={clsx('cr-live-size-btn', size === s && 'is-active')}
               onClick={() => setSize(s)}
-              title={s === 'sm' ? tr('صغير', 'Small') : s === 'md' ? tr('متوسط', 'Medium') : tr('كبير', 'Large')}
+              aria-pressed={size === s}
+              title={s === 'sm' ? tr('مصغّر', 'Small') : s === 'md' ? tr('متوسط', 'Medium') : tr('كبير', 'Large')}
+              className={clsx('h-6 w-6 rounded text-[10px] font-medium transition-colors',
+                size === s ? 'bg-info/20 text-info' : 'text-muted hover:bg-surface2 hover:text-ink')}
             >
               {s === 'sm' ? 'S' : s === 'md' ? 'M' : 'L'}
             </button>
           ))}
+          <button
+            type="button"
+            onClick={addTile}
+            disabled={tiles.length >= MAX_TILES}
+            title={tr('إضافة بث', 'Add stream')}
+            className="rounded p-1 text-muted transition-colors hover:bg-surface2 hover:text-ink disabled:opacity-40"
+          >
+            <Plus size={13} />
+          </button>
         </div>
-        <span className="cr-live-board-spacer" />
-        <button type="button" className="cr-live-tool-btn" onClick={addTile} disabled={tiles.length >= MAX_TILES} title={tr('إضافة بث', 'Add stream')} aria-label={tr('إضافة بث', 'Add stream')}>
-          <Plus size={12} /> {tr('إضافة بث', 'Add stream')}
-        </button>
       </div>
 
-      <div className={clsx('cr-live-board-grid', `is-${size}`, tiles.length > 1 && 'is-multi')}>
-        {tiles.map(tile => {
-          const device = devices.find(d => d.id === tile.deviceId)
-          if (!device) return null
-          return (
-            <div className={clsx('cr-live-tile', tile.rotated && 'is-rotated')} key={tile.key}>
-              <div className="cr-live-tile-head">
-                <select
-                  value={tile.deviceId}
-                  onChange={e => setDevice(tile.key, e.target.value)}
-                  className="cr-live-device-select"
-                  aria-label={tr('اختيار الجهاز', 'Select device')}
-                >
-                  {onlineDevices.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                </select>
-                <button
-                  type="button"
-                  className="cr-live-icon-btn"
-                  onClick={() => toggleHidden(tile.key)}
-                  title={tile.hidden ? tr('إظهار البث', 'Show stream') : tr('إخفاء البث', 'Hide stream')}
-                >
-                  {tile.hidden ? <Eye size={13} /> : <EyeOff size={13} />}
-                </button>
-                <button
-                  type="button"
-                  className="cr-live-icon-btn"
-                  onClick={toggleFullscreen}
-                  title={tr('ملء الشاشة', 'Fullscreen')}
-                  aria-label={tr('ملء الشاشة', 'Fullscreen')}
-                >
-                  <Maximize2 size={13} />
-                </button>
-                {tiles.length > 1 && (
+      {tiles.length === 0 ? (
+        <div className="grid place-items-center rounded-xl border border-dashed border-line py-8 text-xs text-muted">
+          {tr('لا أجهزة للمراقبة', 'No devices to monitor')}
+        </div>
+      ) : (
+        <div className={clsx(
+          'grid gap-3',
+          size === 'sm' && 'grid-cols-2 xl:grid-cols-4',
+          size === 'md' && 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-3',
+          size === 'lg' && 'grid-cols-1 xl:grid-cols-2'
+        )}>
+          {tiles.map(tile => {
+            const device = devices.find(d => d.id === tile.deviceId)
+            const online = !!device && device.status === 'online'
+            return (
+              <div key={tile.key} className="overflow-hidden rounded-xl border border-line bg-surface">
+                <div className="relative aspect-video bg-code">
+                  {online && device ? (
+                    <ScreenViewer preview deviceId={device.id} deviceName={device.name} />
+                  ) : (
+                    <div className="grid h-full place-items-center text-xs text-muted">
+                      {tr('غير متصل', 'Offline')}
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 px-2 py-1.5">
+                  <span className="min-w-0 flex-1 truncate text-xs text-ink">
+                    {device?.name || tile.deviceId.slice(0, 10)}
+                  </span>
                   <button
                     type="button"
-                    className="cr-live-icon-btn is-danger"
-                    onClick={() => removeTile(tile.key)}
-                    title={tr('إزالة البث', 'Remove stream')}
+                    onClick={() => onOpen(tile.deviceId)}
+                    title={tr('فتح الشاشة', 'Open screen')}
+                    className="rounded p-1 text-muted transition-colors hover:bg-surface2 hover:text-ink"
                   >
-                    <X size={13} />
+                    <ExternalLink size={12} />
                   </button>
-                )}
-              </div>
-
-              {renderControls(tile, tile.deviceId)}
-
-              {tile.hidden ? (
-                <div className="cr-live-hidden">
-                  <EyeOff size={22} />
-                  <strong>{tr('البث مخفي', 'Stream hidden')}</strong>
-                  <button type="button" className="cr-btn" onClick={() => toggleHidden(tile.key)}>
-                    <Eye size={12} /> {tr('إظهار', 'Show')}
+                  <button
+                    type="button"
+                    onClick={() => removeTile(tile.key)}
+                    disabled={tiles.length <= 1}
+                    title={tr('إزالة', 'Remove')}
+                    className="rounded p-1 text-muted transition-colors hover:bg-danger/15 hover:text-danger disabled:opacity-40"
+                  >
+                    <X size={12} />
                   </button>
                 </div>
-              ) : (
-                <LivePreview
-                  key={tile.deviceId}
-                  deviceId={tile.deviceId}
-                  deviceName={device.name}
-                  autoStart={!!activeScreens[tile.deviceId]}
-                />
-              )}
-
-              <div className="cr-live-tile-foot">
-                <Link to={`/devices/${tile.deviceId}`} className="cr-live-foot-btn">
-                  {tr('مساحة الجهاز', 'Device workspace')}
-                </Link>
-                <span className="cr-live-board-spacer" />
-                {tile.hidden && <span className="cr-live-hidden-tag"><Trash2 size={10} /> {tr('مخفي', 'hidden')}</span>}
               </div>
-            </div>
-          )
-        })}
-      </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

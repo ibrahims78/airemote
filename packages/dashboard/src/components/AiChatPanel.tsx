@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { api } from '../lib/api'
+import { openScreenWindow } from '../lib/screenWindow'
 import { useUIStore } from '../store/uiStore'
 import { useT } from '../lib/i18n'
 import type { TKey } from '../lib/i18n'
@@ -338,7 +339,7 @@ function StreamBlock({ deviceId, isLight }: { deviceId?: string; isLight: boolea
   const [opened, setOpened] = useState(false)
   function openStream() {
     if (!deviceId) return
-    const w = window.open('/view/' + deviceId, 'airemote-stream', 'width=1280,height=820,noopener')
+    const w = openScreenWindow(deviceId)
     if (w) { try { w.focus() } catch {} }
     setOpened(true)
   }

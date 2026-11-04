@@ -167,13 +167,6 @@ export function DeviceWorkspacePage() {
             {isOnline ? <Wifi size={10} /> : <WifiOff size={10} />}
             {isOnline ? t('device_online') : t('device_offline')}
           </Badge>
-          <button
-            onClick={() => window.open('/view/' + device.id, '_blank', 'width=1400,height=900')}
-            title="فتح البث في نافذة مستقلة (لعرض أكثر من جهاز معاً)"
-            className="p-1.5 rounded-lg text-muted hover:text-primary hover:bg-surface2 transition-colors"
-          >
-            <ExternalLink size={14} />
-          </button>
           {stats && (
             <div className="hidden lg:flex items-center gap-3 text-xs text-muted border-s border-line ps-4 ms-2">
               <span className="flex items-center gap-1"><Cpu size={10} className="text-primary" /><span className="font-mono text-ink">{stats.cpuPercent}%</span></span>
@@ -239,11 +232,9 @@ export function DeviceWorkspacePage() {
           </div>
         )}
 
-        {/* ScreenViewer stays mounted even when switching tabs so the stream
-            remains alive. CSS hides it; only the user navigating away from the
-            DeviceWorkspace page unmounts it (and tears down the WebSocket). */}
-        {deviceId && (
-          <div className="h-full p-5" style={{ display: tab === 'screen' ? 'flex' : 'none' }}>
+        {/* 3.13.0 — لا بث في الخلفية: مغادرة تبويب الشاشة تُغلق الاتصال وتوقف الالتقاط. */}
+        {deviceId && tab === 'screen' && (
+          <div className="h-full p-5">
             <ScreenViewer deviceId={deviceId} deviceName={device.name} />
           </div>
         )}
