@@ -1,0 +1,4 @@
+OPENS_BEFORE=1
+OPENS_AFTER=2 LAST_STATE=1 (1=OPEN) CANVAS=true
+VERDICT_TC032=PASS (viewer reconnected by itself)
+SHOT=D:\autoclaw projects-new\AiRemote\outputs\verify-2026-11-04\ui\tc-032-reconnect.png
