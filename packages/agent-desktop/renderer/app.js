@@ -1048,7 +1048,12 @@ airemote.onInit(data => {
     const r = await window.airemote.relayRequest({ targetDeviceId, access, password: password || undefined })
     if (!r || !r.ok) {
       const d = (r && r.data) || {}
-      if (d.code === 'password_required') { showPw(true); setState('هذا الجهاز في وضع كلمة المرور.'); return }
+      if (d.code === 'password_required' || d.code === 'control_password_required') {
+        showPw(true)
+        setState('هذا الجهاز يتطلب كلمة مرور التحكم — أدخلها ثم اضغط «طلب الاتصال» مرة أخرى.')
+        const f = $id('session-pw'); if (f) f.focus()
+        return
+      }
       // 3.13.1 — رسائل واضحة لبقية حالات كلمة السر بدل رمز خام (bad_password / password_locked).
       if (d.code === 'bad_password') { showPw(true); setState('كلمة المرور غير صحيحة' + (d.attemptsLeft ? ' — تبقّى ' + d.attemptsLeft + ' محاولة' : '')); return }
       if (d.code === 'password_locked') { setState('مقفل مؤقتًا بعد محاولات فاشلة — أعد المحاولة بعد دقائق.'); return }
@@ -1102,6 +1107,11 @@ airemote.onInit(data => {
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind)
   else bind()
+  // 3.13.1 — اختيار «تحكم كامل» يُظهر حقل كلمة المرور فورًا (الجهاز قد يطلبها).
+  document.querySelectorAll('input[name="session-access"]').forEach((el) => {
+    el.addEventListener('change', () => { if (el.checked && el.value === 'control') showPw(true) })
+  })
+
   if (window.airemote && window.airemote.onSessionOffer) window.airemote.onSessionOffer(showOffer)
 
   // 3.9.0 — إخفاء حوار العرض عند انتهاء/إغلاق الجلسة
