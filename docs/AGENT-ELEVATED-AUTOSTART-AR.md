@@ -46,6 +46,8 @@ RESULT=ok
 
 - **يتطلب موافقة UAC واحدة** عند التشغيل (لا يمكن أتمتتها من جلسة متوسطة — مُقاس: `schtasks /RL HIGHEST` يرجع `Access is denied`).
 - Windows فقط · حساب إداري · لا يغيّر سلوك المنتج الافتراضي (اختياري بالكامل).
-- **حالة التحقق (2026-11-04):** لم يُنفَّذ بعد — محاولة التشغيل عبر UAC داخل WIN10 أُلغيت
-  (`RUNAS_ERR=The operation was canceled by the user`)، فالوكيل ما زال متوسط الصلاحية.
-  يلزم نقرة «نعم» واحدة عند وجودك أمام شاشة الضيف لإكمال الإثبات.
+- **حالة التحقق (2026-11-04):** ✅ نُفِّذ بنجاح بعد موافقة UAC واحدة.
+  `TASK_CREATED=True` · `TASK_RUN=True` · `AGENT … ELEVATED` · `RUNKEY_REMOVED=True` · المهمة `Highest/Running`.
+  الإثبات الوظيفي: `C L … ok=True` داخل نطاق Task Manager، و`Ctrl+Tab` من العارض بدّل تبويب TM إلى **Details**
+  (`outputs/verify-2026-11-04/control-fix/taskmgr-elevated.png` + `elevated-autostart.txt`).
+  ملاحظة: النقرة الأولى على نافذة غير مفعّلة تُنشّطها فقط (سلوك Windows) — النقرة الثانية تصل للعنصر.
