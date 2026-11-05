@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head><meta charset="utf-8"><title>AiRemote — التصميم الكامل (كل الأزرار)</title>
+<style>
+  :root{
+    --bg:#0b1117; --surface:#111a22; --surface2:#16222c; --surface3:#1b2a36;
+    --line:rgba(148,163,184,.16); --line2:rgba(148,163,184,.28);
+    --ink:#e6edf3; --ink2:#c2cfdb; --muted:#8fa3b5;
+    --accent:#2dd4bf; --accent-soft:rgba(45,212,191,.12);
+    --ok:#34d399; --warn:#fbbf24; --danger:#f87171;
+    --r1:8px; --r2:12px;
+    --s1:4px; --s2:8px; --s3:12px; --s4:16px;
+    --t1:11px; --t2:13px; --t3:16px;
+    --mono:"Cascadia Code",Consolas,monospace;
+  }
+  /* نسخة فاتحة: نفس النظام، هوية المنتج الحالية */
+  html.light{
+    --bg:#f7fafc; --surface:#ffffff; --surface2:#f1f5f9; --surface3:#e6edf3;
+    --line:rgba(15,23,42,.10); --line2:rgba(15,23,42,.18);
+    --ink:#0f172a; --ink2:#334155; --muted:#64748b;
+    --accent:#0f766e; --accent-soft:rgba(15,118,110,.10);
+    --ok:#047857; --warn:#b45309; --danger:#dc2626;
+  }
+  html.light, html.light body{background:#eef3f7}
+  html.light .btn.primary{color:#fff}
+  html.light .board{box-shadow:0 18px 44px rgba(15,23,42,.10)}
+  html.light .state-strip{background:#f1f5f9}
+  html.light .tile .screen{background:#eef3f7}
+  html.light .tile .screen .ph{color:#8296a8}
+  html.light .tile .screen .ph .big{color:#475569}
+  html.light .toggle.on{background:rgba(15,118,110,.16);border-color:rgba(15,118,110,.45)}
+  html.light .toggle.on i{background:#fff}
+  html.light .chip.ok{color:#046c4e;background:rgba(5,150,105,.10);border-color:rgba(5,150,105,.32)}
+  html.light .chip.warn{color:#92400e;background:rgba(180,83,9,.10);border-color:rgba(180,83,9,.30)}
+  html.light .chip.off{color:#475569}
+  html.light .log{color:var(--ink2)}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#070d12;color:var(--ink);font-family:"Segoe UI",Tahoma,system-ui,sans-serif;font-size:var(--t2);line-height:1.55}
+  .i{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto}
+  .i.sm{width:12px;height:12px}
+  .board-wrap{padding:28px;display:flex;flex-direction:column;gap:10px}
+  .board-title{font-size:var(--t3);font-weight:700}
+  .board-note{font-size:var(--t1);color:var(--muted);margin:0 0 6px;max-width:900px}
+  .board{background:var(--bg);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.45)}
+
+  .appbar{height:44px;display:flex;align-items:center;gap:var(--s2);padding:0 var(--s3);border-bottom:1px solid var(--line);background:var(--surface)}
+  .brand{display:flex;align-items:center;gap:var(--s2);font-weight:700}
+  .brand .mark{width:22px;height:22px;border-radius:6px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center}
+  .ver{font:10px var(--mono);color:var(--muted);margin-inline-start:2px}
+  .nav{display:flex;gap:2px;margin-inline-start:var(--s3)}
+  .nav a{font-size:var(--t1);color:var(--muted);text-decoration:none;padding:6px 10px;border-radius:6px}
+  .nav a.on{color:var(--accent);background:var(--accent-soft)}
+  .grow{flex:1}
+  .iconbtn{width:30px;height:30px;border:1px solid transparent;border-radius:7px;background:transparent;color:var(--muted);display:grid;place-items:center;cursor:pointer}
+  .iconbtn:hover{border-color:var(--line2);color:var(--ink)}
+  .who{display:flex;align-items:center;gap:6px;font-size:var(--t1);color:var(--ink2)}
+  .who .av{width:22px;height:22px;border-radius:50%;background:var(--surface3);display:grid;place-items:center;font-size:10px;font-weight:700}
+
+  .chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:999px;font-size:10.5px;border:1px solid var(--line)}
+  .chip .dot{width:6px;height:6px;border-radius:50%}
+  .chip.ok{color:var(--ok);border-color:rgba(52,211,153,.35);background:rgba(52,211,153,.08)}
+  .chip.ok .dot{background:var(--ok)}
+  .chip.off{color:var(--muted)} .chip.off .dot{background:var(--muted)}
+  .chip.warn{color:var(--warn);border-color:rgba(251,191,36,.35);background:rgba(251,191,36,.08)}
+  .chip.warn .dot{background:var(--warn)}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r2)}
+  .card-h{display:flex;align-items:center;gap:10px;padding:11px var(--s3);border-bottom:1px solid var(--line)}
+  .card-h .ttl{font-weight:600;white-space:nowrap}
+  .card-h .sub{font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .card-h .grow{flex:1}
+  .card-b{padding:var(--s3)}
+
+  .btn{height:30px;padding:0 12px;border-radius:7px;border:1px solid var(--line2);background:var(--surface2);color:var(--ink);font-size:var(--t1);font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#06231f}
+  .btn.ghost{background:transparent;border-color:var(--line)}
+  .btn.danger{color:var(--danger);border-color:rgba(248,113,113,.35);background:rgba(248,113,113,.08)}
+  .btn.sm{height:26px;padding:0 9px}
+
+  .field{display:flex;flex-direction:column;gap:6px;margin-bottom:var(--s3)}
+  .field label{font-size:var(--t1);color:var(--ink2);font-weight:600}
+  .hint{font-size:10.5px;color:var(--muted)}
+  .input{height:32px;border-radius:7px;border:1px solid var(--line2);background:var(--bg);color:var(--ink);padding:0 10px;font-size:var(--t2);width:100%;font-family:inherit}
+  .input.mono{font-family:var(--mono);font-size:11.5px;direction:ltr;text-align:left}
+  .row2{display:flex;gap:var(--s2);align-items:center}
+  .seg{display:inline-flex;border:1px solid var(--line2);border-radius:7px;overflow:hidden}
+  .seg button{height:26px;padding:0 10px;background:transparent;border:0;color:var(--muted);font-size:10.5px;cursor:pointer;font-family:inherit}
+  .seg button.on{background:var(--surface3);color:var(--ink);font-weight:600}
+  .radio{display:flex;gap:8px;align-items:center;justify-content:flex-start;padding:7px 0;font-size:var(--t2);color:var(--ink2)}
+  .radio input{accent-color:var(--accent);margin:0}
+  .bar{height:4px;border-radius:999px;background:rgba(148,163,184,.2);overflow:hidden;margin-top:6px}
+  .bar{direction:rtl}
+  .bar>i{display:block;height:100%;width:62%;background:var(--accent);margin-inline-start:auto}
+
+  /* السيرفر */
+  .dash{padding:var(--s4)}
+  .dash-head{display:flex;align-items:center;gap:var(--s3);margin-bottom:var(--s4)}
+  .dash-head h1{font-size:var(--t3);margin:0;white-space:nowrap}
+  .metrics{display:flex;gap:var(--s2)}
+  .metric{border:1px solid var(--line);border-radius:var(--r1);padding:5px 10px;min-width:92px;background:var(--surface)}
+  .metric b{display:block;font-size:var(--t3);font-family:var(--mono);line-height:1.2}
+  .metric span{font-size:10px;color:var(--muted)}
+  .wall{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s3)}
+  .tile{border:1px solid var(--line);border-radius:var(--r2);overflow:hidden;background:var(--surface);display:flex;flex-direction:column}
+  .tile .screen{aspect-ratio:16/9;background:#0a1218;position:relative;display:grid;place-items:center;border-bottom:1px solid var(--line)}
+  .tile .screen .ph{display:flex;flex-direction:column;align-items:center;gap:4px;color:#5b7183;font-size:10.5px}
+  .tile .screen .ph .big{font-size:var(--t2);color:#93a9ba;font-weight:600}
+  .tile .foot{display:flex;align-items:center;gap:4px;padding:6px 8px}
+  .tile .name{font-size:11.5px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tile .tool{width:26px;height:26px;border-radius:6px;display:grid;place-items:center;color:var(--muted);background:transparent;border:1px solid transparent;cursor:pointer}
+  .tile .tool:hover{background:var(--surface3);border-color:var(--line);color:var(--ink)}
+  .tile .tool.on{color:var(--danger)}
+  .tile .tool.play{color:var(--accent)}
+
+  /* وكيل ويندوز */
+  .agent{width:560px}
+  .agent .body{padding:var(--s3);display:flex;flex-direction:column;gap:var(--s3)}
+  .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);padding:0 var(--s3);background:var(--surface)}
+  .tabs button{height:34px;padding:0 11px;background:transparent;border:0;border-bottom:2px solid transparent;color:var(--muted);font-size:var(--t1);font-weight:600;cursor:pointer;font-family:inherit}
+  .tabs button.on{color:var(--accent);border-bottom-color:var(--accent)}
+  .log{font:11px/1.95 var(--mono);color:var(--ink2)}
+  .log .ln{display:flex;gap:8px;align-items:baseline}
+  .log .ts{color:var(--muted);direction:ltr}
+  .state-strip{display:flex;gap:var(--s2);padding:var(--s3);border-top:1px solid var(--line);background:#0a1218}
+  .state-strip .s{flex:1;border:1px dashed var(--line2);border-radius:var(--r1);padding:7px;font-size:10.5px;color:var(--muted);text-align:center}
+
+  /* أندرويد */
+  .phone{width:390px;background:var(--bg);border:1px solid var(--line);border-radius:26px;overflow:hidden}
+  .statusbar{height:26px;display:flex;align-items:center;justify-content:space-between;padding:0 12px;font-size:10px;color:var(--muted);background:var(--surface);direction:ltr}
+  .pheap{padding:14px var(--s3) 10px;display:flex;gap:10px;align-items:center}
+  .appicon{width:36px;height:36px;border-radius:10px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;flex:0 0 auto}
+  .pheap h2{margin:0;font-size:var(--t3)}
+  .pheap p{margin:0;font-size:10.5px;color:var(--muted);direction:ltr}
+  .list{display:flex;flex-direction:column;gap:8px}
+  .item{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:var(--r1);padding:9px 10px;background:var(--surface)}
+  .item .ico{width:26px;height:26px;border-radius:7px;background:var(--surface3);display:grid;place-items:center;color:var(--ink2);flex:0 0 auto}
+  .item .tx{flex:1;min-width:0}
+  .item .tx b{display:block;font-size:11.5px}
+  .item .tx span{font-size:10px;color:var(--muted)}
+  .toggle{width:38px;height:22px;border-radius:999px;background:var(--surface3);position:relative;border:1px solid var(--line2);flex:0 0 auto}
+  .toggle i{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--muted);transition:left .15s}
+  .toggle.on{background:rgba(45,212,191,.25);border-color:rgba(45,212,191,.5)}
+  .toggle.on i{background:var(--accent);left:18px}
+  .bottom{display:flex;gap:var(--s2);padding:var(--s3);border-top:1px solid var(--line);background:var(--surface)}
+  .bottom .btn{flex:1;justify-content:center}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="ic-play" viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5z"/></symbol>
+  <symbol id="ic-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5"/></symbol>
+  <symbol id="ic-max" viewBox="0 0 24 24"><path d="M4 9V4h5M20 15v5h-5M15 4h5v5M9 20H4v-5"/></symbol>
+  <symbol id="ic-open" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-8 8M10 5H5a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-5"/></symbol>
+  <symbol id="ic-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="ic-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="ic-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-3.5-3.5"/></symbol>
+  <symbol id="ic-bell" viewBox="0 0 24 24"><path d="M18 9a6 6 0 1 0-12 0c0 5-2 6-2 6h16s-2-1-2-6"/><path d="M10.5 20a2 2 0 0 0 3 0"/></symbol>
+  <symbol id="ic-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="ic-bolt" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></symbol>
+  <symbol id="ic-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.6"/></symbol>
+  <symbol id="ic-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V6z"/><path d="M9 12l2 2 4-4"/></symbol>
+  <symbol id="ic-monitor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M9 20h6M12 16v4"/></symbol>
+  <symbol id="ic-a11y" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><path d="M4 9h16M12 9v6M8 21l4-6 4 6"/></symbol>
+  <symbol id="ic-capture" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="ic-lock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="ic-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/></symbol>
+  <symbol id="ic-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+  <symbol id="ic-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="ic-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="ic-reconnect" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2 6"/><path d="M20 5v6h-6"/></symbol>
+</defs></svg>
+
+<div class="board-wrap">
+  <div class="board-title">١ · السيرفر — غرفة العمليات (كامل)</div>
+  <p class="board-note">يشمل: التنقل · البحث · التنبيهات · المساعدة · الإعدادات · قائمة المستخدم · قائمة التطبيق · المقاييس · جدار 3 أعمدة · أزرار كل مربع · لوحة المساعد · قائمة الأجهزة · «عرض الكل».</p>
+  <div class="board">
+    <div class="appbar">
+      <div class="brand"><span class="mark"><svg class="i sm"><use href="#ic-bolt"/></svg></span> AiRemote <span class="ver">v3.13.1</span></div>
+      <nav class="nav"><a href="#" class="on" data-feature="nav-overview">غرفة العمليات</a><a href="#" data-feature="nav-devices">الأجهزة</a><a href="#" data-feature="nav-ai">المساعد</a><a href="#" data-feature="nav-sessions">الجلسات</a></nav>
+      <div class="grow"></div>
+      <button class="iconbtn" title="بحث" data-feature="dash-search"><svg class="i"><use href="#ic-search"/></svg></button>
+      <button class="iconbtn" title="التنبيهات" data-feature="dash-notifications"><svg class="i"><use href="#ic-bell"/></svg></button>
+      <button class="iconbtn" title="المساعدة" data-feature="dash-help"><svg class="i"><use href="#ic-link"/></svg></button>
+      <button class="iconbtn" title="الإعدادات" data-feature="dash-settings"><svg class="i"><use href="#ic-menu"/></svg></button>
+      <div class="who" data-feature="dash-user-menu"><span class="av">L</span> Lab · مسؤول</div>
+      <button class="iconbtn" title="قائمة التطبيق" data-feature="dash-app-menu"><svg class="i"><use href="#ic-menu"/></svg></button>
+    </div>
+
+    <div class="dash">
+      <div class="dash-head">
+        <h1>غرفة العمليات</h1>
+        <div class="metrics">
+          <div class="metric"><b>4</b><span>أجهزة متصلة</span></div>
+          <div class="metric"><b>1</b><span>بث نشط</span></div>
+          <div class="metric"><b>0</b><span>تنبيهات</span></div>
+        </div>
+        <div class="grow"></div>
+        <div class="seg"><button data-feature="wall-size-s">S</button><button class="on" data-feature="wall-size-m">M</button><button data-feature="wall-size-l">L</button></div>
+        <button class="btn primary" data-feature="wall-add"><svg class="i sm"><use href="#ic-plus"/></svg> إضافة بث</button>
+      </div>
+
+      <div class="wall">
+        <div class="tile">
+          <div class="screen"><div class="ph"><div class="big">WIN10-VM</div><div>1600×675 · 1 fps · 94 KB/s</div></div></div>
+          <div class="foot">
+            <span class="name">WIN10-VM</span><span class="chip ok"><span class="dot"></span>مباشر</span>
+            <button class="tool on" title="إيقاف البث" data-feature="tile-stop"><svg class="i sm"><use href="#ic-stop"/></svg></button>
+            <button class="tool" title="تكبير" data-feature="tile-max"><svg class="i sm"><use href="#ic-max"/></svg></button>
+            <button class="tool" title="فتح الشاشة" data-feature="tile-open"><svg class="i sm"><use href="#ic-open"/></svg></button>
+            <button class="tool" title="إزالة" data-feature="tile-remove"><svg class="i sm"><use href="#ic-x"/></svg></button>
+          </div>
+        </div>
+        <div class="tile">
+          <div class="screen"><div class="ph"><div class="big">WIN11-VM</div><div>لا بث — اضغط تشغيل</div></div></div>
+          <div class="foot">
+            <span class="name">WIN11-VM</span><span class="chip off"><span class="dot"></span>متوقف</span>
+            <button class="tool play" title="تشغيل البث" data-feature="tile-play"><svg class="i sm"><use href="#ic-play"/></svg></button>
+            <button class="tool" title="تكبير" data-feature="tile-max"><svg class="i sm"><use href="#ic-max"/></svg></button>
+            <button class="tool" title="فتح الشاشة" data-feature="tile-open"><svg class="i sm"><use href="#ic-open"/></svg></button>
+            <button class="tool" title="إزالة" data-feature="tile-remove"><svg class="i sm"><use href="#ic-x"/></svg></button>
+          </div>
+        </div>
+        <div class="tile">
+          <div class="screen"><div class="ph"><div class="big">Android-Emulator</div><div>بلا منح التقاط</div></div></div>
+          <div class="foot">
+            <span class="name">Android-Emulator</span><span class="chip warn"><span class="dot"></span>يحتاج منحًا</span>
+            <button class="tool play" title="تشغيل البث" data-feature="tile-play"><svg class="i sm"><use href="#ic-play"/></svg></button>
+            <button class="tool" title="تكبير" data-feature="tile-max"><svg class="i sm"><use href="#ic-max"/></svg></button>
+            <button class="tool" title="فتح الشاشة" data-feature="tile-open"><svg class="i sm"><use href="#ic-open"/></svg></button>
+            <button class="tool" title="إزالة" data-feature="tile-remove"><svg class="i sm"><use href="#ic-x"/></svg></button>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 340px;gap:12px;margin-top:12px">
+        <div class="card">
+          <div class="card-h"><span class="ttl">الأجهزة</span><span class="sub">4 متصل · 2 غير متصل</span><div class="grow"></div>
+            <button class="btn ghost sm" data-feature="dash-view-all-devices">عرض الكل</button></div>
+          <div class="card-b" style="display:flex;flex-direction:column;gap:6px">
+            <div class="item"><span class="ico"><svg class="i sm"><use href="#ic-monitor"/></svg></span><div class="tx"><b>WIN10-VM</b><span>windows · 192.168.0.128 · 5%</span></div><span class="chip ok"><span class="dot"></span>متصل</span></div>
+            <div class="item"><span class="ico"><svg class="i sm"><use href="#ic-monitor"/></svg></span><div class="tx"><b>WIN11-VM</b><span>windows · 192.168.0.129 · 8%</span></div><span class="chip ok"><span class="dot"></span>متصل</span></div>
+            <div class="item"><span class="ico"><svg class="i sm"><use href="#ic-capture"/></svg></span><div class="tx"><b>Android-Emulator</b><span>android · 320×640</span></div><span class="chip warn"><span class="dot"></span>بلا منح</span></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-h"><span class="ttl">المساعد الذكي</span><div class="grow"></div><span class="chip off"><span class="dot"></span>جاهز</span></div>
+          <div class="card-b">
+            <div class="field" style="margin-bottom:8px"><label>اسأل عن الشاشة أو الجهاز</label>
+              <input class="input" data-feature="dash-ai-ask" placeholder="اكتب سؤالك…"></div>
+            <button class="btn primary" style="width:100%;justify-content:center" data-feature="dash-ai-send"><svg class="i sm"><use href="#ic-play"/></svg> إرسال</button>
+            <div class="hint" style="margin-top:8px">اقتراحات: تحقق من صحة الاتصال · افتح آخر تطبيق · لخّص الجلسات</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="state-strip">
+      <div class="s">فارغ: «لا أجهزة للمراقبة — أضف جهازًا»</div>
+      <div class="s">تحميل: هيكل عظمي بقياس المربّع</div>
+      <div class="s">خطأ: «تعذّر الاتصال — إعادة المحاولة»</div>
+    </div>
+  </div>
+</div>
+
+<div class="board-wrap">
+  <div class="board-title">٢ · وكيل ويندوز — النافذة الرئيسية (كل الأزرار)</div>
+  <p class="board-note">يشمل: اللغة · الثيم · الصينية · تصغير/إغلاق · بدء/إيقاف الوكيل · إظهار الرمز · حفظ · إعادة اتصال · كلمة السر (إظهار/حفظ/مسح) · السجل (نسخ/تصدير/مسح/طيّ).</p>
+  <div class="board agent">
+    <div class="appbar">
+      <div class="brand"><span class="mark"><svg class="i sm"><use href="#ic-bolt"/></svg></span> AiRemote Agent</div>
+      <div class="grow"></div>
+      <span class="chip ok"><span class="dot"></span>متصل · v3.13.1</span>
+      <button class="iconbtn" title="اللغة" data-feature="btn-lang">AR</button>
+      <button class="iconbtn" title="الثيم" data-feature="btn-theme"><svg class="i sm"><use href="#ic-eye"/></svg></button>
+      <button class="iconbtn" title="الصينية" data-feature="btn-tray"><svg class="i sm"><use href="#ic-monitor"/></svg></button>
+      <button class="iconbtn" title="تصغير" data-feature="btn-min"><svg class="i sm"><use href="#ic-minus"/></svg></button>
+      <button class="iconbtn" title="إغلاق" data-feature="btn-close"><svg class="i sm"><use href="#ic-close"/></svg></button>
+    </div>
+
+    <div class="tabs"><button class="on" data-feature="tab-ctrl">التحكم عن بُعد</button><button data-feature="tab-session">الاتصال بجهاز آخر</button><button data-feature="tab-sessions">الجلسات</button></div>
+
+    <div class="body">
+      <div class="card">
+        <div class="card-h"><span class="ttl">التحكم عن بُعد</span><span class="sub">كلمة سر واحدة تحكم كل المسارات</span><div class="grow"></div><span class="chip ok"><span class="dot"></span>محمي</span></div>
+        <div class="card-b">
+          <div class="radio"><input type="radio" name="m" data-feature="ctrl-mode-consent"><span>موافقة يدوية (نافذة تأكيد عند كل طلب)</span></div>
+          <div class="radio"><input type="radio" name="m" checked data-feature="ctrl-mode-password"><span>كلمة سر محفوظة على هذا الجهاز</span></div>
+          <div class="field" style="margin-top:10px">
+            <label>كلمة السر</label>
+            <div class="row2"><input class="input mono" type="password" value="••••••••" data-feature="ctrl-pw"><button class="btn ghost sm" data-feature="ctrl-pw-eye"><svg class="i sm"><use href="#ic-eye"/></svg> إظهار</button></div>
+            <div class="bar"><i></i></div><div class="hint">قوية · تُحفظ بصمة فقط (salt + hash)</div>
+          </div>
+          <div class="row2">
+            <button class="btn primary" data-feature="save-ctrl-btn"><svg class="i sm"><use href="#ic-shield"/></svg> حفظ الإعدادات</button>
+            <button class="btn ghost" data-feature="clear-ctrl-btn">مسح كلمة السر</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><span class="ttl">الاتصال بالخادم</span><div class="grow"></div><span class="chip ok"><span class="dot"></span>يعمل</span></div>
+        <div class="card-b">
+          <div class="field"><label>عنوان الخادم</label><input class="input mono" value="https://127.0.0.1:3001" data-feature="inp-server"></div>
+          <div class="field"><label>رمز الجهاز</label>
+            <div class="row2"><input class="input mono" type="password" value="••••••••-••••" data-feature="inp-token"><button class="btn ghost sm" data-feature="btn-show-token">إظهار</button></div>
+          </div>
+          <div class="row2">
+            <button class="btn primary" data-feature="save-btn">حفظ</button>
+            <button class="btn ghost" data-feature="reconnect-btn"><svg class="i sm"><use href="#ic-reconnect"/></svg> إعادة اتصال</button>
+            <button class="btn danger" data-feature="toggle-btn"><svg class="i sm"><use href="#ic-stop"/></svg> إيقاف الوكيل</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><span class="ttl">آخر الأحداث</span><div class="grow"></div>
+          <button class="btn ghost sm" data-feature="copy-log-btn">نسخ</button>
+          <button class="btn ghost sm" data-feature="export-log-btn">تصدير</button>
+          <button class="btn ghost sm" data-feature="clear-log">مسح</button>
+          <button class="iconbtn" title="طيّ" data-feature="log-coll-btn"><svg class="i sm"><use href="#ic-minus"/></svg></button>
+        </div>
+        <div class="card-b log">
+          <div class="ln"><span class="ts">23:41:02</span><span>وكيل↔وكيل: جلسة قُبلت بكلمة سر</span></div>
+          <div class="ln"><span class="ts">23:40:58</span><span>وكيل↔وكيل: كلمة سر خاطئة (bad_password)</span></div>
+          <div class="ln"><span class="ts">23:38:12</span><span>بث بدأ — 1600×675</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="board-wrap">
+  <div class="board-title">٣ · وكيل ويندوز — الجلسات وحوار الطلب</div>
+  <p class="board-note">يشمل: تبويب الجلسات · تحديث · قائمة الجلسة (إغلاق) · حوار عرض وارد (قبول/رفض).</p>
+  <div class="board agent">
+    <div class="appbar"><div class="brand"><span class="mark"><svg class="i sm"><use href="#ic-bolt"/></svg></span> AiRemote Agent</div><div class="grow"></div><span class="chip ok"><span class="dot"></span>متصل</span></div>
+    <div class="tabs"><button>التحكم عن بُعد</button><button>الاتصال بجهاز آخر</button><button class="on" data-feature="tab-sessions">الجلسات</button></div>
+    <div class="body">
+      <div class="card">
+        <div class="card-h"><span class="ttl">الجلسات</span><span class="sub">جلساتك النشطة</span><div class="grow"></div>
+          <button class="btn ghost sm" data-feature="sessions-refresh"><svg class="i sm"><use href="#ic-reconnect"/></svg> تحديث</button></div>
+        <div class="card-b" style="display:flex;flex-direction:column;gap:6px">
+          <div class="item"><span class="ico"><svg class="i sm"><use href="#ic-link"/></svg></span>
+            <div class="tx"><b>WIN11-VM ← WIN10-VM</b><span>تحكم كامل · نشطة · 03:12</span></div>
+            <span class="chip ok"><span class="dot"></span>نشطة</span>
+            <button class="btn ghost sm" data-feature="session-close">إغلاق</button></div>
+          <div class="item"><span class="ico"><svg class="i sm"><use href="#ic-link"/></svg></span>
+            <div class="tx"><b>Android-Emulator ← WIN11-VM</b><span>عرض · مرفوضة · bad_password</span></div>
+            <span class="chip warn"><span class="dot"></span>مرفوضة</span></div>
+        </div>
+      </div>
+
+      <div class="card" style="border-color:rgba(45,212,191,.45)">
+        <div class="card-h"><span class="ttl">طلب اتصال وارد</span><div class="grow"></div><span class="chip warn"><span class="dot"></span>60 ثانية</span></div>
+        <div class="card-b">
+          <div class="hint" style="margin-bottom:10px">WIN11-VM يطلب «تحكم كامل» — المهلة 60 ثانية.</div>
+          <div class="row2">
+            <button class="btn primary" data-feature="offer-accept">قبول</button>
+            <button class="btn danger" data-feature="offer-deny">رفض</button>
+            <div class="grow"></div><span class="hint">القبول يمنح التحكم لهذه الجلسة فقط</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="board-wrap">
+  <div class="board-title">٤ · وكيل ويندوز — الاتصال بجهاز آخر، الدردشة، والمساعد</div>
+  <p class="board-note">يشمل: اختيار الجهاز · تحديث القائمة · الوصول · كلمة السر · طلب الاتصال · الدردشة (إرسال/طي/نافذة/مسح) · المساعد (سجل/جديد/إيقاف/إرسال/طيّ).</p>
+  <div class="board agent">
+    <div class="appbar"><div class="brand"><span class="mark"><svg class="i sm"><use href="#ic-bolt"/></svg></span> AiRemote Agent</div><div class="grow"></div><span class="chip ok"><span class="dot"></span>متصل</span></div>
+    <div class="tabs"><button>التحكم عن بُعد</button><button class="on" data-feature="tab-session">الاتصال بجهاز آخر</button><button>الجلسات</button></div>
+    <div class="body">
+      <div class="card">
+        <div class="card-h"><span class="ttl">الاتصال بجهاز آخر</span><div class="grow"></div><svg class="i sm" style="color:var(--muted)"><use href="#ic-link"/></svg></div>
+        <div class="card-b">
+          <div class="field"><label>الأجهزة</label>
+            <div class="row2"><input class="input" value="WIN10-VM — متصل" data-feature="session-device"><button class="btn ghost sm" data-feature="session-refresh">تحديث</button></div>
+          </div>
+          <div class="field"><label>نوع الوصول</label>
+            <div class="seg" style="width:100%"><button class="on" style="flex:1" data-feature="session-access-control">تحكم كامل</button><button style="flex:1" data-feature="session-access-view">عرض</button><button style="flex:1" data-feature="session-access-files">ملفات</button></div>
+          </div>
+          <div class="field" style="margin-bottom:8px"><label>كلمة مرور الجهاز</label><input class="input mono" type="password" value="••••••" data-feature="session-pw"></div>
+          <div class="hint" style="margin-bottom:8px">تظهر عند اختيار «تحكم كامل»</div>
+          <button class="btn primary" style="width:100%;justify-content:center" data-feature="session-request-btn">طلب الاتصال</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><span class="ttl">دردشة الجلسة</span><div class="grow"></div>
+          <button class="btn ghost sm" data-feature="chat-popout-btn">نافذة</button>
+          <button class="btn ghost sm" data-feature="chat-clear-btn">مسح</button>
+          <button class="iconbtn" title="طيّ" data-feature="chat-collapse-btn"><svg class="i sm"><use href="#ic-minus"/></svg></button>
+        </div>
+        <div class="card-b">
+          <div class="ln" style="font-size:11.5px;color:var(--ink2);margin-bottom:8px">الطرف الآخر: «جاهز للتحكم» · 23:41</div>
+          <div class="row2"><input class="input" data-feature="chat-input" placeholder="اكتب رسالة…"><button class="btn primary" data-feature="chat-send-btn"><svg class="i sm"><use href="#ic-play"/></svg> إرسال</button></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><span class="ttl">المساعد الذكي</span><div class="grow"></div>
+          <button class="btn ghost sm" data-feature="ai-hist-btn">السجل</button>
+          <button class="btn ghost sm" data-feature="ai-new-btn">جديد</button>
+          <button class="btn danger sm" data-feature="ai-stop-btn">إيقاف</button>
+          <button class="iconbtn" title="طيّ" data-feature="ai-collapse-btn"><svg class="i sm"><use href="#ic-minus"/></svg></button>
+        </div>
+        <div class="card-b">
+          <div class="ln" style="font-size:11.5px;color:var(--ink2);margin-bottom:8px">المساعد: «الجهاز متصل، الموارد طبيعية.»</div>
+          <div class="row2"><input class="input" data-feature="ai-input" placeholder="اسأل عن الجهاز…"><button class="btn primary" data-feature="ai-send-btn"><svg class="i sm"><use href="#ic-play"/></svg> إرسال</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="board-wrap">
+  <div class="board-title">٥ · وكيل أندرويد (كامل)</div>
+  <p class="board-note">يشمل: الحالة · خدمة الإتاحة · منح الالتقاط · كلمة سر التحكم · اختيار الجهاز وتحديثه · الوصول · كلمة السر · الطلب · الجلسات · السجل · إيقاف.</p>
+  <div class="board phone">
+    <div class="statusbar"><span>9:41</span><span>AiRemote</span><span>▮▮▮</span></div>
+    <div class="pheap">
+      <div class="appicon"><svg class="i"><use href="#ic-bolt"/></svg></div>
+      <div><h2>AiRemote Agent</h2><p>DESKTOP-IFE3GNE · v3.13.1</p></div>
+      <div class="grow"></div><span class="chip ok"><span class="dot"></span>متصل</span>
+    </div>
+    <div style="padding:0 12px 12px;display:flex;flex-direction:column;gap:10px">
+      <div class="list">
+        <div class="item"><span class="ico"><svg class="i sm"><use href="#ic-a11y"/></svg></span><div class="tx"><b>خدمة الإتاحة</b><span>التحكم باللمس والكتابة</span></div><div class="toggle on" data-feature="and-a11y-toggle"><i></i></div></div>
+        <div class="item"><span class="ico"><svg class="i sm"><use href="#ic-capture"/></svg></span><div class="tx"><b>منح التقاط الشاشة</b><span>مطلوب للبث</span></div><div class="toggle on" data-feature="and-capture-toggle"><i></i></div></div>
+        <div class="item"><span class="ico"><svg class="i sm"><use href="#ic-lock"/></svg></span><div class="tx"><b>كلمة سر التحكم</b><span>محفوظة · PBKDF2</span></div><button class="btn ghost sm" data-feature="and-ctrl-pw-open">تعديل</button></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><span class="ttl">الاتصال بجهاز آخر</span><div class="grow"></div><svg class="i sm" style="color:var(--muted)"><use href="#ic-link"/></svg></div>
+        <div class="card-b">
+          <div class="field"><label>الجهاز</label>
+            <div class="row2"><input class="input" value="WIN10-VM — متصل" data-feature="and-session-device"><button class="btn ghost sm" data-feature="and-session-refresh">تحديث</button></div>
+          </div>
+          <div class="field"><label>نوع الوصول</label>
+            <div class="seg" style="width:100%"><button class="on" style="flex:1" data-feature="and-access-control">تحكم</button><button style="flex:1" data-feature="and-access-view">عرض</button><button style="flex:1" data-feature="and-access-files">ملفات</button></div>
+          </div>
+          <div class="field" style="margin-bottom:8px"><label>كلمة مرور الجهاز</label><input class="input mono" type="password" value="••••••" data-feature="and-session-pw"></div>
+          <button class="btn primary" style="width:100%;justify-content:center" data-feature="and-session-request">طلب الاتصال</button>
+        </div>
+      </div>
+    </div>
+    <div class="bottom">
+      <button class="btn ghost" data-feature="and-log"><svg class="i sm"><use href="#ic-list"/></svg> السجل</button>
+      <button class="btn ghost" data-feature="and-sessions"><svg class="i sm"><use href="#ic-reconnect"/></svg> الجلسات</button>
+      <button class="btn danger" data-feature="and-stop"><svg class="i sm"><use href="#ic-stop"/></svg> إيقاف</button>
+    </div>
+  </div>
+</div>
+</body></html>
