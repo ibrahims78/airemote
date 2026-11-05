@@ -20,7 +20,8 @@ export default defineConfig({
     allowedHosts: true,
     hmr: false,
     proxy: {
-      '/api': { target: 'http://localhost:3001', changeOrigin: true },
+      // السيرفر المكتبي يخدم TLS فقط؛ http كان يجعل كل نداء /api يفشل بـ500 في التطوير.
+      '/api': { target: 'https://localhost:3001', changeOrigin: true, secure: false },
       '/ws': { target: 'ws://localhost:3001', ws: true, changeOrigin: true },
       '/ssh': { target: 'ws://localhost:3001', ws: true, changeOrigin: true },
       '/pty':    { target: 'ws://localhost:3001', ws: true, changeOrigin: true },
