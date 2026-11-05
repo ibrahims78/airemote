@@ -2195,3 +2195,9 @@ html.light .ai-page-online, html.light .ai-page-cancel { background: #fff; borde
 
 
 @media (min-width:1400px){ .cr-page{ max-width:none !important; } }
+
+/* ── Phase 3e — جدار بعرض كامل بلا ترويسة بطاقة (لا توجد في المرجع؛ الترويسة بلا أزرار) ── */
+@media (min-width:1400px){
+  .cr-page .cr-live-card{ width:100% !important; max-width:none !important; }
+  .cr-page .cr-live-card .cr-card-head{ display:none !important; }
+}
