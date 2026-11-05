@@ -9,6 +9,8 @@ import android.content.res.Configuration;
 import android.media.projection.MediaProjectionManager;
 import android.os.Build;
 import android.os.Bundle;
+
+import java.util.Locale;
 import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
@@ -70,13 +72,13 @@ public class MainActivity extends Activity {
                 // حوار واحد فقط: أي عرض جديد يُغلق السابق
                 dismissSessionOffer("");
                 AlertDialog dlg = new AlertDialog.Builder(this)
-                        .setTitle("طلب اتصال بجهازك")
-                        .setMessage(who + " يطلب " + access + " — المهلة " + secs + " ثانية.")
-                        .setPositiveButton("سماح", (d, w) -> {
+                        .setTitle(getString(R.string.dlg_request))
+                        .setMessage(getString(R.string.dlg_who, who, access, secs))
+                        .setPositiveButton(getString(R.string.dlg_allow), (d, w) -> {
                             offerDialog = null; offerSid = "";
                             AgentService.sendSessionDecision(sid, true);
                         })
-                        .setNegativeButton("رفض", (d, w) -> {
+                        .setNegativeButton(getString(R.string.dlg_deny), (d, w) -> {
                             offerDialog = null; offerSid = "";
                             AgentService.sendSessionDecision(sid, false);
                         })
@@ -131,6 +133,7 @@ public class MainActivity extends Activity {
         applySavedNightMode();
         setContentView(R.layout.activity_main);
         setupThemeToggle();
+        setupLangToggle();
         // v3.8.3 - version labels must follow BuildConfig, never a hardcoded string
         TextView verTop = findViewById(R.id.tv_ver_top);
         if (verTop != null) verTop.setText("v" + com.airemote.agent.BuildConfig.VERSION_NAME);
@@ -345,7 +348,7 @@ public class MainActivity extends Activity {
 
     private void refreshConnectionStatus() {
         if (AgentService.isConnected()) {
-            setStatus("متصل ✓", true);
+            setStatus(getString(R.string.state_online) + " ✓", true);
         } else if (AgentService.isRunning()) {
             setStatus("جارٍ الاتصال…", false);
         } else {
@@ -512,7 +515,7 @@ public class MainActivity extends Activity {
         if (text.isEmpty()) return;
         aiInput.setText("");
         appendAi("\nأنت: " + text + "\n");
-        aiStatus.setText("جارٍ التفكير…");
+        aiStatus.setText(getString(R.string.ai_thinking));
         new Thread(() -> {
             String reply = "";
             try {
@@ -543,7 +546,7 @@ public class MainActivity extends Activity {
                 } catch (Exception e) { reply = sb.length() > 0 ? sb.toString() : ("HTTP " + code); }
             } catch (Exception e) { reply = "تعذر الاتصال: " + e.getMessage(); }
             final String out = reply;
-            UI.post(() -> { appendAi("المساعد: " + out + "\n"); aiStatus.setText(""); });
+            UI.post(() -> { appendAi(getString(R.string.ai_prefix) + out + "\n"); aiStatus.setText(""); });
         }).start();
     }
 
@@ -591,14 +594,14 @@ public class MainActivity extends Activity {
             card.setLayoutParams(lp);
 
             TextView title = new TextView(this);
-            title.setText("الأجهزة");
+            title.setText(getString(R.string.dev_title));
             title.setTextColor(0xFF93C5FD);
             title.setTextSize(13);
             title.setTypeface(null, android.graphics.Typeface.BOLD);
             card.addView(title);
 
             devState = new TextView(this);
-            devState.setText("اضغط «تحديث» لجلب أجهزة حسابك.");
+            devState.setText(getString(R.string.dev_hint));
             devState.setTextColor(0xFF94A3B8);
             devState.setTextSize(12);
             devState.setPadding(0, dp(4), 0, dp(6));
@@ -636,12 +639,12 @@ public class MainActivity extends Activity {
             LinearLayout btns = new LinearLayout(this);
             btns.setOrientation(LinearLayout.HORIZONTAL);
             Button refresh = new Button(this);
-            refresh.setText("تحديث");
+            refresh.setText(getString(R.string.btn_refresh));
             refresh.setAllCaps(false);
             refresh.setOnClickListener(v -> loadDevices());
             btns.addView(refresh);
             Button send = new Button(this);
-            send.setText("طلب الاتصال");
+            send.setText(getString(R.string.btn_request));
             send.setAllCaps(false);
             send.setOnClickListener(v -> sendRequest());
             btns.addView(send);
@@ -657,14 +660,14 @@ public class MainActivity extends Activity {
             sesCard.setLayoutParams(slp2);
 
             TextView sTitle = new TextView(this);
-            sTitle.setText("الجلسات");
+            sTitle.setText(getString(R.string.ses_title));
             sTitle.setTextColor(0xFF93C5FD);
             sTitle.setTextSize(13);
             sTitle.setTypeface(null, android.graphics.Typeface.BOLD);
             sesCard.addView(sTitle);
 
             sesState = new TextView(this);
-            sesState.setText("جارٍ تحميل الجلسات…");
+            sesState.setText(getString(R.string.ses_loading));
             sesState.setTextColor(0xFF94A3B8);
             sesState.setTextSize(12);
             sesState.setPadding(0, dp(4), 0, dp(6));
@@ -675,7 +678,7 @@ public class MainActivity extends Activity {
             sesCard.addView(sesRows);
 
             Button sRefresh = new Button(this);
-            sRefresh.setText("تحديث الجلسات");
+            sRefresh.setText(getString(R.string.btn_refresh_ses));
             sRefresh.setAllCaps(false);
             sRefresh.setOnClickListener(v -> loadSessions());
             sesCard.addView(sRefresh);
@@ -691,10 +694,10 @@ public class MainActivity extends Activity {
         final String base = apiBase();
         final String tok = Prefs.token(this);
         if (base == null || tok == null || tok.isEmpty()) {
-            if (devState != null) devState.setText("لم يُهيَّأ الوكيل بعد (لا عنوان ولا رمز).");
+            if (devState != null) devState.setText(getString(R.string.dev_not_setup));
             return;
         }
-        if (devState != null) devState.setText("جارٍ التحميل…");
+        if (devState != null) devState.setText(getString(R.string.dev_loading));
         devLabels.clear();
         devIds.clear();
         if (devAdapter != null) devAdapter.notifyDataSetChanged();
@@ -716,7 +719,7 @@ public class MainActivity extends Activity {
                 UI.post(() -> renderDevices(arr));
             } catch (Exception e) {
                 final String msg = e.getMessage();
-                UI.post(() -> { if (devState != null) devState.setText("تعذر جلب الأجهزة: " + msg); });
+                UI.post(() -> { if (devState != null) devState.setText(getString(R.string.dev_error, msg)); });
             }
         }).start();
     }
@@ -725,10 +728,10 @@ public class MainActivity extends Activity {
         final String base = apiBase();
         final String tok = Prefs.token(this);
         if (base == null || tok == null || tok.isEmpty()) {
-            if (sesState != null) sesState.setText("لم يُهيَّأ الوكيل بعد.");
+            if (sesState != null) sesState.setText(getString(R.string.dev_not_setup2));
             return;
         }
-        if (sesState != null) sesState.setText("جارٍ تحميل الجلسات…");
+        if (sesState != null) sesState.setText(getString(R.string.ses_loading));
         new Thread(() -> {
             try {
                 HttpURLConnection c = (HttpURLConnection) new URL(base + "/api/relay/sessions").openConnection();
@@ -780,7 +783,7 @@ public class MainActivity extends Activity {
             row.addView(tv);
             // 3.11.4 — قطع قسري للجلسة من الوكيل (كانت تعلق فتمنع إنشاء جلسة جديدة).
             Button cut = new Button(this);
-            cut.setText("قطع");
+            cut.setText(getString(R.string.btn_cut));
             cut.setAllCaps(false);
             cut.setTextSize(11);
             cut.setOnClickListener(v -> closeSessionById(rowSid));
@@ -788,7 +791,7 @@ public class MainActivity extends Activity {
             sesRows.addView(row);
             shown++;
         }
-        if (sesState != null) sesState.setText(shown == 0 ? "لا جلسات نشطة" : ("جلسات نشطة: " + shown));
+        if (sesState != null) sesState.setText(shown == 0 ? getString(R.string.ses_none) : getString(R.string.ses_count, shown));
     }
 
     private void closeSessionById(final String sid) {
@@ -829,7 +832,7 @@ public class MainActivity extends Activity {
             // P5-fix — أظهر أن الجهاز داخل جلسة وكيل↔وكيل الآن.
             String ses = "active".equals(d.optString("session")) ? "  · في جلسة"
                     : ("requested".equals(d.optString("session")) ? "  · طلب معلّق" : "");
-            devLabels.add(name + (kind.isEmpty() ? "" : " · " + kind) + (online ? "  ● متصل" : "  ○ غير متصل") + ses);
+            devLabels.add(name + (kind.isEmpty() ? "" : " · " + kind) + (online ? "  ● " + getString(R.string.state_online) : "  ○ " + getString(R.string.state_offline)) + ses);
             devIds.add(id);
         }
         if (devAdapter != null) devAdapter.notifyDataSetChanged();
@@ -858,7 +861,7 @@ public class MainActivity extends Activity {
         final String tok = Prefs.token(this);
         if (base == null || tok == null || tok.isEmpty()) { toast("الوكيل غير مهيّأ"); return; }
         // النصوص تطابق وكيل ويندوز حرفياً (P3): نفس الحالات ونفس الترتيب.
-        if (devState != null) devState.setText("جارٍ إرسال الطلب…");
+        if (devState != null) devState.setText(getString(R.string.ses_sending));
         new Thread(() -> {
             try {
                 JSONObject body = new JSONObject();
@@ -910,7 +913,7 @@ public class MainActivity extends Activity {
                     if (devPw != null && showPw) devPw.setVisibility(View.VISIBLE);
                     if (pendingNow) {
                         UI.postDelayed(() -> {
-                            if (devState != null && devPendingSeq == mySeq) devState.setText("انتهت مهلة الطلب.");
+                            if (devState != null && devPendingSeq == mySeq) devState.setText(getString(R.string.ses_timeout));
                         }, 60000);
                     }
                 });
@@ -965,10 +968,10 @@ public class MainActivity extends Activity {
             if (a == null) { cb.accept(false); return; }
             try {
                 new AlertDialog.Builder(a)
-                    .setTitle("طلب تحكم")
-                    .setMessage((requester == null ? "شخص ما" : requester) + " يطلب التحكم في شاشتك.\nهل تسمح بالتحكم الكامل؟")
-                    .setPositiveButton("السماح", (d, w) -> cb.accept(true))
-                    .setNegativeButton("رفض", (d, w) -> cb.accept(false))
+                    .setTitle(a.getString(R.string.dlg_title))
+                    .setMessage(a.getString(R.string.dlg_body, requester == null ? a.getString(R.string.dlg_someone) : requester))
+                    .setPositiveButton(a.getString(R.string.dlg_allow2), (d, w) -> cb.accept(true))
+                    .setNegativeButton(a.getString(R.string.dlg_deny), (d, w) -> cb.accept(false))
                     .setCancelable(false)
                     .show();
             } catch (Exception e) { cb.accept(false); }
@@ -990,7 +993,7 @@ public class MainActivity extends Activity {
         UI.post(() -> {
             MainActivity a = instance;
             if (a != null) {
-                if (a.tbState != null) { a.tbState.setText(ok ? "متصل" : s); a.tbState.setTextColor(ok ? 0xFF34D399 : 0xFF94A3B8); }
+                if (a.tbState != null) { a.tbState.setText(ok ? a.getString(R.string.state_online) : s); a.tbState.setTextColor(ok ? 0xFF34D399 : 0xFF94A3B8); }
                 if (a.statusTitle != null) { a.statusTitle.setText(s); a.statusTitle.setTextColor(ok ? 0xFF34D399 : 0xFFF1F5F9); }
                 if (a.statusSub != null) a.statusSub.setText(ok ? "الوكيل نشط على هذا الجهاز" : "اضغط «بدء» للاتصال بالخادم");
             }
@@ -1001,9 +1004,9 @@ public class MainActivity extends Activity {
         UI.post(() -> {
             MainActivity a = instance;
             if (a == null) return;
-            if (a.connServer != null && server != null) a.connServer.setText("الخادم: " + server);
-            if (a.connDevinfo != null && device != null) a.connDevinfo.setText("الجهاز: " + device);
-            if (a.connUptime != null && uptime != null) a.connUptime.setText("مدة الجلسة: " + uptime);
+            if (a.connServer != null && server != null) a.connServer.setText(a.getString(R.string.lbl_server) + server);
+            if (a.connDevinfo != null && device != null) a.connDevinfo.setText(a.getString(R.string.lbl_device) + device);
+            if (a.connUptime != null && uptime != null) a.connUptime.setText(a.getString(R.string.lbl_uptime) + uptime);
         });
     }
 
@@ -1048,6 +1051,47 @@ public class MainActivity extends Activity {
         dark.setBackgroundResource(isDark ? R.drawable.tab_active : 0);
     }
 
+
+
+    // ── 3.14.0 — تبديل اللغة: يغيّر لغة الموارد ويُعيد إنشاء النشاط ──
+    private static final String PREF_LANG = "lang";
+
+    private String currentLang() {
+        return Prefs.sp(this).getString(PREF_LANG, "ar");
+    }
+
+    @Override
+    protected void attachBaseContext(Context newBase) {
+        String lang = Prefs.sp(newBase).getString(PREF_LANG, "ar");
+        Configuration cfg = new Configuration(newBase.getResources().getConfiguration());
+        Locale loc = new Locale(lang);
+        cfg.setLocale(loc);
+        cfg.setLayoutDirection(loc);
+        super.attachBaseContext(newBase.createConfigurationContext(cfg));
+    }
+
+    private void setupLangToggle() {
+        final TextView ar = findViewById(R.id.tb_lang_ar);
+        final TextView en = findViewById(R.id.tb_lang_en);
+        if (ar == null || en == null) return;
+        boolean isAr = "ar".equals(currentLang());
+        paintLangToggle(ar, en, isAr);
+        ar.setOnClickListener(v -> setLang("ar"));
+        en.setOnClickListener(v -> setLang("en"));
+    }
+
+    private void paintLangToggle(TextView ar, TextView en, boolean isAr) {
+        ar.setTextColor(getColor(isAr ? R.color.app_accent : R.color.app_muted));
+        en.setTextColor(getColor(isAr ? R.color.app_muted : R.color.app_accent));
+        ar.setBackgroundResource(isAr ? R.drawable.tab_active : 0);
+        en.setBackgroundResource(isAr ? 0 : R.drawable.tab_active);
+    }
+
+    private void setLang(String lang) {
+        if (lang.equals(currentLang())) return;
+        Prefs.sp(this).edit().putString(PREF_LANG, lang).apply();
+        recreate();
+    }
 
     private void applyNightConfiguration(boolean dark) {
         Configuration cfg = new Configuration(getResources().getConfiguration());

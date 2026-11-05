@@ -64,10 +64,35 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="6dp"
-            android:text="متوقف"
+            android:text="@string/state_stopped"
             android:textColor="@color/app_muted"
             android:textSize="10sp" />
-            <!-- 3.14.0 — مبدّل الثيم (المرجع: شريحة فاتح/داكن في الرأس) -->
+            <TextView
+            android:id="@+id/tb_lang_ar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:paddingStart="7dp"
+            android:paddingEnd="7dp"
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
+            android:text="ع"
+            android:textColor="@color/app_accent"
+            android:textSize="10sp" />
+
+        <TextView
+            android:id="@+id/tb_lang_en"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingStart="7dp"
+            android:paddingEnd="7dp"
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
+            android:text="EN"
+            android:textColor="@color/app_muted"
+            android:textSize="10sp" />
+
+        <!-- 3.14.0 — مبدّل الثيم (المرجع: شريحة فاتح/داكن في الرأس) -->
         <TextView
             android:id="@+id/tb_theme_light"
             android:layout_width="wrap_content"
@@ -77,7 +102,7 @@
             android:paddingEnd="7dp"
             android:paddingTop="3dp"
             android:paddingBottom="3dp"
-            android:text="فاتح"
+            android:text="@string/theme_light"
             android:textColor="@color/app_accent"
             android:textSize="10sp" />
 
@@ -89,7 +114,7 @@
             android:paddingEnd="7dp"
             android:paddingTop="3dp"
             android:paddingBottom="3dp"
-            android:text="داكن"
+            android:text="@string/theme_dark"
             android:textColor="@color/app_muted"
             android:textSize="10sp" />
         </LinearLayout>
@@ -112,7 +137,7 @@
             android:layout_marginEnd="4dp"
             android:background="@color/app_surface"
             android:gravity="center"
-            android:text="الحالة"
+            android:text="@string/app_state"
             android:textColor="@color/app_muted"
             android:textSize="11sp"
             android:textStyle="bold" />
@@ -125,7 +150,7 @@
             android:layout_marginEnd="4dp"
             android:background="@color/app_surface"
             android:gravity="center"
-            android:text="المساعد الذكي"
+            android:text="@string/app_ai"
             android:textColor="@color/app_muted"
             android:textSize="11sp"
             android:textStyle="bold" />
@@ -138,7 +163,7 @@
             android:layout_marginEnd="4dp"
             android:background="@color/app_surface"
             android:gravity="center"
-            android:text="دردشة المشاهدين"
+            android:text="@string/app_chat"
             android:textColor="@color/app_muted"
             android:textSize="11sp"
             android:textStyle="bold" />
@@ -150,7 +175,7 @@
             android:layout_weight="1"
             android:background="@color/app_surface"
             android:gravity="center"
-            android:text="السجل"
+            android:text="@string/app_log"
             android:textColor="@color/app_muted"
             android:textSize="11sp"
             android:textStyle="bold" />
@@ -188,7 +213,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="44dp"
                         android:background="@drawable/btn_primary"
-                        android:text="معالج التهيئة (كل الصلاحيات)"
+                        android:text="@string/setup_wizard"
                         android:textColor="@color/app_on_accent"
                         android:textSize="13sp"
                         android:textStyle="bold" />
@@ -220,7 +245,7 @@
                             android:layout_height="wrap_content"
                             android:layout_marginStart="10dp"
                             android:layout_weight="1"
-                            android:text="غير متصل"
+                            android:text="@string/state_offline"
                             android:textColor="@color/app_ink"
                             android:textSize="17sp"
                             android:textStyle="bold" />
@@ -230,7 +255,7 @@
                             android:layout_width="wrap_content"
                             android:layout_height="38dp"
                             android:background="@drawable/btn_primary"
-                            android:text="بدء"
+                            android:text="@string/btn_start"
                             android:textColor="@color/app_on_accent"
                             android:textSize="12sp" />
 
@@ -240,7 +265,7 @@
                             android:layout_height="38dp"
                             android:layout_marginStart="6dp"
                             android:background="@drawable/btn_ghost"
-                            android:text="إيقاف"
+                            android:text="@string/btn_stop"
                             android:textColor="@color/app_ink2"
                             android:textSize="12sp" />
 
@@ -251,7 +276,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="5dp"
-                        android:text="اضغط «بدء» لالتصال بالخادم"
+                        android:text="@string/hint_press_start2"
                         android:textColor="@color/app_muted"
                         android:textSize="11sp" />
                 </LinearLayout>
@@ -269,7 +294,7 @@
                         android:id="@+id/conn_server"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:text="الخادم: —"
+                        android:text="@string/lbl_server_dash"
                         android:textColor="@color/app_ink2"
                         android:textSize="11sp"
                         android:fontFamily="monospace" />
@@ -279,7 +304,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="الجهاز: —"
+                        android:text="@string/lbl_device_dash"
                         android:textColor="@color/app_muted"
                         android:textSize="11sp" />
 
@@ -288,7 +313,7 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="4dp"
-                        android:text="مدة الجلسة: —"
+                        android:text="@string/lbl_uptime_dash"
                         android:textColor="@color/app_muted"
                         android:textSize="11sp" />
                 </LinearLayout>
@@ -305,7 +330,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="الإعدادات"
+                        android:text="@string/sec_settings"
                         android:textColor="@color/app_ink"
                         android:textSize="13sp"
                         android:textStyle="bold" />
@@ -314,7 +339,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:text="عنوان الخادم (WebSocket)"
+                        android:text="@string/fld_server"
                         android:textColor="@color/app_muted"
                         android:textSize="10sp" />
 
@@ -335,7 +360,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:text="رمز الجهاز (Device Token)"
+                        android:text="@string/fld_token"
                         android:textColor="@color/app_muted"
                         android:textSize="10sp" />
 
@@ -354,7 +379,7 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginTop="8dp"
-                        android:text="كلمة مرور التحكم (فارغة = موافقة يدوية على الجهاز)"
+                        android:text="@string/fld_ctrl_pw"
                         android:textColor="@color/app_muted"
                         android:textSize="10sp" />
 
@@ -381,7 +406,7 @@
                             android:layout_height="40dp"
                             android:layout_weight="1"
                             android:background="@drawable/btn_primary"
-                            android:text="حفظ الإعدادات"
+                            android:text="@string/btn_save"
                             android:textColor="@color/app_on_accent"
                             android:textSize="12sp" />
 
@@ -392,7 +417,7 @@
                             android:layout_marginStart="6dp"
                             android:layout_weight="1"
                             android:background="@drawable/btn_ghost"
-                            android:text="حذف كلمة المرور"
+                            android:text="@string/btn_clear_pw"
                             android:textColor="@color/app_ink2"
                             android:textSize="12sp" />
                     </LinearLayout>
@@ -411,7 +436,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="الموارد"
+                        android:text="@string/sec_resources"
                         android:textColor="@color/app_ink"
                         android:textSize="13sp"
                         android:textStyle="bold" />
@@ -532,7 +557,7 @@
                 android:id="@+id/ai_status"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="اسأل المساعد الذكي — يمكنه تنفيذ المهام على هذا الجهاز"
+                android:text="@string/ai_hint"
                 android:textColor="@color/app_subtle"
                 android:textSize="10sp" />
 
@@ -566,7 +591,7 @@
                     android:layout_height="44dp"
                     android:layout_weight="1"
                     android:background="@drawable/input_bg"
-                    android:hint="اكتب رسالتك للمساعد…"
+                    android:hint="@string/ai_ph"
                     android:padding="9dp"
                     android:textColor="@color/app_ink"
                     android:textColorHint="@color/app_hint"
@@ -578,7 +603,7 @@
                     android:layout_height="44dp"
                     android:layout_marginStart="6dp"
                     android:background="@drawable/btn_primary"
-                    android:text="إرسال"
+                    android:text="@string/btn_send"
                     android:textColor="@color/app_on_accent"
                     android:textSize="12sp" />
             </LinearLayout>
@@ -597,7 +622,7 @@
                 android:id="@+id/chat_status"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="دردشة المشاهدين — تظهر أثناء مشاهدة الشاشة"
+                android:text="@string/chat_hint"
                 android:textColor="@color/app_subtle"
                 android:textSize="10sp" />
 
@@ -631,7 +656,7 @@
                     android:layout_height="44dp"
                     android:layout_weight="1"
                     android:background="@drawable/input_bg"
-                    android:hint="اكتب رسالة للمشاهدين…"
+                    android:hint="@string/chat_ph"
                     android:padding="9dp"
                     android:textColor="@color/app_ink"
                     android:textColorHint="@color/app_hint"
@@ -643,7 +668,7 @@
                     android:layout_height="44dp"
                     android:layout_marginStart="6dp"
                     android:background="@drawable/btn_primary"
-                    android:text="إرسال"
+                    android:text="@string/btn_send"
                     android:textColor="@color/app_on_accent"
                     android:textSize="12sp" />
             </LinearLayout>
@@ -682,7 +707,7 @@
                 android:layout_height="40dp"
                 android:layout_marginTop="6dp"
                 android:background="@drawable/btn_ghost"
-                android:text="مسح السجل"
+                android:text="@string/btn_clear_log"
                 android:textColor="@color/app_ink2"
                 android:textSize="12sp" />
         </LinearLayout>
