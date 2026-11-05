@@ -150,6 +150,7 @@
   .seg2{display:inline-flex;background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:2px;gap:2px}
   .seg2 button{border:0;background:none;color:var(--muted);font:inherit;font-size:11px;padding:3px 8px;border-radius:8px;cursor:pointer}
   .seg2 button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(2,6,23,.10)}
+  .pg.on{display:flex;flex-direction:column;gap:12px;padding:12px}
   html,body{min-height:100vh}
   body{background:#eef3f7;display:flex;flex-direction:column;align-items:center;padding:22px}
   html:not(.light) body{background:#070d12}
@@ -224,13 +225,13 @@
     </div>
 
     <div class="tabs">
-      <button class="on" data-tab="ctrl" onclick="showTab('ctrl')"><span data-en="Remote control">التحكم عن بُعد</span></button>
-      <button data-tab="connect" onclick="showTab('connect')"><span data-en="Connect to a device">الاتصال بجهاز آخر</span></button>
-      <button data-tab="sessions" onclick="showTab('sessions')"><span data-en="Sessions">الجلسات</span></button>
-      <button data-tab="session" onclick="showTab('session')"><span data-en="Session">الجلسة</span></button>
+      <button class="on" data-tab="status" onclick="showTab('status')"><span data-en="Status">الحالة</span></button>
+      <button data-tab="ai" onclick="showTab('ai')"><span data-en="AI assistant">المساعد الذكي</span></button>
+      <button data-tab="chat" onclick="showTab('chat')"><span data-en="Viewer chat">دردشة المشاهدين</span> <span class="chip ok"><span class="dot"></span><span data-en="2">٢</span></span></button>
+      <button data-tab="log" onclick="showTab('log')"><span data-en="Log">السجل</span></button>
     </div>
 
-    <div class="pg on" id="ctrl" style="padding:12px;display:flex;flex-direction:column;gap:12px">
+    <div class="pg on" id="status">
       <div class="card">
         <div class="card-h"><span class="ttl"><span data-en="Remote control">التحكم عن بُعد</span></span>
           <span class="sub"><span data-en="One password for every path">كلمة سر واحدة تحكم كل المسارات</span></span>
@@ -268,21 +269,6 @@
       </div>
 
       <div class="card">
-        <div class="card-h"><span class="ttl"><span data-en="Recent events">آخر الأحداث</span></span><div class="grow"></div>
-          <button class="btn ghost sm" data-feature="copy-log-btn"><span data-en="Copy">نسخ</span></button>
-          <button class="btn ghost sm" data-feature="export-log-btn"><span data-en="Export">تصدير</span></button>
-          <button class="btn ghost sm" data-feature="clear-log"><span data-en="Clear">مسح</span></button>
-          <button class="btn ghost sm" data-feature="log-coll-btn"><span data-en="Collapse">طيّ</span></button></div>
-        <div class="card-b log">
-          <div class="ln"><span class="ts">23:41:02</span><span><span data-en="Agent↔agent: session accepted with password">وكيل↔وكيل: جلسة قُبلت بكلمة سر</span></span></div>
-          <div class="ln"><span class="ts">23:40:58</span><span><span data-en="Agent↔agent: wrong password (bad_password)">وكيل↔وكيل: كلمة سر خاطئة (bad_password)</span></span></div>
-          <div class="ln"><span class="ts">23:38:12</span><span><span data-en="Stream started — 1600×675">بث بدأ — 1600×675</span></span></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="pg" id="connect" style="padding:12px;display:flex;flex-direction:column;gap:12px">
-      <div class="card">
         <div class="card-h"><span class="ttl"><span data-en="Connect to another device">الاتصال بجهاز آخر</span></span><div class="grow"></div><svg class="i sm"><use href="#ic-link"/></svg></div>
         <div class="card-b">
           <div class="field"><label><span data-en="Devices">الأجهزة</span></label>
@@ -300,60 +286,86 @@
           <button class="btn primary" style="width:100%;justify-content:center" data-feature="session-request-btn"><span data-en="Request connection">طلب الاتصال</span></button>
         </div>
       </div>
-    </div>
 
-    <div class="pg" id="sessions" style="padding:12px;display:flex;flex-direction:column;gap:12px">
       <div class="card">
         <div class="card-h"><span class="ttl"><span data-en="Sessions">الجلسات</span></span><div class="grow"></div>
           <button class="btn ghost sm" data-feature="sessions-refresh"><svg class="i sm"><use href="#ic-reconnect"/></svg> <span data-en="Refresh">تحديث</span></button></div>
         <div class="card-b" style="display:flex;flex-direction:column;gap:6px">
           <div class="item"><span class="ico"><svg class="i sm"><use href="#ic-link"/></svg></span><div class="tx"><b>WIN11-VM ← WIN10-VM</b><span><span data-en="Full control · active · 03:12">تحكم كامل · نشطة · 03:12</span></span></div><span class="chip ok"><span class="dot"></span><span data-en="Active">نشطة</span></span></div>
           <div class="item"><span class="ico"><svg class="i sm"><use href="#ic-link"/></svg></span><div class="tx"><b>Android-Emulator ← WIN11-VM</b><span><span data-en="View · denied · bad_password">عرض · مرفوضة · bad_password</span></span></div><span class="chip warn"><span class="dot"></span><span data-en="Denied">مرفوضة</span></span></div>
-        </div>
-      </div>
-      <div class="card" style="border-color:rgba(45,212,191,.45)">
-        <div class="card-h"><span class="ttl"><span data-en="Incoming request">طلب وارد</span></span><div class="grow"></div><span class="chip warn"><span class="dot"></span><span data-en="60s">60 ثانية</span></span></div>
-        <div class="card-b">
-          <div class="hint" style="margin-bottom:10px"><span data-en="WIN11-VM requests “full control” — 60s left">WIN11-VM يطلب «تحكم كامل» — يتبقى 60 ثانية</span></div>
-          <div class="row2"><button class="btn primary" data-feature="offer-accept"><span data-en="Accept">قبول</span></button>
-            <button class="btn danger" data-feature="offer-deny"><span data-en="Deny">رفض</span></button></div>
+          <div class="item" style="border-color:var(--accent)"><span class="ico"><svg class="i sm"><use href="#ic-bell"/></svg></span><div class="tx"><b><span data-en="Incoming request — WIN11-VM">طلب وارد — WIN11-VM</span></b><span><span data-en="Full control · 60s left">تحكم كامل · يتبقى 60 ثانية</span></span></div>
+            <div class="row2" style="gap:6px"><button class="btn primary sm" data-feature="offer-accept"><span data-en="Accept">قبول</span></button>
+            <button class="btn danger sm" data-feature="offer-deny"><span data-en="Deny">رفض</span></button></div></div>
         </div>
       </div>
     </div>
 
-    <div class="pg" id="session" style="padding:12px;display:flex;flex-direction:column;gap:12px">
+    <div class="pg" id="ai">
       <div class="card">
-        <div class="card-h"><span class="ttl"><span data-en="Chat">الدردشة</span></span><div class="grow"></div>
-          <button class="btn ghost sm" data-feature="chat-collapse-btn"><span data-en="Collapse">طيّ</span></button>
-          <button class="btn ghost sm" data-feature="chat-popout-btn"><span data-en="Pop out">نافذة</span></button>
-          <button class="btn ghost sm" data-feature="chat-clear-btn"><span data-en="Clear">مسح</span></button></div>
+        <div class="card-h"><span class="ttl"><span data-en="AI assistant">المساعد الذكي</span></span><div class="grow"></div>
+          <button class="btn ghost sm" data-feature="ai-hist-btn"><span data-en="History">السجل</span></button>
+          <button class="btn ghost sm" data-feature="ai-new-btn"><span data-en="New">جديد</span></button>
+          <button class="btn ghost sm" data-feature="ai-stop-btn"><span data-en="Stop">إيقاف</span></button>
+          <button class="btn ghost sm" data-feature="ai-collapse-btn"><span data-en="Collapse">طيّ</span></button></div>
         <div class="card-b">
-          <div class="log" style="max-height:150px;overflow:auto;margin-bottom:8px">
-            <div class="ln"><span class="ts">23:41</span><span><span data-en="WIN11-VM:">WIN11-VM:</span> <span data-en="The screen is a bit slow">الشاشة بطيئة قليلًا</span></span></div>
-            <div class="ln"><span class="ts">23:42</span><span><span data-en="You:">أنت:</span> <span data-en="I will lower the quality">سأخفّض الجودة</span></span></div>
+          <div class="log" style="max-height:190px;overflow:auto;margin-bottom:8px">
+            <div class="ln"><span class="ts"><span data-en="You">أنت</span></span><span><span data-en="Open Notepad and type a note">افتح المفكرة واكتب ملاحظة</span></span></div>
+            <div class="ln"><span class="ts"><span data-en="Assistant">المساعد</span></span><span><span data-en="Done — Notepad is open and the first line is typed.">تم — فتحت المفكرة وكتبت السطر الأول.</span></span></div>
+          </div>
+          <div class="row2">
+            <input class="input" style="flex:1" data-feature="ai-input" placeholder="اسأل المساعد…" data-ph-en="Ask the assistant…">
+            <button class="btn primary" data-feature="ai-send-btn"><span data-en="Send">إرسال</span></button></div>
+        </div>
+      </div>
+      <div class="hint"><span data-en="The assistant acts on this device: open apps, type, click, read state.">المساعد ينفّذ على هذا الجهاز: فتح التطبيقات، الكتابة، النقر، قراءة الحالة.</span></div>
+    </div>
+
+    <div class="pg" id="chat">
+      <div class="card">
+        <div class="card-h"><span class="ttl"><span data-en="Viewer chat">دردشة المشاهدين</span></span>
+          <span class="chip warn"><span class="dot"></span><span data-en="2 unread">٢ غير مقروء</span></span><div class="grow"></div>
+          <button class="btn ghost sm" data-feature="chat-clear-btn"><span data-en="Clear">مسح</span></button>
+          <button class="btn ghost sm" data-feature="chat-popout-btn"><span data-en="Pop out">نافذة</span></button>
+          <button class="btn ghost sm" data-feature="chat-collapse-btn"><span data-en="Collapse">طيّ</span></button></div>
+        <div class="card-b">
+          <div class="log" style="max-height:170px;overflow:auto;margin-bottom:8px">
+            <div class="ln"><span class="ts">23:41</span><span><span data-en="Viewer 1:">مشاهد 1:</span> <span data-en="The screen is a bit slow">الشاشة بطيئة قليلًا</span></span></div>
+            <div class="ln"><span class="ts">23:42</span><span><span data-en="You (host):">أنت (المضيف):</span> <span data-en="I will lower the quality">سأخفّض الجودة</span></span></div>
+            <div class="ln"><span class="ts">23:44</span><span><span data-en="Viewer 2:">مشاهد 2:</span> <span data-en="Thanks, much better">شكرًا، صارت أفضل</span></span></div>
           </div>
           <div class="row2">
             <input class="input" style="flex:1" data-feature="chat-input" placeholder="اكتب رسالة…" data-ph-en="Type a message…">
             <button class="btn primary" data-feature="chat-send-btn"><span data-en="Send">إرسال</span></button></div>
         </div>
       </div>
-
       <div class="card">
-        <div class="card-h"><span class="ttl"><span data-en="Assistant">المساعد</span></span><div class="grow"></div>
-          <button class="btn ghost sm" data-feature="ai-hist-btn"><span data-en="History">السجل</span></button>
-          <button class="btn ghost sm" data-feature="ai-new-btn"><span data-en="New">جديد</span></button>
-          <button class="btn ghost sm" data-feature="ai-stop-btn"><span data-en="Stop">إيقاف</span></button>
-          <button class="btn ghost sm" data-feature="ai-collapse-btn"><span data-en="Collapse">طيّ</span></button></div>
-        <div class="card-b">
-          <div class="hint" style="margin-bottom:8px"><span data-en="Reads device and session state and answers with the next step">يقرأ حالة الجهاز والجلسات ويجيب بالإجراء التالي</span></div>
-          <div class="row2">
-            <input class="input" style="flex:1" data-feature="ai-input" placeholder="اسأل المساعد…" data-ph-en="Ask the assistant…">
-            <button class="btn primary" data-feature="ai-send-btn"><span data-en="Send">إرسال</span></button></div>
+        <div class="card-h"><span class="ttl"><span data-en="Watching now">المشاهدون الآن</span></span><div class="grow"></div><span class="chip ok"><span class="dot"></span><span data-en="2 online">٢ متصل</span></span></div>
+        <div class="card-b" style="display:flex;flex-direction:column;gap:6px">
+          <div class="item"><span class="ico"><svg class="i sm"><use href="#ic-monitor"/></svg></span><div class="tx"><b>WIN11-VM</b><span><span data-en="View · 12 min">عرض · منذ 12 دقيقة</span></span></div><span class="chip ok"><span class="dot"></span><span data-en="Online">متصل</span></span></div>
+          <div class="item"><span class="ico"><svg class="i sm"><use href="#ic-link"/></svg></span><div class="tx"><b>Android-Emulator</b><span><span data-en="View · 3 min">عرض · منذ 3 دقائق</span></span></div><span class="chip ok"><span class="dot"></span><span data-en="Online">متصل</span></span></div>
         </div>
       </div>
     </div>
+
+    <div class="pg" id="log">
+      <div class="card">
+        <div class="card-h"><span class="ttl"><span data-en="Recent events">آخر الأحداث</span></span><div class="grow"></div>
+          <button class="btn ghost sm" data-feature="copy-log-btn"><span data-en="Copy">نسخ</span></button>
+          <button class="btn ghost sm" data-feature="export-log-btn"><span data-en="Export">تصدير</span></button>
+          <button class="btn ghost sm" data-feature="clear-log"><span data-en="Clear">مسح</span></button>
+          <button class="btn ghost sm" data-feature="log-coll-btn"><span data-en="Collapse">طيّ</span></button></div>
+        <div class="card-b log">
+          <div class="ln"><span class="ts">23:41:02</span><span><span data-en="Agent↔agent: session accepted with password">وكيل↔وكيل: جلسة قُبلت بكلمة سر</span></span></div>
+          <div class="ln"><span class="ts">23:40:58</span><span><span data-en="Agent↔agent: wrong password (bad_password)">وكيل↔وكيل: كلمة سر خاطئة (bad_password)</span></span></div>
+          <div class="ln"><span class="ts">23:38:12</span><span><span data-en="Stream started — 1600×675">بث بدأ — 1600×675</span></span></div>
+          <div class="ln"><span class="ts">23:37:40</span><span><span data-en="Viewer joined — WIN11-VM">مشاهد انضم — WIN11-VM</span></span></div>
+        </div>
+      </div>
+      <div class="hint"><span data-en="Last 500 events · “Export” writes a text file">يُحفظ آخر 500 حدث · زر «تصدير» يكتب ملفًا نصيًا</span></div>
+    </div>
   </div>
 </div>
+
 <script>
   function toggleTheme () { document.documentElement.classList.toggle('light') }
   function toggleLang () {

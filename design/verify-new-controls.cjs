@@ -54,11 +54,20 @@ async function check (cdp, label, expr) {
     console.log('â”€â”€ windows-agent.html')
     await check(cdp, 'theme control in the title bar', `(${vis})(document.querySelector('[data-theme-btn="light"]'))`)
     await check(cdp, 'language control in the title bar', `(${vis})(document.querySelector('[data-lang-btn="en"]'))`)
-    await check(cdp, 'four tabs', `document.querySelectorAll('.tabs button').length === 4`)
-    await d.evaluate(cdp, `showTab('session')`)
-    for (const id of ['chat-input', 'chat-send-btn', 'ai-input', 'ai-send-btn', 'log-coll-btn']) {
-      await check(cdp, id + ' present', `!!document.querySelector('[data-feature="${id}"]')`)
+    await check(cdp, 'four tabs match the app', `[...document.querySelectorAll('.tabs button')].map(b => b.dataset.tab).join(',') === 'status,ai,chat,log'`)
+    await d.evaluate(cdp, `showTab('ai')`)
+    for (const id of ['ai-input', 'ai-send-btn', 'ai-hist-btn', 'ai-new-btn', 'ai-stop-btn', 'ai-collapse-btn']) {
+      await check(cdp, 'AI tab: ' + id, `(${vis})(document.querySelector('[data-feature="${id}"]'))`)
     }
+    await d.evaluate(cdp, `showTab('chat')`)
+    for (const id of ['chat-input', 'chat-send-btn', 'chat-clear-btn', 'chat-popout-btn', 'chat-collapse-btn']) {
+      await check(cdp, 'viewer-chat tab: ' + id, `(${vis})(document.querySelector('[data-feature="${id}"]'))`)
+    }
+    await check(cdp, 'viewer list is present', `document.querySelectorAll('#chat .item').length >= 2`)
+    await d.evaluate(cdp, `showTab('log')`)
+    await check(cdp, 'log tab: collapse', `(${vis})(document.querySelector('[data-feature="log-coll-btn"]'))`)
+    await d.evaluate(cdp, `showTab('status')`)
+    await check(cdp, 'status keeps the session/relay controls', `['session-device','session-pw','session-request-btn','offer-accept'].every(k => !!document.querySelector('[data-feature="'+k+'"]'))`)
     await check(cdp, 'session device value is plain text', `!/</.test(document.querySelector('[data-feature="session-device"]').value)`)
   }
 
@@ -71,7 +80,16 @@ async function check (cdp, label, expr) {
     console.log('â”€â”€ android.html')
     await check(cdp, 'theme control in the header', `(${vis})(document.querySelector('[data-theme-btn="light"]'))`)
     await check(cdp, 'language control in the header', `(${vis})(document.querySelector('[data-lang-btn="en"]'))`)
+    await check(cdp, 'four tabs match the app', `[...document.querySelectorAll('.tabs button')].map(b => b.dataset.tab).join(',') === 'status,ai,chat,log'`)
+    await d.evaluate(cdp, `showTab('chat')`)
+    await check(cdp, 'viewer-chat tab has input and send', `!!document.querySelector('[data-feature="and-chat-input"]') && !!document.querySelector('[data-feature="and-chat-send"]')`)
+    await check(cdp, 'viewers list present', `document.querySelectorAll('#chat .item').length >= 2`)
+    await d.evaluate(cdp, `showTab('ai')`)
+    await check(cdp, 'ai tab has input and send', `!!document.querySelector('[data-feature="and-ai-input"]') && !!document.querySelector('[data-feature="and-ai-send"]')`)
+    await d.evaluate(cdp, `showTab('status')`)
+    await check(cdp, 'status keeps the approved controls', `['and-a11y-toggle','and-capture-toggle','and-session-request'].every(k => !!document.querySelector('[data-feature="'+k+'"]'))`)
     await check(cdp, 'session device value is plain text', `!/</.test(document.querySelector('[data-feature="and-session-device"]').value)`)
+    await check(cdp, 'bottom bar keeps log/sessions/stop', `['and-log','and-sessions','and-stop'].every(k => !!document.querySelector('[data-feature="'+k+'"]'))`)
     await d.evaluate(cdp, `openSheet('sheet-setup')`)
     await check(cdp, 'setup sheet opens', `(${vis})(document.getElementById('sheet-setup'))`)
     await check(cdp, 'pairing controls present', `!!document.querySelector('[data-feature="and-pair-code"]') && !!document.querySelector('[data-feature="and-pair-btn"]')`)

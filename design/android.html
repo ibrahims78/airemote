@@ -150,6 +150,7 @@
   .seg2{display:inline-flex;background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:2px;gap:2px}
   .seg2 button{border:0;background:none;color:var(--muted);font:inherit;font-size:11px;padding:3px 8px;border-radius:8px;cursor:pointer}
   .seg2 button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(2,6,23,.10)}
+  .pg.on{display:flex;flex-direction:column;gap:12px;padding:12px}
   html,body{min-height:100vh}
   body{background:#eef3f7;display:flex;flex-direction:column;align-items:center;padding:22px}
   html:not(.light) body{background:#070d12}
@@ -219,22 +220,32 @@
       </div>
       <button class="iconbtn" title="الإعداد" data-feature="and-setup-open" onclick="openSheet('sheet-setup')"><svg class="i sm"><use href="#ic-shield"/></svg></button>
     </div>
+
     <div class="pheap">
       <div class="appicon"><svg class="i"><use href="#ic-bolt"/></svg></div>
       <div><h2>AiRemote Agent</h2><p>DESKTOP-IFE3GNE · v3.13.1</p></div>
       <div class="grow"></div><span class="chip ok"><span class="dot"></span><span data-en="Connected">متصل</span></span>
     </div>
 
-    <div style="padding:0 12px 12px;display:flex;flex-direction:column;gap:10px">
-      <div class="list">
-        <div class="item"><span class="ico"><svg class="i sm"><use href="#ic-a11y"/></svg></span>
-          <div class="tx"><b><span data-en="Accessibility service">خدمة الإتاحة</span></b><span><span data-en="Touch and typing control">التحكم باللمس والكتابة</span></span></div>
-          <div class="toggle on" data-feature="and-a11y-toggle"><i></i></div></div>
-        <div class="item"><span class="ico"><svg class="i sm"><use href="#ic-capture"/></svg></span>
-          <div class="tx"><b><span data-en="Screen capture grant">منح التقاط الشاشة</span></b><span><span data-en="Required for streaming">مطلوب للبث</span></span></div>
-          <div class="toggle on" data-feature="and-capture-toggle"><i></i></div></div>
-        <div class="item"><span class="ico"><svg class="i sm"><use href="#ic-lock"/></svg></span>
-          <div class="tx"><b><span data-en="Control password">كلمة سر التحكم</span></b><span><span data-en="Stored · PBKDF2">محفوظة · PBKDF2</span></span></div>
+    <div class="tabs">
+      <button class="on" data-tab="status" onclick="showTab('status')"><span data-en="Status">الحالة</span></button>
+      <button data-tab="ai" onclick="showTab('ai')"><span data-en="AI">المساعد</span></button>
+      <button data-tab="chat" onclick="showTab('chat')"><span data-en="Chat">الدردشة</span></button>
+      <button data-tab="log" onclick="showTab('log')"><span data-en="Log">السجل</span></button>
+    </div>
+
+    <div class="pg on" id="status">
+      <div class="card">
+        <div class="row2"><div><b><span data-en="Accessibility service">خدمة الإتاحة</span></b><div class="hint"><span data-en="Touch and typing control">التحكم باللمس والكتابة</span></div></div>
+          <div class="grow"></div><div class="toggle on" data-feature="and-a11y-toggle"><i></i></div></div>
+      </div>
+      <div class="card">
+        <div class="row2"><div><b><span data-en="Screen capture grant">منح التقاط الشاشة</span></b><div class="hint"><span data-en="Required to stream">مطلوب للبث</span></div></div>
+          <div class="grow"></div><div class="toggle on" data-feature="and-capture-toggle"><i></i></div></div>
+      </div>
+      <div class="card">
+        <div class="row2"><div><b><span data-en="Control password">كلمة سر التحكم</span></b><div class="hint"><span data-en="PBKDF2 · stored">PBKDF2 · محفوظة</span></div></div>
+          <div class="grow"></div><span class="chip ok"><span class="dot"></span><span data-en="Protected">محمي</span></span>
           <button class="btn ghost sm" data-feature="and-ctrl-pw-open"><span data-en="Edit">تعديل</span></button></div>
       </div>
 
@@ -246,19 +257,73 @@
               <button class="btn ghost sm" data-feature="and-session-refresh"><span data-en="Refresh">تحديث</span></button></div></div>
           <div class="field"><label><span data-en="Access type">نوع الوصول</span></label>
             <div class="seg" style="width:100%">
-              <button class="on" style="flex:1" data-feature="and-access-control"><span data-en="Control">تحكم</span></button>
+              <button class="on" style="flex:1" data-feature="and-access-control"><span data-en="Full control">تحكم كامل</span></button>
               <button style="flex:1" data-feature="and-access-view"><span data-en="View">عرض</span></button>
               <button style="flex:1" data-feature="and-access-files"><span data-en="Files">ملفات</span></button>
             </div></div>
-          <div class="field" style="margin-bottom:8px"><label><span data-en="Device password">كلمة مرور الجهاز</span></label>
+          <div class="field" style="margin-bottom:6px"><label><span data-en="Device password">كلمة مرور الجهاز</span></label>
             <input class="input mono" type="password" value="••••••" data-feature="and-session-pw"></div>
+          <div class="hint" style="margin-bottom:8px"><span data-en="Shown when “full control” is selected">تظهر عند اختيار «تحكم كامل»</span></div>
           <button class="btn primary" style="width:100%;justify-content:center" data-feature="and-session-request"><span data-en="Request connection">طلب الاتصال</span></button>
         </div>
       </div>
     </div>
 
+    <div class="pg" id="ai">
+      <div class="card">
+        <div class="card-h"><span class="ttl"><span data-en="AI assistant">المساعد الذكي</span></span><div class="grow"></div>
+          <button class="btn ghost sm" data-feature="and-ai-hist"><span data-en="History">السجل</span></button>
+          <button class="btn ghost sm" data-feature="and-ai-new"><span data-en="New">جديد</span></button></div>
+        <div class="card-b">
+          <div class="log" style="max-height:180px;overflow:auto;margin-bottom:8px">
+            <div class="ln"><span class="ts"><span data-en="You">أنت</span></span><span><span data-en="Open settings">افتح الإعدادات</span></span></div>
+            <div class="ln"><span class="ts"><span data-en="Assistant">المساعد</span></span><span><span data-en="Done — settings is open.">تم — الإعدادات مفتوحة.</span></span></div>
+          </div>
+          <div class="row2">
+            <input class="input" style="flex:1" data-feature="and-ai-input" placeholder="اسأل المساعد…" data-ph-en="Ask the assistant…">
+            <button class="btn primary" data-feature="and-ai-send"><span data-en="Send">إرسال</span></button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pg" id="chat">
+      <div class="card">
+        <div class="card-h"><span class="ttl"><span data-en="Viewer chat">دردشة المشاهدين</span></span><span class="chip warn"><span class="dot"></span><span data-en="2">٢</span></span><div class="grow"></div>
+          <button class="btn ghost sm" data-feature="and-chat-clear"><span data-en="Clear">مسح</span></button></div>
+        <div class="card-b">
+          <div class="log" style="max-height:150px;overflow:auto;margin-bottom:8px">
+            <div class="ln"><span class="ts">23:41</span><span><span data-en="Viewer 1:">مشاهد 1:</span> <span data-en="Screen is slow">الشاشة بطيئة</span></span></div>
+            <div class="ln"><span class="ts">23:42</span><span><span data-en="You (host):">أنت (المضيف):</span> <span data-en="Lowering quality">سأخفّض الجودة</span></span></div>
+          </div>
+          <div class="row2">
+            <input class="input" style="flex:1" data-feature="and-chat-input" placeholder="اكتب رسالة…" data-ph-en="Type a message…">
+            <button class="btn primary" data-feature="and-chat-send"><span data-en="Send">إرسال</span></button></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-h"><span class="ttl"><span data-en="Watching now">المشاهدون الآن</span></span><div class="grow"></div><span class="chip ok"><span class="dot"></span><span data-en="2 online">٢ متصل</span></span></div>
+        <div class="card-b" style="display:flex;flex-direction:column;gap:6px">
+          <div class="item"><span class="ico"><svg class="i sm"><use href="#ic-monitor"/></svg></span><div class="tx"><b>WIN11-VM</b><span><span data-en="View · 12 min">عرض · 12 دقيقة</span></span></div><span class="chip ok"><span class="dot"></span><span data-en="Online">متصل</span></span></div>
+          <div class="item"><span class="ico"><svg class="i sm"><use href="#ic-link"/></svg></span><div class="tx"><b>Android-Emulator</b><span><span data-en="View · 3 min">عرض · 3 دقائق</span></span></div><span class="chip ok"><span class="dot"></span><span data-en="Online">متصل</span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="pg" id="log">
+      <div class="card">
+        <div class="card-h"><span class="ttl"><span data-en="Log">السجل</span></span><div class="grow"></div>
+          <button class="btn ghost sm" data-feature="and-log-copy"><span data-en="Copy">نسخ</span></button>
+          <button class="btn ghost sm" data-feature="and-log-clear"><span data-en="Clear">مسح</span></button></div>
+        <div class="card-b log">
+          <div class="ln"><span class="ts">23:41:02</span><span><span data-en="Agent↔agent: session accepted with password">وكيل↔وكيل: جلسة قُبلت بكلمة سر</span></span></div>
+          <div class="ln"><span class="ts">23:40:58</span><span><span data-en="Agent↔agent: wrong password (bad_password)">وكيل↔وكيل: كلمة سر خاطئة (bad_password)</span></span></div>
+          <div class="ln"><span class="ts">23:38:12</span><span><span data-en="Stream started — 320×640">بث بدأ — 320×640</span></span></div>
+        </div>
+      </div>
+    </div>
+
     <div class="bottom">
-      <button class="btn ghost" data-feature="and-log" onclick="openSheet('sheet-log')"><svg class="i sm"><use href="#ic-list"/></svg> <span data-en="Log">السجل</span></button>
+      <button class="btn ghost" data-feature="and-log" onclick="showTab('log')"><svg class="i sm"><use href="#ic-list"/></svg> <span data-en="Log">السجل</span></button>
       <button class="btn ghost" data-feature="and-sessions" onclick="openSheet('sheet-sessions')"><svg class="i sm"><use href="#ic-reconnect"/></svg> <span data-en="Sessions">الجلسات</span></button>
       <button class="btn danger" data-feature="and-stop"><svg class="i sm"><use href="#ic-stop"/></svg> <span data-en="Stop">إيقاف</span></button>
     </div>
@@ -303,7 +368,7 @@
     <div class="sheet" id="sheet-session" onclick="closeSheet('sheet-session')">
       <div class="inner" onclick="event.stopPropagation()">
         <div class="card-h" style="border:0;padding:0 0 8px"><span class="ttl"><span data-en="Session">الجلسة</span></span><div class="grow"></div><span class="chip ok"><span class="dot"></span><span data-en="Active">نشطة</span></span></div>
-        <div class="screen" style="height:180px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--surface2);color:var(--muted);font-size:12px"><span data-en="Remote screen">شاشة الجهاز البعيد</span></div>
+        <div class="screen" style="height:170px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--surface2);color:var(--muted);font-size:12px"><span data-en="Remote screen">شاشة الجهاز البعيد</span></div>
         <div class="row2" style="margin-top:10px">
           <button class="btn ghost" data-feature="and-session-audio"><span data-en="Audio">الصوت</span></button>
           <button class="btn ghost" data-feature="and-session-record"><span data-en="Record">تسجيل</span></button>
@@ -324,6 +389,7 @@
     </div>
   </div>
 </div>
+
 <script>
   function toggleTheme () { document.documentElement.classList.toggle('light') }
   function toggleLang () {
