@@ -18,6 +18,19 @@ import org.json.JSONObject;
  */
 public class SessionOfferActivity extends Activity {
 
+    // 3.14.0 — الأنشطة تقرأ النصوص بلغة التطبيق لا بلغة النظام.
+    @Override
+    protected void attachBaseContext(android.content.Context newBase) {
+        String lang = Prefs.sp(newBase).getString("lang", "ar");
+        android.content.res.Configuration cfg =
+                new android.content.res.Configuration(newBase.getResources().getConfiguration());
+        java.util.Locale loc = new java.util.Locale(lang);
+        cfg.setLocale(loc);
+        cfg.setLayoutDirection(loc);
+        super.attachBaseContext(newBase.createConfigurationContext(cfg));
+    }
+
+
     private static final int REQ_CAP = 2001;
     private AlertDialog dlg = null;
     private String pendingSid = "";

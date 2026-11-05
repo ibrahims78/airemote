@@ -27,6 +27,19 @@ import android.widget.Toast;
  * required one-time setup explicit and quick.
  */
 public class SetupActivity extends Activity {
+
+    // 3.14.0 — الأنشطة تقرأ النصوص بلغة التطبيق لا بلغة النظام.
+    @Override
+    protected void attachBaseContext(android.content.Context newBase) {
+        String lang = Prefs.sp(newBase).getString("lang", "ar");
+        android.content.res.Configuration cfg =
+                new android.content.res.Configuration(newBase.getResources().getConfiguration());
+        java.util.Locale loc = new java.util.Locale(lang);
+        cfg.setLocale(loc);
+        cfg.setLayoutDirection(loc);
+        super.attachBaseContext(newBase.createConfigurationContext(cfg));
+    }
+
     private LinearLayout list;
     private TextView summary;
 
@@ -48,14 +61,14 @@ public class SetupActivity extends Activity {
         setContentView(scroll);
 
         TextView title = new TextView(this);
-        title.setText("تهيئة الوصول عن بُعد");
+        title.setText(getString(R.string.setup_title));
         title.setTextColor(Color.WHITE);
         title.setTextSize(24);
         title.setTypeface(Typeface.DEFAULT_BOLD);
         list.addView(title);
 
         TextView sub = new TextView(this);
-        sub.setText("افتح كل صلاحية مرة واحدة. بعد ذلك تعمل كلمة مرور التحكم دون الحاجة إلى موافقة يدوية، مع بقاء قيود Android الأمنية.");
+        sub.setText(getString(R.string.setup_desc));
         sub.setTextColor(Color.rgb(148, 163, 184));
         sub.setTextSize(13);
         sub.setPadding(0, dp(8), 0, dp(18));
@@ -77,7 +90,7 @@ public class SetupActivity extends Activity {
         addRow("الرسم فوق التطبيقات", "مطلوب لبعض أدوات الجلسة", "overlay");
 
         Button start = new Button(this);
-        start.setText("تشغيل الوكيل الآن");
+        start.setText(getString(R.string.setup_start));
         start.setAllCaps(false);
         start.setTextColor(Color.rgb(9, 16, 30));
         start.setTextSize(15);
@@ -90,7 +103,7 @@ public class SetupActivity extends Activity {
         list.addView(start, marginParams(0, dp(12), 0, 0));
 
         Button close = new Button(this);
-        close.setText("إغلاق");
+        close.setText(getString(R.string.setup_close));
         close.setAllCaps(false);
         close.setTextColor(Color.rgb(203, 213, 225));
         close.setBackground(round(Color.rgb(30, 41, 59), 14));
@@ -179,7 +192,7 @@ public class SetupActivity extends Activity {
 
         Button b = new Button(this);
         b.setAllCaps(false);
-        b.setText("فتح الإعداد");
+        b.setText(getString(R.string.setup_open));
         b.setTextColor(Color.rgb(203, 213, 225));
         b.setBackground(round(Color.rgb(30, 41, 59), 10));
         b.setOnClickListener(v -> open(key));
@@ -211,7 +224,7 @@ public class SetupActivity extends Activity {
                 startActivity(i);
             }
         } catch (Exception e) {
-            Toast.makeText(this, "افتح الإعدادات يدوياً لهذه الصلاحية", Toast.LENGTH_LONG).show();
+            Toast.makeText(this, getString(R.string.setup_manual), Toast.LENGTH_LONG).show();
         }
     }
 
@@ -237,11 +250,11 @@ public class SetupActivity extends Activity {
         setStatus("battery", battery, "مستثنى من توفير الطاقة", "قد يُجمّد في الخلفية");
         setStatus("record", record, "مسموح", "غير مسموح");
         setStatus("notify", notify, "مسموح", "غير مسموح");
-        setStatus("overlay", overlay, "مسموح", "غير مسموح");
+        setStatus("overlay", overlay, getString(R.string.perm_allowed), getString(R.string.perm_denied));
         int ready = (capture ? 1 : 0) + (a11y ? 1 : 0) + (write ? 1 : 0) + (battery ? 1 : 0)
                 + (record ? 1 : 0) + (notify ? 1 : 0) + (overlay ? 1 : 0);
-        summary.setText(ready + " من 7 صلاحيات جاهزة\n" + (ready == 7
-                ? "الوكيل جاهز للتحكم عن بُعد."
-                : "أكمل الصلاحيات الناقصة أعلاه، ثم أعد فتح هذه الشاشة للتأكد."));
+        summary.setText(getString(R.string.setup_progress, ready) + "\n" + (ready == 7
+                ? getString(R.string.setup_ready)
+                : getString(R.string.setup_incomplete)));
     }
 }

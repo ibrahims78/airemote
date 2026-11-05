@@ -69,4 +69,18 @@
     <string name="access_control">Full control</string>
     <string name="access_files">Files</string>
     <string name="state_registering">Online — registering</string>
+    <string name="perm_allowed">Allowed</string>
+    <string name="perm_denied">Not allowed</string>
+    <string name="setup_title">Set up remote access</string>
+    <string name="setup_desc">Grant each permission once. After that the control password works without a manual approval, within Android\'s security limits.</string>
+    <string name="setup_start">Start the agent now</string>
+    <string name="setup_close">Close</string>
+    <string name="setup_open">Open settings</string>
+    <string name="setup_manual">Open the settings for this permission manually</string>
+    <string name="setup_progress">%1$d of 7 permissions ready</string>
+    <string name="setup_ready">The agent is ready for remote control.</string>
+    <string name="setup_incomplete">Finish the missing permissions above, then reopen this screen to confirm.</string>
+    <string name="notif_from">Message from %1$s</string>
+    <string name="notif_viewer">a viewer</string>
+    <string name="notif_request">%1$s requests %2$s — 60 seconds to respond.</string>
 </resources>

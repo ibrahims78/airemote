@@ -27,6 +27,19 @@ import java.security.MessageDigest;
  * Tracks: WebView معزول + تثبيت شهادة السيرفر (TOFU: أول بصمة تُحفظ ثم تُطابق).
  */
 public class SessionWebViewActivity extends Activity {
+
+    // 3.14.0 — الأنشطة تقرأ النصوص بلغة التطبيق لا بلغة النظام.
+    @Override
+    protected void attachBaseContext(android.content.Context newBase) {
+        String lang = Prefs.sp(newBase).getString("lang", "ar");
+        android.content.res.Configuration cfg =
+                new android.content.res.Configuration(newBase.getResources().getConfiguration());
+        java.util.Locale loc = new java.util.Locale(lang);
+        cfg.setLocale(loc);
+        cfg.setLayoutDirection(loc);
+        super.attachBaseContext(newBase.createConfigurationContext(cfg));
+    }
+
     /** 3.11.2 — هل يوجد عارض مفتوح الآن؟ يُستخدم لتقييد طلب إذن الالتقاط حتى لا يحجب الجلسة. */
     public static volatile boolean isOpen = false;
     public static final String ACTION_CLOSED = "com.airemote.agent.SESSION_CLOSED";

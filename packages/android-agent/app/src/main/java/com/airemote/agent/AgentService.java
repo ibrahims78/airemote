@@ -249,7 +249,7 @@ public class AgentService extends Service {
             Notification.Builder b = Build.VERSION.SDK_INT >= 26
                     ? new Notification.Builder(this, "chat_v2")
                     : new Notification.Builder(this);
-            b.setContentTitle("رسالة من " + (sender == null ? "مشاهد" : sender))
+            b.setContentTitle(getString(R.string.notif_from, sender == null ? getString(R.string.notif_viewer) : sender))
                     .setContentText(text)
                     .setSmallIcon(android.R.drawable.stat_notify_chat)
                     .setAutoCancel(true)
@@ -790,9 +790,9 @@ public class AgentService extends Service {
             Notification.Builder b = Build.VERSION.SDK_INT >= 26
                     ? new Notification.Builder(this, "sessions_v1")
                     : new Notification.Builder(this);
-            b.setContentTitle("طلب اتصال بجهازك")
+            b.setContentTitle(getString(R.string.dlg_request))
                     // P4 — نفس صياغة الحوار ووكيل ويندوز.
-                    .setContentText(who + " يطلب " + access + " — المهلة 60 ثانية.")
+                    .setContentText(getString(R.string.notif_request, who, access))
                     .setSmallIcon(android.R.drawable.stat_sys_warning)
                     .setContentIntent(pi)
                     .setCategory(Notification.CATEGORY_CALL)

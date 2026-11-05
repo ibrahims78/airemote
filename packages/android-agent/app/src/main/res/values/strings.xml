@@ -69,4 +69,18 @@
     <string name="access_control">تحكم كامل</string>
     <string name="access_files">ملفات</string>
     <string name="state_registering">متصل — جارٍ التسجيل</string>
+    <string name="perm_allowed">مسموح</string>
+    <string name="perm_denied">غير مسموح</string>
+    <string name="setup_title">تهيئة الوصول عن بُعد</string>
+    <string name="setup_desc">افتح كل صلاحية مرة واحدة. بعد ذلك تعمل كلمة مرور التحكم دون الحاجة إلى موافقة يدوية، مع بقاء قيود Android الأمنية.</string>
+    <string name="setup_start">تشغيل الوكيل الآن</string>
+    <string name="setup_close">إغلاق</string>
+    <string name="setup_open">فتح الإعداد</string>
+    <string name="setup_manual">افتح الإعدادات يدوياً لهذه الصلاحية</string>
+    <string name="setup_progress">%1$d من 7 صلاحيات جاهزة</string>
+    <string name="setup_ready">الوكيل جاهز للتحكم عن بُعد.</string>
+    <string name="setup_incomplete">أكمل الصلاحيات الناقصة أعلاه، ثم أعد فتح هذه الشاشة للتأكد.</string>
+    <string name="notif_from">رسالة من %1$s</string>
+    <string name="notif_viewer">مشاهد</string>
+    <string name="notif_request">%1$s يطلب %2$s — المهلة 60 ثانية.</string>
 </resources>
