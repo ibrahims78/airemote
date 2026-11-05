@@ -682,9 +682,43 @@ public class AgentService extends Service {
         } catch (Exception ignore) {}
     }
 
+    private void sendSessionDenyReason(String sessionId, String reason) {
+        try {
+            JSONObject p = new JSONObject();
+            p.put("sessionId", sessionId); p.put("reason", reason);
+            sendMsg("session:deny", p);
+        } catch (Exception ignore) { }
+    }
+
+    private void sendSessionAcceptPlain(String sessionId) {
+        try {
+            JSONObject p = new JSONObject();
+            p.put("sessionId", sessionId);
+            sendMsg("session:accept", p);
+        } catch (Exception ignore) { }
+    }
+
     private void handleSessionOffer(JSONObject offer) {
         if (offer == null) return;
-        if (offer.optString("sessionId", "").isEmpty()) return;
+        String sid0 = offer.optString("sessionId", "");
+        if (sid0.isEmpty()) return;
+        // 3.13.1 — وكيل↔وكيل بكلمة سر: نفس دالة مسار السيرفر→وكيل، وبلا حوار إن صحّت.
+        String offerPw = offer.optString("controlPassword", "");
+        if (Prefs.hasControlPassword(this)) {
+            if (offerPw.isEmpty()) {
+                sendSessionDenyReason(sid0, "password_required");
+                MainActivity.log("🔒 رُفض طلب جلسة: كلمة سر التحكم مطلوبة");
+                return;
+            }
+            if (!Prefs.verifyControlPassword(this, offerPw)) {
+                sendSessionDenyReason(sid0, "bad_password");
+                MainActivity.log("❌ رُفض طلب جلسة: كلمة سر خاطئة");
+                return;
+            }
+            MainActivity.log("🔓 قُبلت جلسة وكيل↔وكيل بكلمة مرور");
+            sendSessionAcceptPlain(sid0);
+            return;
+        }
         // 3.11.2 — كان الاختيار بين حوار أو إشعار: إن كان التطبيق في الخلفية (أو الحالة
         // الداخلية قديمة) فلا يرى المستخدم شيئاً ويبقى الطلب معلّقاً. الآن نفعل الثلاثة:
         // إشعار في الدرج دائماً + إظهار التطبيق بالحوار + الحوار نفسه إن كانت النافذة قائمة.
@@ -1025,6 +1059,17 @@ public class AgentService extends Service {
             case "session:ticket":
                 openSessionView(payload);
                 break;
+            case "session:denied": {
+                // 3.13.1 — سبب الرفض كان يُهمَل: الطالب لا يعرف أن كلمته خاطئة أو ناقصة.
+                String rz = payload.optString("reason", "");
+                String denyMsg;
+                if ("password_required".equals(rz)) denyMsg = "الجهاز الهدف يتطلب كلمة سر — أدخلها وأعد الطلب";
+                else if ("bad_password".equals(rz)) denyMsg = "كلمة السر غير صحيحة — تحقق منها وأعد المحاولة";
+                else if ("password_locked".equals(rz)) denyMsg = "الجهاز مقفل مؤقتًا بعد محاولات فاشلة";
+                else denyMsg = "رفض الطرف الآخر الطلب";
+                MainActivity.log("⛔ " + denyMsg + (rz.isEmpty() ? "" : " (" + rz + ")"));
+                break;
+            }
             case "session:close":
             case "session:closed":
             case "session:expired": {
