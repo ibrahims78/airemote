@@ -8,6 +8,7 @@ import android.app.ActivityManager;
 import android.app.KeyguardManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.content.pm.ServiceInfo;
 import android.graphics.Bitmap;
 import android.graphics.PixelFormat;
@@ -48,6 +49,18 @@ import java.util.Locale;
 
 /** Foreground service: WebSocket agent for AiRemote (Android). */
 public class AgentService extends Service {
+
+    // 3.14.0 — الخدمة تقرأ النصوص بلغة التطبيق لا بلغة النظام، وإلا بقيت شرائح الحالة عربية.
+    @Override
+    protected void attachBaseContext(Context newBase) {
+        String lang = Prefs.sp(newBase).getString("lang", "ar");
+        Configuration cfg = new Configuration(newBase.getResources().getConfiguration());
+        Locale loc = new Locale(lang);
+        cfg.setLocale(loc);
+        cfg.setLayoutDirection(loc);
+        super.attachBaseContext(newBase.createConfigurationContext(cfg));
+    }
+
 
     public static final String ACTION_START = "com.airemote.agent.START";
     public static final String ACTION_STOP = "com.airemote.agent.STOP";
@@ -479,7 +492,7 @@ public class AgentService extends Service {
                     if (ws != this) return;
                     android.util.Log.d("AiRemoteAgent", "WebSocket onOpen");
                     reconnectDelay = 3000;
-                    MainActivity.setStatus("متصل — جارٍ التسجيل", true);
+                    MainActivity.setStatus(getString(R.string.state_registering), true);
                     MainActivity.updateConn(Prefs.server(AgentService.this), "جارٍ التسجيل…", "—");
                     registered = true;
                     MainActivity.log("✅ اتصل بالخادم");
@@ -860,7 +873,7 @@ public class AgentService extends Service {
                 deviceId = payload.optString("deviceId", "");
                 String name = payload.optString("name", "");
                 deviceDisplay = name + " — " + deviceId;
-                MainActivity.setStatus("متصل ✓", true);
+                MainActivity.setStatus(getString(R.string.state_online) + " ✓", true);
                 MainActivity.updateConn(Prefs.server(AgentService.this), deviceDisplay, formatUptime());
                 MainActivity.log("✅ مسجل بنجاح — " + name + " — " + deviceId);
                 break;

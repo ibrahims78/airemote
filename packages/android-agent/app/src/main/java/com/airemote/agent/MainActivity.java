@@ -616,7 +616,7 @@ public class MainActivity extends Activity {
 
             devAccess = new android.widget.RadioGroup(this);
             devAccess.setOrientation(LinearLayout.HORIZONTAL);
-            String[][] opts = {{"view", "عرض فقط"}, {"control", "تحكم كامل"}, {"files", "ملفات"}};
+            String[][] opts = {{"view", getString(R.string.access_view)}, {"control", getString(R.string.access_control)}, {"files", getString(R.string.access_files)}};
             for (int i = 0; i < opts.length; i++) {
                 android.widget.RadioButton rb = new android.widget.RadioButton(this);
                 rb.setId(1000 + i);
@@ -839,13 +839,13 @@ public class MainActivity extends Activity {
         if (devState != null) {
             devState.setText(n == 0
                     ? "لا توجد أجهزة أخرى في حسابك."
-                    : ("اختر جهازاً ثم نوع الوصول — " + n + " جهازاً"));
+                    : (getString(R.string.dev_pick_hint, n)));
         }
     }
 
     private void sendRequest() {
         int pos = devSpinner == null ? -1 : devSpinner.getSelectedItemPosition();
-        if (pos < 0 || pos >= devIds.size()) { toast("اختر جهازاً أولاً."); return; }
+        if (pos < 0 || pos >= devIds.size()) { toast(getString(R.string.dev_pick_first)); return; }
         String access = "view";
         try {
             int sel = devAccess == null ? -1 : devAccess.getCheckedRadioButtonId();
@@ -995,7 +995,7 @@ public class MainActivity extends Activity {
             if (a != null) {
                 if (a.tbState != null) { a.tbState.setText(ok ? a.getString(R.string.state_online) : s); a.tbState.setTextColor(ok ? 0xFF34D399 : 0xFF94A3B8); }
                 if (a.statusTitle != null) { a.statusTitle.setText(s); a.statusTitle.setTextColor(ok ? 0xFF34D399 : 0xFFF1F5F9); }
-                if (a.statusSub != null) a.statusSub.setText(ok ? "الوكيل نشط على هذا الجهاز" : "اضغط «بدء» للاتصال بالخادم");
+                if (a.statusSub != null) a.statusSub.setText(ok ? a.getString(R.string.agent_active) : a.getString(R.string.hint_press_start));
             }
         });
     }

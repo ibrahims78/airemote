@@ -63,4 +63,10 @@
     <string name="dlg_allow">Allow</string>
     <string name="dlg_deny">Deny</string>
     <string name="dlg_allow2">Allow</string>
+    <string name="dev_pick_hint">Pick a device, then an access mode — %1$d devices</string>
+    <string name="dev_pick_first">Pick a device first.</string>
+    <string name="access_view">View only</string>
+    <string name="access_control">Full control</string>
+    <string name="access_files">Files</string>
+    <string name="state_registering">Online — registering</string>
 </resources>

@@ -63,4 +63,10 @@
     <string name="dlg_allow">سماح</string>
     <string name="dlg_deny">رفض</string>
     <string name="dlg_allow2">السماح</string>
+    <string name="dev_pick_hint">اختر جهازاً ثم نوع الوصول — %1$d جهازاً</string>
+    <string name="dev_pick_first">اختر جهازاً أولاً.</string>
+    <string name="access_view">عرض فقط</string>
+    <string name="access_control">تحكم كامل</string>
+    <string name="access_files">ملفات</string>
+    <string name="state_registering">متصل — جارٍ التسجيل</string>
 </resources>
