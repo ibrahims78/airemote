@@ -1,10 +1,36 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ExternalLink, Maximize2, Minimize2, Monitor, MonitorPlay, Play, Plus, Square, X } from 'lucide-react'
+import type { ReactNode } from 'react'
 import type { Device } from '@airemote/shared'
 import { useUIStore } from '../store/uiStore'
 import { useT } from '../lib/i18n'
 import { clsx } from 'clsx'
 import { ScreenViewer } from './ScreenViewer'
+
+type RefName = 'play' | 'stop' | 'max' | 'restore' | 'open' | 'x' | 'plus' | 'monitor'
+
+/**
+ * أيقونات التذييل من مجموعة المرجع نفسها (design/server.html: `#ic-*`) لا من lucide:
+ * العدد والمقاس والترتيب كانت مطابقة، واختلاف الشكل وحده كان يكلّف 10.71% في نطاق y=600.
+ * `restore` ليس في المرجع (حالة تكبير خاصة بالتطبيق) ويستعمل `#ic-minus`.
+ */
+const REF_PATHS: Record<RefName, ReactNode> = {
+  play: <path d="M7 4.5v15l13-7.5z" />,
+  stop: <rect x="6" y="6" width="12" height="12" rx="1.5" />,
+  max: <path d="M4 9V4h5M20 15v5h-5M15 4h5v5M9 20H4v-5" />,
+  restore: <path d="M5 12h14" />,
+  open: <path d="M14 4h6v6M20 4l-8 8M10 5H5a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-5" />,
+  x: <path d="M6 6l12 12M18 6L6 18" />,
+  plus: <path d="M12 5v14M5 12h14" />,
+  monitor: <><rect x="3" y="4" width="18" height="12" rx="2" /><path d="M9 20h6M12 16v4" /></>
+}
+
+function RefIcon ({ name }: { name: RefName }) {
+  return (
+    <svg className="i sm" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      {REF_PATHS[name]}
+    </svg>
+  )
+}
 
 interface ActiveScreen { sessionId: string; viewers?: number }
 interface Stats { cpuPercent?: number; ramPercent?: number }
@@ -150,13 +176,13 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, hasError, o
           ))}
         </div>
         <button type="button" className="btn primary" onClick={addTile} disabled={tiles.length >= MAX_TILES}>
-          <Plus size={12} /> {tr('إضافة بث', 'Add stream')}
+          <RefIcon name="plus" /> {tr('إضافة بث', 'Add stream')}
         </button>
       </div>
 
       {hasError && (
         <div className="aibar on" role="alert">
-          <X size={14} />
+          <RefIcon name="x" />
           <span>{tr('تعذّر الاتصال بالسيرفر — إعادة المحاولة', 'Could not reach the server — retry')}</span>
           <button type="button" className="btn ghost sm" onClick={onRetry}>{tr('إعادة المحاولة', 'Retry')}</button>
         </div>
@@ -171,7 +197,7 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, hasError, o
           return (
             <div className="fcard" key={device.id}>
               <div className="top">
-                <Monitor size={12} />
+                <RefIcon name="monitor" />
                 <span className="nm">{device.name}</span>
                 <div className="grow" />
                 <span className={clsx('chip', online ? 'ok' : 'off')}>
@@ -185,11 +211,11 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, hasError, o
               </div>
               <div className="acts">
                 <button type="button" className="btn ghost sm" onClick={() => onOpen(device.id)}>
-                  <ExternalLink size={12} /> {tr('فتح', 'Open')}
+                  <RefIcon name="open" /> {tr('فتح', 'Open')}
                 </button>
                 {online && (
                   <button type="button" className="btn ghost sm" onClick={() => onOpen(device.id)}>
-                    <MonitorPlay size={12} /> {tr('بث', 'Stream')}
+                    <RefIcon name="play" /> {tr('بث', 'Stream')}
                   </button>
                 )}
               </div>
@@ -245,7 +271,7 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, hasError, o
                     aria-pressed={tile.running}
                     className={clsx('tool', tile.running ? 'on' : 'play')}
                   >
-                    {tile.running ? <Square size={12} /> : <Play size={12} />}
+                    {tile.running ? <RefIcon name="stop" /> : <RefIcon name="play" />}
                   </button>
                   <button
                     type="button"
@@ -254,7 +280,7 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, hasError, o
                     aria-label={maximized ? tr('تصغير', 'Restore') : tr('تكبير', 'Maximize')}
                     className="tool"
                   >
-                    {maximized ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
+                    {maximized ? <RefIcon name="restore" /> : <RefIcon name="max" />}
                   </button>
                   <button
                     type="button"
@@ -263,7 +289,7 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, hasError, o
                     aria-label={tr('فتح الشاشة', 'Open screen')}
                     className="tool"
                   >
-                    <ExternalLink size={12} />
+                    <RefIcon name="open" />
                   </button>
                   <button
                     type="button"
@@ -273,7 +299,7 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, hasError, o
                     aria-label={tr('إزالة', 'Remove')}
                     className="tool"
                   >
-                    <X size={12} />
+                    <RefIcon name="x" />
                   </button>
                 </div>
               </div>
