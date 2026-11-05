@@ -137,7 +137,8 @@ export function DashboardLayout() {
   }
 
   return (
-    <div className="app-shell flex flex-col h-screen bg-canvas overflow-hidden">
+    <div className="app-shell h-screen bg-canvas overflow-auto">
+      <div className="cr-board">
       <header
         className="app-titlebar"
         dir="ltr"
@@ -279,11 +280,10 @@ export function DashboardLayout() {
         </div>
       </header>
 
-      <main className="app-content flex-1 overflow-auto min-w-0">
-        <div className="cr-board">
-          <Outlet />
-        </div>
+      <main className="app-content min-w-0">
+        <Outlet />
       </main>
+      </div>
 
       {paletteOpen && (
         <CommandPalette

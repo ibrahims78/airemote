@@ -2223,14 +2223,18 @@ html.light .ai-page-online, html.light .ai-page-cancel { background: #fff; borde
 /* ── 3.14.0 · §4.1(أ) — إطار اللوحة: شريط 44 · صفحة 22 · حشو 12 ──
    القيم من قياس server-production-light.png: يبدأ المحتوى عند 78،
    والجدار عند 310، ونهاية اللوحة 660. */
-.app-titlebar { height: 44px; flex: 0 0 44px; }
-.app-content { padding: 22px; }
+.app-shell { padding: 22px; }
+.app-titlebar { height: 44px; flex: 0 0 44px; background: var(--b-surface); border-bottom: 1px solid var(--b-line); }
+.app-content { padding: 0; }
 .cr-board {
   /* لون اللوحة من المرجع (--b-bg #f7fafc فاتح) لا من --cr-bg (#edf3f5): فرق 10/قناة يظهر في البلوك. */
   background: var(--b-bg);
   border: 1px solid var(--b-line);
   border-radius: 14px;
   overflow: hidden;
+  /* اللوحة تلتصق بمحتواها: المرجع ينتهي عند 660 وتحتّه خلفية الصفحة. */
+  align-self: flex-start;
+  width: 100%;
 }
 html.light .cr-board { box-shadow: 0 18px 44px rgba(15,23,42,.10); }
 .cr-page { padding: 12px; }
