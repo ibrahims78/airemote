@@ -70,7 +70,8 @@ public class Prefs {
             byte[] salt = new byte[16];
             new java.security.SecureRandom().nextBytes(salt);
             String saltHex = toHex(salt);
-            String hash = sha256(saltHex + ":" + pw.trim());
+            // 3.13.2 — PBKDF2 بدل SHA-256 سريع؛ البصمة تحمل إصدارها ومعاملاتها.
+            String hash = "pbkdf2$" + PBKDF2_ITERS + "$" + saltHex + "$" + pbkdf2(pw.trim(), saltHex, PBKDF2_ITERS);
             sp(c).edit().putString("ctrlSalt", saltHex).putString("ctrlHash", hash).apply();
         } catch (Exception ignore) { }
     }
@@ -85,8 +86,41 @@ public class Prefs {
             String saltHex = sp(c).getString("ctrlSalt", "");
             String hash = sp(c).getString("ctrlHash", "");
             if (saltHex.isEmpty() || hash.isEmpty()) return false;
-            return hash.equals(sha256(saltHex + ":" + (pw == null ? "" : pw).trim()));
+            String plain = (pw == null ? "" : pw).trim();
+            if (hash.startsWith("pbkdf2$")) {
+                String[] parts = hash.split("\\$");
+                if (parts.length != 4) return false;
+                int iters = Integer.parseInt(parts[1]);
+                String dk = pbkdf2(plain, parts[2], iters);
+                return constantTimeEquals(dk, parts[3]);
+            }
+            // بصمة قديمة (sha256+salt): تحقق ثم رقِّها في مكانها
+            if (constantTimeEquals(sha256(saltHex + ":" + plain), hash)) {
+                saveControlPassword(c, plain);
+                return true;
+            }
+            return false;
         } catch (Exception e) { return false; }
+    }
+
+    private static final int PBKDF2_ITERS = 60000;
+
+    private static String pbkdf2(String pw, String saltHex, int iters) throws Exception {
+        javax.crypto.spec.PBEKeySpec spec = new javax.crypto.spec.PBEKeySpec(pw.toCharArray(), fromHex(saltHex), iters, 256);
+        javax.crypto.SecretKeyFactory f = javax.crypto.SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
+        return toHex(f.generateSecret(spec).getEncoded());
+    }
+
+    private static boolean constantTimeEquals(String a, String b) {
+        if (a == null || b == null) return false;
+        return java.security.MessageDigest.isEqual(a.getBytes(java.nio.charset.StandardCharsets.UTF_8), b.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+    }
+
+    private static byte[] fromHex(String hex) {
+        int n = hex.length() / 2;
+        byte[] out = new byte[n];
+        for (int i = 0; i < n; i++) out[i] = (byte) Integer.parseInt(hex.substring(i * 2, i * 2 + 2), 16);
+        return out;
     }
 
     private static String sha256(String s) throws Exception {
