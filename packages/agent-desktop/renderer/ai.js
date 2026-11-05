@@ -359,7 +359,8 @@
       }).catch(() => {})
     }
     restoreLatest()
-    if (window.airemote.onAiReady) window.airemote.onAiReady(restoreLatest)
+    // 3.14.0 — كان الحارس يفحص الدالة لا الجسر: بلا preload (معاينة بالمتصفح) يرمي هنا.
+    if (window.airemote && window.airemote.onAiReady) window.airemote.onAiReady(restoreLatest)
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init)
