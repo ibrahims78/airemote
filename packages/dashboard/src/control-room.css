@@ -2207,3 +2207,30 @@ html.light .ai-page-online, html.light .ai-page-cancel { background: #fff; borde
 .cr-top-row .cr-overview-head { flex: 0 0 auto; margin: 0; }
 .cr-top-row .cr-metrics { flex: 1 1 auto; grid-template-columns: repeat(3, minmax(0, 1fr)); }
 @media (max-width: 1399px) { .cr-top-row { display: block; } }
+
+/* ── 3.14.0 · §4.1(أ) المرحلة 1 — جدار المرجع: الجدار وحده، بلا إطار ولا ترويسة ──
+   أصناف المرجع (.wall/.tile/.screen/.ph/.foot/.chip/.tool) تأتي من
+   control-room-ref.css. هنا فقط ما لا يوجد في المرجع:
+   سقف العرض (1612px = عرض جدار اللوحة عند 1644)، طبقة البث، وحالة التكبير. */
+.cr-wall .wall { max-width: 1612px; margin-inline: auto; }
+.cr-wall .cr-wall-live { position: absolute; inset: 0; display: flex; }
+.cr-wall .tile.is-max {
+  position: fixed; inset: 0; z-index: 95;
+  border: 0; border-radius: 0; background: var(--cr-bg); padding: 8px;
+}
+.cr-wall .tile.is-max .screen { aspect-ratio: auto; flex: 1; min-height: 0; }
+
+/* ── 3.14.0 · §4.1(أ) — إطار اللوحة: شريط 44 · صفحة 22 · حشو 12 ──
+   القيم من قياس server-production-light.png: يبدأ المحتوى عند 78،
+   والجدار عند 310، ونهاية اللوحة 660. */
+.app-titlebar { height: 44px; flex: 0 0 44px; }
+.app-content { padding: 22px; }
+.cr-board {
+  /* لون اللوحة من المرجع (--b-bg #f7fafc فاتح) لا من --cr-bg (#edf3f5): فرق 10/قناة يظهر في البلوك. */
+  background: var(--b-bg);
+  border: 1px solid var(--b-line);
+  border-radius: 14px;
+  overflow: hidden;
+}
+html.light .cr-board { box-shadow: 0 18px 44px rgba(15,23,42,.10); }
+.cr-page { padding: 12px; }

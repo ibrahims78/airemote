@@ -280,7 +280,9 @@ export function DashboardLayout() {
       </header>
 
       <main className="app-content flex-1 overflow-auto min-w-0">
-        <Outlet />
+        <div className="cr-board">
+          <Outlet />
+        </div>
       </main>
 
       {paletteOpen && (
