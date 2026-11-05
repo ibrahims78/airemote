@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="ar" dir="rtl" class="light">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AiRemote — Server</title>
+<style>
+  :root{
+    --bg:#0b1117; --surface:#111a22; --surface2:#16222c; --surface3:#1b2a36;
+    --line:rgba(148,163,184,.16); --line2:rgba(148,163,184,.28);
+    --ink:#e6edf3; --ink2:#c2cfdb; --muted:#8fa3b5;
+    --accent:#2dd4bf; --accent-soft:rgba(45,212,191,.12);
+    --ok:#34d399; --warn:#fbbf24; --danger:#f87171;
+    --r1:8px; --r2:12px;
+    --s1:4px; --s2:8px; --s3:12px; --s4:16px;
+    --t1:11px; --t2:13px; --t3:16px;
+    --mono:"Cascadia Code",Consolas,monospace;
+  }
+  /* نسخة فاتحة: نفس النظام، هوية المنتج الحالية */
+  html.light{
+    --bg:#f7fafc; --surface:#ffffff; --surface2:#f1f5f9; --surface3:#e6edf3;
+    --line:rgba(15,23,42,.10); --line2:rgba(15,23,42,.18);
+    --ink:#0f172a; --ink2:#334155; --muted:#64748b;
+    --accent:#0f766e; --accent-soft:rgba(15,118,110,.10);
+    --ok:#047857; --warn:#b45309; --danger:#dc2626;
+  }
+  html.light, html.light body{background:#eef3f7}
+  html.light .btn.primary{color:#fff}
+  html.light .board{box-shadow:0 18px 44px rgba(15,23,42,.10)}
+  html.light .state-strip{background:#f1f5f9}
+  html.light .tile .screen{background:#eef3f7}
+  html.light .tile .screen .ph{color:#8296a8}
+  html.light .tile .screen .ph .big{color:#475569}
+  html.light .toggle.on{background:rgba(15,118,110,.16);border-color:rgba(15,118,110,.45)}
+  html.light .toggle.on i{background:#fff}
+  html.light .chip.ok{color:#046c4e;background:rgba(5,150,105,.10);border-color:rgba(5,150,105,.32)}
+  html.light .chip.warn{color:#92400e;background:rgba(180,83,9,.10);border-color:rgba(180,83,9,.30)}
+  html.light .chip.off{color:#475569}
+  html.light .log{color:var(--ink2)}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:#070d12;color:var(--ink);font-family:"Segoe UI",Tahoma,system-ui,sans-serif;font-size:var(--t2);line-height:1.55}
+  .i{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto}
+  .i.sm{width:12px;height:12px}
+  .board-wrap{padding:28px;display:flex;flex-direction:column;gap:10px}
+  .board-title{font-size:var(--t3);font-weight:700}
+  .board-note{font-size:var(--t1);color:var(--muted);margin:0 0 6px;max-width:900px}
+  .board{background:var(--bg);border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.45)}
+
+  .appbar{height:44px;display:flex;align-items:center;gap:var(--s2);padding:0 var(--s3);border-bottom:1px solid var(--line);background:var(--surface)}
+  .brand{display:flex;align-items:center;gap:var(--s2);font-weight:700}
+  .brand .mark{width:22px;height:22px;border-radius:6px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center}
+  .ver{font:10px var(--mono);color:var(--muted);margin-inline-start:2px}
+  .nav{display:flex;gap:2px;margin-inline-start:var(--s3)}
+  .nav a{font-size:var(--t1);color:var(--muted);text-decoration:none;padding:6px 10px;border-radius:6px}
+  .nav a.on{color:var(--accent);background:var(--accent-soft)}
+  .grow{flex:1}
+  .iconbtn{width:30px;height:30px;border:1px solid transparent;border-radius:7px;background:transparent;color:var(--muted);display:grid;place-items:center;cursor:pointer}
+  .iconbtn:hover{border-color:var(--line2);color:var(--ink)}
+  .who{display:flex;align-items:center;gap:6px;font-size:var(--t1);color:var(--ink2)}
+  .who .av{width:22px;height:22px;border-radius:50%;background:var(--surface3);display:grid;place-items:center;font-size:10px;font-weight:700}
+
+  .chip{display:inline-flex;align-items:center;gap:5px;height:22px;padding:0 8px;border-radius:999px;font-size:10.5px;border:1px solid var(--line)}
+  .chip .dot{width:6px;height:6px;border-radius:50%}
+  .chip.ok{color:var(--ok);border-color:rgba(52,211,153,.35);background:rgba(52,211,153,.08)}
+  .chip.ok .dot{background:var(--ok)}
+  .chip.off{color:var(--muted)} .chip.off .dot{background:var(--muted)}
+  .chip.warn{color:var(--warn);border-color:rgba(251,191,36,.35);background:rgba(251,191,36,.08)}
+  .chip.warn .dot{background:var(--warn)}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r2)}
+  .card-h{display:flex;align-items:center;gap:10px;padding:11px var(--s3);border-bottom:1px solid var(--line)}
+  .card-h .ttl{font-weight:600;white-space:nowrap}
+  .card-h .sub{font-size:10.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .card-h .grow{flex:1}
+  .card-b{padding:var(--s3)}
+
+  .btn{height:30px;padding:0 12px;border-radius:7px;border:1px solid var(--line2);background:var(--surface2);color:var(--ink);font-size:var(--t1);font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:6px;font-family:inherit}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#06231f}
+  .btn.ghost{background:transparent;border-color:var(--line)}
+  .btn.danger{color:var(--danger);border-color:rgba(248,113,113,.35);background:rgba(248,113,113,.08)}
+  .btn.sm{height:26px;padding:0 9px}
+
+  .field{display:flex;flex-direction:column;gap:6px;margin-bottom:var(--s3)}
+  .field label{font-size:var(--t1);color:var(--ink2);font-weight:600}
+  .hint{font-size:10.5px;color:var(--muted)}
+  .input{height:32px;border-radius:7px;border:1px solid var(--line2);background:var(--bg);color:var(--ink);padding:0 10px;font-size:var(--t2);width:100%;font-family:inherit}
+  .input.mono{font-family:var(--mono);font-size:11.5px;direction:ltr;text-align:left}
+  .row2{display:flex;gap:var(--s2);align-items:center}
+  .seg{display:inline-flex;border:1px solid var(--line2);border-radius:7px;overflow:hidden}
+  .seg button{height:26px;padding:0 10px;background:transparent;border:0;color:var(--muted);font-size:10.5px;cursor:pointer;font-family:inherit}
+  .seg button.on{background:var(--surface3);color:var(--ink);font-weight:600}
+  .radio{display:flex;gap:8px;align-items:center;justify-content:flex-start;padding:7px 0;font-size:var(--t2);color:var(--ink2)}
+  .radio input{accent-color:var(--accent);margin:0}
+  .bar{height:4px;border-radius:999px;background:rgba(148,163,184,.2);overflow:hidden;margin-top:6px}
+  .bar{direction:rtl}
+  .bar>i{display:block;height:100%;width:62%;background:var(--accent);margin-inline-start:auto}
+
+  /* السيرفر */
+  .dash{padding:var(--s4)}
+  .dash-head{display:flex;align-items:center;gap:var(--s3);margin-bottom:var(--s4)}
+  .dash-head h1{font-size:var(--t3);margin:0;white-space:nowrap}
+  .metrics{display:flex;gap:var(--s2)}
+  .metric{border:1px solid var(--line);border-radius:var(--r1);padding:5px 10px;min-width:92px;background:var(--surface)}
+  .metric b{display:block;font-size:var(--t3);font-family:var(--mono);line-height:1.2}
+  .metric span{font-size:10px;color:var(--muted)}
+  .wall{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s3)}
+  .tile{border:1px solid var(--line);border-radius:var(--r2);overflow:hidden;background:var(--surface);display:flex;flex-direction:column}
+  .tile .screen{aspect-ratio:16/9;background:#0a1218;position:relative;display:grid;place-items:center;border-bottom:1px solid var(--line)}
+  .tile .screen .ph{display:flex;flex-direction:column;align-items:center;gap:4px;color:#5b7183;font-size:10.5px}
+  .tile .screen .ph .big{font-size:var(--t2);color:#93a9ba;font-weight:600}
+  .tile .foot{display:flex;align-items:center;gap:4px;padding:6px 8px}
+  .tile .name{font-size:11.5px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .tile .tool{width:26px;height:26px;border-radius:6px;display:grid;place-items:center;color:var(--muted);background:transparent;border:1px solid transparent;cursor:pointer}
+  .tile .tool:hover{background:var(--surface3);border-color:var(--line);color:var(--ink)}
+  .tile .tool.on{color:var(--danger)}
+  .tile .tool.play{color:var(--accent)}
+
+  /* وكيل ويندوز */
+  .agent{width:560px}
+  .agent .body{padding:var(--s3);display:flex;flex-direction:column;gap:var(--s3)}
+  .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);padding:0 var(--s3);background:var(--surface)}
+  .tabs button{height:34px;padding:0 11px;background:transparent;border:0;border-bottom:2px solid transparent;color:var(--muted);font-size:var(--t1);font-weight:600;cursor:pointer;font-family:inherit}
+  .tabs button.on{color:var(--accent);border-bottom-color:var(--accent)}
+  .log{font:11px/1.95 var(--mono);color:var(--ink2)}
+  .log .ln{display:flex;gap:8px;align-items:baseline}
+  .log .ts{color:var(--muted);direction:ltr}
+  .state-strip{display:flex;gap:var(--s2);padding:var(--s3);border-top:1px solid var(--line);background:#0a1218}
+  .state-strip .s{flex:1;border:1px dashed var(--line2);border-radius:var(--r1);padding:7px;font-size:10.5px;color:var(--muted);text-align:center}
+
+  /* أندرويد */
+  .phone{width:390px;background:var(--bg);border:1px solid var(--line);border-radius:26px;overflow:hidden}
+  .statusbar{height:26px;display:flex;align-items:center;justify-content:space-between;padding:0 12px;font-size:10px;color:var(--muted);background:var(--surface);direction:ltr}
+  .pheap{padding:14px var(--s3) 10px;display:flex;gap:10px;align-items:center}
+  .appicon{width:36px;height:36px;border-radius:10px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;flex:0 0 auto}
+  .pheap h2{margin:0;font-size:var(--t3)}
+  .pheap p{margin:0;font-size:10.5px;color:var(--muted);direction:ltr}
+  .list{display:flex;flex-direction:column;gap:8px}
+  .item{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:var(--r1);padding:9px 10px;background:var(--surface)}
+  .item .ico{width:26px;height:26px;border-radius:7px;background:var(--surface3);display:grid;place-items:center;color:var(--ink2);flex:0 0 auto}
+  .item .tx{flex:1;min-width:0}
+  .item .tx b{display:block;font-size:11.5px}
+  .item .tx span{font-size:10px;color:var(--muted)}
+  .toggle{width:38px;height:22px;border-radius:999px;background:var(--surface3);position:relative;border:1px solid var(--line2);flex:0 0 auto}
+  .toggle i{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--muted);transition:left .15s}
+  .toggle.on{background:rgba(45,212,191,.25);border-color:rgba(45,212,191,.5)}
+  .toggle.on i{background:var(--accent);left:18px}
+  .bottom{display:flex;gap:var(--s2);padding:var(--s3);border-top:1px solid var(--line);background:var(--surface)}
+  .bottom .btn{flex:1;justify-content:center}
+
+
+  .ahead{display:flex;align-items:center;gap:6px;padding:6px 12px 0;background:var(--surface)}
+  .seg2{display:inline-flex;background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:2px;gap:2px}
+  .seg2 button{border:0;background:none;color:var(--muted);font:inherit;font-size:11px;padding:3px 8px;border-radius:8px;cursor:pointer}
+  .seg2 button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(2,6,23,.10)}
+  .pg.on{display:flex;flex-direction:column;gap:12px;padding:12px}
+  html,body{min-height:100vh}
+  body{background:#eef3f7;display:flex;flex-direction:column;align-items:center;padding:22px}
+  html:not(.light) body{background:#070d12}
+  .stage{width:100%;max-width:1644px}
+  .tools{display:flex;gap:6px;justify-content:center;padding:14px 12px 28px;z-index:50}
+  .tools .btn{background:var(--surface);border-color:var(--line2)}
+  .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);padding:0 12px;background:var(--surface)}
+  .tabs button{height:34px;padding:0 11px;background:transparent;border:0;border-bottom:2px solid transparent;color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit}
+  .tabs button.on{color:var(--accent);border-bottom-color:var(--accent)}
+  .pg{display:none}
+  .pg.on{display:block}
+  .sheet{position:absolute;inset:0;background:rgba(8,16,22,.55);display:none;align-items:flex-end;z-index:20}
+  .sheet.on{display:flex}
+  .sheet .inner{width:100%;background:var(--surface);border-top:1px solid var(--line);border-radius:16px 16px 0 0;padding:14px}
+  /* touch: Android — 44px minimum targets, no hover-only affordances */
+  .touch .btn{height:44px;padding:0 14px;font-size:12px}
+  .touch .btn.sm{height:44px}
+  .touch .seg2 button{min-height:40px;padding:0 10px;font-size:12px}
+  .touch .seg button{white-space:nowrap;font-size:12px;padding:0 8px}
+  .touch .input{height:44px;font-size:13px}
+  .touch .iconbtn{width:44px;height:44px}
+  .touch .item{padding:12px 12px}
+  .touch .toggle{width:44px;height:26px}
+  .touch .toggle i{width:20px;height:20px}
+  .touch .toggle.on i{left:21px}
+  .touch .bottom .btn{flex:1;justify-content:center}
+  .touch .tile .tool{width:36px;height:36px}
+</style>
+<style>.state-strip{display:none!important}</style>
+</head>
+<body class="light">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="ic-play" viewBox="0 0 24 24"><path d="M7 4.5v15l13-7.5z"/></symbol>
+  <symbol id="ic-stop" viewBox="0 0 24 24"><rect x="6" y="6" width="12" height="12" rx="1.5"/></symbol>
+  <symbol id="ic-max" viewBox="0 0 24 24"><path d="M4 9V4h5M20 15v5h-5M15 4h5v5M9 20H4v-5"/></symbol>
+  <symbol id="ic-open" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-8 8M10 5H5a1 1 0 0 0-1 1v13a1 1 0 0 0 1 1h13a1 1 0 0 0 1-1v-5"/></symbol>
+  <symbol id="ic-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="ic-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="ic-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6"/><path d="M20 20l-3.5-3.5"/></symbol>
+  <symbol id="ic-bell" viewBox="0 0 24 24"><path d="M18 9a6 6 0 1 0-12 0c0 5-2 6-2 6h16s-2-1-2-6"/><path d="M10.5 20a2 2 0 0 0 3 0"/></symbol>
+  <symbol id="ic-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="ic-bolt" viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></symbol>
+  <symbol id="ic-eye" viewBox="0 0 24 24"><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="2.6"/></symbol>
+  <symbol id="ic-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V6z"/><path d="M9 12l2 2 4-4"/></symbol>
+  <symbol id="ic-monitor" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M9 20h6M12 16v4"/></symbol>
+  <symbol id="ic-a11y" viewBox="0 0 24 24"><circle cx="12" cy="5" r="2"/><path d="M4 9h16M12 9v6M8 21l4-6 4 6"/></symbol>
+  <symbol id="ic-capture" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="12" cy="12" r="3"/></symbol>
+  <symbol id="ic-lock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="ic-link" viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7 0l2-2a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-2 2a5 5 0 0 0 7 7l1-1"/></symbol>
+  <symbol id="ic-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></symbol>
+  <symbol id="ic-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="ic-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="ic-reconnect" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2 6"/><path d="M20 5v6h-6"/></symbol>
+</defs></svg>
+
+<style>
+  .amenu { position:absolute; inset-inline-end:12px; top:52px; z-index:30; width:216px; background:var(--surface); border:1px solid var(--line2); border-radius:12px; padding:6px; box-shadow:0 12px 28px rgba(2,6,23,.18); display:none }
+  .amenu.on { display:block }
+  .amenu a { display:flex; align-items:center; gap:8px; padding:8px; border-radius:8px; color:var(--ink2); text-decoration:none; font-size:13px }
+  .amenu a:hover { background:var(--surface2); color:var(--ink) }
+  .amenu hr { border:0; border-top:1px solid var(--line); margin:4px 2px }
+  .aibar { display:none; align-items:center; gap:8px; margin:0 0 12px; padding:10px; background:var(--surface); border:1px solid var(--line2); border-radius:12px }
+  .aibar.on { display:flex }
+  .linkbtn { background:none; border:0; color:var(--accent); font:inherit; cursor:pointer; padding:0 2px; text-decoration:underline; text-underline-offset:3px }
+  .nav a{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--ink2);text-decoration:none;padding:7px 12px;border-radius:9px;border:1px solid transparent}
+  .nav a:hover{background:var(--surface2);color:var(--ink)}
+  .nav a.on{background:var(--accent-soft);color:var(--accent);border-color:var(--line2);font-weight:600}
+  .seg2{display:inline-flex;background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:2px;gap:2px}
+  .seg2 button{border:0;background:none;color:var(--muted);font:inherit;font-size:12px;padding:4px 9px;border-radius:8px;cursor:pointer}
+  .seg2 button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(2,6,23,.10)}
+  .fleet{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px}
+  .fleet.six{grid-template-columns:repeat(4,1fr)}
+  .fleet{align-items:start}
+  .fcard{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px}
+  .fcard .top{display:flex;align-items:center;gap:8px}
+  .fcard .nm{font-weight:600;font-size:13px}
+  .fcard .rows{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--ink2)}
+  .fcard .rows b{font-weight:500;color:var(--muted);font-size:11px}
+  .fcard .acts{display:flex;gap:6px;margin-top:auto}
+</style>
+<div class="stage">
+  <div class="board" style="position:relative">
+    <div class="appbar">
+      <div class="brand"><span class="mark"><svg class="i sm"><use href="#ic-bolt"/></svg></span> AiRemote <span class="ver">v3.13.1</span></div>
+      <nav class="nav">
+        <a href="#" class="on" data-tab="overview" data-feature="nav-overview" onclick="return showTab('overview')"><svg class="i sm"><use href="#ic-max"/></svg><span data-en="Control room">غرفة العمليات</span></a>
+        <a href="#" data-tab="devices" data-feature="nav-devices" onclick="return showTab('devices')"><svg class="i sm"><use href="#ic-monitor"/></svg><span data-en="Devices">الأجهزة</span></a>
+        <a href="#" data-tab="ai" data-feature="nav-ai" onclick="return showTab('ai')"><svg class="i sm"><use href="#ic-bolt"/></svg><span data-en="Assistant">المساعد</span></a>
+        <a href="#" data-tab="sessions" data-feature="nav-sessions" onclick="return showTab('sessions')"><svg class="i sm"><use href="#ic-list"/></svg><span data-en="Sessions">الجلسات</span></a>
+      </nav>
+      <div class="grow"></div>
+      <button class="iconbtn" title="بحث" data-feature="dash-search"><svg class="i"><use href="#ic-search"/></svg></button>
+      <button class="iconbtn" title="التنبيهات" data-feature="dash-notifications"><svg class="i"><use href="#ic-bell"/></svg></button>
+      <div class="seg2" role="group" aria-label="theme" style="margin-inline-end:6px">
+        <button data-theme-btn="light" class="on" onclick="setTheme('light')"><span data-en="Light">فاتح</span></button>
+        <button data-theme-btn="dark" onclick="setTheme('dark')"><span data-en="Dark">داكن</span></button>
+      </div>
+      <div class="seg2" role="group" aria-label="language" style="margin-inline-end:8px">
+        <button data-lang-btn="ar" class="on" onclick="setLang('ar')">ع</button>
+        <button data-lang-btn="en" onclick="setLang('en')">EN</button>
+      </div>
+      <div class="who" data-feature="dash-user-menu"><span class="av">L</span> Lab · <span data-en="Admin">مسؤول</span></div>
+      <button class="iconbtn" title="قائمة التطبيق" data-feature="dash-app-menu" onclick="toggleMenu()"><svg class="i"><use href="#ic-menu"/></svg></button>
+    </div>
+    <div class="amenu" id="amenu">
+      <a href="#" data-page="files" onclick="return showTab('files')"><svg class="i sm"><use href="#ic-open"/></svg> <span data-en="Files">الملفات</span></a>
+      <a href="#" data-page="audit" onclick="return showTab('audit')"><svg class="i sm"><use href="#ic-eye"/></svg> <span data-en="Audit log">التدقيق</span></a>
+      <a href="#" data-page="users" onclick="return showTab('users')"><svg class="i sm"><use href="#ic-link"/></svg> <span data-en="Users">المستخدمون</span></a>
+      <a href="#" data-page="notifications" onclick="return showTab('notifications')"><svg class="i sm"><use href="#ic-bell"/></svg> <span data-en="Notifications">الإشعارات</span></a>
+      <hr>
+      <a href="#" data-page="settings" data-feature="dash-settings" onclick="return showTab('settings')"><svg class="i sm"><use href="#ic-shield"/></svg> <span data-en="Settings">الإعدادات</span></a>
+      <a href="#" data-page="help" data-feature="dash-help" onclick="return showTab('help')"><span data-en="Help">المساعدة</span></a>
+    </div>
+
+    <div class="dash pg on" id="overview">
+      <div class="dash-head">
+        <h1><span data-en="Control room">غرفة العمليات</span></h1>
+        <div class="metrics">
+          <div class="metric"><b>4</b><span data-en="devices online">أجهزة متصلة</span> <button class="linkbtn" data-feature="dash-view-all-devices"><span data-en="View all">عرض الكل</span></button></div>
+          <div class="metric"><b>1</b><span data-en="active stream">بث نشط</span></div>
+          <div class="metric"><b>0</b><span data-en="alerts">تنبيهات</span></div>
+        </div>
+        <div class="grow"></div>
+        <div class="seg"><button data-feature="wall-size-s">S</button><button class="on" data-feature="wall-size-m">M</button><button data-feature="wall-size-l">L</button></div>
+        <button class="btn primary" data-feature="wall-add"><svg class="i sm"><use href="#ic-plus"/></svg> <span data-en="Add stream">إضافة بث</span></button>
+      </div>
+
+      <div class="fleet">
+        <div class="fcard">
+          <div class="top"><svg class="i sm"><use href="#ic-monitor"/></svg><span class="nm">WIN10-VM</span><div class="grow"></div><span class="chip ok"><span class="dot"></span><span data-en="Live">مباشر</span></span></div>
+          <div class="rows"><div><b><span data-en="OS">النظام</span></b> windows · 1600×675</div><div><b><span data-en="Agent">الوكيل</span></b> 3.13.1 · 192.168.0.128</div><div><b><span data-en="Stream">البث</span></b> 1 fps · 94 KB/s</div></div>
+          <div class="acts"><button class="btn ghost sm"><svg class="i sm"><use href="#ic-open"/></svg><span data-en="Open">فتح</span></button><button class="btn ghost sm"><svg class="i sm"><use href="#ic-stop"/></svg><span data-en="Stop">إيقاف</span></button></div>
+        </div>
+        <div class="fcard">
+          <div class="top"><svg class="i sm"><use href="#ic-monitor"/></svg><span class="nm">WIN11-VM</span><div class="grow"></div><span class="chip off"><span class="dot"></span><span data-en="Stopped">متوقف</span></span></div>
+          <div class="rows"><div><b><span data-en="OS">النظام</span></b> windows · 1920×1080</div><div><b><span data-en="Agent">الوكيل</span></b> 3.13.1 · 192.168.0.129</div><div><b><span data-en="Stream">البث</span></b> —</div></div>
+          <div class="acts"><button class="btn ghost sm"><svg class="i sm"><use href="#ic-play"/></svg><span data-en="Start">تشغيل</span></button><button class="btn ghost sm"><svg class="i sm"><use href="#ic-open"/></svg><span data-en="Open">فتح</span></button></div>
+        </div>
+        <div class="fcard">
+          <div class="top"><svg class="i sm"><use href="#ic-lock"/></svg><span class="nm">Android-Emulator</span><div class="grow"></div><span class="chip warn"><span class="dot"></span><span data-en="Needs grant">يحتاج منحًا</span></span></div>
+          <div class="rows"><div><b><span data-en="OS">النظام</span></b> android · 320×640</div><div><b><span data-en="Agent">الوكيل</span></b> 3.13.1-android</div><div><b><span data-en="Capture">الالتقاط</span></b> ممنوع</div></div>
+          <div class="acts"><button class="btn ghost sm"><svg class="i sm"><use href="#ic-a11y"/></svg><span data-en="Grant">منح</span></button><button class="btn ghost sm"><svg class="i sm"><use href="#ic-open"/></svg><span data-en="Open">فتح</span></button></div>
+        </div>
+        <div class="fcard">
+          <div class="top"><svg class="i sm"><use href="#ic-link"/></svg><span class="nm">TECNO-KL4</span><div class="grow"></div><span class="chip off"><span class="dot"></span><span data-en="Offline">غير متصل</span></span></div>
+          <div class="rows"><div><b><span data-en="OS">النظام</span></b> android · 3.12.2</div><div><b><span data-en="Last seen">آخر ظهور</span></b> قبل 3 ساعات</div><div><b><span data-en="Stream">البث</span></b> —</div></div>
+          <div class="acts"><button class="btn ghost sm"><svg class="i sm"><use href="#ic-reconnect"/></svg><span data-en="Refresh">تحديث</span></button></div>
+        </div>
+      </div>
+
+      <div id="wall-live">
+        <div class="wall">
+          <div class="tile">
+            <div class="screen"><div class="ph"><div class="big">WIN10-VM</div><div>1600×675 · 1 fps · 94 KB/s</div></div></div>
+            <div class="foot"><span class="name">WIN10-VM</span><span class="chip ok"><span class="dot"></span><span data-en="Live">مباشر</span></span>
+              <button class="tool on" title="إيقاف البث" data-feature="tile-stop"><svg class="i sm"><use href="#ic-stop"/></svg></button>
+              <button class="tool" title="تكبير" data-feature="tile-max"><svg class="i sm"><use href="#ic-max"/></svg></button>
+              <button class="tool" title="فتح الشاشة" data-feature="tile-open"><svg class="i sm"><use href="#ic-open"/></svg></button>
+              <button class="tool" title="إزالة" data-feature="tile-remove"><svg class="i sm"><use href="#ic-x"/></svg></button></div>
+          </div>
+          <div class="tile">
+            <div class="screen"><div class="ph"><div class="big">WIN11-VM</div><div><span data-en="No stream — press play">لا بث — اضغط تشغيل</span></div></div></div>
+            <div class="foot"><span class="name">WIN11-VM</span><span class="chip off"><span class="dot"></span><span data-en="Stopped">متوقف</span></span>
+              <button class="tool play" title="تشغيل البث" data-feature="tile-play"><svg class="i sm"><use href="#ic-play"/></svg></button>
+              <button class="tool" title="تكبير" data-feature="tile-max"><svg class="i sm"><use href="#ic-max"/></svg></button>
+              <button class="tool" title="فتح الشاشة" data-feature="tile-open"><svg class="i sm"><use href="#ic-open"/></svg></button>
+              <button class="tool" title="إزالة" data-feature="tile-remove"><svg class="i sm"><use href="#ic-x"/></svg></button></div>
+          </div>
+          <div class="tile">
+            <div class="screen"><div class="ph"><div class="big">Android-Emulator</div><div><span data-en="No capture grant">بلا منح التقاط</span></div></div></div>
+            <div class="foot"><span class="name">Android-Emulator</span><span class="chip warn"><span class="dot"></span><span data-en="Needs grant">يحتاج منحًا</span></span>
+              <button class="tool play" title="تشغيل البث" data-feature="tile-play"><svg class="i sm"><use href="#ic-play"/></svg></button>
+              <button class="tool" title="تكبير" data-feature="tile-max"><svg class="i sm"><use href="#ic-max"/></svg></button>
+              <button class="tool" title="فتح الشاشة" data-feature="tile-open"><svg class="i sm"><use href="#ic-open"/></svg></button>
+              <button class="tool" title="إزالة" data-feature="tile-remove"><svg class="i sm"><use href="#ic-x"/></svg></button></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="wall-empty" style="display:none"><div class="empty"><span data-en="No devices to monitor — add a device">لا أجهزة للمراقبة — أضف جهازًا</span></div></div>
+      <div id="wall-skel" style="display:none"><div class="wall">
+        <div class="tile"><div class="screen" style="display:grid;place-items:center"><div class="skl" style="width:60%"></div></div><div class="foot"><div class="skl" style="width:40%"></div></div></div>
+        <div class="tile"><div class="screen" style="display:grid;place-items:center"><div class="skl" style="width:60%"></div></div><div class="foot"><div class="skl" style="width:40%"></div></div></div>
+        <div class="tile"><div class="screen" style="display:grid;place-items:center"><div class="skl" style="width:60%"></div></div><div class="foot"><div class="skl" style="width:40%"></div></div></div>
+      </div></div>
+      <div id="wall-err" style="display:none"><div class="toastbar err"><svg class="i sm"><use href="#ic-x"/></svg><span><span data-en="Could not reach the server — retry">تعذّر الاتصال بالسيرفر — إعادة المحاولة</span></span></div></div>
+
+      <div class="state-strip">
+        <div class="s"><span data-en="Empty: “no devices to monitor”">فارغ: «لا أجهزة للمراقبة — أضف جهازًا»</span></div>
+        <div class="s"><span data-en="Loading: skeleton at tile size">تحميل: هيكل عظمي بقياس المربّع</span></div>
+        <div class="s"><span data-en="Error: “could not connect — retry”">خطأ: «تعذّر الاتصال — إعادة المحاولة»</span></div>
+      </div>
+    </div>
+
+    <div class="dash pg" id="devices">
+      <div class="dash-head"><h1><span data-en="Devices">الأجهزة</span></h1><div class="grow"></div>
+        <div class="seg2" style="margin-inline-end:6px"><button class="on"><span data-en="All">كل الأجهزة</span></button><button><span data-en="Online">متصل</span></button><button><span data-en="Offline">غير متصل</span></button></div>
+        <button class="btn primary"><svg class="i sm"><use href="#ic-plus"/></svg><span data-en="Add device">إضافة جهاز</span></button></div>
+
+      <div class="fleet six">
+        <div class="fcard"><div class="top"><svg class="i sm"><use href="#ic-monitor"/></svg><span class="nm">WIN10-VM</span><div class="grow"></div><span class="chip ok"><span class="dot"></span><span data-en="Connected">متصل</span></span></div>
+          <div class="rows"><div><b><span data-en="OS">النظام</span></b> windows · 192.168.0.128</div><div><b><span data-en="Agent">الوكيل</span></b> 3.13.1 · CPU 5%</div></div>
+          <div class="acts"><button class="btn ghost sm"><svg class="i sm"><use href="#ic-open"/></svg><span data-en="Screen">شاشة</span></button><button class="btn ghost sm"><svg class="i sm"><use href="#ic-shield"/></svg><span data-en="Access">صلاحيات</span></button></div></div>
+        <div class="fcard"><div class="top"><svg class="i sm"><use href="#ic-monitor"/></svg><span class="nm">WIN11-VM</span><div class="grow"></div><span class="chip ok"><span class="dot"></span><span data-en="Connected">متصل</span></span></div>
+          <div class="rows"><div><b><span data-en="OS">النظام</span></b> windows · 192.168.0.129</div><div><b><span data-en="Agent">الوكيل</span></b> 3.13.1 · CPU 8%</div></div>
+          <div class="acts"><button class="btn ghost sm"><svg class="i sm"><use href="#ic-open"/></svg><span data-en="Screen">شاشة</span></button><button class="btn ghost sm"><svg class="i sm"><use href="#ic-shield"/></svg><span data-en="Access">صلاحيات</span></button></div></div>
+        <div class="fcard"><div class="top"><svg class="i sm"><use href="#ic-lock"/></svg><span class="nm">Android-Emulator</span><div class="grow"></div><span class="chip warn"><span class="dot"></span><span data-en="Needs grant">يحتاج منحًا</span></span></div>
+          <div class="rows"><div><b><span data-en="OS">النظام</span></b> android · 320×640</div><div><b><span data-en="Agent">الوكيل</span></b> 3.13.1-android</div></div>
+          <div class="acts"><button class="btn ghost sm"><svg class="i sm"><use href="#ic-a11y"/></svg><span data-en="Grant">منح</span></button><button class="btn ghost sm"><svg class="i sm"><use href="#ic-open"/></svg><span data-en="Screen">شاشة</span></button></div></div>
+        <div class="fcard"><div class="top"><svg class="i sm"><use href="#ic-link"/></svg><span class="nm">TECNO-KL4</span><div class="grow"></div><span class="chip off"><span class="dot"></span><span data-en="Offline">غير متصل</span></span></div>
+          <div class="rows"><div><b><span data-en="OS">النظام</span></b> android · 3.12.2</div><div><b><span data-en="Last seen">آخر ظهور</span></b> قبل 3 ساعات</div></div>
+          <div class="acts"><button class="btn ghost sm"><svg class="i sm"><use href="#ic-reconnect"/></svg><span data-en="Refresh">تحديث</span></button></div></div>
+      </div>
+
+      <div class="hint" style="padding:4px 2px"><span data-en="The detailed table lives on the sessions page — the cards above are the primary view.">الجدول التفصيلي متاح من صفحة الجلسات — البطاقات أعلاه هي الواجهة الأساسية.</span></div>
+    </div>
+
+    <div class="dash pg" id="sessions">
+      <div class="dash-head"><h1><span data-en="Session log">سجل الجلسات</span></h1><div class="grow"></div>
+        <button class="btn ghost"><span data-en="Export CSV">تصدير CSV</span></button></div>
+      <div class="card"><div class="card-b" style="padding:0">
+        <table class="tbl"><thead><tr><th><span data-en="From">من</span></th><th><span data-en="To">إلى</span></th><th><span data-en="Access">الوصول</span></th><th><span data-en="Status">الحالة</span></th><th><span data-en="Duration">المدة</span></th></tr></thead><tbody>
+          <tr><td>WIN11-VM</td><td>WIN10-VM</td><td><span data-en="Full control">تحكم كامل</span></td><td><span class="chip ok"><span class="dot"></span><span data-en="Active">نشطة</span></span></td><td class="hint">03:12</td></tr>
+          <tr><td>Android-Emulator</td><td>WIN11-VM</td><td><span data-en="View">عرض</span></td><td><span class="chip off"><span class="dot"></span><span data-en="Ended">منتهية</span></span></td><td class="hint">00:41</td></tr>
+          <tr><td>WIN10-VM</td><td>TAB16-USB</td><td><span data-en="Files">ملفات</span></td><td><span class="chip warn"><span class="dot"></span><span data-en="Denied">مرفوضة</span></span></td><td class="hint">00:00</td></tr>
+        </tbody></table>
+      </div></div>
+    </div>
+
+    <div class="dash pg" id="ai">
+      <div class="dash-head"><h1><span data-en="Assistant">المساعد</span></h1><div class="grow"></div>
+        <button class="btn ghost"><span data-en="New session">جلسة جديدة</span></button></div>
+      <div class="card"><div class="card-b">
+        <div class="log" style="margin-bottom:10px">
+          <div class="ln"><span class="ts"><span data-en="You">أنت</span></span><span><span data-en="Which device is using the most CPU?">أي جهاز يستنزف المعالج؟</span></span></div>
+          <div class="ln"><span class="ts"><span data-en="Assistant">المساعد</span></span><span><span data-en="WIN11-VM is streaming at 8% CPU. Top three: WIN11 8% · WIN10 5% · emulator idle.">الجهاز WIN11-VM يعمل عليه بث بـ 8% معالج. أعلى ثلاثة أجهزة: WIN11 8% · WIN10 5% · المحاكي متوقف.</span></span></div>
+        </div>
+        <div class="row2"><input class="input" style="flex:1" data-feature="dash-ai-ask" placeholder="اسأل عن جهاز أو جلسة…" data-ph-en="Ask about a device or session…">
+          <button class="btn primary" data-feature="dash-ai-send"><svg class="i sm"><use href="#ic-bolt"/></svg><span data-en="Send">إرسال</span></button></div>
+      </div></div>
+    </div>
+
+    <div class="dash pg" id="files">
+      <div class="dash-head"><h1><span data-en="Files">الملفات</span></h1><div class="grow"></div>
+        <button class="btn ghost"><svg class="i sm"><use href="#ic-open"/></svg><span data-en="Download">تحميل</span></button>
+        <button class="btn primary"><svg class="i sm"><use href="#ic-plus"/></svg><span data-en="Upload">رفع</span></button></div>
+      <div class="card"><div class="card-b" style="padding:0">
+        <table class="tbl"><thead><tr><th><span data-en="Name">الاسم</span></th><th><span data-en="Device">الجهاز</span></th><th><span data-en="Size">الحجم</span></th><th><span data-en="Status">الحالة</span></th><th></th></tr></thead><tbody>
+          <tr><td><b>setup.exe</b></td><td class="hint">WIN10-VM</td><td class="hint">24.1 MB</td><td><span class="chip ok"><span class="dot"></span><span data-en="Done">مكتمل</span></span></td><td style="text-align:end"><button class="btn ghost sm"><span data-en="Copy">نسخ</span></button></td></tr>
+          <tr><td><b>screen.mp4</b></td><td class="hint">WIN11-VM</td><td class="hint">82.6 MB</td><td><span class="chip warn"><span class="dot"></span><span data-en="Moving">جارٍ</span></span></td><td style="text-align:end"><button class="btn ghost sm"><span data-en="Stop">إيقاف</span></button></td></tr>
+          <tr><td><b>agent.apk</b></td><td class="hint">Android-Emulator</td><td class="hint">9.4 MB</td><td><span class="chip ok"><span class="dot"></span><span data-en="Done">مكتمل</span></span></td><td style="text-align:end"><button class="btn ghost sm"><span data-en="Copy">نسخ</span></button></td></tr>
+        </tbody></table>
+      </div></div>
+    </div>
+
+    <div class="dash pg" id="audit">
+      <div class="dash-head"><h1><span data-en="Audit log">سجل التدقيق</span></h1><div class="grow"></div>
+        <button class="btn ghost"><span data-en="Export CSV">تصدير CSV</span></button></div>
+      <div class="card"><div class="card-b" style="padding:0">
+        <table class="tbl"><thead><tr><th><span data-en="Time">الوقت</span></th><th><span data-en="User">المستخدم</span></th><th><span data-en="Action">الإجراء</span></th><th><span data-en="Device">الجهاز</span></th><th><span data-en="Result">النتيجة</span></th></tr></thead><tbody>
+          <tr><td class="hint">23:41:02</td><td>lab</td><td><span data-en="Agent↔agent session">جلسة وكيل↔وكيل</span></td><td class="hint">WIN10-VM</td><td><span class="chip ok"><span class="dot"></span><span data-en="Allowed">مسموح</span></span></td></tr>
+          <tr><td class="hint">23:40:58</td><td>lab</td><td><span data-en="Password check">تحقق كلمة السر</span></td><td class="hint">WIN11-VM</td><td><span class="chip danger"><span class="dot"></span><span data-en="Denied">مرفوض</span></span></td></tr>
+          <tr><td class="hint">23:38:12</td><td>system</td><td><span data-en="Stream start">بدء بث</span></td><td class="hint">WIN10-VM</td><td><span class="chip ok"><span class="dot"></span><span data-en="OK">ناجح</span></span></td></tr>
+        </tbody></table>
+      </div></div>
+    </div>
+
+    <div class="dash pg" id="users">
+      <div class="dash-head"><h1><span data-en="Users">المستخدمون</span></h1><div class="grow"></div>
+        <button class="btn primary"><svg class="i sm"><use href="#ic-plus"/></svg><span data-en="Add user">إضافة مستخدم</span></button></div>
+      <div class="card"><div class="card-b" style="padding:0">
+        <table class="tbl"><thead><tr><th><span data-en="Name">الاسم</span></th><th><span data-en="Role">الدور</span></th><th><span data-en="Last login">آخر دخول</span></th><th><span data-en="Status">الحالة</span></th><th></th></tr></thead><tbody>
+          <tr><td><b>Lab</b></td><td><span data-en="Admin">مسؤول</span></td><td class="hint"><span data-en="now">الآن</span></td><td><span class="chip ok"><span class="dot"></span><span data-en="Active">نشط</span></span></td><td style="text-align:end"><button class="btn ghost sm"><span data-en="Edit">تعديل</span></button></td></tr>
+          <tr><td><b>viewer</b></td><td><span data-en="Viewer">مشاهدة فقط</span></td><td class="hint"><span data-en="yesterday">أمس</span></td><td><span class="chip ok"><span class="dot"></span><span data-en="Active">نشط</span></span></td><td style="text-align:end"><button class="btn ghost sm"><span data-en="Edit">تعديل</span></button></td></tr>
+        </tbody></table>
+      </div></div>
+    </div>
+
+    <div class="dash pg" id="notifications">
+      <div class="dash-head"><h1><span data-en="Notifications">الإشعارات</span></h1><div class="grow"></div>
+        <button class="btn ghost"><span data-en="Mark all read">تعليم الكل كمقروء</span></button></div>
+      <div class="card"><div class="card-b" style="display:flex;flex-direction:column;gap:8px">
+        <div class="item"><span class="ico"><svg class="i sm"><use href="#ic-bell"/></svg></span><div class="tx"><b><span data-en="WIN11-VM went offline">انقطع اتصال WIN11-VM</span></b><span><span data-en="Reconnected automatically after 8s">أُعيد الاتصال تلقائيًا بعد 8 ثوانٍ</span></span></div><span class="chip warn"><span class="dot"></span><span data-en="Resolved">مغلق</span></span></div>
+        <div class="item"><span class="ico"><svg class="i sm"><use href="#ic-shield"/></svg></span><div class="tx"><b><span data-en="Failed sign-in">محاولة دخول فاشلة</span></b><span><span data-en="3 attempts — locked for 5 minutes">3 محاولات — تم القفل 5 دقائق</span></span></div><span class="chip danger"><span class="dot"></span><span data-en="Alert">تنبيه</span></span></div>
+        <div class="item"><span class="ico"><svg class="i sm"><use href="#ic-bolt"/></svg></span><div class="tx"><b><span data-en="Update 3.13.1 available">تحديث 3.13.1 متاح</span></b><span><span data-en="Ready on 3 devices">جاهز للتركيب على 3 أجهزة</span></span></div><span class="chip ok"><span class="dot"></span><span data-en="New">جديد</span></span></div>
+      </div></div>
+    </div>
+
+    <div class="dash pg" id="settings">
+      <div class="dash-head"><h1><span data-en="Settings">الإعدادات</span></h1><div class="grow"></div>
+        <button class="btn primary"><span data-en="Save">حفظ</span></button></div>
+      <div class="card"><div class="card-h"><span class="ttl"><span data-en="Server">الخادم</span></span><div class="grow"></div><span class="chip ok"><span class="dot"></span><span data-en="Running">يعمل</span></span></div>
+        <div class="card-b">
+          <div class="field"><label><span data-en="Port">المنفذ</span></label><input class="input mono" value="3001"></div>
+          <div class="field"><label><span data-en="Display name">الاسم الظاهر</span></label><input class="input" value="AiRemote Lab"></div>
+          <div class="switchrow"><span><span data-en="Require TLS">TLS إلزامي</span></span><div class="toggle on"><i></i></div></div>
+          <div class="switchrow"><span><span data-en="Record sessions">تسجيل الجلسات</span></span><div class="toggle"><i></i></div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="dash pg" id="help">
+      <div class="dash-head"><h1><span data-en="Help">المساعدة</span></h1><div class="grow"></div>
+        <button class="btn ghost"><span data-en="Contact support">مراسلة الدعم</span></button></div>
+      <div class="card"><div class="card-b" style="display:flex;flex-direction:column;gap:10px">
+        <div class="item"><span class="ico"><svg class="i sm"><use href="#ic-bolt"/></svg></span><div class="tx"><b><span data-en="How do I start a screen stream?">كيف أبدأ بث شاشة؟</span></b><span><span data-en="From the wall, press the play button on the device tile.">من جدار المراقبة اضغط زر التشغيل في بطاقة الجهاز.</span></span></div></div>
+        <div class="item"><span class="ico"><svg class="i sm"><use href="#ic-lock"/></svg></span><div class="tx"><b><span data-en="I forgot the control password">نسيت كلمة سر التحكم</span></b><span><span data-en="On the device: Remote control → Clear password, then set a new one.">على الجهاز: التحكم عن بُعد ← مسح كلمة السر ثم تعيين واحدة جديدة.</span></span></div></div>
+        <div class="item"><span class="ico"><svg class="i sm"><use href="#ic-monitor"/></svg></span><div class="tx"><b><span data-en="Why is the screen black?">لماذا الشاشة سوداء؟</span></b><span>@T(غالبًا جلسة سطح مكتب محمية (UIPI) — شغّل الوكيل كمسؤول.|Usually a protected desktop (UIPI) — run the agent elevated.)@</span></div></div>
+      </div></div>
+    </div>
+  </div>
+</div>
+<script>
+  function toggleTheme () { document.documentElement.classList.toggle('light') }
+  function toggleLang () {
+    const toEn = document.documentElement.getAttribute('dir') === 'rtl'
+    document.documentElement.setAttribute('dir', toEn ? 'ltr' : 'rtl')
+    document.documentElement.setAttribute('lang', toEn ? 'en' : 'ar')
+    document.querySelectorAll('[data-en]').forEach(el => {
+      if (!el.dataset.ar) el.dataset.ar = el.textContent
+      el.textContent = toEn ? el.dataset.en : el.dataset.ar
+    })
+    document.querySelectorAll('[data-val-en]').forEach(el => {
+      if (el.dataset.valAr === undefined) el.dataset.valAr = el.value
+      el.value = toEn ? el.dataset.valEn : el.dataset.valAr
+    })
+    document.querySelectorAll('[data-ph-en]').forEach(el => {
+      if (!el.dataset.phAr) el.dataset.phAr = el.getAttribute('placeholder') || ''
+      el.setAttribute('placeholder', toEn ? el.dataset.phEn : el.dataset.phAr)
+    })
+    const lb = document.getElementById('langbtn')
+    if (lb) lb.textContent = toEn ? 'ع' : 'EN'
+    document.querySelectorAll('[data-lang-btn]').forEach(b => b.classList.toggle('on', b.dataset.langBtn === (toEn ? 'en' : 'ar')))
+  }
+  function showTab (id) {
+    document.querySelectorAll('.pg').forEach(p => p.classList.toggle('on', p.id === id))
+    document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === id))
+    document.querySelectorAll('.nav a').forEach(a => a.classList.toggle('on', a.dataset.tab === id))
+    document.querySelectorAll('[data-page]').forEach(a => a.classList.toggle('on', a.dataset.page === id))
+  }
+  function setTheme (m) {
+    document.documentElement.classList.toggle('light', m === 'light')
+    document.querySelectorAll('[data-theme-btn]').forEach(b => b.classList.toggle('on', b.dataset.themeBtn === m))
+  }
+  function setLang (l) {
+    const rtl = document.documentElement.getAttribute('dir') === 'rtl'
+    if ((l === 'en') === rtl) toggleLang()
+    document.querySelectorAll('[data-lang-btn]').forEach(b => b.classList.toggle('on', b.dataset.langBtn === l))
+  }
+  function wallState (mode) {
+    ;['wall-live','wall-empty','wall-skel','wall-err'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.style.display = (id === mode ? '' : 'none')
+    })
+  }
+  function openSheet (id) { const s = document.getElementById(id); if (s) s.classList.add('on') }
+  function closeSheet (id) { const s = document.getElementById(id); if (s) s.classList.remove('on') }
+  function toggleMenu () { const m = document.getElementById('amenu'); if (m) m.classList.toggle('on') }
+  function toggleAi () { const a = document.getElementById('aibar'); if (a) a.classList.toggle('on'); return false }
+  document.addEventListener('click', (e) => {
+    const m = document.getElementById('amenu')
+    if (m && m.classList.contains('on') && !m.contains(e.target) && !e.target.closest('[data-feature="dash-app-menu"]')) m.classList.remove('on')
+  })
+</script>
+</body></html>
