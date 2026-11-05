@@ -83,3 +83,7 @@ tools/lab/.token.json
 packages/agent-desktop/lib/bin/
 # نسخة العرض الفاتح من renderer — يكتبها scripts/shot-agent.cjs في كل تشغيل
 outputs/**/phase3/agent-light/
+
+# مفتاح توقيع أندرويد (نسخة المشروع — كان في %APPDATA%\\AiRemote\\signing ويضيع)
+# secrets/airemote-release.jks + keystore-password.txt — لا يُرفع أبدًا
+secrets/

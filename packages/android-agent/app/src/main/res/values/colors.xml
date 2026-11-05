@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 3.14.0 — ألوان الواجهة صارت موارد: يتغيّر الثيم دون لمس التخطيط. -->
+<resources>
+    <color name="app_bg">#F7FAFC</color>
+    <color name="app_surface">#FFFFFF</color>
+    <color name="app_surface2">#EEF3F7</color>
+    <color name="app_sunken">#F1F5F9</color>
+    <color name="app_line">#E2E8F0</color>
+    <color name="app_line2">#CBD5E1</color>
+    <color name="app_ink">#0F172A</color>
+    <color name="app_ink2">#334155</color>
+    <color name="app_muted">#64748B</color>
+    <color name="app_subtle">#475569</color>
+    <color name="app_hint">#94A3B8</color>
+    <color name="app_accent">#0F766E</color>
+    <color name="app_accent2">#115E59</color>
+    <color name="app_on_accent">#FFFFFF</color>
+</resources>
