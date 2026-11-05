@@ -146,6 +146,10 @@
   .bottom .btn{flex:1;justify-content:center}
 
 
+  .ahead{display:flex;align-items:center;gap:6px;padding:6px 12px 0;background:var(--surface)}
+  .seg2{display:inline-flex;background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:2px;gap:2px}
+  .seg2 button{border:0;background:none;color:var(--muted);font:inherit;font-size:11px;padding:3px 8px;border-radius:8px;cursor:pointer}
+  .seg2 button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(2,6,23,.10)}
   html,body{min-height:100vh}
   body{background:#eef3f7;display:flex;flex-direction:column;align-items:center;padding:22px}
   html:not(.light) body{background:#070d12}
@@ -162,9 +166,11 @@
   .sheet .inner{width:100%;background:var(--surface);border-top:1px solid var(--line);border-radius:16px 16px 0 0;padding:14px}
   /* touch: Android — 44px minimum targets, no hover-only affordances */
   .touch .btn{height:44px;padding:0 14px;font-size:12px}
-  .touch .btn.sm{height:40px}
+  .touch .btn.sm{height:44px}
+  .touch .seg2 button{min-height:40px;padding:0 10px;font-size:12px}
+  .touch .seg button{white-space:nowrap;font-size:12px;padding:0 8px}
   .touch .input{height:44px;font-size:13px}
-  .touch .iconbtn{width:40px;height:40px}
+  .touch .iconbtn{width:44px;height:44px}
   .touch .item{padding:12px 12px}
   .touch .toggle{width:44px;height:26px}
   .touch .toggle i{width:20px;height:20px}
@@ -204,8 +210,14 @@
       <div class="brand"><span class="mark"><svg class="i sm"><use href="#ic-bolt"/></svg></span> AiRemote Agent</div>
       <div class="grow"></div>
       <span class="chip ok"><span class="dot"></span><span data-en="Connected · v3.13.1">متصل · v3.13.1</span></span>
-      <button class="iconbtn" title="اللغة" data-feature="btn-lang">AR</button>
-      <button class="iconbtn" title="الثيم" data-feature="btn-theme"><svg class="i"><use href="#ic-eye"/></svg></button>
+      <div class="seg2" role="group" aria-label="theme" style="margin-inline-end:4px">
+        <button data-theme-btn="light" data-feature="btn-theme" class="on" onclick="setTheme('light')"><span data-en="Light">فاتح</span></button>
+        <button data-theme-btn="dark" onclick="setTheme('dark')"><span data-en="Dark">داكن</span></button>
+      </div>
+      <div class="seg2" role="group" aria-label="language" style="margin-inline-end:6px">
+        <button data-lang-btn="ar" class="on" onclick="setLang('ar')">ع</button>
+        <button data-lang-btn="en" data-feature="btn-lang" onclick="setLang('en')">EN</button>
+      </div>
       <button class="iconbtn" title="الصينية" data-feature="btn-tray"><svg class="i"><use href="#ic-monitor"/></svg></button>
       <button class="iconbtn" title="تصغير" data-feature="btn-min"><svg class="i"><use href="#ic-minus"/></svg></button>
       <button class="iconbtn" title="إغلاق" data-feature="btn-close"><svg class="i"><use href="#ic-x"/></svg></button>
@@ -274,7 +286,7 @@
         <div class="card-h"><span class="ttl"><span data-en="Connect to another device">الاتصال بجهاز آخر</span></span><div class="grow"></div><svg class="i sm"><use href="#ic-link"/></svg></div>
         <div class="card-b">
           <div class="field"><label><span data-en="Devices">الأجهزة</span></label>
-            <div class="row2"><input class="input" value="WIN10-VM — <span data-en="connected">متصل</span>" data-feature="session-device">
+            <div class="row2"><input class="input" value="WIN10-VM — متصل" data-val-en="WIN10-VM — connected" data-feature="session-device">
               <button class="btn ghost sm" data-feature="session-refresh"><span data-en="Refresh">تحديث</span></button></div></div>
           <div class="field"><label><span data-en="Access type">نوع الوصول</span></label>
             <div class="seg" style="width:100%">
@@ -342,10 +354,6 @@
     </div>
   </div>
 </div>
-<div class="tools">
-  <button class="btn ghost sm" onclick="toggleTheme()" data-en="Theme">الثيم</button>
-  <button class="btn ghost sm" onclick="toggleLang()" id="langbtn">EN</button>
-</div>
 <script>
   function toggleTheme () { document.documentElement.classList.toggle('light') }
   function toggleLang () {
@@ -356,15 +364,32 @@
       if (!el.dataset.ar) el.dataset.ar = el.textContent
       el.textContent = toEn ? el.dataset.en : el.dataset.ar
     })
+    document.querySelectorAll('[data-val-en]').forEach(el => {
+      if (el.dataset.valAr === undefined) el.dataset.valAr = el.value
+      el.value = toEn ? el.dataset.valEn : el.dataset.valAr
+    })
     document.querySelectorAll('[data-ph-en]').forEach(el => {
       if (!el.dataset.phAr) el.dataset.phAr = el.getAttribute('placeholder') || ''
       el.setAttribute('placeholder', toEn ? el.dataset.phEn : el.dataset.phAr)
     })
-    document.getElementById('langbtn').textContent = toEn ? 'ع' : 'EN'
+    const lb = document.getElementById('langbtn')
+    if (lb) lb.textContent = toEn ? 'ع' : 'EN'
+    document.querySelectorAll('[data-lang-btn]').forEach(b => b.classList.toggle('on', b.dataset.langBtn === (toEn ? 'en' : 'ar')))
   }
   function showTab (id) {
     document.querySelectorAll('.pg').forEach(p => p.classList.toggle('on', p.id === id))
     document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === id))
+    document.querySelectorAll('.nav a').forEach(a => a.classList.toggle('on', a.dataset.tab === id))
+    document.querySelectorAll('[data-page]').forEach(a => a.classList.toggle('on', a.dataset.page === id))
+  }
+  function setTheme (m) {
+    document.documentElement.classList.toggle('light', m === 'light')
+    document.querySelectorAll('[data-theme-btn]').forEach(b => b.classList.toggle('on', b.dataset.themeBtn === m))
+  }
+  function setLang (l) {
+    const rtl = document.documentElement.getAttribute('dir') === 'rtl'
+    if ((l === 'en') === rtl) toggleLang()
+    document.querySelectorAll('[data-lang-btn]').forEach(b => b.classList.toggle('on', b.dataset.langBtn === l))
   }
   function wallState (mode) {
     ;['wall-live','wall-empty','wall-skel','wall-err'].forEach(id => {

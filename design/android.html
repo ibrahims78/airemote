@@ -146,6 +146,10 @@
   .bottom .btn{flex:1;justify-content:center}
 
 
+  .ahead{display:flex;align-items:center;gap:6px;padding:6px 12px 0;background:var(--surface)}
+  .seg2{display:inline-flex;background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:2px;gap:2px}
+  .seg2 button{border:0;background:none;color:var(--muted);font:inherit;font-size:11px;padding:3px 8px;border-radius:8px;cursor:pointer}
+  .seg2 button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(2,6,23,.10)}
   html,body{min-height:100vh}
   body{background:#eef3f7;display:flex;flex-direction:column;align-items:center;padding:22px}
   html:not(.light) body{background:#070d12}
@@ -162,9 +166,11 @@
   .sheet .inner{width:100%;background:var(--surface);border-top:1px solid var(--line);border-radius:16px 16px 0 0;padding:14px}
   /* touch: Android — 44px minimum targets, no hover-only affordances */
   .touch .btn{height:44px;padding:0 14px;font-size:12px}
-  .touch .btn.sm{height:40px}
+  .touch .btn.sm{height:44px}
+  .touch .seg2 button{min-height:40px;padding:0 10px;font-size:12px}
+  .touch .seg button{white-space:nowrap;font-size:12px;padding:0 8px}
   .touch .input{height:44px;font-size:13px}
-  .touch .iconbtn{width:40px;height:40px}
+  .touch .iconbtn{width:44px;height:44px}
   .touch .item{padding:12px 12px}
   .touch .toggle{width:44px;height:26px}
   .touch .toggle i{width:20px;height:20px}
@@ -201,6 +207,18 @@
 <div class="stage" style="display:flex;justify-content:center">
   <div class="board phone" style="width:390px;position:relative">
     <div class="statusbar"><span>9:41</span><span>AiRemote</span><span>▮▮▮</span></div>
+    <div class="ahead">
+      <div class="grow"></div>
+      <div class="seg2" role="group" aria-label="theme">
+        <button data-theme-btn="light" class="on" onclick="setTheme('light')"><span data-en="Light">فاتح</span></button>
+        <button data-theme-btn="dark" onclick="setTheme('dark')"><span data-en="Dark">داكن</span></button>
+      </div>
+      <div class="seg2" role="group" aria-label="language">
+        <button data-lang-btn="ar" class="on" onclick="setLang('ar')">ع</button>
+        <button data-lang-btn="en" onclick="setLang('en')">EN</button>
+      </div>
+      <button class="iconbtn" title="الإعداد" data-feature="and-setup-open" onclick="openSheet('sheet-setup')"><svg class="i sm"><use href="#ic-shield"/></svg></button>
+    </div>
     <div class="pheap">
       <div class="appicon"><svg class="i"><use href="#ic-bolt"/></svg></div>
       <div><h2>AiRemote Agent</h2><p>DESKTOP-IFE3GNE · v3.13.1</p></div>
@@ -224,7 +242,7 @@
         <div class="card-h"><span class="ttl"><span data-en="Connect to another device">الاتصال بجهاز آخر</span></span><div class="grow"></div><svg class="i sm"><use href="#ic-link"/></svg></div>
         <div class="card-b">
           <div class="field"><label><span data-en="Device">الجهاز</span></label>
-            <div class="row2"><input class="input" value="WIN10-VM — <span data-en="connected">متصل</span>" data-feature="and-session-device">
+            <div class="row2"><input class="input" value="WIN10-VM — متصل" data-val-en="WIN10-VM — connected" data-feature="and-session-device">
               <button class="btn ghost sm" data-feature="and-session-refresh"><span data-en="Refresh">تحديث</span></button></div></div>
           <div class="field"><label><span data-en="Access type">نوع الوصول</span></label>
             <div class="seg" style="width:100%">
@@ -262,16 +280,49 @@
         <div class="card-h" style="border:0;padding:0 0 8px"><span class="ttl"><span data-en="Sessions">الجلسات</span></span><div class="grow"></div>
           <button class="btn ghost sm" onclick="closeSheet('sheet-sessions')"><span data-en="Close">إغلاق</span></button></div>
         <div class="list">
-          <div class="item"><span class="ico"><svg class="i sm"><use href="#ic-link"/></svg></span><div class="tx"><b>WIN10-VM → <span data-en="you">أنت</span></b><span><span data-en="Full control · active · 12:04">تحكم كامل · نشطة · 12:04</span></span></div><span class="chip ok"><span class="dot"></span><span data-en="Active">نشطة</span></span></div>
+          <div class="item" onclick="openSheet('sheet-session')"><span class="ico"><svg class="i sm"><use href="#ic-link"/></svg></span><div class="tx"><b>WIN10-VM → <span data-en="you">أنت</span></b><span><span data-en="Full control · active · 12:04">تحكم كامل · نشطة · 12:04</span></span></div><span class="chip ok"><span class="dot"></span><span data-en="Active">نشطة</span></span></div>
           <div class="item"><span class="ico"><svg class="i sm"><use href="#ic-link"/></svg></span><div class="tx"><b>WIN11-VM → <span data-en="you">أنت</span></b><span><span data-en="View · denied · bad_password">عرض · مرفوضة · bad_password</span></span></div><span class="chip warn"><span class="dot"></span><span data-en="Denied">مرفوضة</span></span></div>
+        </div>
+        <div class="row2" style="margin-top:10px">
+          <button class="btn ghost" onclick="openSheet('sheet-offer')"><span data-en="Incoming request (demo)">طلب وارد (محاكاة)</span></button>
         </div>
       </div>
     </div>
+
+    <div class="sheet" id="sheet-offer" onclick="closeSheet('sheet-offer')">
+      <div class="inner" onclick="event.stopPropagation()">
+        <div class="card-h" style="border:0;padding:0 0 8px"><span class="ttl"><span data-en="Incoming request">طلب وارد</span></span><div class="grow"></div><span class="chip warn"><span class="dot"></span><span data-en="60s">60 ثانية</span></span></div>
+        <div class="hint" style="margin-bottom:10px"><span data-en="WIN10-VM requests “full control” on this device — 60s left">WIN10-VM يطلب «تحكم كامل» على هذا الجهاز — يتبقى 60 ثانية</span></div>
+        <div class="row2">
+          <button class="btn primary" data-feature="and-offer-accept"><span data-en="Accept">قبول</span></button>
+          <button class="btn danger" data-feature="and-offer-deny"><span data-en="Deny">رفض</span></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sheet" id="sheet-session" onclick="closeSheet('sheet-session')">
+      <div class="inner" onclick="event.stopPropagation()">
+        <div class="card-h" style="border:0;padding:0 0 8px"><span class="ttl"><span data-en="Session">الجلسة</span></span><div class="grow"></div><span class="chip ok"><span class="dot"></span><span data-en="Active">نشطة</span></span></div>
+        <div class="screen" style="height:180px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--surface2);color:var(--muted);font-size:12px"><span data-en="Remote screen">شاشة الجهاز البعيد</span></div>
+        <div class="row2" style="margin-top:10px">
+          <button class="btn ghost" data-feature="and-session-audio"><span data-en="Audio">الصوت</span></button>
+          <button class="btn ghost" data-feature="and-session-record"><span data-en="Record">تسجيل</span></button>
+          <button class="btn danger" data-feature="and-session-end"><span data-en="End">إنهاء</span></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="sheet" id="sheet-setup" onclick="closeSheet('sheet-setup')">
+      <div class="inner" onclick="event.stopPropagation()">
+        <div class="card-h" style="border:0;padding:0 0 8px"><span class="ttl"><span data-en="Setup">الإعداد</span></span><div class="grow"></div>
+          <button class="btn ghost sm" onclick="closeSheet('sheet-setup')"><span data-en="Close">إغلاق</span></button></div>
+        <div class="field"><label><span data-en="Server URL">عنوان الخادم</span></label><input class="input mono" value="https://192.168.0.10:3001"></div>
+        <div class="field"><label><span data-en="Pairing code">رمز الاقتران</span></label><input class="input mono" value="K4-9F-2B" data-feature="and-pair-code"></div>
+        <button class="btn primary" style="width:100%;justify-content:center" data-feature="and-pair-btn"><span data-en="Pair device">اقتران الجهاز</span></button>
+        <div class="hint" style="margin-top:8px"><span data-en="The code appears on the server: Settings → Add device">يظهر الرمز على السيرفر: الإعداد ← إضافة جهاز</span></div>
+      </div>
+    </div>
   </div>
-</div>
-<div class="tools">
-  <button class="btn ghost sm" onclick="toggleTheme()" data-en="Theme">الثيم</button>
-  <button class="btn ghost sm" onclick="toggleLang()" id="langbtn">EN</button>
 </div>
 <script>
   function toggleTheme () { document.documentElement.classList.toggle('light') }
@@ -283,15 +334,32 @@
       if (!el.dataset.ar) el.dataset.ar = el.textContent
       el.textContent = toEn ? el.dataset.en : el.dataset.ar
     })
+    document.querySelectorAll('[data-val-en]').forEach(el => {
+      if (el.dataset.valAr === undefined) el.dataset.valAr = el.value
+      el.value = toEn ? el.dataset.valEn : el.dataset.valAr
+    })
     document.querySelectorAll('[data-ph-en]').forEach(el => {
       if (!el.dataset.phAr) el.dataset.phAr = el.getAttribute('placeholder') || ''
       el.setAttribute('placeholder', toEn ? el.dataset.phEn : el.dataset.phAr)
     })
-    document.getElementById('langbtn').textContent = toEn ? 'ع' : 'EN'
+    const lb = document.getElementById('langbtn')
+    if (lb) lb.textContent = toEn ? 'ع' : 'EN'
+    document.querySelectorAll('[data-lang-btn]').forEach(b => b.classList.toggle('on', b.dataset.langBtn === (toEn ? 'en' : 'ar')))
   }
   function showTab (id) {
     document.querySelectorAll('.pg').forEach(p => p.classList.toggle('on', p.id === id))
     document.querySelectorAll('.tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === id))
+    document.querySelectorAll('.nav a').forEach(a => a.classList.toggle('on', a.dataset.tab === id))
+    document.querySelectorAll('[data-page]').forEach(a => a.classList.toggle('on', a.dataset.page === id))
+  }
+  function setTheme (m) {
+    document.documentElement.classList.toggle('light', m === 'light')
+    document.querySelectorAll('[data-theme-btn]').forEach(b => b.classList.toggle('on', b.dataset.themeBtn === m))
+  }
+  function setLang (l) {
+    const rtl = document.documentElement.getAttribute('dir') === 'rtl'
+    if ((l === 'en') === rtl) toggleLang()
+    document.querySelectorAll('[data-lang-btn]').forEach(b => b.classList.toggle('on', b.dataset.langBtn === l))
   }
   function wallState (mode) {
     ;['wall-live','wall-empty','wall-skel','wall-err'].forEach(id => {

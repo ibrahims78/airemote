@@ -65,6 +65,34 @@ PASS  windows-agent.html  ai-input    AR="اسأل المساعد…"  EN="Ask t
 
 الفحص الآلي: `work/attrscan.cjs` → `span-in-attribute=0` في الملفات الثلاثة.
 
+## 2.2) توسيع الأسطح (2026-11-05 — دفعة ثانية)
+
+| السطح | كان | صار |
+|---|---|---|
+| `server.html` | 3 صفحات · جدار فقط · 3 تبويبات | **10 صفحات** (نظرة/أجهزة/مساعد/جلسات/ملفات/تدقيق/مستخدمون/إشعارات/إعدادات/مساعدة) · **4 أزرار تنقّل** في الشريط العلوي + قائمة تطبيق للبقية · **4 بطاقات أسطول** في النظرة العامة ومثلها في الأجهزة · تحكم ثيم/لغة في الشريط العلوي |
+| `windows-agent.html` | 3 تبويبات | **4 تبويبات** (+الجلسة: دردشة ومساعد) · تحكم ثيم/لغة في شريط العنوان |
+| `android.html` | 3 أوراق | **6 أوراق** (+طلب وارد، عرض الجلسة، الإعداد/الاقتران) · تحكم ثيم/لغة في الرأس |
+
+**فحص وظيفي: 36/36 PASS** (`work/verify-new-controls.cjs`) — يشمل: فتح كل صفحة من الشريط، إبراز التبويب النشط، قائمة التطبيق، بطاقات الأسطول وأزرارها، صفحة المساعد وحقليها، التبويبات الأربعة، الأوراق الثلاث الجديدة، وأهداف اللمس.
+
+```
+PASS four nav buttons            PASS nav buttons styled as pills
+PASS theme control in the top bar   PASS language control in the top bar
+PASS fleet cards on overview (4)    PASS fleet card has actions
+PASS ten pages exist                PASS assistant page opens from the nav
+PASS nav highlight follows the page PASS menu lists pages
+PASS settings page opens from menu  PASS theme switches light/dark
+PASS four tabs                   PASS chat/ai inputs and buttons
+PASS setup/offer/session sheets  PASS touch targets >= 44px
+RESULT=PASS
+```
+
+## 2.3) حادثة ترميز (درس مكرر)
+
+أثناء التوسيع استُخدم `Get-Content | Set-Content` في PowerShell 5.1 فأُعيد ترميز المولّد (UTF-8 ← ANSI ← UTF-8) وتحوّل النص العربي كله إلى `Ø£Ø³Ø¦…`. كُشف بالفحص (`Arabic=0 · mojibake=1663`)، واستُعيد الملف من نسخة سليمة وأُعيد تطبيق التعديلات **برمجيًا** (Node، مراسٍ ASCII فقط). الآن: `Arabic=1652/746/546 · mojibake=0` في الملفات الثلاثة.
+
+**القاعدة:** لا تستخدم PowerShell لتعديل ملفات تحتوي عربيًا. استخدم Node/`read`/`edit`، أو تحقّق دائمًا بـ`work/enc.cjs`.
+
 ## 3) الثيم واللغة والعرض (الملفات الثلاثة)
 
 ```
