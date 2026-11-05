@@ -2177,3 +2177,19 @@ html.light .ai-page-online, html.light .ai-page-cancel { background: #fff; borde
 /* أصداف كانت مكتوبة بألوان حرفية */
 .app-rail { background: rgb(var(--surface)) !important; }
 .app-topbar { background: rgb(var(--surface) / .88) !important; }
+
+/* ── Phase 3 — تخطيط المرجع (design/server.html): ترويسة مدمجة ← أسطول ← جدار بعرض كامل ── */
+.cr-page { gap: 10px; padding: 14px 16px 18px; }
+.cr-overview-head { align-items: center; gap: 12px; }
+.cr-overview-head h1 { font-size: 16px; line-height: 1.25; margin: 0; }
+.cr-overview-head p,
+.cr-overview-head .cr-eyebrow { display: none; }
+.cr-overview-actions { gap: 6px; }
+.cr-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.cr-metric { min-height: 0; padding: 8px 10px; border-radius: 10px; }
+.cr-metric-value { font-size: 18px; line-height: 1.1; }
+.cr-metric-bar { margin-top: 6px; }
+.cr-layout { display: flex; flex-direction: column; gap: 10px; }
+.cr-main { width: 100%; min-width: 0; }
+
+
