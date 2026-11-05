@@ -77,7 +77,11 @@ export function LivePreviewBoard ({ devices, activeScreens, onOpen }: Props) {
       if (prev.length > 0) {
         return prev.map(t => devices.some(d => d.id === t.deviceId) ? t : { ...t, deviceId: preferred.id })
       }
-      return [{ key: newKey(), deviceId: preferred.id, running: false }]
+      // 3.14 — الجدار يبدأ بثلاثة مربّعات (حدّ المرئي في المرجع) لا مربّع واحد.
+      // البث يبقى متوقّفًا: لا اتصال قبل ضغطة (D46).
+      const seed = onlineDevices.slice(0, 3)
+      if (seed.length === 0) return [{ key: newKey(), deviceId: preferred.id, running: false }]
+      return seed.map(d => ({ key: newKey(), deviceId: d.id, running: false }))
     })
   }, [preferred, devices])
 
