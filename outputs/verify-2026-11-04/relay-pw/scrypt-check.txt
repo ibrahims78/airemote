@@ -1,0 +1,4 @@
+REQUEST status=201 sid=059bf5cd-1c9e-4a27-bd0e-d48180f3a872
+  poll1 -> denied/bad_password
+--- win10 agent log ---
+NO_LOG=C:\Users\admin\AppData\Roaming\airemote-agent-desktop\agent.log
