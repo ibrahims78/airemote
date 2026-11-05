@@ -199,17 +199,41 @@ function saveConfig(updates) {
 function controlAuthCapability() {
   return (config.controlAuthMode === 'password' && config.controlPasswordHash) ? 'password' : 'consent'
 }
+// 3.13.2 — scrypt بدل SHA-256 سريع: التخزين بدالة بطيئة مقصودة (N=16384,r=8,p=1)
+// مع بادئة إصدار في البصمة، وتظل البصمات القديمة مقبولة ثم تُرقّى عند أول تحقق ناجح.
+const SCRYPT_PARAMS = { N: 16384, r: 8, p: 1 }
 function hashControlPassword(pw) {
   const salt = crypto.randomBytes(16).toString('hex')
-  const hash = crypto.createHash('sha256').update(salt + ':' + String(pw)).digest('hex')
-  return { salt, hash }
+  const dk = crypto.scryptSync(String(pw || ''), salt, 32, SCRYPT_PARAMS).toString('hex')
+  return { salt, hash: 'scrypt$' + SCRYPT_PARAMS.N + '$' + SCRYPT_PARAMS.r + '$' + SCRYPT_PARAMS.p + '$' + dk }
 }
 function verifyControlPassword(pw) {
   try {
-    if (!config.controlPasswordSalt || !config.controlPasswordHash) return false
-    const h = crypto.createHash('sha256').update(config.controlPasswordSalt + ':' + String(pw || '')).digest('hex')
-    const a = Buffer.from(h, 'hex'); const b = Buffer.from(config.controlPasswordHash, 'hex')
-    return a.length === b.length && crypto.timingSafeEqual(a, b)
+    const salt = String(config.controlPasswordSalt || '')
+    const stored = String(config.controlPasswordHash || '')
+    if (!salt || !stored) return false
+    const plain = String(pw || '')
+    if (stored.indexOf('scrypt$') === 0) {
+      const parts = stored.split('$')
+      const N = Number(parts[1]) || SCRYPT_PARAMS.N
+      const r = Number(parts[2]) || SCRYPT_PARAMS.r
+      const p = Number(parts[3]) || SCRYPT_PARAMS.p
+      const want = Buffer.from(parts[4] || '', 'hex')
+      const got = crypto.scryptSync(plain, salt, want.length || 32, { N, r, p })
+      return got.length === want.length && crypto.timingSafeEqual(got, want)
+    }
+    // بصمة قديمة (sha256+salt): تحقق ثم رقِّها في مكانها
+    const h = crypto.createHash('sha256').update(salt + ':' + plain).digest()
+    const b = Buffer.from(stored, 'hex')
+    const okLegacy = h.length === b.length && crypto.timingSafeEqual(h, b)
+    if (okLegacy) {
+      try {
+        const next = hashControlPassword(plain)
+        saveConfig({ controlPasswordSalt: next.salt, controlPasswordHash: next.hash })
+        addLog('info', '[control] password hash upgraded to scrypt')
+      } catch { }
+    }
+    return okLegacy
   } catch { return false }
 }
 

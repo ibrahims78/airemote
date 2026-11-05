@@ -88,6 +88,7 @@ const steps = [
   { name: 'unit: failure alerting (R7)', cmd: electronStep('packages/server-desktop/test/alerts.test.cjs') },
   { name: 'unit: agent command guard (R9)', cmd: NODE + ' packages/agent-desktop/test/safety.test.cjs' },
   { name: 'unit: agent config store (3.11.8)', cmd: NODE + ' packages/agent-desktop/test/config-store.test.cjs' },
+  { name: 'unit: agent password kdf (3.13.2)', cmd: NODE + ' packages/agent-desktop/test/password-kdf.test.cjs' },
   { name: 'unit: agent main loads', cmd: NODE + ' packages/agent-desktop/test/main-load.test.cjs' },
   { name: 'unit: secret storage (R2)',   cmd: electronStep('packages/server-desktop/test/secrets.test.cjs') },
   { name: 'policy: password length (P1)', cmd: NODE + ' scripts/check-password-policy.cjs' },
