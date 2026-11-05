@@ -1,36 +1,71 @@
 /* ─── R6 — الرموز الدلالية (مصدر الحقيقة للون) ───────────────── */
+/* D49 — القيم منقولة حرفيًا من تصميم المالك design/server.html (‎:root‎ و‎html.light‎)
+   بصيغة ثلاثية RGB لأن Tailwind يقرأ rgb(var(--x) / <alpha-value>).
+   جدول التحويل (المرجع ← هنا):
+     --bg #0b1117       → --bg 11 17 23
+     --surface #111a22  → --surface 17 26 34
+     --surface2 #16222c → --surface-2 22 34 44
+     --surface3 #1b2a36 → --surface-3 27 42 54
+     --line rgba(148,163,184,.16)  → --line 38 49 58   (تركيب 16% فوق --surface)
+     --line2 rgba(148,163,184,.28) → --line-2 54 64 76 (تركيب 28%)
+     --ink #e6edf3      → --ink 230 237 243
+     --ink2 #c2cfdb     → --ink-2 194 207 219
+     --muted #8fa3b5    → --muted 143 163 181
+     --accent #2dd4bf   → --primary 45 212 191
+     --ok #34d399       → --success 52 211 153
+     --warn #fbbf24     → --warning 251 191 36
+     --danger #f87171   → --danger 248 113 113
+   بلا مقابل في المرجع ويبقى كما هو: --info · --overlay · --code · --primary-fg.
+   ثلاثة قيم فاتحة غُمِّقت بأقل خطوة تجتاز 4.5:1 (الصبغة محفوظة):
+     --muted   #64748b→#617187 (4.34→4.54 على surface2)
+     --warning #b45309→#b05109 (4.39→4.55 مع تظليل 10%)
+     --danger  #dc2626→#cf2424 (4.13→4.55 مع تظليل 10%) */
+
 :root {
-  --bg: 15 23 42;
-  --surface: 30 41 59;
-  --surface-2: 26 39 68;
-  --line: 51 65 85;
-  --ink: 241 245 249;
-  --muted: 148 163 184;
-  --primary: 56 214 196;
+  --bg: 11 17 23;
+  --surface: 17 26 34;
+  --surface-2: 22 34 44;
+  --surface-3: 27 42 54;
+  --line: 38 49 58;
+  --line-2: 54 64 76;
+  --ink: 230 237 243;
+  --ink-2: 194 207 219;
+  --muted: 143 163 181;
+  --primary: 45 212 191;
   --primary-fg: 7 19 29;
-  --success: 16 185 129;
-  --warning: 245 158 11;
-  --danger: 251 113 133;
+  --success: 52 211 153;
+  --warning: 251 191 36;
+  --danger: 248 113 113;
   --info: 96 165 250;
   /* R6.15 — حجاب النوافذ وخلفية كتل الشيفرة (سطحان لا يُعبَّر عنهما بلون صريح) */
   --overlay: 0 0 0;
   --code: 10 15 30;
+  /* D49 — هوية المرجع: نصف القطر · شبكة 4px · الطباعة الثلاثية */
+  --r1: 8px; --r2: 12px;
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px;
+  --t1: 11px; --t2: 13px; --t3: 16px;
+  --accent-soft: rgba(45, 212, 191, .12);
+  --mono: 'Cascadia Code', Consolas, monospace;
 }
 html.light {
-  --bg: 241 245 249;
+  --bg: 247 250 252;
   --surface: 255 255 255;
-  --surface-2: 248 250 252;
-  --line: 226 232 240;
+  --surface-2: 241 245 249;
+  --surface-3: 230 237 243;
+  --line: 231 232 233;
+  --line-2: 212 213 215;
   --ink: 15 23 42;
-  --muted: 71 85 105;
-  --primary: 12 110 100;
+  --ink-2: 51 65 85;
+  --muted: 97 113 135;   /* #617187 — المرجع #64748b يفشل 4.34 على السطح2 */
+  --primary: 15 118 110;
   --primary-fg: 255 255 255;
   --success: 4 120 87;
-  --warning: 146 64 14;
-  --danger: 190 18 60;
+  --warning: 176 81 9;   /* #b05109 — المرجع #b45309 يفشل 4.39 مع تظليل 10% */
+  --danger: 207 36 36;   /* #cf2424 — المرجع #dc2626 يفشل 4.13 مع تظليل 10% */
   --info: 29 78 216;
   --overlay: 15 23 42;
   --code: 241 245 249;
+  --accent-soft: rgba(15, 118, 110, .10);
 }
 
 @tailwind base;
@@ -48,14 +83,14 @@ html.light {
   }
 
   body {
-    background-color: #0F172A;
-    color: #f1f5f9;
+  background-color: rgb(var(--bg));
+  color: rgb(var(--ink));
     transition: background-color 0.25s ease, color 0.25s ease;
   }
 
   /* Scrollbar dark */
   ::-webkit-scrollbar { width: 8px; height: 8px; }
-  ::-webkit-scrollbar-track { background: #1E293B; }
+  ::-webkit-scrollbar-track { background: rgb(var(--surface)); }
   ::-webkit-scrollbar-thumb { background: #3d4c63; border-radius: 6px; border: 2px solid transparent; background-clip: content-box; }
   ::-webkit-scrollbar-thumb:hover { background: #475569; }
 

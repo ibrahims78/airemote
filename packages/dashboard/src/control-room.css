@@ -1,21 +1,24 @@
 /* AiRemote Control Room design layer. Kept separate so existing pages keep working. */
+/* D49 — لوحة هذه الطبقة موصولة برموز المرجع design/server.html
+   (كانت لوحة موازية --cr-* تعيش بمعزل عن --bg/--surface). القيم فقط، لا قواعد. */
 :root {
-  --cr-bg: #071016;
-  --cr-bg-2: #0a141c;
-  --cr-panel: #0c1720;
-  --cr-panel-2: #101e29;
-  --cr-surface: #14232f;
-  --cr-line: rgba(132, 160, 181, .17);
-  --cr-line-strong: rgba(132, 160, 181, .28);
-  --cr-text: #e7eff6;
-  --cr-text-2: #b9c9d6;
-  --cr-muted: #7f94a5;
-  --cr-muted-2: #7b92a4;
-  --cr-teal: #38d6c4;
-  --cr-teal-soft: rgba(56, 214, 196, .11);
-  --cr-amber: #efb55e;
-  --cr-red: #ef7f83;
-  --cr-green: #58d39b;
+  --cr-bg: #0b1117;
+  --cr-bg-2: #111a22;
+  --cr-panel: #111a22;
+  --cr-panel-2: #16222c;
+  --cr-surface: #1b2a36;
+  --cr-line: rgba(148, 163, 184, .16);
+  --cr-line-strong: rgba(148, 163, 184, .28);
+  --cr-text: #e6edf3;
+  --cr-text-2: #c2cfdb;
+  --cr-muted: #8fa3b5;
+  --cr-muted-2: #8fa3b5;
+  --cr-teal: #2dd4bf;
+  --cr-teal-soft: rgba(45, 212, 191, .12);
+  --cr-amber: #fbbf24;
+  --cr-red: #f87171;
+  --cr-green: #34d399;
+  --cr-on-teal: #052320;
   --cr-radius: 12px;
   --cr-shadow: 0 16px 42px rgba(0, 0, 0, .22);
 }
@@ -220,7 +223,7 @@
 .cr-btn.is-primary {
   background: var(--cr-teal);
   border-color: var(--cr-teal);
-  color: #052320;
+  color: var(--cr-on-teal);
   font-weight: 700;
 }
 

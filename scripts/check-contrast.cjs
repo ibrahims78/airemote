@@ -30,6 +30,24 @@ function block (selector) {
 
 const ALIAS = { canvas: 'bg', surface2: 'surface-2' }
 const themes = { dark: block(':root {'), light: block('html.light {') }
+
+/* D49 — طبقة غرفة العمليات (control-room.css) هي ما يرسم .app-shell فعلیاً.
+   كانت لوحة --cr-* موازية؛ البوابة تقيسها الآن حتى لا تُقاس رموز غير مرئية. */
+const CR_CSS = path.resolve(__dirname, '..', 'packages', 'dashboard', 'src', 'control-room.css')
+const crSrc = fs.readFileSync(CR_CSS, 'utf8')
+function blockHex (source, selector) {
+  const i = source.indexOf(selector)
+  if (i < 0) throw new Error('block not found: ' + selector)
+  const open = source.indexOf('{', i)
+  const close = source.indexOf('}', open)
+  const out = {}
+  for (const m of source.slice(open + 1, close).matchAll(/--cr-([a-z0-9-]+):\s*#([0-9a-f]{6})\s*;/gi)) {
+    const h = m[2]
+    out[m[1]] = [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)]
+  }
+  return out
+}
+const cr = blockHex(crSrc, ':root {')
 for (const t of Object.values(themes)) { for (const [alias, real] of Object.entries(ALIAS)) { if (!t[alias] && t[real]) t[alias] = t[real] } }
 
 function lum (rgb) {
@@ -62,6 +80,15 @@ const CHECKS = [
   { id: 'primary/progress', fg: 'primary', bg: 'surface', min: 3, text: false }
 ]
 
+const CR_CHECKS = [
+  { id: 'cr ink/panel', fg: 'text', bg: 'panel', min: 4.5 },
+  { id: 'cr ink/bg', fg: 'text', bg: 'bg', min: 4.5 },
+  { id: 'cr muted/panel', fg: 'muted', bg: 'panel', min: 4.5 },
+  { id: 'cr muted/bg2', fg: 'muted', bg: 'bg-2', min: 4.5 },
+  { id: 'cr teal/panel', fg: 'teal', bg: 'panel', min: 3, text: false },
+  { id: 'cr on-teal/teal', fg: 'on-teal', bg: 'teal', min: 4.5 }
+]
+
 let failed = 0
 const rows = []
 for (const [theme, t] of Object.entries(themes)) {
@@ -74,6 +101,16 @@ for (const [theme, t] of Object.entries(themes)) {
     if (!ok) failed++
     rows.push({ theme, id: c.id, ratio: Math.round(r * 100) / 100, min: c.min, ok })
   }
+}
+
+for (const c of CR_CHECKS) {
+  const fg = cr[c.fg]
+  const bg = cr[c.bg]
+  if (!fg || !bg) { rows.push({ theme: 'cr', id: c.id, ratio: NaN, min: c.min, ok: false }); failed++; continue }
+  const r = ratio(fg, bg)
+  const ok = r >= c.min
+  if (!ok) failed++
+  rows.push({ theme: 'cr', id: c.id, ratio: Math.round(r * 100) / 100, min: c.min, ok })
 }
 
 const pad = (s, n) => String(s).padEnd(n)
