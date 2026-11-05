@@ -12,3 +12,8 @@ export { EmptyState } from './EmptyState'
 export { ProgressBar } from './ProgressBar'
 export { Skeleton, SkeletonRows } from './Skeleton'
 export { Modal } from './Modal'
+
+export { Switch } from './Switch'
+export type { SwitchProps } from './Switch'
+export { DataTable } from './Table'
+export type { DataTableProps, Column } from './Table'

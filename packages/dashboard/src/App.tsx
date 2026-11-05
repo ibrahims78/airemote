@@ -18,6 +18,8 @@ const NotificationsPage   = lazy(() => import('./pages/NotificationsPage').then(
 const HelpPage            = lazy(() => import('./pages/HelpPage').then(m => ({ default: m.HelpPage })))
 const ScreenPopoutPage    = lazy(() => import('./pages/ScreenPopoutPage').then(m => ({ default: m.ScreenPopoutPage })))
 const FilesPage            = lazy(() => import('./pages/FilesPage').then(m => ({ default: m.FilesPage })))
+// أداة قياس بصرية للمرحلتين 2/3 — خارج التنقّل ولا تلمس أي شاشة.
+const UiGalleryPage       = lazy(() => import('./pages/UiGalleryPage').then(m => ({ default: m.UiGalleryPage })))
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { useEffect, useState } from 'react'
 import { api } from './lib/api'
@@ -100,6 +102,7 @@ export default function App() {
             <Route path="/view/:deviceId" element={<SessionTicketGate><ScreenPopoutPage /></SessionTicketGate>} />
             {/* 3.11 — وضع الملفات: تُفتح من الوكيل بتذكرة الجلسة بلا تسجيل دخول. */}
             <Route path="/files/:deviceId" element={<FilesPage />} />
+            <Route path="/dev/ui" element={<UiGalleryPage />} />
             <Route path="/" element={<RequireAuth><DashboardLayout /></RequireAuth>}>
               <Route index                             element={<ErrorBoundary><OverviewPage /></ErrorBoundary>} />
               <Route path="devices"                   element={<ErrorBoundary><DevicesPage /></ErrorBoundary>} />

@@ -173,7 +173,7 @@ html.light .glass-hover:hover {
 html.light .bg-navy-900  { background-color: #f1f5f9 !important; }
 html.light .bg-navy-800  { background-color: #ffffff !important; }
 html.light .bg-navy-700  { background-color: #f8fafc !important; }
-html.light .bg-navy-600  { background-color: #e2e8f0 !important; }
+html.light .bg-navy-600  { background-color: rgb(var(--surface-3)) !important; }
 html.light .bg-navy-900\/50 { background-color: rgba(248,250,252,0.85) !important; }
 html.light .bg-navy-900\/60 { background-color: rgba(241,245,249,0.95) !important; }
 html.light .bg-navy-800\/50 { background-color: rgba(255,255,255,0.75) !important; }
@@ -199,23 +199,23 @@ html.light .text-slate-700 { color: #cbd5e1 !important; }
 /* Border colors */
 html.light .border-slate-700\/30 { border-color: rgba(203,213,225,0.6) !important; }
 html.light .border-slate-700\/50 { border-color: rgba(203,213,225,0.75) !important; }
-html.light .border-slate-700    { border-color: #cbd5e1 !important; }
+html.light .border-slate-700    { border-color: rgb(var(--line-2)) !important; }
 html.light .border-slate-600\/30 { border-color: rgba(226,232,240,0.8) !important; }
-html.light .border-slate-600    { border-color: #e2e8f0 !important; }
+html.light .border-slate-600    { border-color: rgb(var(--line)) !important; }
 
 /* Form inputs */
 html.light input:not([type="range"]),
 html.light select,
 html.light textarea {
-  background-color: #ffffff !important;
-  border-color: #e2e8f0 !important;
-  color: #0f172a !important;
+  background-color: rgb(var(--surface)) !important;
+  border-color: rgb(var(--line)) !important;
+  color: rgb(var(--ink)) !important;
 }
 html.light input::placeholder,
 html.light textarea::placeholder { color: rgb(var(--muted)) !important; }
 html.light input:focus,
 html.light select:focus,
-html.light textarea:focus { border-color: #3b82f6 !important; }
+html.light textarea:focus { border-color: rgb(var(--primary)) !important; }
 
 /* Hover text */
 html.light .hover\:text-white:hover     { color: #0f172a !important; }
@@ -235,9 +235,9 @@ html.light nav a:not(.bg-brand-blue\/15):hover { background-color: rgba(59,130,2
 
 /* Code blocks inside modals etc. */
 html.light code, html.light pre {
-  background-color: #f8fafc !important;
-  color: #1e293b !important;
-  border-color: #e2e8f0 !important;
+  background-color: rgb(var(--code)) !important;
+  color: rgb(var(--ink)) !important;
+  border-color: rgb(var(--line)) !important;
 }
 
 /* Toast in light mode */

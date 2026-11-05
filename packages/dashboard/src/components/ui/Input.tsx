@@ -13,7 +13,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
       ref={ref}
       aria-invalid={invalid || undefined}
       className={clsx(
-        'h-9 w-full rounded-lg border bg-surface px-3 text-[13px] text-ink placeholder:text-muted',
+        'h-8 w-full rounded-lg border bg-surface px-2.5 text-[13px] text-ink placeholder:text-muted',
         'transition-colors duration-fast outline-none',
         'focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25',
         invalid ? 'border-danger' : 'border-line',

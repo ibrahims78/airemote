@@ -13,7 +13,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(function Select
       ref={ref}
       aria-invalid={invalid || undefined}
       className={clsx(
-        'h-8 rounded-lg border bg-surface px-2 text-[12px] text-ink outline-none transition-colors duration-fast',
+        'h-8 rounded-lg border bg-surface px-2 text-[13px] text-ink outline-none transition-colors duration-fast',
         'focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25',
         invalid ? 'border-danger' : 'border-line',
         className
