@@ -2,8 +2,10 @@ package com.airemote.agent;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.UiModeManager;
 import android.content.Context;
 import android.content.Intent;
+import android.content.res.Configuration;
 import android.media.projection.MediaProjectionManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -126,7 +128,9 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         Prefs.bootstrap(this);
         instance = this;
+        applySavedNightMode();
         setContentView(R.layout.activity_main);
+        setupThemeToggle();
         // v3.8.3 - version labels must follow BuildConfig, never a hardcoded string
         TextView verTop = findViewById(R.id.tv_ver_top);
         if (verTop != null) verTop.setText("v" + com.airemote.agent.BuildConfig.VERSION_NAME);
@@ -1022,5 +1026,53 @@ public class MainActivity extends Activity {
 
     private void toast(String s) {
         try { Toast.makeText(this, s, Toast.LENGTH_SHORT).show(); } catch (Exception e) { }
+    }
+
+    // ── 3.14.0 — مبدّل الثيم: يقلب مؤهّلات الموارد للتطبيق كله (API 31+) ──
+    private static final String PREF_THEME_DARK = "theme_dark";
+
+    private void setupThemeToggle() {
+        final TextView light = findViewById(R.id.tb_theme_light);
+        final TextView dark  = findViewById(R.id.tb_theme_dark);
+        if (light == null || dark == null) return;
+        boolean isDark = Prefs.sp(this).getBoolean(PREF_THEME_DARK, false);
+        paintThemeToggle(light, dark, isDark);
+        light.setOnClickListener(v -> applyNightMode(false));
+        dark.setOnClickListener(v -> applyNightMode(true));
+    }
+
+    private void paintThemeToggle(TextView light, TextView dark, boolean isDark) {
+        light.setTextColor(getColor(isDark ? R.color.app_muted : R.color.app_accent));
+        dark.setTextColor(getColor(isDark ? R.color.app_accent : R.color.app_muted));
+        light.setBackgroundResource(isDark ? 0 : R.drawable.tab_active);
+        dark.setBackgroundResource(isDark ? R.drawable.tab_active : 0);
+    }
+
+
+    private void applyNightConfiguration(boolean dark) {
+        Configuration cfg = new Configuration(getResources().getConfiguration());
+        cfg.uiMode = (cfg.uiMode & ~Configuration.UI_MODE_NIGHT_MASK)
+                | (dark ? Configuration.UI_MODE_NIGHT_YES : Configuration.UI_MODE_NIGHT_NO);
+        getResources().updateConfiguration(cfg, getResources().getDisplayMetrics());
+    }
+
+    // التفضيل يحكم فقط إذا اختاره المستخدم؛ أول تشغيل يتبع النظام.
+    private void applySavedNightMode() {
+        if (!Prefs.sp(this).contains(PREF_THEME_DARK)) return;
+        applyNightConfiguration(Prefs.sp(this).getBoolean(PREF_THEME_DARK, false));
+    }
+
+    private void applyNightMode(boolean dark) {
+        Prefs.sp(this).edit().putBoolean(PREF_THEME_DARK, dark).apply();
+        if (Build.VERSION.SDK_INT >= 31) {
+            UiModeManager um = getSystemService(UiModeManager.class);
+            if (um != null) {
+                um.setApplicationNightMode(dark ? UiModeManager.MODE_NIGHT_YES : UiModeManager.MODE_NIGHT_NO);
+            }
+        } else {
+            // API < 31: لا يوجد UiModeManager.setApplicationNightMode — نقلب المؤهّلات يدويًا
+            applyNightConfiguration(dark);
+            recreate();
+        }
     }
 }

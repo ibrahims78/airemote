@@ -67,7 +67,32 @@
             android:text="متوقف"
             android:textColor="@color/app_muted"
             android:textSize="10sp" />
-    </LinearLayout>
+            <!-- 3.14.0 — مبدّل الثيم (المرجع: شريحة فاتح/داكن في الرأس) -->
+        <TextView
+            android:id="@+id/tb_theme_light"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:paddingStart="7dp"
+            android:paddingEnd="7dp"
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
+            android:text="فاتح"
+            android:textColor="@color/app_accent"
+            android:textSize="10sp" />
+
+        <TextView
+            android:id="@+id/tb_theme_dark"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:paddingStart="7dp"
+            android:paddingEnd="7dp"
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"
+            android:text="داكن"
+            android:textColor="@color/app_muted"
+            android:textSize="10sp" />
+        </LinearLayout>
 
     <!-- ══ Tabs ══ -->
     <LinearLayout
