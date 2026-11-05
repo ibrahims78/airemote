@@ -220,8 +220,60 @@
       </button>
       <div class="sec-body" id="body-settings">
         <div id="settings-inner">
+          <!-- Panel: Remote Control Auth — password stored on this device (3.13.2) -->
+          <div class="tab-panel active" id="panel-ctrl">
+          <div class="card-h">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 3l7 3v6c0 5-3.5 7.5-7 9-3.5-1.5-7-4-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg>
+            <span class="ttl" data-i18n="secCtrl">التحكم عن بُعد</span>
+          </div>
+
+            <div class="field">
+              <label data-i18n="ctrlTitle">التحكم عن بُعد</label>
+              <div class="field-hint" data-i18n="ctrlHint">كلمة سر واحدة لهذا الجهاز تحكم كل مسارات التحكم: من اللوحة عبر السيرفر، ومن وكيل آخر مباشرة.</div>
+
+              <div id="ctrl-status-badge" style="display:flex;align-items:center;gap:7px;margin:9px 0 10px;padding:8px 10px;border-radius:9px;border:1px solid rgba(100,116,139,.28);background:rgba(100,116,139,.08)">
+                <span id="ctrl-status-dot" style="width:8px;height:8px;border-radius:50%;background:#64748b;flex:0 0 auto"></span>
+                <span id="ctrl-status-text" style="font-size:11.5px;color:#c7d2dd" data-i18n="ctrlStateUnknown">جارٍ قراءة حالة الحماية…</span>
+              </div>
+
+              <div class="checks-group">
+                <label class="check-row"><input type="radio" name="ctrl-auth" id="ctrl-mode-consent" value="consent" /><span data-i18n="ctrlConsent">موافقة يدوية (نافذة تأكيد عند كل طلب)</span></label>
+                <label class="check-row"><input type="radio" name="ctrl-auth" id="ctrl-mode-password" value="password" /><span data-i18n="ctrlPwMode">كلمة سر محفوظة على هذا الجهاز</span></label>
+              </div>
+            </div>
+
+            <div class="field" id="ctrl-pw-field" style="display:none">
+              <label data-i18n="ctrlPwLabel">كلمة السر</label>
+              <div class="input-wrap" style="display:flex;gap:6px;align-items:center">
+                <input id="inp-ctrl-pw" type="password" dir="ltr" autocomplete="new-password" placeholder="••••" style="flex:1" />
+                <button id="ctrl-pw-eye" type="button" class="btn-ghost" style="flex:0 0 auto;padding:0 8px;height:30px" title="إظهار/إخفاء">إظهار</button>
+              </div>
+              <div style="height:4px;border-radius:999px;background:rgba(100,116,139,.22);margin-top:7px;overflow:hidden">
+                <div id="ctrl-pw-bar" style="height:100%;width:0%;background:#64748b;transition:width .18s,background .18s"></div>
+              </div>
+              <div class="field-hint" id="ctrl-pw-state"></div>
+            </div>
+
+            <div class="btn-row" style="display:flex;gap:8px">
+              <button id="save-ctrl-btn" type="button">
+                <span data-i18n="saveCtrl">حفظ إعدادات التحكم</span>
+              </button>
+              <button id="clear-ctrl-btn" type="button" class="btn-ghost">
+                <span data-i18n="ctrlClear">مسح كلمة السر</span>
+              </button>
+            </div>
+
+            <div class="field-hint" style="margin-top:9px" data-i18n="ctrlHashNote">🔒 تُحفظ بصمة فقط (salt + hash) داخل الوكيل، ولا تُرسل إلى السيرفر ولا تُسجَّل في أي سجل.</div>
+            <div class="field-hint" style="margin-top:4px" data-i18n="ctrlAppliesNote">تنطبق على: التحكم من اللوحة (السيرفر) · التحكم من وكيل آخر (وكيل↔وكيل).</div>
+          </div>
+
           <!-- Panel: Connection -->
           <div class="tab-panel active" id="panel-conn">
+          <div class="card-h">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M9 20h6M12 16v4"/></svg>
+            <span class="ttl" data-i18n="secServer">الاتصال بالخادم</span>
+          </div>
+
             <div class="field">
               <label data-i18n="serverUrl">عنوان الخادم (WebSocket)</label>
               <div class="field-hint" data-i18n="serverHint">مثال: wss://myserver.replit.app/ws</div>
@@ -272,49 +324,6 @@
               </button>
             </div>
           </div>
-
-          <!-- Panel: Remote Control Auth — password stored on this device (3.13.2) -->
-          <div class="tab-panel active" id="panel-ctrl" style="border-top:1px solid rgba(100,116,139,.18);margin-top:12px;padding-top:12px">
-            <div class="field">
-              <label data-i18n="ctrlTitle">التحكم عن بُعد</label>
-              <div class="field-hint" data-i18n="ctrlHint">كلمة سر واحدة لهذا الجهاز تحكم كل مسارات التحكم: من اللوحة عبر السيرفر، ومن وكيل آخر مباشرة.</div>
-
-              <div id="ctrl-status-badge" style="display:flex;align-items:center;gap:7px;margin:9px 0 10px;padding:8px 10px;border-radius:9px;border:1px solid rgba(100,116,139,.28);background:rgba(100,116,139,.08)">
-                <span id="ctrl-status-dot" style="width:8px;height:8px;border-radius:50%;background:#64748b;flex:0 0 auto"></span>
-                <span id="ctrl-status-text" style="font-size:11.5px;color:#c7d2dd" data-i18n="ctrlStateUnknown">جارٍ قراءة حالة الحماية…</span>
-              </div>
-
-              <div class="checks-group">
-                <label class="check-row"><input type="radio" name="ctrl-auth" id="ctrl-mode-consent" value="consent" /><span data-i18n="ctrlConsent">موافقة يدوية (نافذة تأكيد عند كل طلب)</span></label>
-                <label class="check-row"><input type="radio" name="ctrl-auth" id="ctrl-mode-password" value="password" /><span data-i18n="ctrlPwMode">كلمة سر محفوظة على هذا الجهاز</span></label>
-              </div>
-            </div>
-
-            <div class="field" id="ctrl-pw-field" style="display:none">
-              <label data-i18n="ctrlPwLabel">كلمة السر</label>
-              <div class="input-wrap" style="display:flex;gap:6px;align-items:center">
-                <input id="inp-ctrl-pw" type="password" dir="ltr" autocomplete="new-password" placeholder="••••" style="flex:1" />
-                <button id="ctrl-pw-eye" type="button" class="btn-ghost" style="flex:0 0 auto;padding:0 8px;height:30px" title="إظهار/إخفاء">إظهار</button>
-              </div>
-              <div style="height:4px;border-radius:999px;background:rgba(100,116,139,.22);margin-top:7px;overflow:hidden">
-                <div id="ctrl-pw-bar" style="height:100%;width:0%;background:#64748b;transition:width .18s,background .18s"></div>
-              </div>
-              <div class="field-hint" id="ctrl-pw-state"></div>
-            </div>
-
-            <div class="btn-row" style="display:flex;gap:8px">
-              <button id="save-ctrl-btn" type="button">
-                <span data-i18n="saveCtrl">حفظ إعدادات التحكم</span>
-              </button>
-              <button id="clear-ctrl-btn" type="button" class="btn-ghost">
-                <span data-i18n="ctrlClear">مسح كلمة السر</span>
-              </button>
-            </div>
-
-            <div class="field-hint" style="margin-top:9px" data-i18n="ctrlHashNote">🔒 تُحفظ بصمة فقط (salt + hash) داخل الوكيل، ولا تُرسل إلى السيرفر ولا تُسجَّل في أي سجل.</div>
-            <div class="field-hint" style="margin-top:4px" data-i18n="ctrlAppliesNote">تنطبق على: التحكم من اللوحة (السيرفر) · التحكم من وكيل آخر (وكيل↔وكيل).</div>
-          </div>
-
         </div>
       </div>
     </div>

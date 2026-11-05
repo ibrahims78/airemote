@@ -1619,3 +1619,22 @@ body {
 .ai-msg-actions{display:flex;gap:6px;margin-top:5px;opacity:.55;transition:opacity .15s}
 .ai-msg:hover .ai-msg-actions{opacity:1}
 .ai-msg--user .ai-msg-actions{justify-content:flex-start}
+
+/* ── 3.14.0 · §4.1(ب): لوحتا الحالة بطاقتان معنونتان (المرجع design/windows-agent.html) ──
+   تنسيق محصور في #sec-settings حتى لا تتحوّل لوحات السجل/الجلسات إلى بطاقات بلا عنوان.
+   الترويسة الخارجية تبقى ظاهرة: إخفاؤها في المحاولة السابقة رفع المحتوى 30px فكلّف 0.44 نقطة بكسل. */
+#settings-inner { display: flex; flex-direction: column; gap: 12px; }
+#sec-settings .tab-panel {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg2);
+  padding: 0 12px 12px;
+}
+#sec-settings .card-h {
+  display: flex; align-items: center; gap: 7px;
+  padding: 11px 0; margin-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+}
+#sec-settings .card-h .ttl { font-weight: 600; font-size: 12.5px; }
+#sec-settings .card-h svg { color: var(--accent); flex: 0 0 auto; }
