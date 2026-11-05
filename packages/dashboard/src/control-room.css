@@ -2193,3 +2193,5 @@ html.light .ai-page-online, html.light .ai-page-cancel { background: #fff; borde
 .cr-main { width: 100%; min-width: 0; }
 
 
+
+@media (min-width:1400px){ .cr-page{ max-width:none !important; } }
