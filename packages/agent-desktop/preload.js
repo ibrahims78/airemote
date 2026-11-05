@@ -35,6 +35,7 @@ contextBridge.exposeInMainWorld('airemote', {
   sessionDecision:  (payload) => ipcRenderer.invoke('session-decision', payload),
   onSessionOffer:   (fn) => ipcRenderer.on('session-offer', (_, d) => fn(d)),
   onSessionClosed:  (fn) => ipcRenderer.on('session-closed', (_, d) => fn(d)),
+  onSessionDenied:  (fn) => ipcRenderer.on('session-denied', (_, d) => fn(d)),
   onScreenSessions:   (fn) => ipcRenderer.on('screen-sessions', (_, d) => fn(d)),
   onScreenPrivacy:    (fn) => ipcRenderer.on('screen-privacy',  (_, d) => fn(d)),
   onChatWindowStatus: (fn) => ipcRenderer.on('chat-win-status', (_, d) => fn(d)),

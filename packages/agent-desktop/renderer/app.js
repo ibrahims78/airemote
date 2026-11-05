@@ -80,6 +80,10 @@ const LANG = {
     ctrlWeak: 'ضعيفة', ctrlMedium: 'متوسطة', ctrlStrong: 'قوية',
     ctrlCleared: 'تم مسح كلمة السر — عاد الجهاز إلى الموافقة اليدوية',
     ctrlShow: 'إظهار', ctrlHide: 'إخفاء',
+    sessPwRequired: 'الجهاز الهدف يتطلب كلمة سر — أدخلها ثم أعد الطلب.',
+    sessPwWrong: 'كلمة السر غير صحيحة — تحقق منها وأعد المحاولة.',
+    sessPwLocked: 'الجهاز مقفل مؤقتًا بعد محاولات فاشلة — أعد المحاولة بعد 5 دقائق.',
+    sessDenied: 'رفض الطرف الآخر الطلب.',
   },
   en: {
     stopped:        'Stopped',
@@ -143,6 +147,10 @@ const LANG = {
     ctrlWeak: 'Weak', ctrlMedium: 'Medium', ctrlStrong: 'Strong',
     ctrlCleared: 'Password cleared — the device is back to manual approval',
     ctrlShow: 'Show', ctrlHide: 'Hide',
+    sessPwRequired: 'The target device requires a password — enter it and retry.',
+    sessPwWrong: 'Wrong password — check it and try again.',
+    sessPwLocked: 'The device is temporarily locked after failed attempts — retry in 5 minutes.',
+    sessDenied: 'The other side refused the request.',
   }
 }
 
@@ -1177,6 +1185,19 @@ airemote.onInit(data => {
   })
 
   if (window.airemote && window.airemote.onSessionOffer) window.airemote.onSessionOffer(showOffer)
+
+  // 3.13.2 — رفض الطلب: رسالة محدّدة حسب السبب (كلمة ناقصة/خاطئة/مقفل/رفض صريح).
+  if (window.airemote && window.airemote.onSessionDenied) {
+    window.airemote.onSessionDenied(function (p) {
+      const t = LANG[currentLang]
+      const reason = String((p && p.reason) || '')
+      if (pendingTimer) { clearInterval(pendingTimer); pendingTimer = null }
+      if (reason === 'password_required') { showPw(true); setState(t.sessPwRequired); const f = $id('session-pw'); if (f) f.focus(); return }
+      if (reason === 'bad_password') { showPw(true); setState(t.sessPwWrong); return }
+      if (reason === 'password_locked') { setState(t.sessPwLocked); return }
+      setState(t.sessDenied + (reason ? ' (' + reason + ')' : ''))
+    })
+  }
 
   // 3.9.0 — إخفاء حوار العرض عند انتهاء/إغلاق الجلسة
   if (window.airemote && window.airemote.onSessionClosed) {

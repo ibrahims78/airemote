@@ -907,6 +907,11 @@ function handleMsg(msg) {
       openSessionView(msg.payload || {})
       break
     }
+    case 'session:denied': {
+      // 3.13.2 — كان الرفض يُهمَل: الطالب لا يعرف أن كلمته خاطئة أو أن الطلب رُفض.
+      try { if (win && !win.isDestroyed()) win.webContents.send('session-denied', msg.payload || {}) } catch {}
+      break
+    }
     case 'session:close':
     case 'session:closed':
     case 'session:expired': {
