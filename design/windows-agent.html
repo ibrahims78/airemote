@@ -321,7 +321,7 @@
             <div class="ln"><span class="ts">23:42</span><span><span data-en="You:">أنت:</span> <span data-en="I will lower the quality">سأخفّض الجودة</span></span></div>
           </div>
           <div class="row2">
-            <input class="input" style="flex:1" data-feature="chat-input" placeholder="<span data-en="Type a message…">اكتب رسالة…</span>">
+            <input class="input" style="flex:1" data-feature="chat-input" placeholder="اكتب رسالة…" data-ph-en="Type a message…">
             <button class="btn primary" data-feature="chat-send-btn"><span data-en="Send">إرسال</span></button></div>
         </div>
       </div>
@@ -335,7 +335,7 @@
         <div class="card-b">
           <div class="hint" style="margin-bottom:8px"><span data-en="Reads device and session state and answers with the next step">يقرأ حالة الجهاز والجلسات ويجيب بالإجراء التالي</span></div>
           <div class="row2">
-            <input class="input" style="flex:1" data-feature="ai-input" placeholder="<span data-en="Ask the assistant…">اسأل المساعد…</span>">
+            <input class="input" style="flex:1" data-feature="ai-input" placeholder="اسأل المساعد…" data-ph-en="Ask the assistant…">
             <button class="btn primary" data-feature="ai-send-btn"><span data-en="Send">إرسال</span></button></div>
         </div>
       </div>
@@ -355,6 +355,10 @@
     document.querySelectorAll('[data-en]').forEach(el => {
       if (!el.dataset.ar) el.dataset.ar = el.textContent
       el.textContent = toEn ? el.dataset.en : el.dataset.ar
+    })
+    document.querySelectorAll('[data-ph-en]').forEach(el => {
+      if (!el.dataset.phAr) el.dataset.phAr = el.getAttribute('placeholder') || ''
+      el.setAttribute('placeholder', toEn ? el.dataset.phEn : el.dataset.phAr)
     })
     document.getElementById('langbtn').textContent = toEn ? 'ع' : 'EN'
   }

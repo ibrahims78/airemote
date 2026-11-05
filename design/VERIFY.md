@@ -53,6 +53,18 @@ PASS ai-hist/new/stop/collapse/send/input       PASS width still 560
 RESULT=PASS
 ```
 
+## 2.1) عيب HTML وُجد وأُصلح: `<span>` داخل `placeholder`
+
+ثلاثة حقول كانت تستخدم دالة الترجمة داخل خاصية: `placeholder="<span data-en="…">…</span>"` — وهذا **HTML غير صالح**، وكان سيظهر كوسم خام أو فارغ. أُصلح بـ`data-ph-en` + تبديل في `toggleLang`:
+
+```
+PASS  server.html  dash-ai-ask   AR="اسأل عن جهاز أو جلسة…"   EN="Ask about a device or session…"
+PASS  windows-agent.html  chat-input  AR="اكتب رسالة…"  EN="Type a message…"
+PASS  windows-agent.html  ai-input    AR="اسأل المساعد…"  EN="Ask the assistant…"
+```
+
+الفحص الآلي: `work/attrscan.cjs` → `span-in-attribute=0` في الملفات الثلاثة.
+
 ## 3) الثيم واللغة والعرض (الملفات الثلاثة)
 
 ```

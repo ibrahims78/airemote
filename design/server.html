@@ -248,7 +248,7 @@
 
       <div class="aibar" id="aibar">
         <span class="ttl" style="font-size:13px;font-weight:600"><span data-en="Assistant">المساعد</span></span>
-        <input class="input" style="flex:1" data-feature="dash-ai-ask" placeholder="<span data-en="Ask about a device or session…">اسأل عن جهاز أو جلسة…</span>">
+        <input class="input" style="flex:1" data-feature="dash-ai-ask" placeholder="اسأل عن جهاز أو جلسة…" data-ph-en="Ask about a device or session…">
         <button class="btn primary sm" data-feature="dash-ai-send"><span data-en="Send">إرسال</span></button>
       </div>
 
@@ -334,6 +334,10 @@
     document.querySelectorAll('[data-en]').forEach(el => {
       if (!el.dataset.ar) el.dataset.ar = el.textContent
       el.textContent = toEn ? el.dataset.en : el.dataset.ar
+    })
+    document.querySelectorAll('[data-ph-en]').forEach(el => {
+      if (!el.dataset.phAr) el.dataset.phAr = el.getAttribute('placeholder') || ''
+      el.setAttribute('placeholder', toEn ? el.dataset.phEn : el.dataset.phAr)
     })
     document.getElementById('langbtn').textContent = toEn ? 'ع' : 'EN'
   }
