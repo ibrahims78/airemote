@@ -1,26 +1,27 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 /* ── Variables ─────────────────────────────────────────── */
+/* --b-theme: D49 — رموز محايدة/حالات من design/server.html (التمييز مؤجّل) */
 :root {
-  --bg:        #0f172a;
-  --bg2:       #1e293b;
-  --bg3:       #273045;
-  --bg4:       #0c1628;
-  --bg5:       #162032;
-  --border:    rgba(100,116,139,.22);
-  --border2:   rgba(100,116,139,.10);
-  --text:      #e2e8f0;
-  --text2:     #a6b3c8;
-  --muted:     #7e8fa6;
+  --bg:        #0b1117;
+  --bg2:       #111a22;
+  --bg3:       #1b2a36;
+  --bg4:       #0b1117;
+  --bg5:       #16222c;
+  --border:    rgba(148,163,184,.16);
+  --border2:   rgba(148,163,184,.28);
+  --text:      #e6edf3;
+  --text2:     #c2cfdb;
+  --muted:     #8fa3b5;
   --blue:      #3b82f6;
   --blue-h:    #2563eb;
   --blue-glow: rgba(59,130,246,.18);
   --teal:      #14b8a6;
   --teal-glow: rgba(20,184,166,.15);
-  --green:     #22c55e;
-  --red:       #ef4444;
-  --yellow:    #f59e0b;
-  --titlebar:  #07101f;
+  --green:     #34d399;
+  --red:       #f87171;
+  --yellow:    #fbbf24;
+  --titlebar:  #111a22;
   --radius:    10px;
   --font:      'Segoe UI', system-ui, -apple-system, sans-serif;
   --mono:      'Cascadia Code', 'Consolas', 'Courier New', monospace;
@@ -28,25 +29,25 @@
 }
 
 [data-theme="light"] {
-  --bg:        #f1f5f9;
+  --bg:        #f7fafc;
   --bg2:       #ffffff;
-  --bg3:       #e2e8f0;
-  --bg4:       #f8fafc;
+  --bg3:       #e6edf3;
+  --bg4:       #f7fafc;
   --bg5:       #f1f5f9;
-  --border:    rgba(100,116,139,.20);
-  --border2:   rgba(100,116,139,.10);
+  --border:    rgba(15,23,42,.10);
+  --border2:   rgba(15,23,42,.18);
   --text:      #0f172a;
-  --text2:     #475569;
-  --muted:     #64748b;
+  --text2:     #334155;
+  --muted:     #617187;
   --blue:      #2563eb;
   --blue-h:    #1d4ed8;
   --blue-glow: rgba(37,99,235,.12);
   --teal:      #0d9488;
   --teal-glow: rgba(13,148,136,.12);
-  --green:     #16a34a;
-  --red:       #dc2626;
-  --yellow:    #d97706;
-  --titlebar:  #e2e8f0;
+  --green:     #047857;
+  --red:       #cf2424;
+  --yellow:    #b05109;
+  --titlebar:  #e6edf3;
   --shadow:    0 2px 8px rgba(0,0,0,.07);
 }
 
