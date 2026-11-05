@@ -2201,3 +2201,9 @@ html.light .ai-page-online, html.light .ai-page-cancel { background: #fff; borde
   .cr-page .cr-live-card{ width:100% !important; max-width:none !important; }
   .cr-page .cr-live-card .cr-card-head{ display:none !important; }
 }
+
+/* ── Phase 3g — ثلاث بطاقات في سطر العنوان (CPU داخل بطاقة الأجهزة) ── */
+.cr-top-row { display: flex; align-items: center; gap: 16px; }
+.cr-top-row .cr-overview-head { flex: 0 0 auto; margin: 0; }
+.cr-top-row .cr-metrics { flex: 1 1 auto; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (max-width: 1399px) { .cr-top-row { display: block; } }

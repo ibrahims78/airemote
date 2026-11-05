@@ -215,6 +215,7 @@ export function OverviewPage() {
 
   return (
     <div className="cr-page">
+      <div className="cr-top-row">
       <section className="cr-overview-head" aria-label={T('ov_room')}>
         <div className="cr-overview-copy">
           <span className="cr-eyebrow"><span /> {T('ov_room_upper')}</span>
@@ -243,6 +244,7 @@ export function OverviewPage() {
           <div className="cr-metric-foot">
             <i />
             {offline > 0 ? `${offline} ${T('ov_offline_word')}` : T('ov_all_online')}
+            {monitoredDevices.length > 0 && <span className="ms-2 text-muted">· {T('stat_avg_cpu')} {avgCpu}%</span>}
           </div>
           <div className="cr-metric-bar"><span style={{ width: `${devices.length ? Math.round(online / devices.length * 100) : 0}%` }} /></div>
         </Link>
@@ -279,21 +281,9 @@ export function OverviewPage() {
           <div className="cr-metric-bar"><span style={{ width: `${online ? Math.min(100, alerts / online * 100) : 0}%` }} /></div>
         </Link>
 
-        <Link to="/devices" className="cr-metric is-clickable" title={T('ov_monitor_resources')}>
-          <div className="cr-metric-top">
-            <div className="cr-metric-label"><Cpu size={13} /> {T('stat_avg_cpu')}</div>
-            <ArrowUpRight size={12} className="cr-metric-arrow" />
-          </div>
-          <div className="cr-metric-value">{monitoredDevices.length ? avgCpu : '—'}<small>{monitoredDevices.length ? '%' : ''}</small></div>
-          <div className="cr-metric-foot">
-            <i />
-            {online === 0
-              ? T('ov_no_online')
-              : `${monitoredDevices.length}/${online} ${T('ov_reporting')}`}
-          </div>
-          <div className="cr-metric-bar"><span style={{ width: `${monitoredDevices.length ? Math.min(100, avgCpu) : 0}%` }} /></div>
-        </Link>
+        
       </section>
+      </div>
 
       <FleetStrip devices={devices} />
 
