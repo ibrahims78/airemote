@@ -147,11 +147,11 @@
 
 
   html,body{min-height:100vh}
-  body{background:#eef3f7;display:flex;justify-content:center;align-items:flex-start;padding:22px}
+  body{background:#eef3f7;display:flex;flex-direction:column;align-items:center;padding:22px}
   html:not(.light) body{background:#070d12}
   .stage{width:100%;max-width:1644px}
-  .tools{position:fixed;bottom:14px;inset-inline-start:14px;display:flex;gap:6px;z-index:50}
-  .tools .btn{background:var(--surface);border-color:var(--line2);box-shadow:0 6px 18px rgba(0,0,0,.12)}
+  .tools{display:flex;gap:6px;justify-content:center;padding:14px 12px 28px;z-index:50}
+  .tools .btn{background:var(--surface);border-color:var(--line2)}
   .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);padding:0 12px;background:var(--surface)}
   .tabs button{height:34px;padding:0 11px;background:transparent;border:0;border-bottom:2px solid transparent;color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit}
   .tabs button.on{color:var(--accent);border-bottom-color:var(--accent)}
@@ -197,10 +197,6 @@
   <symbol id="ic-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
   <symbol id="ic-reconnect" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2 6"/><path d="M20 5v6h-6"/></symbol>
 </defs></svg>
-<div class="tools">
-  <button class="btn ghost sm" onclick="toggleTheme()" data-en="Theme">الثيم</button>
-  <button class="btn ghost sm" onclick="toggleLang()" id="langbtn">EN</button>
-</div>
 
 <div class="stage" style="display:flex;justify-content:center">
   <div class="board phone" style="width:390px;position:relative">
@@ -273,6 +269,10 @@
     </div>
   </div>
 </div>
+<div class="tools">
+  <button class="btn ghost sm" onclick="toggleTheme()" data-en="Theme">الثيم</button>
+  <button class="btn ghost sm" onclick="toggleLang()" id="langbtn">EN</button>
+</div>
 <script>
   function toggleTheme () { document.documentElement.classList.toggle('light') }
   function toggleLang () {
@@ -296,5 +296,11 @@
   }
   function openSheet (id) { const s = document.getElementById(id); if (s) s.classList.add('on') }
   function closeSheet (id) { const s = document.getElementById(id); if (s) s.classList.remove('on') }
+  function toggleMenu () { const m = document.getElementById('amenu'); if (m) m.classList.toggle('on') }
+  function toggleAi () { const a = document.getElementById('aibar'); if (a) a.classList.toggle('on'); return false }
+  document.addEventListener('click', (e) => {
+    const m = document.getElementById('amenu')
+    if (m && m.classList.contains('on') && !m.contains(e.target) && !e.target.closest('[data-feature="dash-app-menu"]')) m.classList.remove('on')
+  })
 </script>
 </body></html>

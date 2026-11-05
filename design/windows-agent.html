@@ -147,11 +147,11 @@
 
 
   html,body{min-height:100vh}
-  body{background:#eef3f7;display:flex;justify-content:center;align-items:flex-start;padding:22px}
+  body{background:#eef3f7;display:flex;flex-direction:column;align-items:center;padding:22px}
   html:not(.light) body{background:#070d12}
   .stage{width:100%;max-width:1644px}
-  .tools{position:fixed;bottom:14px;inset-inline-start:14px;display:flex;gap:6px;z-index:50}
-  .tools .btn{background:var(--surface);border-color:var(--line2);box-shadow:0 6px 18px rgba(0,0,0,.12)}
+  .tools{display:flex;gap:6px;justify-content:center;padding:14px 12px 28px;z-index:50}
+  .tools .btn{background:var(--surface);border-color:var(--line2)}
   .tabs{display:flex;gap:2px;border-bottom:1px solid var(--line);padding:0 12px;background:var(--surface)}
   .tabs button{height:34px;padding:0 11px;background:transparent;border:0;border-bottom:2px solid transparent;color:var(--muted);font-size:11px;font-weight:600;cursor:pointer;font-family:inherit}
   .tabs button.on{color:var(--accent);border-bottom-color:var(--accent)}
@@ -197,10 +197,6 @@
   <symbol id="ic-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
   <symbol id="ic-reconnect" viewBox="0 0 24 24"><path d="M20 11a8 8 0 1 0-2 6"/><path d="M20 5v6h-6"/></symbol>
 </defs></svg>
-<div class="tools">
-  <button class="btn ghost sm" onclick="toggleTheme()" data-en="Theme">الثيم</button>
-  <button class="btn ghost sm" onclick="toggleLang()" id="langbtn">EN</button>
-</div>
 
 <div class="stage" style="display:flex;justify-content:center">
   <div class="board agent" style="width:560px">
@@ -219,6 +215,7 @@
       <button class="on" data-tab="ctrl" onclick="showTab('ctrl')"><span data-en="Remote control">التحكم عن بُعد</span></button>
       <button data-tab="connect" onclick="showTab('connect')"><span data-en="Connect to a device">الاتصال بجهاز آخر</span></button>
       <button data-tab="sessions" onclick="showTab('sessions')"><span data-en="Sessions">الجلسات</span></button>
+      <button data-tab="session" onclick="showTab('session')"><span data-en="Session">الجلسة</span></button>
     </div>
 
     <div class="pg on" id="ctrl" style="padding:12px;display:flex;flex-direction:column;gap:12px">
@@ -262,7 +259,8 @@
         <div class="card-h"><span class="ttl"><span data-en="Recent events">آخر الأحداث</span></span><div class="grow"></div>
           <button class="btn ghost sm" data-feature="copy-log-btn"><span data-en="Copy">نسخ</span></button>
           <button class="btn ghost sm" data-feature="export-log-btn"><span data-en="Export">تصدير</span></button>
-          <button class="btn ghost sm" data-feature="clear-log"><span data-en="Clear">مسح</span></button></div>
+          <button class="btn ghost sm" data-feature="clear-log"><span data-en="Clear">مسح</span></button>
+          <button class="btn ghost sm" data-feature="log-coll-btn"><span data-en="Collapse">طيّ</span></button></div>
         <div class="card-b log">
           <div class="ln"><span class="ts">23:41:02</span><span><span data-en="Agent↔agent: session accepted with password">وكيل↔وكيل: جلسة قُبلت بكلمة سر</span></span></div>
           <div class="ln"><span class="ts">23:40:58</span><span><span data-en="Agent↔agent: wrong password (bad_password)">وكيل↔وكيل: كلمة سر خاطئة (bad_password)</span></span></div>
@@ -310,7 +308,43 @@
         </div>
       </div>
     </div>
+
+    <div class="pg" id="session" style="padding:12px;display:flex;flex-direction:column;gap:12px">
+      <div class="card">
+        <div class="card-h"><span class="ttl"><span data-en="Chat">الدردشة</span></span><div class="grow"></div>
+          <button class="btn ghost sm" data-feature="chat-collapse-btn"><span data-en="Collapse">طيّ</span></button>
+          <button class="btn ghost sm" data-feature="chat-popout-btn"><span data-en="Pop out">نافذة</span></button>
+          <button class="btn ghost sm" data-feature="chat-clear-btn"><span data-en="Clear">مسح</span></button></div>
+        <div class="card-b">
+          <div class="log" style="max-height:150px;overflow:auto;margin-bottom:8px">
+            <div class="ln"><span class="ts">23:41</span><span><span data-en="WIN11-VM:">WIN11-VM:</span> <span data-en="The screen is a bit slow">الشاشة بطيئة قليلًا</span></span></div>
+            <div class="ln"><span class="ts">23:42</span><span><span data-en="You:">أنت:</span> <span data-en="I will lower the quality">سأخفّض الجودة</span></span></div>
+          </div>
+          <div class="row2">
+            <input class="input" style="flex:1" data-feature="chat-input" placeholder="<span data-en="Type a message…">اكتب رسالة…</span>">
+            <button class="btn primary" data-feature="chat-send-btn"><span data-en="Send">إرسال</span></button></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-h"><span class="ttl"><span data-en="Assistant">المساعد</span></span><div class="grow"></div>
+          <button class="btn ghost sm" data-feature="ai-hist-btn"><span data-en="History">السجل</span></button>
+          <button class="btn ghost sm" data-feature="ai-new-btn"><span data-en="New">جديد</span></button>
+          <button class="btn ghost sm" data-feature="ai-stop-btn"><span data-en="Stop">إيقاف</span></button>
+          <button class="btn ghost sm" data-feature="ai-collapse-btn"><span data-en="Collapse">طيّ</span></button></div>
+        <div class="card-b">
+          <div class="hint" style="margin-bottom:8px"><span data-en="Reads device and session state and answers with the next step">يقرأ حالة الجهاز والجلسات ويجيب بالإجراء التالي</span></div>
+          <div class="row2">
+            <input class="input" style="flex:1" data-feature="ai-input" placeholder="<span data-en="Ask the assistant…">اسأل المساعد…</span>">
+            <button class="btn primary" data-feature="ai-send-btn"><span data-en="Send">إرسال</span></button></div>
+        </div>
+      </div>
+    </div>
   </div>
+</div>
+<div class="tools">
+  <button class="btn ghost sm" onclick="toggleTheme()" data-en="Theme">الثيم</button>
+  <button class="btn ghost sm" onclick="toggleLang()" id="langbtn">EN</button>
 </div>
 <script>
   function toggleTheme () { document.documentElement.classList.toggle('light') }
@@ -335,5 +369,11 @@
   }
   function openSheet (id) { const s = document.getElementById(id); if (s) s.classList.add('on') }
   function closeSheet (id) { const s = document.getElementById(id); if (s) s.classList.remove('on') }
+  function toggleMenu () { const m = document.getElementById('amenu'); if (m) m.classList.toggle('on') }
+  function toggleAi () { const a = document.getElementById('aibar'); if (a) a.classList.toggle('on'); return false }
+  document.addEventListener('click', (e) => {
+    const m = document.getElementById('amenu')
+    if (m && m.classList.contains('on') && !m.contains(e.target) && !e.target.closest('[data-feature="dash-app-menu"]')) m.classList.remove('on')
+  })
 </script>
 </body></html>
