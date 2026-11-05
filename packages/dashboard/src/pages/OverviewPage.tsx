@@ -12,6 +12,7 @@ import { api } from '../lib/api'
 import { openScreenWindow } from '../lib/screenWindow'
 import type { Device } from '@airemote/shared'
 import { LivePreviewBoard } from '../components/LivePreviewBoard'
+import { FleetStrip } from '../components/FleetStrip'
 import { Alert, Badge, Button, Card, EmptyState, Skeleton, SkeletonRows } from '../components/ui'
 
 interface Session {
@@ -293,6 +294,8 @@ export function OverviewPage() {
           <div className="cr-metric-bar"><span style={{ width: `${monitoredDevices.length ? Math.min(100, avgCpu) : 0}%` }} /></div>
         </Link>
       </section>
+
+      <FleetStrip devices={devices} />
 
       <div className="cr-layout">
         <div className="cr-main">
