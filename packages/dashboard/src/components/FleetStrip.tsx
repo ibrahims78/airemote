@@ -54,7 +54,7 @@ export function FleetStrip ({ devices, max = 4 }: { devices: Device[]; max?: num
                 to={'/devices/' + d.id}
                 className="inline-flex h-[26px] items-center gap-1 rounded-lg border border-line px-2 text-[12px] text-ink transition-colors hover:bg-surface2"
               >
-                <ExternalLink size={12} /> فتح
+                <ExternalLink size={12} /> {t('fleet_open')}
               </Link>
               <button
                 type="button"
@@ -67,7 +67,7 @@ export function FleetStrip ({ devices, max = 4 }: { devices: Device[]; max?: num
                     : 'cursor-not-allowed border border-line text-muted'
                 )}
               >
-                <Play size={12} /> تشغيل
+                <Play size={12} /> {t('fleet_start')}
               </button>
             </div>
           </article>

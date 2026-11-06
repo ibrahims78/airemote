@@ -557,6 +557,13 @@ const T = {
     fm_confirm_delete_desc: 'لا يمكن التراجع عن هذا الإجراء.',
     fm_delete_permanent_prefix: 'سيتم حذف',
     fm_delete_permanent_suffix: 'نهائياً من الجهاز.',
+    fm_count: '{dirs} مجلد · {files} ملف',
+    fm_download_named: 'تنزيل {name}',
+    fm_rename_named: 'إعادة تسمية {name}',
+    fm_delete_named: 'حذف {name}',
+    devices_open_screen: 'فتح الشاشة',
+    fleet_open: 'فتح',
+    fleet_start: 'تشغيل',
   },
   en: {
     overview: 'Overview', devices: 'Devices', ai_assistant: 'AI Assistant',
@@ -1112,6 +1119,13 @@ const T = {
     fm_confirm_delete_desc: 'This cannot be undone.',
     fm_delete_permanent_prefix: 'This permanently deletes',
     fm_delete_permanent_suffix: 'from the device.',
+    fm_count: '{dirs} folders · {files} files',
+    fm_download_named: 'Download {name}',
+    fm_rename_named: 'Rename {name}',
+    fm_delete_named: 'Delete {name}',
+    devices_open_screen: 'Open screen',
+    fleet_open: 'Open',
+    fleet_start: 'Start',
   }
 } as const
 

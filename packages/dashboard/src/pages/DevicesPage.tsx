@@ -420,7 +420,7 @@ export function DevicesPage() {
                         <button
                           onClick={() => openScreenWindow(d.id)}
                           className="p-1.5 text-muted/70 hover:text-info transition-colors rounded"
-                          title="فتح الشاشة" aria-label="Open screen"
+                          title={t('devices_open_screen')} aria-label="Open screen"
                         >
                           <Monitor size={13} />
                         </button>

@@ -337,7 +337,7 @@ export function SSHTerminal({ config, deviceId, onClose }: Props) {
           </span>
           <button onClick={retry}
             className="text-xs text-info hover:text-info hover:underline whitespace-nowrap flex-shrink-0">
-            إعادة المحاولة
+            {t('ui_retry')}
           </button>
         </div>
       )}

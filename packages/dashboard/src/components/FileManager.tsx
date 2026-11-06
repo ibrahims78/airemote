@@ -301,7 +301,7 @@ export function FileManager({ deviceId, rt, initialPath }: Props) {
         </div>
 
         <div className="ms-auto hidden items-center gap-1 text-[11px] text-muted sm:flex">
-          <span>{dirCount} مجلد · {files.length - dirCount} ملف ·</span>
+          <span>{t('fm_count', { dirs: dirCount, files: files.length - dirCount })} ·</span>
           <span dir="ltr">{formatSize(totalSize)}</span>
         </div>
       </div>
@@ -419,7 +419,7 @@ export function FileManager({ deviceId, rt, initialPath }: Props) {
                         <Button
                           variant="ghost"
                           className="h-7 w-7 px-0"
-                          aria-label={`تنزيل ${entry.name}`}
+                          aria-label={t('fm_download_named', { name: entry.name })}
                           title={t('fm_download')}
                           loading={downloadingFile === entry.path}
                           icon={<Download size={13} />}
@@ -429,7 +429,7 @@ export function FileManager({ deviceId, rt, initialPath }: Props) {
                       <Button
                         variant="ghost"
                         className="h-7 w-7 px-0"
-                        aria-label={`إعادة تسمية ${entry.name}`}
+                        aria-label={t('fm_rename_named', { name: entry.name })}
                         title={t('fm_rename')}
                         icon={<Pencil size={13} />}
                         onClick={() => { setRenamingFile(entry); setRenameValue(entry.name) }}
@@ -437,7 +437,7 @@ export function FileManager({ deviceId, rt, initialPath }: Props) {
                       <Button
                         variant="ghost"
                         className="h-7 w-7 px-0 hover:text-danger"
-                        aria-label={`حذف ${entry.name}`}
+                        aria-label={t('fm_delete_named', { name: entry.name })}
                         title={t('fm_delete')}
                         loading={deletingFile === entry.path}
                         icon={<Trash2 size={13} />}
