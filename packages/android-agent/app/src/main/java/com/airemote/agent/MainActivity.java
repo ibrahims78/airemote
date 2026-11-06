@@ -594,9 +594,10 @@ public class MainActivity extends Activity {
             card.setLayoutParams(lp);
 
             TextView title = new TextView(this);
-            title.setText(getString(R.string.dev_title));
-            title.setTextColor(0xFF93C5FD);
-            title.setTextSize(13);
+            // 3.14.0 — D64 رأس البطاقة (يسبق كل الحقول)
+            title.setText(getString(R.string.card_connect));
+            title.setTextColor(0xFFE2E8F0);
+            title.setTextSize(14);
             title.setTypeface(null, android.graphics.Typeface.BOLD);
             card.addView(title);
 
@@ -606,6 +607,13 @@ public class MainActivity extends Activity {
             devState.setTextSize(12);
             devState.setPadding(0, dp(4), 0, dp(6));
             card.addView(devState);
+
+            TextView devLbl = new TextView(this);
+            devLbl.setText(getString(R.string.dev_title));
+            devLbl.setTextColor(0xFF93C5FD);
+            devLbl.setTextSize(12);
+            devLbl.setPadding(0, dp(4), 0, dp(2));
+            card.addView(devLbl);
 
             devSpinner = new android.widget.Spinner(this);
             devSpinner.setBackgroundResource(R.drawable.card_bg);
@@ -623,6 +631,9 @@ public class MainActivity extends Activity {
                 rb.setText(opts[i][1]);
                 rb.setTextSize(12);
                 rb.setTextColor(0xFFE2E8F0);
+                rb.setPadding(dp(10), dp(7), dp(10), dp(7));
+                rb.setGravity(android.view.Gravity.CENTER);
+                rb.setBackgroundResource(R.drawable.card_bg);
                 rb.setTag(opts[i][0]);
                 devAccess.addView(rb);
                 if (i == 1) rb.setChecked(true);
@@ -633,8 +644,14 @@ public class MainActivity extends Activity {
             devPw.setHint("كلمة مرور الجهاز (إن لزمت)");
             devPw.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
             devPw.setTextSize(12);
-            devPw.setVisibility(View.GONE);
+            devPw.setVisibility(View.VISIBLE);
             card.addView(devPw);
+            TextView devPwHint = new TextView(this);
+            devPwHint.setText(getString(R.string.card_pw_hint));
+            devPwHint.setTextColor(0xFF94A3B8);
+            devPwHint.setTextSize(10);
+            devPwHint.setPadding(0, dp(3), 0, dp(6));
+            card.addView(devPwHint);
 
             LinearLayout btns = new LinearLayout(this);
             btns.setOrientation(LinearLayout.HORIZONTAL);

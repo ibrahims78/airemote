@@ -124,4 +124,6 @@
     <string name="sess_state_bad_password">كلمة المرور غير صحيحة</string>
     <string name="sess_state_password_locked">مقفل مؤقتًا بعد محاولات فاشلة</string>
     <string name="sess_state_target_offline">الجهاز الهدف غير متصل</string>
+    <string name="card_connect">الاتصال بجهاز آخر</string>
+    <string name="card_pw_hint">تُستخدم فقط إن كان الجهاز الهدف محميًّا بكلمة سر — وإلا يُرسل الطلب بدونها.</string>
 </resources>
