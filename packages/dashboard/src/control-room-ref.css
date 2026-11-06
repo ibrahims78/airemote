@@ -178,3 +178,17 @@ html.light .log{color:var(--b-ink2)}
 .fcard .rows { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--b-ink2); }
 .fcard .rows b { font-weight: 500; color: var(--b-muted); font-size: 11px; }
 .fcard .acts { display: flex; gap: 6px; margin-top: auto; }
+/* 3.14.0 — D65: الأسطول 6 بطاقات، إخفاء/إظهار لكل بطاقة */
+.fleet.six{grid-template-columns:repeat(6,1fr)}
+.fleet-head{display:flex;align-items:center;gap:8px;margin:0 0 8px}
+.fleet-title{font-size:var(--b-t2);font-weight:700;color:var(--b-ink)}
+.fcard{position:relative}
+.fcard .fcard-hide{position:absolute;top:-7px;inset-inline-end:-7px;width:20px;height:20px;padding:0;border-radius:50%;border:1px solid var(--b-line2);background:var(--b-surface);color:var(--b-muted);display:grid;place-items:center;cursor:pointer;opacity:0;pointer-events:none;transition:opacity .12s ease;z-index:3}
+.fcard:hover .fcard-hide,.fcard:focus-within .fcard-hide{opacity:1;pointer-events:auto}
+.fcard .fcard-hide:hover{background:var(--b-danger);border-color:var(--b-danger);color:#fff}
+.fleet-menu-wrap{position:relative}
+.fleet-menu{position:absolute;top:calc(100% + 6px);inset-inline-start:0;min-width:230px;background:var(--b-surface);border:1px solid var(--b-line2);border-radius:10px;box-shadow:0 18px 40px rgba(15,23,42,.18);padding:6px;z-index:20}
+.fleet-menu-h{font-size:10.5px;color:var(--b-muted);padding:6px 8px}
+.fleet-menu-i{display:flex;align-items:center;gap:8px;width:100%;background:transparent;border:0;border-radius:7px;padding:7px 8px;color:var(--b-ink);font-size:12px;cursor:pointer;font-family:inherit;text-align:start}
+.fleet-menu-i:hover{background:var(--b-surface2)}
+.fleet-menu-i .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}

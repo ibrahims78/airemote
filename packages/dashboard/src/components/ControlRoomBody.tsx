@@ -37,6 +37,9 @@ interface Stats { cpuPercent?: number; ramPercent?: number }
 
 const MAX_TILES = 6
 const BOARD_STORAGE_KEY = 'airemote-live-board-v1'
+// 3.14.0 — D65: six cards at most, and only the owner hides a card (D53 kept).
+const FLEET_MAX = 6
+const FLEET_HIDDEN_KEY = 'airemote-fleet-hidden-v1'
 type Size = 'sm' | 'md' | 'lg'
 interface Tile { key: string; deviceId: string; running: boolean }
 
@@ -59,6 +62,17 @@ const PLATFORM_RANK: Record<string, number> = { windows: 0, macos: 1, linux: 1, 
 function wallRank (d: Device): number {
   const platform = String(d.info?.platform || '').toLowerCase()
   return PLATFORM_RANK[platform] ?? 1
+}
+
+function loadHidden (): string[] {
+  try {
+    const raw = localStorage.getItem(FLEET_HIDDEN_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed.filter((x): x is string => typeof x === 'string') : []
+  } catch {
+    return []
+  }
 }
 
 function newKey (): string {
@@ -102,6 +116,21 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, hasError, o
   const [tiles, setTiles] = useState<Tile[]>(() => loadSnapshot().tiles)
   const [size, setSize] = useState<Size>(() => loadSnapshot().size)
   const [maxKey, setMaxKey] = useState<string | null>(null)
+  // 3.14.0 — D65
+  const [hidden, setHidden] = useState<string[]>(() => loadHidden())
+  const [hiddenOpen, setHiddenOpen] = useState(false)
+
+  useEffect(() => {
+    try { localStorage.setItem(FLEET_HIDDEN_KEY, JSON.stringify(hidden)) } catch {}
+  }, [hidden])
+
+  const visibleDevices = useMemo(() => devices.filter(d => !hidden.includes(d.id)), [devices, hidden])
+  const shownDevices = useMemo(() => visibleDevices.slice(0, FLEET_MAX), [visibleDevices])
+  const hiddenDevices = useMemo(() => devices.filter(d => hidden.includes(d.id)), [devices, hidden])
+  const fleetMore = visibleDevices.length - shownDevices.length
+  const fleetHead = devices.length > FLEET_MAX || hiddenDevices.length > 0
+  function hideDevice (id: string) { setHidden(prev => prev.includes(id) ? prev : [...prev, id]) }
+  function showDevice (id: string) { setHidden(prev => prev.filter(x => x !== id)) }
 
   const liveCount = Object.keys(activeScreens).length
   const alerts = onlineDevices.filter(d => {
@@ -188,14 +217,66 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, hasError, o
         </div>
       )}
 
-      <div className="fleet">
-        {devices.map(device => {
+      {fleetHead && (
+        <div className="fleet-head">
+          <span className="fleet-title">{T('fleet_title')}</span>
+          {fleetMore > 0 && (
+            <span className="hint">{T('fleet_showing', { n: shownDevices.length, total: visibleDevices.length, rest: fleetMore })}</span>
+          )}
+          {hiddenDevices.length > 0 && (
+            <div className="fleet-menu-wrap">
+              <button
+                type="button"
+                className="btn ghost sm"
+                onClick={() => setHiddenOpen(v => !v)}
+                aria-expanded={hiddenOpen}
+                aria-haspopup="menu"
+              >
+                <RefIcon name="plus" /> {T('fleet_add')} ({hiddenDevices.length})
+              </button>
+              {hiddenOpen && (
+                <div className="fleet-menu" role="menu">
+                  <div className="fleet-menu-h">{T('fleet_hidden_heading')}</div>
+                  {hiddenDevices.map(d => (
+                    <button
+                      key={d.id}
+                      type="button"
+                      role="menuitem"
+                      className="fleet-menu-i"
+                      onClick={() => { showDevice(d.id); setHiddenOpen(false) }}
+                    >
+                      <RefIcon name="monitor" />
+                      <span className="nm">{d.name}</span>
+                      <span className="hint">{T('fleet_show')}</span>
+                    </button>
+                  ))}
+                  <button type="button" className="fleet-menu-i" onClick={() => { setHidden([]); setHiddenOpen(false) }}>
+                    {T('fleet_restore_all')}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className={clsx('fleet', devices.length > FLEET_MAX && 'six')}>
+        {shownDevices.map(device => {
           const online = device.status === 'online'
           const stats = statsMap[device.id] || device.stats
           const cpu = stats && typeof stats.cpuPercent === 'number' ? `${Math.round(stats.cpuPercent)}%` : '—'
           const ram = stats && typeof stats.ramPercent === 'number' ? `${Math.round(stats.ramPercent)}%` : '—'
           return (
             <div className="fcard" key={device.id}>
+              <button
+                type="button"
+                className="fcard-hide"
+                title={T('fleet_hide')}
+                aria-label={T('fleet_hide')}
+                onClick={() => hideDevice(device.id)}
+              >
+                <RefIcon name="x" />
+              </button>
               <div className="top">
                 <RefIcon name="monitor" />
                 <span className="nm">{device.name}</span>
