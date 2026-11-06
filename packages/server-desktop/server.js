@@ -44,6 +44,7 @@ const agentSockets      = new Map()   // deviceId → { ws, info, deviceName, co
 const { createFileTransferManager } = require('./lib/file-transfer')
 const { createBackupManager } = require('./lib/backup-manager')
 const { blockedReason } = require('./lib/safety')
+const { MESSAGES_EN } = require('./lib/messages-en')
 const migrations = require('./lib/migrations')
 const updater = require('./lib/updater')
 const { createRetention } = require('./lib/retention')
@@ -3919,6 +3920,26 @@ async function start(config) {
       err.code = 'role_too_low'
       throw err
     }
+  })
+
+  // ── 3.14.1 (W2) — English alongside the Arabic `error`, additively ──────────
+  // `error` keeps its exact text so no client breaks; `message_en` is added when
+  // the message is in the table, including the prefixed variants ("... : detail").
+  fastify.addHook('onSend', async (req, reply, payload) => {
+    try {
+      if (typeof payload !== 'string' || payload.indexOf('"error"') === -1) return payload
+      const body = JSON.parse(payload)
+      if (!body || typeof body.error !== 'string') return payload
+      const direct = MESSAGES_EN[body.error]
+      if (direct) { body.message_en = direct; return JSON.stringify(body) }
+      for (const key of Object.keys(MESSAGES_EN)) {
+        if (body.error.startsWith(key)) {
+          body.message_en = MESSAGES_EN[key] + body.error.slice(key.length)
+          return JSON.stringify(body)
+        }
+      }
+    } catch {}
+    return payload
   })
 
   // ── v3.4.0 harden + perf: security headers (HTML) + Brotli/Gzip + ETag + cache ──

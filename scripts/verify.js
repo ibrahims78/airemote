@@ -93,6 +93,7 @@ const steps = [
   { name: 'unit: secret storage (R2)',   cmd: electronStep('packages/server-desktop/test/secrets.test.cjs') },
   // 3.14.1 (W2) - every translation reference must resolve in both languages.
   { name: 'policy: i18n references (W2)', cmd: NODE + ' scripts/check-i18n-refs.cjs' },
+  { name: 'policy: server messages (W2)', cmd: NODE + ' scripts/check-messages-en.cjs' },
   { name: 'policy: password length (P1)', cmd: NODE + ' scripts/check-password-policy.cjs' },
   { name: 'policy: version consistency (P6)', cmd: NODE + ' scripts/check-version-consistency.cjs --allow-missing-server' },
 ]
