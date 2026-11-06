@@ -1,6 +1,14 @@
 'use strict'
 /* global airemote */
 
+// 3.14.1 (W0) - the renderer is also opened outside Electron (preview, measurement).
+// Without the preload bridge, 'airemote.x' threw a ReferenceError and stopped the
+// rest of this file; a no-op proxy keeps the surface renderable. In the app the
+// real bridge exists, so this is a straight alias.
+const airemote = (typeof window !== 'undefined' && window.airemote)
+  ? window.airemote
+  : new Proxy({}, { get: () => () => Promise.resolve() })
+
 // ─── Version (single source of truth: package.json via preload) ─────────────
 // The brand badge and the footer used to be hardcoded and drifted (v3.6.0 while
 // the build was 3.8.x). Fill them from the running app instead.
@@ -212,7 +220,7 @@ const LANG = {
 // ─── Helpers ───────────────────────────────────────────────────────────────
 function $(id) { return document.getElementById(id) }
 let currentLang  = localStorage.getItem('lang')  || 'ar'
-let currentTheme = localStorage.getItem('theme') || 'dark'
+let currentTheme = localStorage.getItem('theme') || 'light'
 const html = document.documentElement
 
 // ─── Toast ─────────────────────────────────────────────────────────────────
@@ -582,10 +590,10 @@ if (saveCtrlBtn) {
   saveCtrlBtn.addEventListener('click', () => {
     const mode = ($('ctrl-mode-password') && $('ctrl-mode-password').checked) ? 'password' : 'consent'
     const pw   = ctrlPwInput ? ctrlPwInput.value : ''
-    if (typeof airemote.saveControlAuth === 'function') airemote.saveControlAuth({ mode, password: pw })
+    if (typeof window.airemote !== 'undefined' && typeof window.airemote.saveControlAuth === 'function') airemote.saveControlAuth({ mode, password: pw })
   })
 }
-if (typeof airemote.onControlAuthState === 'function') {
+if (typeof window.airemote !== 'undefined' && typeof window.airemote.onControlAuthState === 'function') {
   airemote.onControlAuthState(({ mode, ok, error, hasPassword }) => {
     const t = LANG[currentLang]
     if (error === 'short_password') { showToast(t.ctrlShort, 'error'); return }
@@ -617,13 +625,13 @@ if (ctrlPwInput) ctrlPwInput.addEventListener('input', paintCtrlStrength)
       if (ctrlPwInput) ctrlPwInput.value = ''
       paintCtrlStrength()
       applyCtrlMode('consent', false)
-      if (typeof airemote.saveControlAuth === 'function') airemote.saveControlAuth({ mode: 'consent', password: '' })
+      if (typeof window.airemote !== 'undefined' && typeof window.airemote.saveControlAuth === 'function') airemote.saveControlAuth({ mode: 'consent', password: '' })
       showToast(t.ctrlCleared, 'success')
     })
   }
 }
 
-if (typeof airemote.getState === 'function') {
+if (typeof window.airemote !== 'undefined' && typeof window.airemote.getState === 'function') {
   airemote.getState().then(st => {
     try { applyCtrlMode((st && st.config && st.config.controlAuthMode) || 'consent', !!(st && st.config && st.config.hasControlPassword)) } catch {}
   }).catch(() => {})
@@ -800,7 +808,7 @@ airemote.onStats(s => { if (s) applyStats(s) })
 // ─── Screen Session Status ───────────────────────────────────────────────────
 let prevScreenCount = 0
 
-if (typeof airemote.onScreenSessions === 'function') {
+if (typeof window.airemote !== 'undefined' && typeof window.airemote.onScreenSessions === 'function') {
   airemote.onScreenSessions(({ count }) => {
     const sep    = $('strip-screen-sep')
     const item   = $('strip-screen-item')
@@ -841,7 +849,7 @@ if (typeof airemote.onScreenSessions === 'function') {
 }
 
 // ─── Privacy Mode Indicator ──────────────────────────────────────────────────
-if (typeof airemote.onScreenPrivacy === 'function') {
+if (typeof window.airemote !== 'undefined' && typeof window.airemote.onScreenPrivacy === 'function') {
   airemote.onScreenPrivacy(({ enabled }) => {
     const badge = $('screen-privacy-badge')
     if (badge) badge.classList.toggle('hidden', !enabled)
@@ -928,7 +936,7 @@ function updateChatUnread(delta) {
   }
 }
 
-if (typeof airemote.onScreenChat === 'function') {
+if (typeof window.airemote !== 'undefined' && typeof window.airemote.onScreenChat === 'function') {
   airemote.onScreenChat(({ text, sender, ts }) => {
     appendLog({ level: 'info', msg: `💬 ${sender}: ${text}`, ts: ts || Date.now() })
     appendChatMessage({ text, sender: sender || 'viewer', ts })
@@ -938,7 +946,7 @@ if (typeof airemote.onScreenChat === 'function') {
   })
 }
 
-if (typeof airemote.onOpenChatSection === 'function') {
+if (typeof window.airemote !== 'undefined' && typeof window.airemote.onOpenChatSection === 'function') {
   airemote.onOpenChatSection(() => {
     showChatSection()
     updateChatUnread(-chatUnread)
@@ -954,7 +962,7 @@ function doSendChat() {
   if (!chatInput) return
   const text = chatInput.value.trim()
   if (!text) return
-  if (typeof airemote.sendChat === 'function') {
+  if (typeof window.airemote !== 'undefined' && typeof window.airemote.sendChat === 'function') {
     airemote.sendChat({ text })
     showChatSection()
   }
@@ -1009,13 +1017,13 @@ if (chatCollapseBtn) {
 const chatPopoutBtn = $('chat-popout-btn')
 if (chatPopoutBtn) {
   chatPopoutBtn.addEventListener('click', () => {
-    if (typeof airemote.openChatWindow === 'function') {
+    if (typeof window.airemote !== 'undefined' && typeof window.airemote.openChatWindow === 'function') {
       airemote.openChatWindow({ theme: currentTheme })
     }
   })
 }
 
-if (typeof airemote.onChatWindowStatus === 'function') {
+if (typeof window.airemote !== 'undefined' && typeof window.airemote.onChatWindowStatus === 'function') {
   airemote.onChatWindowStatus(({ open }) => {
     const sec = $('chat-section')
     if (sec) sec.classList.toggle('popped-out', open)
