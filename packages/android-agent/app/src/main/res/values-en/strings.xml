@@ -83,4 +83,33 @@
     <string name="notif_from">Message from %1$s</string>
     <string name="notif_viewer">a viewer</string>
     <string name="notif_request">%1$s requests %2$s — 60 seconds to respond.</string>
+    <!-- 3.14.0 - the seven permission rows of the setup wizard (SetupActivity) -->
+    <string name="perm_screen_title">Screen capture</string>
+    <string name="perm_screen_desc">Required for streaming</string>
+    <string name="perm_screen_ok">Ready</string>
+    <string name="perm_screen_bad">Not granted</string>
+    <string name="perm_a11y_title">Accessibility service</string>
+    <string name="perm_a11y_desc">Required for touch control</string>
+    <string name="perm_a11y_ok">Enabled</string>
+    <string name="perm_a11y_bad">Not enabled</string>
+    <string name="perm_write_title">Modify system settings</string>
+    <string name="perm_write_desc">Rotation and power</string>
+    <string name="perm_write_ok">Allowed</string>
+    <string name="perm_write_bad">Not allowed</string>
+    <string name="perm_battery_title">Background work</string>
+    <string name="perm_battery_desc">Keeps the agent from freezing</string>
+    <string name="perm_battery_ok">Exempt from battery optimisation</string>
+    <string name="perm_battery_bad">May be frozen in background</string>
+    <string name="perm_record_title">Microphone</string>
+    <string name="perm_record_desc">Required for audio capture</string>
+    <string name="perm_record_ok">Allowed</string>
+    <string name="perm_record_bad">Not allowed</string>
+    <string name="perm_notify_title">Notifications</string>
+    <string name="perm_notify_desc">Required for the ongoing notice</string>
+    <string name="perm_notify_ok">Allowed</string>
+    <string name="perm_notify_bad">Not allowed</string>
+    <string name="perm_overlay_title">Draw over other apps</string>
+    <string name="perm_overlay_desc">Required for some session tools</string>
+    <string name="perm_overlay_ok">Allowed</string>
+    <string name="perm_overlay_bad">Not allowed</string>
 </resources>

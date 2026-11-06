@@ -83,4 +83,33 @@
     <string name="notif_from">رسالة من %1$s</string>
     <string name="notif_viewer">مشاهد</string>
     <string name="notif_request">%1$s يطلب %2$s — المهلة 60 ثانية.</string>
+    <!-- 3.14.0 - the seven permission rows of the setup wizard (SetupActivity) -->
+    <string name="perm_screen_title">التقاط الشاشة</string>
+    <string name="perm_screen_desc">ضروري للبث</string>
+    <string name="perm_screen_ok">جاهز</string>
+    <string name="perm_screen_bad">غير ممنوح</string>
+    <string name="perm_a11y_title">خدمة إمكانية الوصول</string>
+    <string name="perm_a11y_desc">ضروري للتحكم باللمس</string>
+    <string name="perm_a11y_ok">مفعّلة</string>
+    <string name="perm_a11y_bad">غير مفعّلة</string>
+    <string name="perm_write_title">تعديل إعدادات النظام</string>
+    <string name="perm_write_desc">التدوير والإطفاء</string>
+    <string name="perm_write_ok">مسموح</string>
+    <string name="perm_write_bad">غير مسموح</string>
+    <string name="perm_battery_title">العمل في الخلفية</string>
+    <string name="perm_battery_desc">يمنع تجميد الوكيل</string>
+    <string name="perm_battery_ok">مستثنى من توفير الطاقة</string>
+    <string name="perm_battery_bad">قد يُجمّد في الخلفية</string>
+    <string name="perm_record_title">الميكروفون</string>
+    <string name="perm_record_desc">مطلوب لالتقاط الصوت</string>
+    <string name="perm_record_ok">مسموح</string>
+    <string name="perm_record_bad">غير مسموح</string>
+    <string name="perm_notify_title">الإشعارات</string>
+    <string name="perm_notify_desc">مطلوب للإشعار الدائم</string>
+    <string name="perm_notify_ok">مسموح</string>
+    <string name="perm_notify_bad">غير مسموح</string>
+    <string name="perm_overlay_title">الرسم فوق التطبيقات</string>
+    <string name="perm_overlay_desc">مطلوب لبعض أدوات الجلسة</string>
+    <string name="perm_overlay_ok">مسموح</string>
+    <string name="perm_overlay_bad">غير مسموح</string>
 </resources>

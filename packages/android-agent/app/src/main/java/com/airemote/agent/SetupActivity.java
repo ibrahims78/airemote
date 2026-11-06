@@ -81,13 +81,13 @@ public class SetupActivity extends Activity {
         summary.setBackground(round(Color.rgb(30, 41, 59), 14));
         list.addView(summary, marginParams(0, 0, 0, dp(14)));
 
-        addRow("التقاط الشاشة", "ضروري للبث", "screen");
-        addRow("خدمة إمكانية الوصول", "ضروري للتحكم باللمس", "a11y");
-        addRow("تعديل إعدادات النظام", "التدوير والإطفاء", "write");
-        addRow("العمل في الخلفية", "يمنع تجميد الوكيل", "battery");
-        addRow("الميكروفون", "مطلوب لالتقاط الصوت", "record");
-        addRow("الإشعارات", "مطلوب للإشعار الدائم", "notify");
-        addRow("الرسم فوق التطبيقات", "مطلوب لبعض أدوات الجلسة", "overlay");
+        addRow(getString(R.string.perm_screen_title), getString(R.string.perm_screen_desc), "screen");
+        addRow(getString(R.string.perm_a11y_title), getString(R.string.perm_a11y_desc), "a11y");
+        addRow(getString(R.string.perm_write_title), getString(R.string.perm_write_desc), "write");
+        addRow(getString(R.string.perm_battery_title), getString(R.string.perm_battery_desc), "battery");
+        addRow(getString(R.string.perm_record_title), getString(R.string.perm_record_desc), "record");
+        addRow(getString(R.string.perm_notify_title), getString(R.string.perm_notify_desc), "notify");
+        addRow(getString(R.string.perm_overlay_title), getString(R.string.perm_overlay_desc), "overlay");
 
         Button start = new Button(this);
         start.setText(getString(R.string.setup_start));
@@ -244,13 +244,13 @@ public class SetupActivity extends Activity {
         boolean record = Build.VERSION.SDK_INT < 23 || checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED;
         boolean notify = Build.VERSION.SDK_INT < 33 || checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED;
         boolean overlay = Settings.canDrawOverlays(this);
-        setStatus("screen", capture, "جاهز", "غير ممنوح");
-        setStatus("a11y", a11y, "مفعّلة", "غير مفعّلة");
-        setStatus("write", write, "مسموح", "غير مسموح");
-        setStatus("battery", battery, "مستثنى من توفير الطاقة", "قد يُجمّد في الخلفية");
-        setStatus("record", record, "مسموح", "غير مسموح");
-        setStatus("notify", notify, "مسموح", "غير مسموح");
-        setStatus("overlay", overlay, getString(R.string.perm_allowed), getString(R.string.perm_denied));
+        setStatus("screen", capture, getString(R.string.perm_screen_ok), getString(R.string.perm_screen_bad));
+        setStatus("a11y", a11y, getString(R.string.perm_a11y_ok), getString(R.string.perm_a11y_bad));
+        setStatus("write", write, getString(R.string.perm_write_ok), getString(R.string.perm_write_bad));
+        setStatus("battery", battery, getString(R.string.perm_battery_ok), getString(R.string.perm_battery_bad));
+        setStatus("record", record, getString(R.string.perm_record_ok), getString(R.string.perm_record_bad));
+        setStatus("notify", notify, getString(R.string.perm_notify_ok), getString(R.string.perm_notify_bad));
+        setStatus("overlay", overlay, getString(R.string.perm_overlay_ok), getString(R.string.perm_overlay_bad));
         int ready = (capture ? 1 : 0) + (a11y ? 1 : 0) + (write ? 1 : 0) + (battery ? 1 : 0)
                 + (record ? 1 : 0) + (notify ? 1 : 0) + (overlay ? 1 : 0);
         summary.setText(getString(R.string.setup_progress, ready) + "\n" + (ready == 7
