@@ -242,7 +242,7 @@ export function UsersPage({ embedded = false }: { embedded?: boolean } = {}) {
           <div className="p-4">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-[13px] font-medium text-ink">{t('add_user')}</h3>
-              <Button variant="ghost" size="sm" aria-label="إغلاق" icon={<X size={15} />} onClick={() => setShowAdd(false)} />
+              <Button variant="ghost" size="sm" aria-label={t('ui_close')} icon={<X size={15} />} onClick={() => setShowAdd(false)} />
             </div>
             <form onSubmit={handleAdd} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Input required placeholder={t('user_name')} value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />

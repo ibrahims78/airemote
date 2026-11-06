@@ -102,7 +102,8 @@ export default function App() {
             <Route path="/view/:deviceId" element={<SessionTicketGate><ScreenPopoutPage /></SessionTicketGate>} />
             {/* 3.11 — وضع الملفات: تُفتح من الوكيل بتذكرة الجلسة بلا تسجيل دخول. */}
             <Route path="/files/:deviceId" element={<FilesPage />} />
-            <Route path="/dev/ui" element={<UiGalleryPage />} />
+            {/* 3.14.1 — the UI gallery is a measurement tool, not a product surface */}
+            {import.meta.env.DEV && <Route path="/dev/ui" element={<UiGalleryPage />} />}
             <Route path="/" element={<RequireAuth><DashboardLayout /></RequireAuth>}>
               <Route index                             element={<ErrorBoundary><OverviewPage /></ErrorBoundary>} />
               <Route path="devices"                   element={<ErrorBoundary><DevicesPage /></ErrorBoundary>} />
