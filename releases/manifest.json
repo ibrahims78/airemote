@@ -1,7 +1,7 @@
 {
   "product": "AiRemote",
-  "version": "3.13.1",
-  "generatedAt": "2026-11-05T06:00:45.574Z",
+  "version": "3.14.0",
+  "generatedAt": "2026-11-06T09:54:24.871Z",
   "artifacts": [
     {
       "name": "agent-windows/AiRemote-Agent-Setup-v3.11.10-x64.exe",
