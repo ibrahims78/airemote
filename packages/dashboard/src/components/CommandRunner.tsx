@@ -5,6 +5,7 @@ import {
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { api } from '../lib/api'
+import { useT } from '../lib/i18n'
 
 interface CommandResult {
   id: string
@@ -25,25 +26,25 @@ interface Props {
 }
 
 const QUICK_LINUX = [
-  { label: 'المعالج',   cmd: 'top -bn1 | head -20' },
-  { label: 'الذاكرة',  cmd: 'free -h' },
-  { label: 'القرص',    cmd: 'df -h' },
-  { label: 'الشبكة',   cmd: 'ss -tulpn' },
-  { label: 'العمليات', cmd: 'ps aux --sort=-%cpu | head -15' },
-  { label: 'السجلات',  cmd: 'journalctl -n 50 --no-pager' },
-  { label: 'Uptime',   cmd: 'uptime && uname -a' },
-  { label: 'IP',       cmd: 'ip addr show' },
+  { key: 'cmd_cpu' as const,   cmd: 'top -bn1 | head -20' },
+  { key: 'cmd_mem' as const,  cmd: 'free -h' },
+  { key: 'cmd_disk' as const,    cmd: 'df -h' },
+  { key: 'cmd_net' as const,   cmd: 'ss -tulpn' },
+  { key: 'cmd_proc' as const, cmd: 'ps aux --sort=-%cpu | head -15' },
+  { key: 'cmd_logs' as const,  cmd: 'journalctl -n 50 --no-pager' },
+  { key: 'cmd_uptime' as const,   cmd: 'uptime && uname -a' },
+  { key: 'cmd_ip' as const,       cmd: 'ip addr show' },
 ]
 
 const QUICK_WINDOWS = [
-  { label: 'المعالج',   cmd: 'wmic cpu get name,loadpercentage /format:list' },
-  { label: 'الذاكرة',  cmd: 'wmic OS get FreePhysicalMemory,TotalVisibleMemorySize /format:list' },
-  { label: 'القرص',    cmd: 'wmic logicaldisk get caption,size,freespace /format:list' },
-  { label: 'الشبكة',   cmd: 'netstat -an' },
-  { label: 'العمليات', cmd: 'tasklist /v' },
-  { label: 'السجلات',  cmd: 'wevtutil qe System /c:20 /f:text /rd:true' },
-  { label: 'Uptime',   cmd: 'net statistics workstation' },
-  { label: 'IP',       cmd: 'ipconfig' },
+  { key: 'cmd_cpu' as const,   cmd: 'wmic cpu get name,loadpercentage /format:list' },
+  { key: 'cmd_mem' as const,  cmd: 'wmic OS get FreePhysicalMemory,TotalVisibleMemorySize /format:list' },
+  { key: 'cmd_disk' as const,    cmd: 'wmic logicaldisk get caption,size,freespace /format:list' },
+  { key: 'cmd_net' as const,   cmd: 'netstat -an' },
+  { key: 'cmd_proc' as const, cmd: 'tasklist /v' },
+  { key: 'cmd_logs' as const,  cmd: 'wevtutil qe System /c:20 /f:text /rd:true' },
+  { key: 'cmd_uptime' as const,   cmd: 'net statistics workstation' },
+  { key: 'cmd_ip' as const,       cmd: 'ipconfig' },
 ]
 
 const LONG_OUTPUT_THRESHOLD = 25
@@ -58,6 +59,7 @@ function formatDuration(ms: number) {
 }
 
 export function CommandRunner({ deviceId, deviceName, platform }: Props) {
+  const t = useT()
   const [input, setInput]   = useState('')
   const [history, setHistory] = useState<CommandResult[]>([])
   const [running, setRunning] = useState(false)
@@ -133,7 +135,7 @@ export function CommandRunner({ deviceId, deviceName, platform }: Props) {
       } : h))
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: string } }; message?: string }
-      const msg = err.response?.data?.error || err.message || 'فشل التنفيذ'
+      const msg = err.response?.data?.error || err.message || t('cr_exec_failed')
       setHistory(prev => prev.map(h => h.id === id ? {
         ...h, stderr: msg, exitCode: -1, status: 'timeout', collapsed: false,
       } : h))
@@ -186,7 +188,7 @@ export function CommandRunner({ deviceId, deviceName, platform }: Props) {
             className="flex items-center gap-1 text-xs text-muted hover:text-ink transition-colors py-1 px-2 rounded hover:bg-surface2"
           >
             <RotateCcw size={11} />
-            <span>مسح</span>
+            <span>{t('cr_clear')}</span>
           </button>
         )}
       </div>
@@ -201,7 +203,7 @@ export function CommandRunner({ deviceId, deviceName, platform }: Props) {
             title={q.cmd}
             className="flex-shrink-0 text-[11px] px-2.5 py-1 rounded-md bg-surface2 hover:bg-surface2 text-muted hover:text-ink border border-line hover:border-line transition-all disabled:opacity-40 disabled:cursor-not-allowed font-medium"
           >
-            {q.label}
+            {t(q.key)}
           </button>
         ))}
       </div>
@@ -218,8 +220,8 @@ export function CommandRunner({ deviceId, deviceName, platform }: Props) {
               <Terminal size={22} className="text-muted" />
             </div>
             <div>
-              <p className="text-muted text-sm font-sans">اكتب أمراً أو اختر من الاختصارات</p>
-              <p className="text-muted text-[11px] mt-1 font-sans">تُنفَّذ الأوامر مباشرةً عبر Agent · بدون SSH</p>
+              <p className="text-muted text-sm font-sans">{t('cr_empty_hint')}</p>
+              <p className="text-muted text-[11px] mt-1 font-sans">{t('cr_empty_note')}</p>
             </div>
           </div>
         )}
@@ -261,7 +263,7 @@ export function CommandRunner({ deviceId, deviceName, platform }: Props) {
                 {entry.status === 'running' ? (
                   <span className="flex items-center gap-1.5 text-muted text-[11px]">
                     <Loader2 size={11} className="animate-spin text-primary" />
-                    جاري التنفيذ...
+                    {t('cr_running')}
                   </span>
                 ) : (
                   <span className={clsx(
@@ -272,7 +274,7 @@ export function CommandRunner({ deviceId, deviceName, platform }: Props) {
                     {entry.status === 'success' ? <CheckCircle2 size={11} /> :
                      entry.status === 'timeout' ? <AlertCircle size={11} /> : <XCircle size={11} />}
                     <span>
-                      {entry.status === 'success' ? 'نجح' : entry.status === 'error' ? 'خطأ' : 'انتهت المهلة'}
+                      {entry.status === 'success' ? t('cr_status_success') : entry.status === 'error' ? t('cr_status_error') : t('cr_status_timeout')}
                     </span>
                     <span className="text-muted font-normal">·</span>
                     <span className="text-muted font-normal">exit {entry.exitCode}</span>
@@ -289,8 +291,8 @@ export function CommandRunner({ deviceId, deviceName, platform }: Props) {
                         className="flex items-center gap-1 text-[10px] text-muted hover:text-ink px-1.5 py-0.5 rounded hover:bg-surface2 transition-colors"
                       >
                         {entry.collapsed
-                          ? <><ChevronDown size={10} /><span>{outputLines} سطر</span></>
-                          : <><ChevronUp size={10} /><span>طي</span></>
+                          ? <><ChevronDown size={10} /><span>{t('cr_lines', { n: outputLines })}</span></>
+                          : <><ChevronUp size={10} /><span>{t('cr_collapse')}</span></>
                         }
                       </button>
                     )}
@@ -304,7 +306,7 @@ export function CommandRunner({ deviceId, deviceName, platform }: Props) {
                       )}
                     >
                       <Copy size={10} />
-                      <span>{copied === entry.id ? 'تم' : 'نسخ'}</span>
+                      <span>{copied === entry.id ? t('cr_copied') : t('cr_copy')}</span>
                     </button>
                   </div>
                 )}
@@ -338,7 +340,7 @@ export function CommandRunner({ deviceId, deviceName, platform }: Props) {
                   onClick={() => toggleCollapse(entry.id)}
                   className="w-full text-center text-[10px] text-muted hover:text-ink py-1.5 border-t border-line hover:bg-surface2/70 transition-colors"
                 >
-                  عرض {outputLines} سطر ▾
+                  {t('cr_lines', { n: outputLines })} ▾
                 </button>
               )}
             </div>
@@ -363,8 +365,8 @@ export function CommandRunner({ deviceId, deviceName, platform }: Props) {
             onKeyDown={handleKey}
             disabled={running}
             placeholder={isWindows
-              ? 'أدخل أمر Windows... (↑↓ للتاريخ)'
-              : 'أدخل الأمر... (↑↓ للتاريخ)'}
+              ? t('cr_ph_windows')
+              : t('cr_ph_generic')}
             className="flex-1 bg-transparent text-ink text-xs font-mono placeholder:text-muted focus:outline-none min-w-0"
             dir="ltr"
             spellCheck={false}
@@ -380,7 +382,7 @@ export function CommandRunner({ deviceId, deviceName, platform }: Props) {
                 ? 'bg-primary/15 hover:bg-primary/25 text-primary'
                 : 'text-muted cursor-not-allowed'
             )}
-            title="تنفيذ (Enter)"
+            title={t('cr_run_title')}
           >
             {running
               ? <Loader2 size={13} className="animate-spin text-primary" />
@@ -389,7 +391,7 @@ export function CommandRunner({ deviceId, deviceName, platform }: Props) {
           </button>
         </div>
         <p className="text-[10px] text-muted mt-1.5 px-1 select-none">
-          {running ? 'جاري التنفيذ — انتظر...' : 'Enter للتنفيذ · ↑↓ للتنقل في التاريخ'}
+          {running ? t('cr_wait') : t('cr_hint_keys')}
         </p>
       </div>
     </div>
