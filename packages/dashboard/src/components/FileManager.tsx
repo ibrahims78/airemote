@@ -6,6 +6,7 @@ import {
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { api } from '../lib/api'
+import { useT } from '../lib/i18n'
 import { TransferQueue } from './TransferQueue'
 import { Alert, Button, Card, EmptyState, Field, Input, Modal, ProgressBar, Select, SkeletonRows } from './ui'
 
@@ -75,6 +76,7 @@ function authToken(): string {
 }
 
 export function FileManager({ deviceId, rt, initialPath }: Props) {
+  const t = useT()
   // كل نداءات الملفات تحمل التذكرة إن وُجدت (الوكيل بلا حساب لوحة).
   const rq = rt ? `?rt=${encodeURIComponent(rt)}` : ''
   const rqJoin = (sep: string) => (rt ? `${sep}rt=${encodeURIComponent(rt)}` : '')
@@ -117,13 +119,13 @@ export function FileManager({ deviceId, rt, initialPath }: Props) {
       const err = e as { response?: { status?: number; data?: { error?: string } }; code?: string; message?: string }
       const serverMsg = err.response?.data?.error || ''
       if (err.code === 'ECONNABORTED' || /timeout|time out/i.test(serverMsg)) {
-        setError('انتهت مهلة الاتصال — تأكد من أن الجهاز متصل وأن الوكيل يعمل.')
+        setError(t('fm_err_timeout'))
       } else if (/offline/i.test(serverMsg) || err.response?.status === 503) {
-        setError('الجهاز غير متصل — شغّل الوكيل على الجهاز أولاً.')
+        setError(t('fm_err_offline'))
       } else if (/not permitted|denied|EACCES/i.test(serverMsg)) {
-        setError('لا يوجد صلاحية للوصول إلى هذا المسار على الجهاز.')
+        setError(t('fm_err_denied'))
       } else {
-        setError(serverMsg || err.message || 'فشل تحميل الملفات — حاول مجدداً.')
+        setError(serverMsg || err.message || t('fm_err_list'))
       }
       setFiles([])
     } finally {
@@ -178,7 +180,7 @@ export function FileManager({ deviceId, rt, initialPath }: Props) {
       setTimeout(() => setDownloadProgress(null), 2500)
     } catch (e: unknown) {
       const err = e as { message?: string }
-      setError(err.message || 'فشل تنزيل الملف.')
+      setError(err.message || t('fm_err_download'))
       setDownloadProgress(null)
     } finally {
       setDownloadingFile(null)
@@ -193,7 +195,7 @@ export function FileManager({ deviceId, rt, initialPath }: Props) {
       await loadDir(path)
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: string } }; message?: string }
-      setError(err.response?.data?.error || err.message || 'فشل حذف العنصر.')
+      setError(err.response?.data?.error || err.message || t('fm_err_delete'))
     } finally {
       setDeletingFile(null)
     }
@@ -210,7 +212,7 @@ export function FileManager({ deviceId, rt, initialPath }: Props) {
       await loadDir(path)
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: string } }; message?: string }
-      setError(err.response?.data?.error || err.message || 'فشل إعادة التسمية.')
+      setError(err.response?.data?.error || err.message || t('fm_err_rename'))
     }
   }
 
@@ -227,7 +229,7 @@ export function FileManager({ deviceId, rt, initialPath }: Props) {
       await loadDir(path)
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: string } }; message?: string }
-      setError(err.response?.data?.error || err.message || 'فشل رفع الملف.')
+      setError(err.response?.data?.error || err.message || t('fm_err_upload'))
     } finally {
       setUploading(false)
       setUploadName('')
@@ -245,7 +247,7 @@ export function FileManager({ deviceId, rt, initialPath }: Props) {
       await loadDir(path)
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: string } }; message?: string }
-      setError(err.response?.data?.error || err.message || 'فشل إنشاء المجلد.')
+      setError(err.response?.data?.error || err.message || t('fm_err_mkdir'))
     }
   }
 
@@ -280,12 +282,12 @@ export function FileManager({ deviceId, rt, initialPath }: Props) {
     >
       {/* Breadcrumb + navigation */}
       <div className="flex flex-wrap items-center gap-1.5">
-        <Button variant="ghost" className="h-7 w-7 px-0" title="الجذر" aria-label="الجذر" icon={<Home size={14} />} onClick={() => void loadDir('/')} />
-        <Button variant="ghost" className="h-7 w-7 px-0" title="أعلى" aria-label="مجلد أعلى" icon={<ArrowUp size={14} />} disabled={path === '/'} onClick={() => void goUp()} />
-        <Button variant="ghost" className="h-7 w-7 px-0" title="تحديث" aria-label="تحديث" icon={<RefreshCw size={14} className={clsx(loading && 'animate-spin')} />} onClick={() => void loadDir(path)} />
+        <Button variant="ghost" className="h-7 w-7 px-0" title={t('fm_root')} aria-label={t('fm_root')} icon={<Home size={14} />} onClick={() => void loadDir('/')} />
+        <Button variant="ghost" className="h-7 w-7 px-0" title={t('fm_up')} aria-label={t('fm_up_folder')} icon={<ArrowUp size={14} />} disabled={path === '/'} onClick={() => void goUp()} />
+        <Button variant="ghost" className="h-7 w-7 px-0" title={t('fm_refresh')} aria-label={t('fm_refresh')} icon={<RefreshCw size={14} className={clsx(loading && 'animate-spin')} />} onClick={() => void loadDir(path)} />
 
         <div className="flex min-w-0 flex-wrap items-center gap-0.5 rounded-lg border border-line bg-surface px-2 py-1">
-          <button onClick={() => void loadDir('/')} className="rounded px-0.5 text-[12px] text-muted transition-colors hover:text-ink">الجذر</button>
+          <button onClick={() => void loadDir('/')} className="rounded px-0.5 text-[12px] text-muted transition-colors hover:text-ink">{t('fm_root')}</button>
           {pathParts.map((part, i) => (
             <span key={i} className="flex min-w-0 items-center gap-0.5">
               <ChevronRight size={11} className="shrink-0 text-muted/60" aria-hidden />
@@ -311,8 +313,8 @@ export function FileManager({ deviceId, rt, initialPath }: Props) {
           <Input
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="بحث في المجلد الحالي…"
-            aria-label="بحث في المجلد الحالي"
+            placeholder={t('fm_search_ph')}
+            aria-label={t('fm_search_ph')}
             className="h-8 ps-8 pe-2 text-[12px]"
           />
         </div>
@@ -322,25 +324,25 @@ export function FileManager({ deviceId, rt, initialPath }: Props) {
           <Select
             value={sortKey}
             onChange={e => setSortKey(e.target.value as SortKey)}
-            aria-label="ترتيب الملفات"
+            aria-label={t('fm_sort')}
             className="h-7 border-0 bg-transparent ps-0 pe-1"
           >
-            <option value="name">الاسم</option>
-            <option value="size">الحجم</option>
-            <option value="modified">التاريخ</option>
+            <option value="name">{t('fm_col_name')}</option>
+            <option value="size">{t('fm_col_size')}</option>
+            <option value="modified">{t('fm_col_date')}</option>
           </Select>
           <button
             onClick={() => setSortDir(d => d === 'asc' ? 'desc' : 'asc')}
             className="rounded px-1 text-[11px] text-muted transition-colors hover:text-ink"
-            aria-label={sortDir === 'asc' ? 'ترتيب تنازلي' : 'ترتيب تصاعدي'}
+            aria-label={sortDir === 'asc' ? t('fm_sort_desc') : t('fm_sort_asc')}
           >
             {sortDir === 'asc' ? '↑' : '↓'}
           </button>
         </div>
 
-        <Button variant="secondary" icon={<FolderPlus size={13} />} onClick={() => setShowMkdir(true)}>مجلد جديد</Button>
+        <Button variant="secondary" icon={<FolderPlus size={13} />} onClick={() => setShowMkdir(true)}>{t('fm_new_folder')}</Button>
         <Button variant="primary" loading={uploading} icon={<Upload size={13} />} onClick={() => uploadRef.current?.click()}>
-          {uploading ? 'جارٍ الرفع…' : 'رفع ملف'}
+          {uploading ? t('fm_uploading') : t('fm_upload')}
         </Button>
         <input ref={uploadRef} type="file" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) void uploadFile(f) }} />
       </div>
@@ -349,7 +351,7 @@ export function FileManager({ deviceId, rt, initialPath }: Props) {
 
       {uploading && (
         <Alert tone="info">
-          يتم رفع <span className="font-mono">{uploadName}</span>
+          {t('fm_uploading_named')} <span className="font-mono">{uploadName}</span>
         </Alert>
       )}
 
@@ -361,11 +363,11 @@ export function FileManager({ deviceId, rt, initialPath }: Props) {
           <table className="w-full border-collapse text-[12px]">
             <thead className="sticky top-0 z-10 bg-surface2/95 backdrop-blur">
               <tr className="text-muted">
-                <th scope="col" className="px-3 py-2 text-start font-medium">الاسم</th>
-                <th scope="col" className="hidden w-24 px-3 py-2 text-start font-medium sm:table-cell">الحجم</th>
-                <th scope="col" className="hidden w-44 px-3 py-2 text-start font-medium md:table-cell">آخر تعديل</th>
+                <th scope="col" className="px-3 py-2 text-start font-medium">{t('fm_col_name')}</th>
+                <th scope="col" className="hidden w-24 px-3 py-2 text-start font-medium sm:table-cell">{t('fm_col_size')}</th>
+                <th scope="col" className="hidden w-44 px-3 py-2 text-start font-medium md:table-cell">{t('fm_col_modified')}</th>
                 <th scope="col" className="w-24 px-2 py-2">
-                  <span className="sr-only">إجراءات</span>
+                  <span className="sr-only">{t('fm_actions')}</span>
                 </th>
               </tr>
             </thead>
@@ -383,11 +385,11 @@ export function FileManager({ deviceId, rt, initialPath }: Props) {
                   <td colSpan={4} className="p-0">
                     <EmptyState
                       icon={<HardDrive size={26} />}
-                      title={query ? 'لا نتائج مطابقة للبحث' : 'هذا المجلد فارغ'}
-                      description={query ? 'جرّب كلمة أخرى أو امسح البحث للعودة إلى قائمة المجلد.' : 'اسحب ملفاً إلى هذه المساحة، أو استخدم «رفع ملف».'}
+                      title={query ? t('fm_empty_search_title') : t('fm_empty_folder_title')}
+                      description={query ? t('fm_empty_search_desc') : t('fm_empty_folder_desc')}
                       action={query
-                        ? <Button onClick={() => setQuery('')}>مسح البحث</Button>
-                        : <Button variant="primary" icon={<Upload size={13} />} onClick={() => uploadRef.current?.click()}>رفع ملف</Button>}
+                        ? <Button onClick={() => setQuery('')}>{t('fm_clear_search')}</Button>
+                        : <Button variant="primary" icon={<Upload size={13} />} onClick={() => uploadRef.current?.click()}>{t('fm_upload')}</Button>}
                     />
                   </td>
                 </tr>
@@ -418,7 +420,7 @@ export function FileManager({ deviceId, rt, initialPath }: Props) {
                           variant="ghost"
                           className="h-7 w-7 px-0"
                           aria-label={`تنزيل ${entry.name}`}
-                          title="تنزيل"
+                          title={t('fm_download')}
                           loading={downloadingFile === entry.path}
                           icon={<Download size={13} />}
                           onClick={() => void download(entry)}
@@ -428,7 +430,7 @@ export function FileManager({ deviceId, rt, initialPath }: Props) {
                         variant="ghost"
                         className="h-7 w-7 px-0"
                         aria-label={`إعادة تسمية ${entry.name}`}
-                        title="إعادة تسمية"
+                        title={t('fm_rename')}
                         icon={<Pencil size={13} />}
                         onClick={() => { setRenamingFile(entry); setRenameValue(entry.name) }}
                       />
@@ -436,7 +438,7 @@ export function FileManager({ deviceId, rt, initialPath }: Props) {
                         variant="ghost"
                         className="h-7 w-7 px-0 hover:text-danger"
                         aria-label={`حذف ${entry.name}`}
-                        title="حذف"
+                        title={t('fm_delete')}
                         loading={deletingFile === entry.path}
                         icon={<Trash2 size={13} />}
                         onClick={() => setConfirmDelete(entry)}
@@ -462,7 +464,7 @@ export function FileManager({ deviceId, rt, initialPath }: Props) {
               {downloadProgress.percent}% · {formatSize(downloadProgress.received)}{downloadProgress.total ? ' / ' + formatSize(downloadProgress.total) : ''}
             </span>
           </div>
-          <ProgressBar className="mt-1.5" value={downloadProgress.percent} tone="primary" label="تقدم التنزيل" />
+          <ProgressBar className="mt-1.5" value={downloadProgress.percent} tone="primary" label={t('fm_download_progress')} />
         </div>
       )}
 
@@ -470,7 +472,7 @@ export function FileManager({ deviceId, rt, initialPath }: Props) {
       {dragOver && (
         <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center rounded-xl border-2 border-dashed border-primary bg-primary/10 text-[13px] font-medium text-primary">
           <Upload size={18} className="me-2" aria-hidden />
-          أفلت الملف هنا لرفعه إلى: {path}
+          {t('fm_drop_here')} {path}
         </div>
       )}
 
@@ -478,14 +480,14 @@ export function FileManager({ deviceId, rt, initialPath }: Props) {
       <Modal
         open={!!renamingFile}
         onClose={() => setRenamingFile(null)}
-        title="إعادة تسمية"
+        title={t('fm_rename')}
         size="sm"
         footer={<>
-          <Button onClick={() => setRenamingFile(null)}>إلغاء</Button>
-          <Button variant="primary" onClick={() => void doRename()} disabled={!renameValue.trim()}>حفظ</Button>
+          <Button onClick={() => setRenamingFile(null)}>{t('fm_cancel')}</Button>
+          <Button variant="primary" onClick={() => void doRename()} disabled={!renameValue.trim()}>{t('fm_save')}</Button>
         </>}
       >
-        <Field label="الاسم الجديد" htmlFor="fm-rename">
+        <Field label={t('fm_new_name')} htmlFor="fm-rename">
           <Input
             id="fm-rename"
             autoFocus
@@ -500,22 +502,22 @@ export function FileManager({ deviceId, rt, initialPath }: Props) {
       <Modal
         open={showMkdir}
         onClose={() => setShowMkdir(false)}
-        title="إنشاء مجلد جديد"
+        title={t('fm_create_folder')}
         description={path}
         size="sm"
         footer={<>
-          <Button onClick={() => setShowMkdir(false)}>إلغاء</Button>
-          <Button variant="primary" onClick={() => void doMkdir()} disabled={!mkdirName.trim()}>إنشاء</Button>
+          <Button onClick={() => setShowMkdir(false)}>{t('fm_cancel')}</Button>
+          <Button variant="primary" onClick={() => void doMkdir()} disabled={!mkdirName.trim()}>{t('fm_create')}</Button>
         </>}
       >
-        <Field label="اسم المجلد" htmlFor="fm-mkdir">
+        <Field label={t('fm_folder_name')} htmlFor="fm-mkdir">
           <Input
             id="fm-mkdir"
             autoFocus
             value={mkdirName}
             onChange={e => setMkdirName(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') void doMkdir() }}
-            placeholder="اسم المجلد"
+            placeholder={t('fm_folder_name')}
           />
         </Field>
       </Modal>
@@ -524,16 +526,16 @@ export function FileManager({ deviceId, rt, initialPath }: Props) {
       <Modal
         open={!!confirmDelete}
         onClose={() => setConfirmDelete(null)}
-        title="تأكيد الحذف"
-        description="لا يمكن التراجع عن هذا الإجراء."
+        title={t('fm_confirm_delete')}
+        description={t('fm_confirm_delete_desc')}
         size="sm"
         footer={<>
-          <Button onClick={() => setConfirmDelete(null)}>إلغاء</Button>
-          <Button variant="danger" onClick={() => { if (confirmDelete) void doDelete(confirmDelete) }}>حذف</Button>
+          <Button onClick={() => setConfirmDelete(null)}>{t('fm_cancel')}</Button>
+          <Button variant="danger" onClick={() => { if (confirmDelete) void doDelete(confirmDelete) }}>{t('fm_delete')}</Button>
         </>}
       >
         <p className="text-[12px] text-muted">
-          سيتم حذف <span className="font-mono text-ink">{confirmDelete?.name}</span> نهائياً من الجهاز.
+          {t('fm_delete_permanent_prefix')} <span className="font-mono text-ink">{confirmDelete?.name}</span> {t('fm_delete_permanent_suffix')}
         </p>
       </Modal>
     </div>
