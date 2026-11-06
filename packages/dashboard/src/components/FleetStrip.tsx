@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import { Monitor, Play, RefreshCw, Smartphone, ExternalLink } from 'lucide-react'
 import { clsx } from 'clsx'
+import { useT } from '../lib/i18n'
 import type { Device } from '@airemote/shared'
 import { Badge } from './ui'
 import { openScreenWindow } from '../lib/screenWindow'
@@ -11,6 +12,7 @@ import { openScreenWindow } from '../lib/screenWindow'
  * لا يبدأ أي بث: «تشغيل» يفتح نافذة العرض فقط.
  */
 export function FleetStrip ({ devices, max = 4 }: { devices: Device[]; max?: number }) {
+  const t = useT()
   const list = devices.slice(0, max)
   if (list.length === 0) return null
 
@@ -36,14 +38,14 @@ export function FleetStrip ({ devices, max = 4 }: { devices: Device[]; max?: num
               </div>
               <Badge tone={online ? 'success' : 'neutral'}>
                 <i className={clsx('inline-block h-1.5 w-1.5 rounded-full', online ? 'bg-success' : 'bg-muted')} />
-                {online ? 'متصل' : 'غير متصل'}
+                {online ? t('online') : t('offline')}
               </Badge>
             </div>
 
             <dl className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5 text-[11px] leading-5">
-              <dt className="text-muted">النظام</dt>
+              <dt className="text-muted">{t('fleet_os')}</dt>
               <dd className="truncate text-ink-2">{d.info?.osVersion || d.info?.platform || '—'}</dd>
-              <dt className="text-muted">الوكيل</dt>
+              <dt className="text-muted">{t('fleet_agent')}</dt>
               <dd className="truncate text-ink-2">{version || '—'}</dd>
             </dl>
 

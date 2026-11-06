@@ -298,7 +298,7 @@ export function DevicesPage() {
         </Button>
       </div>
 
-      {error && <Alert tone="danger" className="mb-4" title="تعذّر تحميل الأجهزة">{error}</Alert>}
+      {error && <Alert tone="danger" className="mb-4" title={t('devices_load_failed')}>{error}</Alert>}
 
       {showAdd && (
         <Card className="mb-4">
@@ -313,7 +313,7 @@ export function DevicesPage() {
                 className="flex-1"
               />
               <Button type="submit" variant="primary" size="md" loading={adding}>{t('add')}</Button>
-              <Button variant="ghost" size="md" aria-label="إغلاق" icon={<X size={16} />} onClick={() => setShowAdd(false)} />
+              <Button variant="ghost" size="md" aria-label={t('ui_close')} icon={<X size={16} />} onClick={() => setShowAdd(false)} />
             </form>
           </CardBody>
         </Card>
@@ -365,16 +365,16 @@ export function DevicesPage() {
                         {(() => {
                           const r = (d as unknown as { relay?: { state: string; access: string; direction: string; peerName: string } }).relay
                           if (!r) return null
-                          const acc = r.access === 'control' ? 'تحكم' : r.access === 'files' ? 'ملفات' : 'عرض'
+                          const acc = r.access === 'control' ? t('acc_control') : r.access === 'files' ? t('acc_files') : t('acc_view')
                           const live = r.state === 'active'
-                          const st = live ? 'LIVE' : r.state === 'requested' ? 'طلب معلّق' : 'معلّقة'
+                          const st = live ? 'LIVE' : r.state === 'requested' ? t('relay_state_pending') : t('relay_state_suspended')
                           return (
                             <div
                               className={clsx(
                                 'mt-1 inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-[11px] font-medium',
                                 live ? 'bg-danger/15 text-danger' : 'bg-warning/15 text-warning'
                               )}
-                              title={live ? 'اتصال وكيل↔وكيل نشط' : 'جلسة وكيل↔وكيل بانتظار الموافقة'}
+                              title={live ? t('relay_card_active') : t('relay_card_pending')}
                             >
                               <span aria-hidden="true" className={clsx('h-1.5 w-1.5 rounded-full', live ? 'animate-pulse bg-danger' : 'bg-warning')} />
                               <span aria-hidden="true">{r.direction === 'out' ? '↗' : '↙'}</span>
@@ -383,14 +383,14 @@ export function DevicesPage() {
                               <button
                                 type="button"
                                 className="ms-1 rounded border border-primary/40 px-1 text-[10px] hover:bg-primary/20"
-                                title="قطع الجلسة"
+                                title={t('relay_end')}
                                 onClick={async (ev) => {
                                   ev.stopPropagation()
                                   const sid = (r as unknown as { sessionId?: string }).sessionId || ''
                                   if (!sid) return
                                   try { await api.post('/api/relay/' + sid + '/close', { reason: 'admin_force' }); await fetchDevices() } catch {}
                                 }}
-                              >قطع</button>
+                              >{t('relay_end_short')}</button>
                             </div>
                           )
                         })()}

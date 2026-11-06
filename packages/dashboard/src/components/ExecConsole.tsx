@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { useAuthStore } from '../store/authStore'
+import { useT } from '../lib/i18n'
 
 export function ExecConsole({ deviceId }: { deviceId: string }) {
+  const t = useT()
   const { token } = useAuthStore()
   const [cmd, setCmd] = useState('')
   const [out, setOut] = useState('')
@@ -33,7 +35,7 @@ export function ExecConsole({ deviceId }: { deviceId: string }) {
           value={cmd}
           onChange={e => setCmd(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') run() }}
-          placeholder="أدخل أمر shell للجهاز (مثال: getprop ro.product.model)"
+          placeholder={t('exec_placeholder')}
           className="flex-1 bg-code border border-line rounded-lg px-3 py-2 text-sm text-ink font-mono outline-none focus:border-primary/60"
           dir="ltr"
         />
@@ -41,10 +43,10 @@ export function ExecConsole({ deviceId }: { deviceId: string }) {
           onClick={run}
           disabled={busy || !cmd.trim()}
           className="px-4 py-2 rounded-lg bg-primary hover:brightness-110 disabled:opacity-40 text-primary-fg text-sm font-medium"
-        >{busy ? '...' : 'تنفيذ'}</button>
+        >{busy ? '...' : t('exec_run')}</button>
       </div>
       <pre className="flex-1 overflow-auto bg-code border border-line rounded-lg p-3 text-[12px] leading-5 text-success font-mono whitespace-pre-wrap" dir="ltr">
-        {out || 'الطرفية تعمل عبر تنفيذ أوامر الوكيل (بدون SSH). اكتب أمراً بالأعلى.'}
+        {out || t('exec_hint')}
       </pre>
     </div>
   )

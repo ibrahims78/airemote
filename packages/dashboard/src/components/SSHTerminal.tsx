@@ -8,6 +8,7 @@ import {
   Terminal as TermIcon, AlertTriangle, CheckCircle2
 } from 'lucide-react'
 import { useUIStore } from '../store/uiStore'
+import { useT } from '../lib/i18n'
 import '@xterm/xterm/css/xterm.css'
 import { fetchWsTicket } from '../lib/wsTicket'
 
@@ -63,6 +64,7 @@ function getFreshToken(): string {
 }
 
 export function SSHTerminal({ config, deviceId, onClose }: Props) {
+  const t = useT()
   const theme = useUIStore(s => s.theme)
 
   const termRef             = useRef<HTMLDivElement>(null)
@@ -163,7 +165,7 @@ export function SSHTerminal({ config, deviceId, onClose }: Props) {
     if (!ticket) {
       connectingRef.current = false
       setStatus('error')
-      setErrorMsg('تعذر إنشاء تذكرة اتصال — أعد تسجيل الدخول')
+      setErrorMsg(t('ssh_ticket_failed'))
       return
     }
     const wsUrl   = `${protocol}//${window.location.host}/ssh?ticket=${encodeURIComponent(ticket)}`
