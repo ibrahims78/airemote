@@ -324,11 +324,11 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, loading, ha
         })}
       </div>
 
-      {tiles.length === 0 ? (
-        <div className="ph" style={{ padding: '32px 0' }}>
-          <div className="big">{tr('لا أجهزة للمراقبة — أضف جهازًا', 'No devices to monitor — add a device')}</div>
+      {tiles.length === 0 && devices.length > 0 ? (
+        <div className="ph py-8">
+          <div className="big">{tr('لا بث مفتوح — اضغط «إضافة بث»', 'No stream open — press "Add stream"')}</div>
         </div>
-      ) : (
+      ) : tiles.length === 0 ? null : (
         <div className="wall">
           {tiles.map(tile => {
             const device = devices.find(d => d.id === tile.deviceId)

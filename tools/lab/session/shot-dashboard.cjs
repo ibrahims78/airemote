@@ -20,6 +20,8 @@ const out = path.resolve(process.argv[2] || 'shot.png')
 const route = process.argv[3] && !process.argv[3].startsWith('--') ? process.argv[3] : '/'
 const argOf = (n) => { const i = process.argv.indexOf('--' + n); return i > 0 ? process.argv[i + 1] : null }
 const failApi = argOf('fail-api')
+const stubApi = argOf('stub-api')
+const stubBody = (() => { const i = process.argv.indexOf('--stub-api'); return i > 0 ? process.argv[i + 2] : null })()
 const delayApi = argOf('delay-api')
 
 const creds = fs.readFileSync(path.join(os.tmpdir(), 'airemote-lab-probe.txt'), 'utf8').split(/\r?\n/)
@@ -68,7 +70,7 @@ function cdp (wsUrl) {
   }
 
   // optional fault injection for the state shots
-  if (failApi || delayApi) {
+  if (failApi || delayApi || stubApi) {
     await c.send('Fetch.enable', { patterns: [{ urlPattern: '*/api/*' }] })
     c.events.push({ method: '__fetchOn' })
     const handle = async () => {
@@ -78,6 +80,12 @@ function cdp (wsUrl) {
         e.__done = true
         const url = e.params.request.url
         if (failApi && url.includes(failApi)) { await c.send('Fetch.failRequest', { requestId: e.params.requestId, errorReason: 'Failed' }); continue }
+        if (stubApi && url.includes(stubApi)) {
+          await c.send('Fetch.fulfillRequest', { requestId: e.params.requestId, responseCode: 200,
+            responseHeaders: [{ name: 'Content-Type', value: 'application/json' }],
+            body: Buffer.from(stubBody || '[]', 'utf8').toString('base64') })
+          continue
+        }
         if (delayApi && url.includes(delayApi)) { await sleep(6000) }
         await c.send('Fetch.continueRequest', { requestId: e.params.requestId })
       }

@@ -99,7 +99,9 @@ export default function App() {
         {!setupRequired && (
           <>
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/view/:deviceId" element={<SessionTicketGate><ScreenPopoutPage /></SessionTicketGate>} />
+            {/* 3.14.1 — optional id: /view with no device shows the popout's empty state instead of a 404 */}
+            <Route path="/view/:deviceId?" element={<SessionTicketGate><ScreenPopoutPage /></SessionTicketGate>} />
+            <Route path="/view" element={<SessionTicketGate><ScreenPopoutPage /></SessionTicketGate>} />
             {/* 3.11 — وضع الملفات: تُفتح من الوكيل بتذكرة الجلسة بلا تسجيل دخول. */}
             <Route path="/files/:deviceId" element={<FilesPage />} />
             {/* 3.14.1 — the UI gallery is a measurement tool, not a product surface */}
