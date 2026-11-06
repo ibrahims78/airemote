@@ -254,8 +254,16 @@ export function DashboardLayout() {
                 <button type="button" onClick={() => menuAction(() => navigate('/devices'))}>{T('devices')}</button>
                 <button type="button" onClick={() => menuAction(() => navigate('/ai'))}>{T('ai_assistant')}</button>
                 <button type="button" onClick={() => menuAction(() => navigate('/settings?tab=sessions'))}>{isRtl ? 'سجل الجلسات' : 'Session log'}</button>
+                <button type="button" onClick={() => menuAction(() => navigate('/notifications'))}>{T('nav_notifications')}</button>
                 <button type="button" onClick={() => menuAction(() => navigate('/settings'))}>{T('settings')}</button>
                 <button type="button" onClick={() => menuAction(handleLogout)}>{T('logout')}</button>
+                {user?.role === 'admin' && (
+                  <>
+                    <div className="app-menu-section">{isRtl ? 'الإدارة' : 'Administration'}</div>
+                    <button type="button" onClick={() => menuAction(() => navigate('/audit'))}>{T('nav_audit')}</button>
+                    <button type="button" onClick={() => menuAction(() => navigate('/users'))}>{T('users')}</button>
+                  </>
+                )}
 
                 <div className="app-menu-section">{isRtl ? 'تحرير' : 'Edit'}</div>
                 <button type="button" onClick={() => menuAction(() => navigator.clipboard?.writeText(window.location.href))}>{isRtl ? 'نسخ رابط الصفحة' : 'Copy page URL'}</button>
