@@ -40,9 +40,8 @@ const initialTheme: Theme = (() => {
       const t = JSON.parse(s)?.state?.theme
       if (t === 'light' || t === 'dark') return t
     }
-    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) return 'light'
   } catch {}
-  return 'dark'
+  return 'light'
 })()
 
 export const useUIStore = create<UIStore>()(
