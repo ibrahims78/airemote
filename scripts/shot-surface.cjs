@@ -21,6 +21,7 @@ const W = Number(args.width || 1700)
 const H = Number(args.height || 980)
 const SCALE = Number(args.scale || 2)
 const THEME = args.theme || 'light'
+const LANG = args.lang || 'ar'
 const WAIT = Number(args.wait || 7000)
 const OUT = args.out || path.resolve(__dirname, '..', 'outputs', 'surface.png')
 const CHROME = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe'
@@ -44,7 +45,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms))
     '--window-size=' + W + ',' + H,
     '--remote-debugging-port=' + PORT,
     '--user-data-dir=' + profile,
-    '--no-first-run', '--no-default-browser-check', 'about:blank'
+    '--no-first-run', '--no-default-browser-check', '--ignore-certificate-errors', 'about:blank'
   ], { stdio: 'ignore' })
 
   let target = null
@@ -55,7 +56,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms))
   if (!target) { chrome.kill(); throw new Error('no CDP target') }
 
   const authState = JSON.stringify({ state: { token: login.token, user: login.user, refreshToken: login.refreshToken || null }, version: 0 })
-  const uiState = JSON.stringify({ state: { theme: THEME, lang: 'ar' }, version: 0 })
+  const uiState = JSON.stringify({ state: { theme: THEME, lang: LANG }, version: 0 })
   const seed = `try{
     localStorage.setItem('airemote-auth', ${JSON.stringify(authState)});
     localStorage.setItem('airemote-ui', ${JSON.stringify(uiState)});
@@ -86,7 +87,7 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms))
   fs.mkdirSync(path.dirname(OUT), { recursive: true })
   fs.writeFileSync(OUT, Buffer.from(shot.result.data, 'base64'))
   const { result: { result: meta } } = await send('Runtime.evaluate', {
-    expression: 'JSON.stringify({ w: innerWidth, h: innerHeight, dpr: devicePixelRatio, title: document.title, route: location.pathname })',
+    expression: 'JSON.stringify({ w: innerWidth, h: innerHeight, dpr: devicePixelRatio, title: document.title, route: location.pathname, arabic: ((document.body.innerText||"").match(/[\\u0600-\\u06FF]/g)||[]).length })',
     returnByValue: true
   })
   console.log('WROTE ' + OUT)
