@@ -4,7 +4,9 @@ import type { Device } from '@airemote/shared'
 import { useUIStore } from '../store/uiStore'
 import { useT } from '../lib/i18n'
 import { clsx } from 'clsx'
+import { Monitor } from 'lucide-react'
 import { ScreenViewer } from './ScreenViewer'
+import { EmptyState, SkeletonRows } from './ui'
 
 type RefName = 'play' | 'stop' | 'max' | 'restore' | 'open' | 'x' | 'plus' | 'monitor'
 
@@ -100,7 +102,7 @@ function loadSnapshot (): { tiles: Tile[]; size: Size } {
  * جسم غرفة العمليات — بنية design/server.html: `.dash-head` ثم `.fleet` ثم `.wall`.
  * 3.14.0 — كل صنف من المرجع (control-room-ref.css)؛ لا قياس بلا قبل/بعد (D54).
  */
-export function ControlRoomBody ({ devices, statsMap, activeScreens, hasError, onOpen, onRetry }: Props) {
+export function ControlRoomBody ({ devices, statsMap, activeScreens, loading, hasError, onOpen, onRetry }: Props) {
   const { lang } = useUIStore()
   const T = useT()
   const isRtl = lang === 'ar'
@@ -215,6 +217,23 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, hasError, o
           <span>{tr('تعذّر الاتصال بالسيرفر — إعادة المحاولة', 'Could not reach the server — retry')}</span>
           <button type="button" className="btn ghost sm" onClick={onRetry}>{tr('إعادة المحاولة', 'Retry')}</button>
         </div>
+      )}
+
+      {/* 3.14.1 - the two states this surface did not have (PLAN 2.2 rule 5) */}
+      {!hasError && loading && devices.length === 0 && (
+        <div aria-busy="true" aria-live="polite">
+          <SkeletonRows rows={3} />
+          <div className="mt-2"><SkeletonRows rows={2} /></div>
+        </div>
+      )}
+
+      {!hasError && !loading && devices.length === 0 && (
+        <EmptyState
+          icon={<Monitor size={20} />}
+          title={tr('لا أجهزة بعد', 'No devices yet')}
+          description={tr('أضف جهازًا من صفحة الأجهزة ليظهر هنا.', 'Add a device from the Devices page to see it here.')}
+          action={<a className="btn primary" href="/devices">{tr('إضافة جهاز', 'Add device')}</a>}
+        />
       )}
 
       {fleetHead && (

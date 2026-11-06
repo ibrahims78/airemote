@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react'
 import { useParams, useSearchParams } from 'react-router-dom'
 import { ScreenViewer } from '../components/ScreenViewer'
 import { api } from '../lib/api'
+import { StateSurface } from '../components/ui'
+import type { SurfaceState } from '../components/ui'
+import { useT } from '../lib/i18n'
 
 export function ScreenPopoutPage() {
   const { deviceId } = useParams<{ deviceId: string }>()
@@ -15,6 +18,9 @@ export function ScreenPopoutPage() {
   })()
   const sessionAccess = (search.get('access') || '') as '' | 'view' | 'control' | 'files'
   const [name, setName] = useState('')
+  // 3.14.1 - the window used to return null on a missing id and show nothing at all
+  const t = useT()
+  const [phase, setPhase] = useState<SurfaceState>(deviceId ? 'loading' : 'empty')
 
   useEffect(() => {
     if (!deviceId) return
@@ -34,11 +40,12 @@ export function ScreenPopoutPage() {
         window.addEventListener('beforeunload', closed)
       }
     } catch {}
+    if (sessionTicket || sessionResumeKey) setPhase('ready')
     if (!sessionTicket && !sessionResumeKey) {
       api.get('/api/devices').then(r => {
         const d = (r.data as Array<{ id: string; name: string }>).find(x => x.id === deviceId)
         if (d) { setName(d.name); try { document.title = d.name + ' — AiRemote' } catch {} }
-      }).catch(() => {})
+      }).then(() => setPhase(p => (p === 'loading' ? 'ready' : p))).catch(() => setPhase('error'))
     }
     return () => {
       closed()
@@ -47,10 +54,43 @@ export function ScreenPopoutPage() {
     }
   }, [deviceId, sessionTicket])
 
-  if (!deviceId) return null
+  if (!deviceId) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-code">
+        <div className="w-[360px]">
+          <StateSurface
+            state="empty"
+            emptyTitle={t('popout_no_device_title')}
+            emptyDescription={t('popout_no_device_desc')}
+            emptyAction={<a className="btn primary" href="/devices">{t('popout_pick_device')}</a>}
+          >
+            <span />
+          </StateSurface>
+        </div>
+      </div>
+    )
+  }
   return (
     <div className="fixed inset-0 bg-code">
-      <ScreenViewer deviceId={deviceId} deviceName={name || deviceId} popout sessionTicket={sessionTicket} sessionResumeKey={sessionResumeKey} sessionAccess={sessionAccess} />
+      {phase !== 'ready' ? (
+        <div className="flex h-full items-center justify-center">
+          <div className="w-[380px]">
+            <StateSurface
+              state={phase}
+              rows={5}
+              errorTitle={t('popout_failed_title')}
+              retryLabel={t('ov_retry')}
+              onRetry={() => window.location.reload()}
+              emptyTitle={t('popout_no_device_title')}
+              emptyDescription={t('popout_no_device_desc')}
+            >
+              <span />
+            </StateSurface>
+          </div>
+        </div>
+      ) : (
+        <ScreenViewer deviceId={deviceId} deviceName={name || deviceId} popout sessionTicket={sessionTicket} sessionResumeKey={sessionResumeKey} sessionAccess={sessionAccess} />
+      )}
     </div>
   )
 }

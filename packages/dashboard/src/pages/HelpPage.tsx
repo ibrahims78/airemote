@@ -8,7 +8,7 @@ import { useUIStore } from '../store/uiStore'
 import { api } from '../lib/api'
 import { APP_VERSION } from '../lib/version'
 import { HELP_MARKDOWN } from './helpContent'
-import { Button, Input, Modal } from '../components/ui'
+import { Alert, Button, Input, Modal } from '../components/ui'
 
 interface Section { id: string; title: string; body: string }
 
@@ -173,7 +173,11 @@ export function HelpPage() {
   const [aboutOpen, setAboutOpen] = useState(false)
   const [serverVersion, setServerVersion] = useState('')
 
-  const sections = useMemo(() => splitSections(HELP_MARKDOWN), [])
+  // 3.14.1 - a malformed guide must say so instead of rendering an empty page
+  const { sections, sectionsError } = useMemo(() => {
+    try { return { sections: splitSections(HELP_MARKDOWN), sectionsError: false } }
+    catch { return { sections: [] as Section[], sectionsError: true } }
+  }, [])
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return sections
@@ -287,7 +291,14 @@ export function HelpPage() {
 
         {/* Content */}
         <main className="min-w-0">
-          {filtered.length === 0 && (
+          {sectionsError && (
+            <Alert tone="danger" title={isAr ? 'تعذّر تحميل دليل المساعدة' : 'Could not load the help guide'}>
+              <button type="button" className="mt-1 text-[11.5px] underline underline-offset-2" onClick={() => window.location.reload()}>
+                {isAr ? 'إعادة المحاولة' : 'Retry'}
+              </button>
+            </Alert>
+          )}
+          {!sectionsError && filtered.length === 0 && (
             <div className={clsx('rounded-2xl border p-10 text-center', 'bg-surface border-line')}>
               <Search size={26} className={clsx('mx-auto mb-3', 'text-muted')} />
               <p className={clsx('text-sm font-medium', 'text-ink')}>{isAr ? 'لا توجد نتائج مطابقة' : 'No matching results'}</p>

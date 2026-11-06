@@ -6,11 +6,12 @@ import { Bot, Circle, Monitor, Wifi, X } from 'lucide-react'
 import { clsx } from 'clsx'
 import { useT } from '../lib/i18n'
 import { useUIStore } from '../store/uiStore'
+import { Alert, SkeletonRows } from '../components/ui'
 
 export function AiPage() {
   const t    = useT()
   const isAr = useUIStore(s => s.lang === 'ar')
-  const { devices, statsMap, fetchDevices } = useDeviceStore()
+  const { devices, statsMap, loading, error, fetchDevices } = useDeviceStore()
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | undefined>(() => {
     try { return localStorage.getItem('airemote-ai-device-v1') || undefined } catch { return undefined }
   })
@@ -19,6 +20,9 @@ export function AiPage() {
   const autoPickedRef = useRef(false)
 
   const onlineDevices = devices.filter(d => d.status === 'online')
+  // 3.14.1 - device list states (PLAN 2.2 rule 5): the empty one already existed below
+  const listLoading = loading && devices.length === 0
+  const listError = !listLoading && !!error
 
   useEffect(() => {
     try {
@@ -105,7 +109,17 @@ export function AiPage() {
             </div>
           </button>
 
-          {onlineDevices.length === 0 && (
+          {listLoading && <SkeletonRows rows={3} />}
+
+          {listError && (
+            <Alert tone="danger" title={t('ai_load_failed')}>
+              <button type="button" className="mt-1 text-[11.5px] underline underline-offset-2" onClick={() => fetchDevices()}>
+                {t('ov_retry')}
+              </button>
+            </Alert>
+          )}
+
+          {!listLoading && !listError && onlineDevices.length === 0 && (
             <div className="py-6 text-center">
               <Monitor size={22} className="mx-auto mb-2 text-muted/70" />
               <p className="text-xs text-muted">{t('no_devices_yet')}</p>
