@@ -619,6 +619,16 @@ const T = {
     tq_pause: 'إيقاف مؤقت',
     tq_resume: 'استكمال',
     tq_start: 'بدء',
+    pty_hint: 'جلسة Shell مباشرة عبر الوكيل — لا تحتاج بيانات SSH',
+    pty_connecting: 'يتصل بـ {name}...',
+    pty_ticket_failed: 'تعذر إنشاء تذكرة اتصال — أعد تسجيل الدخول',
+    pty_ready: '✓ Shell جاهز!',
+    pty_offline: '⚠ الجهاز غير متصل — شغّل الوكيل أولاً',
+    pty_old_agent: '⚠ هذه الميزة تتطلب الوكيل v1.2.0 أو أحدث',
+    pty_ended: '─── انتهت الجلسة ───',
+    pty_expired_msg: 'انتهت صلاحية الجلسة — أعد تسجيل الدخول',
+    pty_expired: '✗ انتهت صلاحية الجلسة',
+    pty_disconnected: '─── انقطع الاتصال ───',
   },
   en: {
     overview: 'Overview', devices: 'Devices', ai_assistant: 'AI Assistant',
@@ -1236,6 +1246,16 @@ const T = {
     tq_pause: 'Pause',
     tq_resume: 'Resume',
     tq_start: 'Start',
+    pty_hint: 'A direct shell through the agent — no SSH credentials needed',
+    pty_connecting: 'Connecting to {name}…',
+    pty_ticket_failed: 'Could not create a connection ticket — sign in again',
+    pty_ready: '✓ Shell ready!',
+    pty_offline: '⚠ Device offline — start the agent first',
+    pty_old_agent: '⚠ This needs agent v1.2.0 or newer',
+    pty_ended: '─── Session ended ───',
+    pty_expired_msg: 'Session expired — sign in again',
+    pty_expired: '✗ Session expired',
+    pty_disconnected: '─── Disconnected ───',
   }
 } as const
 

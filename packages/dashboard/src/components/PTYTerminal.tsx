@@ -7,6 +7,7 @@ import { Wifi, WifiOff, X, Maximize2, Minimize2, RotateCcw, ChevronDown, AlertTr
 import { useUIStore } from '../store/uiStore'
 import '@xterm/xterm/css/xterm.css'
 import { fetchWsTicket } from '../lib/wsTicket'
+import { useT } from '../lib/i18n'
 
 const DARK_THEME = {
   background: '#0d1117', foreground: '#e6edf3', cursor: '#58a6ff',
@@ -55,6 +56,7 @@ function getFreshToken(): string {
 }
 
 export function PTYTerminal({ deviceId, deviceName, onClose }: Props) {
+  const tr = useT()
   const theme = useUIStore(s => s.theme)
 
   const termRef       = useRef<HTMLDivElement>(null)
@@ -108,7 +110,7 @@ export function PTYTerminal({ deviceId, deviceName, onClose }: Props) {
 
     term.writeln('\x1b[1;36m  AiRemote Direct Shell\x1b[0m\x1b[90m  (PTY v1.2.0)\x1b[0m')
     term.writeln('\x1b[90m  ──────────────────────────────────────────────────────\x1b[0m')
-    term.writeln('\x1b[90m  جلسة Shell مباشرة عبر الوكيل — لا تحتاج بيانات SSH\x1b[0m\r\n')
+    term.writeln('\x1b[90m  ' + tr('pty_hint') + '\x1b[0m\r\n')
 
     const ro = new ResizeObserver(() => { try { fit.fit() } catch {} })
     ro.observe(termRef.current!)
@@ -148,14 +150,14 @@ export function PTYTerminal({ deviceId, deviceName, onClose }: Props) {
     const term = termInstance.current
     setStatus('connecting')
     setErrorMsg('')
-    term.writeln(`\x1b[33m  يتصل بـ ${deviceName || deviceId}...\x1b[0m`)
+    term.writeln('\x1b[33m  ' + tr('pty_connecting', { name: deviceName || deviceId }) + '\x1b[0m')
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const ticket   = await fetchWsTicket(getFreshToken())
     if (!ticket) {
       connectingRef.current = false
       setStatus('error')
-      setErrorMsg('تعذر إنشاء تذكرة اتصال — أعد تسجيل الدخول')
+      setErrorMsg(tr('pty_ticket_failed'))
       return
     }
     const ws = new WebSocket(`${protocol}//${window.location.host}/pty?ticket=${encodeURIComponent(ticket)}&deviceId=${encodeURIComponent(deviceId)}`)
@@ -181,7 +183,7 @@ export function PTYTerminal({ deviceId, deviceName, onClose }: Props) {
 
         if (msg.type === 'pty:connected') {
           setStatus('connected')
-          term.writeln('\x1b[32m  ✓ Shell جاهز!\x1b[0m\r\n')
+          term.writeln('\x1b[32m  ' + tr('pty_ready') + '\x1b[0m\r\n')
           fitAddon.current?.fit()
           try { term.focus() } catch {}
         }
@@ -201,15 +203,15 @@ export function PTYTerminal({ deviceId, deviceName, onClose }: Props) {
           connectingRef.current = false
           term.writeln('\r\n\x1b[31m  ✗ ' + err + '\x1b[0m')
           if (err.includes('offline') || err.includes('not online')) {
-            term.writeln('\x1b[33m  ⚠ الجهاز غير متصل — شغّل الوكيل أولاً\x1b[0m')
+            term.writeln('\x1b[33m  ' + tr('pty_offline') + '\x1b[0m')
           } else if (err.includes('1.2.0')) {
-            term.writeln('\x1b[33m  ⚠ هذه الميزة تتطلب الوكيل v1.2.0 أو أحدث\x1b[0m')
+            term.writeln('\x1b[33m  ' + tr('pty_old_agent') + '\x1b[0m')
           }
         }
 
         else if (msg.type === 'pty:closed') {
           setStatus('closed')
-          term.writeln('\r\n\x1b[90m  ─── انتهت الجلسة ───\x1b[0m')
+          term.writeln('\r\n\x1b[90m  ' + tr('pty_ended') + '\x1b[0m')
         }
 
       } catch {}
@@ -219,11 +221,11 @@ export function PTYTerminal({ deviceId, deviceName, onClose }: Props) {
       connectingRef.current = false
       if (ev.code === 1006 && status !== 'connected') {
         setStatus('error')
-        setErrorMsg('انتهت صلاحية الجلسة — أعد تسجيل الدخول')
-        term.writeln('\r\n\x1b[31m  ✗ انتهت صلاحية الجلسة\x1b[0m')
+        setErrorMsg(tr('pty_expired_msg'))
+        term.writeln('\r\n\x1b[31m  ' + tr('pty_expired') + '\x1b[0m')
       } else if (status === 'connected') {
         setStatus('closed')
-        term.writeln('\r\n\x1b[90m  ─── انقطع الاتصال ───\x1b[0m')
+        term.writeln('\r\n\x1b[90m  ' + tr('pty_disconnected') + '\x1b[0m')
       }
     }
 
@@ -359,7 +361,7 @@ export function PTYTerminal({ deviceId, deviceName, onClose }: Props) {
             {errorMsg}
           </span>
           <button onClick={retry} className="text-xs text-info hover:underline whitespace-nowrap flex-shrink-0">
-            إعادة المحاولة
+            {tr('ui_retry')}
           </button>
         </div>
       )}
