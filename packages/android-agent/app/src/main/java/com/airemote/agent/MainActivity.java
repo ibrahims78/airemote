@@ -612,7 +612,7 @@ public class MainActivity extends Activity {
             devLbl.setText(getString(R.string.dev_title));
             devLbl.setTextColor(0xFF93C5FD);
             devLbl.setTextSize(12);
-            devLbl.setPadding(0, dp(4), 0, dp(2));
+            devLbl.setPadding(0, dp(8), 0, dp(2));
             card.addView(devLbl);
 
             devSpinner = new android.widget.Spinner(this);
@@ -620,6 +620,8 @@ public class MainActivity extends Activity {
             devAdapter = new android.widget.ArrayAdapter<>(this, android.R.layout.simple_spinner_item, devLabels);
             devAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
             devSpinner.setAdapter(devAdapter);
+            devSpinner.setMinimumHeight(dp(44));
+            devSpinner.setPadding(dp(4), dp(10), dp(4), dp(10));
             card.addView(devSpinner);
 
             devAccess = new android.widget.RadioGroup(this);
@@ -634,6 +636,12 @@ public class MainActivity extends Activity {
                 rb.setPadding(dp(10), dp(7), dp(10), dp(7));
                 rb.setGravity(android.view.Gravity.CENTER);
                 rb.setBackgroundResource(R.drawable.card_bg);
+                rb.setMinHeight(dp(44));
+                rb.setMinimumHeight(dp(44));
+                LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(0,
+                        LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
+                rlp.setMargins(dp(2), dp(6), dp(2), dp(6));
+                rb.setLayoutParams(rlp);
                 rb.setTag(opts[i][0]);
                 devAccess.addView(rb);
                 if (i == 1) rb.setChecked(true);
@@ -641,7 +649,11 @@ public class MainActivity extends Activity {
             card.addView(devAccess);
 
             devPw = new android.widget.EditText(this);
-            devPw.setHint("كلمة مرور الجهاز (إن لزمت)");
+            devPw.setHint(getString(R.string.card_pw_field));
+            devPw.setMinHeight(dp(44));
+            devPw.setPadding(dp(8), dp(10), dp(8), dp(10));
+            devPw.setLayoutParams(new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, dp(44)));
             devPw.setInputType(android.text.InputType.TYPE_CLASS_TEXT | android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
             devPw.setTextSize(12);
             devPw.setVisibility(View.VISIBLE);
