@@ -3,6 +3,7 @@ import {
   Upload, Pause, Play, X, ChevronDown, ChevronUp, CheckCircle2, FileUp, Gauge, FolderUp
 } from 'lucide-react'
 import { api } from '../lib/api'
+import { useT } from '../lib/i18n'
 import { onTransferProgress } from '../lib/websocket'
 import { Alert, Badge, Button, EmptyState, ProgressBar, Select } from './ui'
 
@@ -39,14 +40,14 @@ const CHUNK = 1024 * 1024
 
 type Tone = 'neutral' | 'info' | 'success' | 'warning' | 'danger'
 
-const STATE: Record<string, { label: string; tone: Tone }> = {
-  queued: { label: 'في الانتظار', tone: 'neutral' },
-  running: { label: 'جارٍ', tone: 'info' },
-  paused: { label: 'متوقف', tone: 'warning' },
-  completed: { label: 'مكتمل', tone: 'success' },
-  failed: { label: 'فشل', tone: 'danger' },
-  cancelled: { label: 'ملغى', tone: 'neutral' },
-  skipped: { label: 'تم التخطّي', tone: 'info' }
+const STATE: Record<string, { tone: Tone }> = {
+  queued: { tone: 'neutral' },
+  running: { tone: 'info' },
+  paused: { tone: 'warning' },
+  completed: { tone: 'success' },
+  failed: { tone: 'danger' },
+  cancelled: { tone: 'neutral' },
+  skipped: { tone: 'info' }
 }
 
 function authToken(): string {
@@ -76,6 +77,7 @@ async function sha256Of(file: File): Promise<string | null> {
 }
 
 export function TransferQueue({ deviceId, currentPath, onFinished }: Props) {
+  const tr = useT()
   const [open, setOpen] = useState(false)
   const [transfers, setTransfers] = useState<Transfer[]>([])
   const [unavailable, setUnavailable] = useState(false)
@@ -251,11 +253,11 @@ export function TransferQueue({ deviceId, currentPath, onFinished }: Props) {
       >
         <span className="flex items-center gap-2 text-[12px] font-medium text-ink">
           <FileUp size={14} className="text-primary" />
-          نقل الملفات
-          {active > 0 && <Badge tone="info">{active} نشط</Badge>}
+          {tr('tq_title')}
+          {active > 0 && <Badge tone="info">{tr('tq_active', { n: active })}</Badge>}
         </span>
         <span className="flex items-center gap-2 text-[11px] text-muted">
-          {transfers.length > 0 && <span>{transfers.length} عنصر</span>}
+          {transfers.length > 0 && <span>{tr('tq_items', { n: transfers.length })}</span>}
           {open ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </span>
       </button>
@@ -263,43 +265,43 @@ export function TransferQueue({ deviceId, currentPath, onFinished }: Props) {
       {open && (
         <div className="space-y-3 border-t border-line p-3">
           {unavailable ? (
-            <Alert tone="warning" title="محرّك النقل غير متاح">
-              السيرفر المثبَّت لا يحمل مسارات R5 (يتطلب 3.8.13). التغيير موجود في المصدر فقط.
+            <Alert tone="warning" title={tr('tq_unavailable_title')}>
+              {tr('tq_unavailable_body')}
             </Alert>
           ) : (
             <>
               <div className="flex flex-wrap items-center gap-2">
                 <Button variant="primary" size="sm" loading={busy === 'new'} icon={<Upload size={13} />} onClick={() => fileRef.current?.click()}>
-                  رفع قابل للاستكمال
+                  {tr('tq_resumable_upload')}
                 </Button>
                 <input
-                  ref={fileRef} type="file" className="hidden" aria-label="اختر ملفاً للرفع"
+                  ref={fileRef} type="file" className="hidden" aria-label={tr('tq_pick_file')}
                   onChange={e => { const f = e.target.files?.[0]; if (f) void startNew(f); e.currentTarget.value = '' }}
                 />
                 <input
-                  ref={resumeRef} type="file" className="hidden" aria-label="اختر الملف لاستكمال النقل"
+                  ref={resumeRef} type="file" className="hidden" aria-label={tr('tq_pick_resume')}
                   onChange={e => {
                     const f = e.target.files?.[0]
                     e.currentTarget.value = ''
                     if (f && resumeTarget) {
-                      if (resumeTarget.size && f.size !== resumeTarget.size) { setError('حجم الملف لا يطابق النقل الأصلي.'); setResumeTarget(null); return }
+                      if (resumeTarget.size && f.size !== resumeTarget.size) { setError(tr('tq_size_mismatch')); setResumeTarget(null); return }
                       void resumeWith(resumeTarget.id, f)
                     }
                   }}
                 />
                 <label className="flex items-center gap-1 text-[11px] text-muted">
-                  عند التعارض
-                  <Select value={conflict} onChange={e => setConflict(e.target.value as 'rename' | 'replace' | 'skip')} aria-label="سياسة التعارض">
-                    <option value="rename">إعادة تسمية</option>
-                    <option value="replace">استبدال</option>
-                    <option value="skip">تخطٍّ</option>
+                  {tr('tq_on_conflict')}
+                  <Select value={conflict} onChange={e => setConflict(e.target.value as 'rename' | 'replace' | 'skip')} aria-label={tr('tq_conflict_policy')}>
+                    <option value="rename">{tr('fm_rename')}</option>
+                    <option value="replace">{tr('tq_replace')}</option>
+                    <option value="skip">{tr('tq_skip')}</option>
                   </Select>
                 </label>
                 <label className="flex items-center gap-1 text-[11px] text-muted">
                   <Gauge size={12} />
-                  حد السرعة
-                  <Select value={speedMbps} onChange={e => setSpeedMbps(e.target.value)} aria-label="حد السرعة">
-                    <option value="0">بلا حد</option>
+                  {tr('tq_speed_limit')}
+                  <Select value={speedMbps} onChange={e => setSpeedMbps(e.target.value)} aria-label={tr('tq_speed_limit')}>
+                    <option value="0">{tr('tq_no_limit')}</option>
                     <option value="2">2 MB/s</option>
                     <option value="8">8 MB/s</option>
                     <option value="32">32 MB/s</option>
@@ -312,8 +314,8 @@ export function TransferQueue({ deviceId, currentPath, onFinished }: Props) {
               {transfers.length === 0 ? (
                 <EmptyState
                   icon={<FolderUp size={18} />}
-                  title="لا عمليات نقل بعد"
-                  description="الرفع من هنا قابل للاستكمال: إن انقطع الاتصال أو أُغلقت الصفحة تعود من آخر نقطة."
+                  title={tr('tq_empty_title')}
+                  description={tr('tq_empty_desc')}
                 />
               ) : (
                 <div className="max-h-64 space-y-1.5 overflow-y-auto pe-1">
@@ -327,31 +329,31 @@ export function TransferQueue({ deviceId, currentPath, onFinished }: Props) {
                       <div key={t.id} className="rounded-lg border border-line bg-surface2 px-2.5 py-1.5">
                         <div className="flex items-center justify-between gap-2">
                           <span className="truncate text-[11px] text-ink" title={t.destPath}>{name}</span>
-                          <Badge tone={meta.tone}>{meta.label}</Badge>
+                          <Badge tone={meta.tone}>{tr(('tq_state_' + t.state) as never)}</Badge>
                         </div>
                         <ProgressBar
                           className="mt-1"
                           value={t.state === 'completed' ? 100 : pct}
                           tone={t.state === 'failed' ? 'danger' : t.state === 'completed' ? 'success' : 'primary'}
-                          label={`تقدم ${name}`}
+                          label={tr('tq_progress', { name })}
                         />
                         <div className="mt-1 flex items-center justify-between gap-2">
                           <span className="truncate text-[10px] text-muted">
-                            {fmtBytes(t.bytesDone)} / {fmtBytes(t.size)} · {t.direction === 'upload' ? 'رفع' : 'تنزيل'}
+                            {fmtBytes(t.bytesDone)} / {fmtBytes(t.size)} · {t.direction === 'upload' ? tr('tq_upload') : tr('tq_download')}
                             {t.error ? ` · ${t.error}` : ''}
                           </span>
                           <span className="flex shrink-0 items-center gap-0.5">
                             {t.state === 'running' && (
-                              <Button variant="ghost" size="sm" className="!px-1" loading={isBusy} aria-label="إيقاف مؤقت" title="إيقاف مؤقت" icon={<Pause size={12} />} onClick={() => void pause(t.id)} />
+                              <Button variant="ghost" size="sm" className="!px-1" loading={isBusy} aria-label={tr('tq_pause')} title={tr('tq_pause')} icon={<Pause size={12} />} onClick={() => void pause(t.id)} />
                             )}
                             {canResume && (
-                              <Button variant="ghost" size="sm" className="!px-1 text-success" loading={isBusy} aria-label="استكمال" title="استكمال" icon={<Play size={12} />} onClick={() => void resume(t.id)} />
+                              <Button variant="ghost" size="sm" className="!px-1 text-success" loading={isBusy} aria-label={tr('tq_resume')} title={tr('tq_resume')} icon={<Play size={12} />} onClick={() => void resume(t.id)} />
                             )}
                             {t.state === 'queued' && (
-                              <Button variant="ghost" size="sm" className="!px-1 text-success" aria-label="بدء" title="بدء" icon={<Play size={12} />} onClick={() => void startQueued(t)} />
+                              <Button variant="ghost" size="sm" className="!px-1 text-success" aria-label={tr('tq_start')} title={tr('tq_start')} icon={<Play size={12} />} onClick={() => void startQueued(t)} />
                             )}
                             {['running', 'paused', 'queued', 'failed'].includes(t.state) && (
-                              <Button variant="ghost" size="sm" className="!px-1 text-danger" loading={isBusy} aria-label="إلغاء" title="إلغاء" icon={<X size={12} />} onClick={() => void cancel(t.id)} />
+                              <Button variant="ghost" size="sm" className="!px-1 text-danger" loading={isBusy} aria-label={tr('fm_cancel')} title={tr('fm_cancel')} icon={<X size={12} />} onClick={() => void cancel(t.id)} />
                             )}
                             {t.state === 'completed' && <CheckCircle2 size={12} className="text-success" aria-hidden />}
                           </span>
