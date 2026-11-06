@@ -1,4 +1,17 @@
 import Fastify from 'fastify'
+import { readFileSync } from 'fs'
+import { join } from 'path'
+
+// 3.14.0 — /health أعلن 3.8.8 مكتوبة يدويًا بينما الحزمة 3.14.0.
+// الآن يُقرأ الرقم من package.json الخاص بالسيرفر فلا ينزلق مرة أخرى.
+const SERVER_VERSION = (() => {
+  try {
+    const raw = readFileSync(join(__dirname, '..', 'package.json'), 'utf8')
+    return String(JSON.parse(raw).version || '0.0.0')
+  } catch {
+    return '0.0.0'
+  }
+})()
 import cors from '@fastify/cors'
 import websocket from '@fastify/websocket'
 import { jwtPlugin } from './plugins/jwt'
@@ -118,7 +131,7 @@ export async function buildServer() {
   // ── Health check ─────────────────────────────────────────────────────────
   app.get('/health', async () => ({
     status: 'ok',
-    version: '3.8.8',
+    version: SERVER_VERSION,
     tls: tlsConfig.enabled,
     behindProxy: tlsConfig.behindProxy,
     time: new Date().toISOString()
