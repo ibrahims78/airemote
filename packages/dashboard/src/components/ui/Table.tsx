@@ -2,6 +2,7 @@ import type { ReactNode } from 'react'
 import { clsx } from 'clsx'
 import { AlertTriangle, Inbox } from 'lucide-react'
 import { SkeletonRows } from './Skeleton'
+import { useT } from '../../lib/i18n'
 
 export interface Column<T> {
   key: string
@@ -29,6 +30,7 @@ export interface DataTableProps<T> {
  * لا يعرف شيئًا عن البيانات — الشاشات تمرّر الأعمدة والصفوف.
  */
 export function DataTable<T> ({ columns, rows, rowKey, onRowClick, loading, error, empty, className, hoverRowKey }: DataTableProps<T>) {
+  const t = useT()
   const cellPad = 'px-3'
   return (
     <div className={clsx('overflow-hidden rounded-xl border border-line bg-surface', className)}>
@@ -72,7 +74,7 @@ export function DataTable<T> ({ columns, rows, rowKey, onRowClick, loading, erro
               <td colSpan={columns.length} className="h-24">
                 <div className="flex h-full flex-col items-center justify-center gap-1.5 text-muted">
                   <Inbox size={16} />
-                  <span className="text-[12px]">{empty || 'لا عناصر'}</span>
+                  <span className="text-[12px]">{empty || t('ui_empty')}</span>
                 </div>
               </td>
             </tr>

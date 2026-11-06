@@ -17,6 +17,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   render() {
+    const ar = (document.documentElement.lang || 'ar') !== 'en'
     if (!this.state.hasError) return this.props.children
     return (
       <div className="flex flex-col items-center justify-center h-full min-h-[300px] gap-4 p-8 text-center">
@@ -24,7 +25,7 @@ export class ErrorBoundary extends Component<Props, State> {
           <AlertTriangle size={22} className="text-danger" />
         </div>
         <div>
-          <p className="text-ink font-semibold mb-1">حدث خطأ غير متوقع</p>
+          <p className="text-ink font-semibold mb-1">{ar ? 'حدث خطأ غير متوقع' : 'Something went wrong'}</p>
           <p className="text-xs text-muted font-mono max-w-sm">{this.state.message}</p>
         </div>
         <button
@@ -32,7 +33,7 @@ export class ErrorBoundary extends Component<Props, State> {
           className="flex items-center gap-2 px-4 py-2 bg-primary/15 hover:bg-primary/25 text-primary text-sm rounded-lg transition-colors"
         >
           <RefreshCw size={14} />
-          إعادة المحاولة
+          {ar ? 'إعادة المحاولة' : 'Try again'}
         </button>
       </div>
     )

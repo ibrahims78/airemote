@@ -1,6 +1,7 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { X } from 'lucide-react'
 import { clsx } from 'clsx'
+import { useT } from '../../lib/i18n'
 
 interface Props {
   open: boolean
@@ -20,6 +21,7 @@ const WIDTH = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl' }
  * still on the R6 list.)
  */
 export function Modal({ open, onClose, title, description, children, footer, size = 'md' }: Props) {
+  const t = useT()
   const panel = useRef<HTMLDivElement>(null)
   const restore = useRef<HTMLElement | null>(null)
 
@@ -65,7 +67,7 @@ export function Modal({ open, onClose, title, description, children, footer, siz
             <h2 id="ui-modal-title" className="text-[13px] font-semibold text-ink">{title}</h2>
             {description && <p id="ui-modal-desc" className="mt-0.5 text-[11px] text-muted">{description}</p>}
           </div>
-          <button onClick={onClose} aria-label="إغلاق" className="rounded p-1 text-muted hover:bg-surface2 hover:text-ink">
+          <button onClick={onClose} aria-label={t('ui_close')} className="rounded p-1 text-muted hover:bg-surface2 hover:text-ink">
             <X size={14} />
           </button>
         </div>

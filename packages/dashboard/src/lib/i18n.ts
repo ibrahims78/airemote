@@ -484,6 +484,15 @@ const T = {
     viewer_locked_note: 'شاشة الجهاز مقفلة — البث قد يظهر أسود حتى يُفتح القفل من الجهاز.', 
     viewer_pw_rate_limited: 'محاولات كثيرة — انتظر دقيقة',
     viewer_pw_denied: 'تم رفض الطلب',
+    ui_close: 'إغلاق',
+    ui_retry: 'إعادة المحاولة',
+    ui_empty: 'لا عناصر',
+    ui_dismiss: 'إغلاق التنبيه',
+    ui_progress: 'نسبة التقدم',
+    ui_error_title: 'حدث خطأ غير متوقع',
+    files_session_title: 'الملفات — جلسة وكيل↔وكيل',
+    files_ticket_missing: 'تذكرة الجلسة مفقودة',
+    files_ticket_hint: 'افتح هذه الصفحة من وكيل الطالب بعد قبول جلسة «ملفات» — الرابط يحمل التذكرة تلقائياً.',
   },
   en: {
     overview: 'Overview', devices: 'Devices', ai_assistant: 'AI Assistant',
@@ -966,6 +975,15 @@ const T = {
     viewer_locked_note: 'The device screen is locked — the stream may look black until the lock is opened on the device.', 
     viewer_pw_rate_limited: 'Too many attempts — wait a minute',
     viewer_pw_denied: 'The request was denied',
+    ui_close: 'Close',
+    ui_retry: 'Try again',
+    ui_empty: 'No items',
+    ui_dismiss: 'Dismiss alert',
+    ui_progress: 'Progress',
+    ui_error_title: 'Something went wrong',
+    files_session_title: 'Files — agent session',
+    files_ticket_missing: 'Session ticket is missing',
+    files_ticket_hint: 'Open this page from the requesting agent after accepting a files session — the link carries the ticket.',
   }
 } as const
 

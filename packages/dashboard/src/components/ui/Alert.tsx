@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { AlertTriangle, CheckCircle2, Info, X, XCircle } from 'lucide-react'
 import { clsx } from 'clsx'
+import { useT } from '../../lib/i18n'
 
 type Tone = 'info' | 'success' | 'warning' | 'danger'
 
@@ -22,6 +23,7 @@ interface Props {
 }
 
 export function Alert({ tone = 'info', title, children, onClose, className }: Props) {
+  const t = useT()
   const Icon = ICON[tone]
   return (
     <div role={tone === 'danger' ? 'alert' : 'status'} className={clsx('flex items-start gap-2 rounded-lg border px-2.5 py-2 text-[11px]', STYLE[tone], className)}>
@@ -31,7 +33,7 @@ export function Alert({ tone = 'info', title, children, onClose, className }: Pr
         {children && <div className={clsx(title && 'mt-0.5', 'opacity-90')}>{children}</div>}
       </div>
       {onClose && (
-        <button onClick={onClose} aria-label="إغلاق التنبيه" className="shrink-0 rounded p-0.5 hover:bg-surface2">
+        <button onClick={onClose} aria-label={t('ui_dismiss')} className="shrink-0 rounded p-0.5 hover:bg-surface2">
           <X size={12} />
         </button>
       )}
