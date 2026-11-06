@@ -400,10 +400,10 @@
 
       <div class="tab-panel active" id="panel-sessions" style="border-top:1px solid rgba(100,116,139,.18);margin-top:12px;padding-top:12px">
         <div class="field">
-          <label>الجلسات</label>
-          <div class="field-hint">جلساتك النشطة على هذا الحساب.</div>
+          <label data-i18n="sessTitle">الجلسات</label>
+          <div class="field-hint" data-i18n="sessHint">جلساتك النشطة على هذا الحساب.</div>
           <div class="btn-row">
-            <button id="sessions-refresh" type="button" class="btn-ghost">تحديث الجلسات</button>
+            <button id="sessions-refresh" type="button" class="btn-ghost" data-i18n="sessRefresh">تحديث الجلسات</button>
           </div>
           <div id="sessions-list" class="sessions-list"></div>
         </div>
@@ -604,11 +604,11 @@
 </script>
 <div id="session-offer" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(2,6,23,.72);align-items:center;justify-content:center">
   <div style="width:min(420px,92vw);background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:14px;padding:18px">
-    <div style="font-weight:700;margin-bottom:8px">طلب اتصال بجهازك</div>
+    <div style="font-weight:700;margin-bottom:8px" data-i18n="offerTitle">طلب اتصال بجهازك</div>
     <div id="offer-body" style="font-size:13px;line-height:1.7"></div>
     <div style="display:flex;gap:8px;margin-top:16px">
-      <button id="offer-accept" type="button" style="flex:1">سماح</button>
-      <button id="offer-deny" type="button" class="btn-ghost" style="flex:1">رفض</button>
+      <button id="offer-accept" type="button" style="flex:1" data-i18n="offerAccept">سماح</button>
+      <button id="offer-deny" type="button" class="btn-ghost" style="flex:1" data-i18n="offerDeny">رفض</button>
     </div>
   </div>
 </div>

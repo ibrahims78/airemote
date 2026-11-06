@@ -120,6 +120,11 @@ const LANG = {
     sessAllowed:   'تم السماح — ستُفتح نافذة العرض.',
     sessNoSessions: 'لا جلسات نشطة',
     sessIncoming:  'طلب وارد — راجع نافذة الموافقة.',
+    offerTitle: 'طلب اتصال بجهازك',
+    offerAccept: 'سماح',
+    offerDeny: 'رفض',
+    sessTitle: 'الجلسات',
+    sessHint: 'جلساتك النشطة على هذا الحساب.',
   },
   en: {
     stopped:        'Stopped',
@@ -192,7 +197,6 @@ const LANG = {
     sessConnect:   'Connect to another device',
     sessDevices:   'Devices',
     sessDevicesHint: 'Pick a device from your account, then an access type.',
-    sessRefresh:   'Refresh',
     sessAccess:    'Access type',
     sessFull:      'Full control',
     sessView:      'View',
@@ -214,6 +218,12 @@ const LANG = {
     sessAllowed:   'Allowed — the view window will open.',
     sessNoSessions: 'No active sessions',
     sessIncoming:  'Incoming request — see the approval dialog.',
+    offerTitle: 'Someone wants to connect',
+    offerAccept: 'Allow',
+    offerDeny: 'Deny',
+    sessTitle: 'Sessions',
+    sessHint: 'Your active sessions on this account.',
+    sessRefresh: 'Refresh sessions',
   }
 }
 
