@@ -140,4 +140,13 @@
     <string name="toast_start_agent_first">Start the agent first</string>
     <string name="card_pw_field">Device password (if required)</string>
     <string name="card_pw_hint">Used only when the target is password-protected — otherwise the request is sent without it.</string>
+    <!-- 3.14.1 - connection offer sheet + what is Windows-only -->
+    <string name="offer_title">Connection request</string>
+    <string name="offer_msg">%1$s requests %2$s — %3$d seconds to answer.</string>
+    <string name="offer_allow">Allow</string>
+    <string name="offer_deny">Decline</string>
+    <string name="offer_close">Close</string>
+    <string name="offer_someone">a device</string>
+    <string name="android_only_tag">Android</string>
+    <string name="android_only_note">Terminal, commands and Wake-on-LAN are not available on Android — run them from a Windows agent.</string>
 </resources>

@@ -140,4 +140,13 @@
     <string name="toast_start_agent_first">ابدأ الوكيل أولاً</string>
     <string name="card_pw_field">كلمة مرور الجهاز (إن لزمت)</string>
     <string name="card_pw_hint">تُستخدم فقط إن كان الجهاز الهدف محميًّا بكلمة سر — وإلا يُرسل الطلب بدونها.</string>
+    <!-- 3.14.1 - ورقة عرض الاتصال + تصريح بما هو ويندوز فقط -->
+    <string name="offer_title">طلب اتصال بجهازك</string>
+    <string name="offer_msg">%1$s يطلب %2$s — المهلة %3$d ثانية.</string>
+    <string name="offer_allow">سماح</string>
+    <string name="offer_deny">رفض</string>
+    <string name="offer_close">إغلاق</string>
+    <string name="offer_someone">جهاز</string>
+    <string name="android_only_tag">أندرويد</string>
+    <string name="android_only_note">الطرفية والأوامر والإيقاظ (WOL) غير متاحة على أندرويد — تُنفَّذ من وكيل ويندوز.</string>
 </resources>
