@@ -26,6 +26,8 @@ type WindowCtl = {
 export function DashboardLayout() {
   const navigate = useNavigate()
   const location = useLocation()
+  // 3.14.1 - the help guide is authored in Arabic only, so the switcher is hidden there.
+  const onHelpPage = location.pathname === '/help'
   const { user, token, logout } = useAuthStore()
   const { devices } = useDeviceStore()
   const { theme, toggleTheme, lang, toggleLang } = useUIStore()
@@ -271,7 +273,7 @@ export function DashboardLayout() {
 
                 <div className="app-menu-section">{isRtl ? 'عرض' : 'View'}</div>
                 <button type="button" onClick={() => menuAction(toggleTheme)}>{theme === 'dark' ? T('theme_light') : T('theme_dark')}</button>
-                <button type="button" onClick={() => menuAction(toggleLang)}>{lang === 'ar' ? 'English' : 'العربية'}</button>
+                {!onHelpPage && <button type="button" onClick={() => menuAction(toggleLang)}>{lang === 'ar' ? 'English' : 'العربية'}</button>}
                 <button type="button" onClick={() => menuAction(() => document.documentElement.requestFullscreen?.())}>{isRtl ? 'ملء الشاشة' : 'Fullscreen'}</button>
 
                 <div className="app-menu-section">{isRtl ? 'نافذة' : 'Window'}</div>
