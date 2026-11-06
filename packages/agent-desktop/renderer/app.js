@@ -146,6 +146,8 @@ const LANG = {
     aiPlaceholder: 'اكتب رسالتك للمساعد الذكي… (Enter للإرسال)',
     search: 'بحث...',
     logAll: 'الكل',
+    copy: 'نسخ',
+    toggleTheme: 'تبديل الثيم',
     copyAll: 'نسخ الكل',
     exportTxt: 'تصدير .txt',
     clearLog: 'مسح السجل',
@@ -272,6 +274,8 @@ const LANG = {
     aiPlaceholder: 'Message the assistant… (Enter to send)',
     search: 'Search…',
     logAll: 'All',
+    copy: 'Copy',
+    toggleTheme: 'Toggle theme',
     copyAll: 'Copy all',
     exportTxt: 'Export .txt',
     clearLog: 'Clear log',
@@ -325,6 +329,11 @@ function applyLang(lang) {
   document.querySelectorAll('[data-i18n-title]').forEach(el => {
     const key = el.getAttribute('data-i18n-title')
     if (LANG[lang][key] !== undefined) el.setAttribute('title', LANG[lang][key])
+  })
+  document.querySelectorAll('[data-i18n-aria]').forEach(el => {
+    const key = el.getAttribute('data-i18n-aria')
+    const v = LANG[lang][key]
+    if (v !== undefined) el.setAttribute('aria-label', v)
   })
   document.querySelectorAll('[data-i18n-ph]').forEach(el => {
     const key = el.getAttribute('data-i18n-ph')
@@ -434,6 +443,11 @@ $('btn-show-token').addEventListener('click', () => {
 let fullDeviceId = ''
 
 document.querySelectorAll('.info-copy-btn').forEach(btn => {
+  // 3.14.1 — icon-only buttons get a name for screen readers (PLAN §8 layer 6)
+  btn.setAttribute('data-i18n-aria', 'copy')
+  btn.setAttribute('data-i18n-title', 'copy')
+  btn.setAttribute('aria-label', (LANG[currentLang] || {}).copy || 'نسخ')
+  btn.setAttribute('title', (LANG[currentLang] || {}).copy || 'نسخ')
   btn.addEventListener('click', () => {
     const targetId = btn.dataset.copy
     if (targetId === 'inf-devid-full') {
