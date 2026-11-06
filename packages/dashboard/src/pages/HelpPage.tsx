@@ -239,6 +239,13 @@ export function HelpPage() {
             />
           </div>
 
+          {/* 3.14.0 — the guide body is authored in Arabic only; be explicit in English */}
+          {!isAr && (
+            <div className="mt-4 max-w-2xl rounded-xl border border-warning/30 bg-warning/10 px-3.5 py-2.5 text-[12px] leading-relaxed text-ink2">
+              The guide body below is authored in Arabic only. The table of contents, search and every screen it describes stay fully bilingual.
+            </div>
+          )}
+
           {/* Quick links */}
           <div className="mt-5 grid grid-cols-2 sm:grid-cols-3 gap-2">
             {QUICK_LINKS.map(q => {
