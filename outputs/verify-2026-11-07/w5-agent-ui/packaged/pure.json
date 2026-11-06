@@ -1,0 +1,145 @@
+{
+  "dpr": 1.75,
+  "innerW": 482,
+  "ui": {
+    "statusLabel": "متصل",
+    "statusSub": "127.0.0.1",
+    "titleState": "متصل",
+    "titleHost": "127.0.0.1",
+    "statusCardClass": "connected",
+    "toggleBtnText": "إيقاف",
+    "toggleBtnClass": "connected",
+    "connStrip": {
+      "display": "flex",
+      "visibility": "visible",
+      "h": 30,
+      "cls": "conn-strip"
+    },
+    "stripServer": "127.0.0.1",
+    "infServer": "127.0.0.1",
+    "infDevid": "probe-device-0001",
+    "secSettings": {
+      "display": "block",
+      "visibility": "visible",
+      "h": 749,
+      "cls": "coll-sec"
+    },
+    "bodySettings": {
+      "display": "block",
+      "visibility": "visible",
+      "h": 716,
+      "cls": "sec-body"
+    },
+    "settingsTitle": "الإعدادات",
+    "tabs": [
+      {
+        "tab": "status",
+        "active": true,
+        "label": "الحالة"
+      },
+      {
+        "tab": "ai",
+        "active": false,
+        "label": "المساعد الذكي"
+      },
+      {
+        "tab": "viewers",
+        "active": false,
+        "label": "دردشة المشاهدين0"
+      },
+      {
+        "tab": "log",
+        "active": false,
+        "label": "السجل"
+      }
+    ],
+    "activePane": "tab-status",
+    "footerVer": "v3.14.0",
+    "brandVer": "v3.14.0",
+    "logEntries": 0,
+    "ctrlPanel": {
+      "h": 356,
+      "w": 445,
+      "bg": "rgb(255, 255, 255)",
+      "body": {
+        "h": 716,
+        "scrollH": 716,
+        "clientH": 716,
+        "overflow": "hidden",
+        "maxH": "1500px"
+      },
+      "inner": {
+        "h": 716,
+        "scrollH": 715
+      },
+      "pane": {
+        "h": 472,
+        "scrollH": 1558,
+        "clientH": 472
+      },
+      "visible": false,
+      "kids": [
+        {
+          "tag": "div",
+          "id": "",
+          "cls": "card-h",
+          "y": 272,
+          "h": 41,
+          "display": "flex",
+          "color": "rgb(15, 23, 42)",
+          "text": "التحكم عن بُعد"
+        },
+        {
+          "tag": "div",
+          "id": "",
+          "cls": "field",
+          "y": 336,
+          "h": 154,
+          "display": "flex",
+          "color": "rgb(15, 23, 42)",
+          "text": "التحكم عن بُعد\n              اختر كيف يُمنح التح"
+        },
+        {
+          "tag": "div",
+          "id": "ctrl-pw-field",
+          "cls": "field",
+          "y": 0,
+          "h": 0,
+          "display": "none",
+          "color": "rgb(15, 23, 42)",
+          "text": "كلمة السر\n              \n                \n      "
+        },
+        {
+          "tag": "div",
+          "id": "",
+          "cls": "btn-row",
+          "y": 500,
+          "h": 38,
+          "display": "flex",
+          "color": "rgb(15, 23, 42)",
+          "text": "حفظ إعدادات التحكم\n              \n              "
+        },
+        {
+          "tag": "div",
+          "id": "",
+          "cls": "field-hint",
+          "y": 557,
+          "h": 30,
+          "display": "block",
+          "color": "rgb(97, 113, 135)",
+          "text": "🔒 تُحفظ بصمة فقط ( alt + ha h) داخل الوكيل، ولا"
+        },
+        {
+          "tag": "div",
+          "id": "",
+          "cls": "field-hint",
+          "y": 601,
+          "h": 15,
+          "display": "block",
+          "color": "rgb(97, 113, 135)",
+          "text": "تنطبق على: التحكم من اللوحة (السيرفر) · التحكم م"
+        }
+      ]
+    }
+  }
+}

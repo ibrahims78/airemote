@@ -1,0 +1,8 @@
+﻿CANDIDATES=2
+CAND=7744 area=376960 title=AiRemote Agent
+CAND=9304 area=4293 title=Windows PowerShell
+WINDOWS=1
+TITLE=AiRemote Agent
+RECT=0,0,1180,560
+PNG_SIZE=154723
+RESULT=ok

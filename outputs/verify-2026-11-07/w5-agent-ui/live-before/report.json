@@ -1,0 +1,169 @@
+{
+  "app": "AiRemote Agent (electron electron.exe)",
+  "profile": "isolated temp userData — no local config, no server connection",
+  "exceptions": [
+    {
+      "text": "Uncaught",
+      "desc": "SyntaxError: Identifier 'airemote' has already been declared",
+      "url": "file:///D:/autoclaw%20projects-new/AiRemote/packages/agent-desktop/renderer/app.js",
+      "line": 1,
+      "col": 1
+    }
+  ],
+  "exceptionCount": 1,
+  "console": [
+    {
+      "level": "warning",
+      "text": "%cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security\n  Policy set or a policy with \"unsafe-eval\" enabled. This exposes users of\n  this app to unnecessary security risks.\n\nFor more information and help, consult\nhttps://electronjs.org/docs/tutorial/security.\nThis warning will not show up\nonce the app is packaged."
+    }
+  ],
+  "ui": {
+    "before": {
+      "statusLabel": "متوقف",
+      "statusSub": "الـ Agent غير متصل بأي خادم",
+      "titleState": "متوقف",
+      "titleHost": "",
+      "statusCardClass": "stopped",
+      "toggleBtnText": "تشغيل",
+      "toggleBtnClass": "stopped",
+      "connStrip": {
+        "display": "none",
+        "visibility": "visible",
+        "h": 0,
+        "cls": "conn-strip hidden"
+      },
+      "stripServer": "—",
+      "infServer": "—",
+      "infDevid": "—",
+      "secSettings": {
+        "display": "block",
+        "visibility": "visible",
+        "h": 764,
+        "cls": "coll-sec"
+      },
+      "bodySettings": {
+        "display": "block",
+        "visibility": "visible",
+        "h": 731,
+        "cls": "sec-body"
+      },
+      "settingsTitle": "الإعدادات",
+      "tabs": [
+        {
+          "tab": "status",
+          "active": true,
+          "label": "الحالة"
+        },
+        {
+          "tab": "ai",
+          "active": false,
+          "label": "المساعد الذكي"
+        },
+        {
+          "tab": "viewers",
+          "active": false,
+          "label": "دردشة المشاهدين0"
+        },
+        {
+          "tab": "log",
+          "active": false,
+          "label": "السجل"
+        }
+      ],
+      "activePane": "tab-status",
+      "footerVer": "v3.14.0",
+      "brandVer": "v3.14.0",
+      "logEntries": 0
+    },
+    "clickSettings": {
+      "wasCollapsed": false,
+      "nowCollapsed": false,
+      "bodyH": 731
+    },
+    "afterSettings": {
+      "statusLabel": "متوقف",
+      "statusSub": "الـ Agent غير متصل بأي خادم",
+      "titleState": "متوقف",
+      "titleHost": "",
+      "statusCardClass": "stopped",
+      "toggleBtnText": "تشغيل",
+      "toggleBtnClass": "stopped",
+      "connStrip": {
+        "display": "none",
+        "visibility": "visible",
+        "h": 0,
+        "cls": "conn-strip hidden"
+      },
+      "stripServer": "—",
+      "infServer": "—",
+      "infDevid": "—",
+      "secSettings": {
+        "display": "block",
+        "visibility": "visible",
+        "h": 764,
+        "cls": "coll-sec"
+      },
+      "bodySettings": {
+        "display": "block",
+        "visibility": "visible",
+        "h": 731,
+        "cls": "sec-body"
+      },
+      "settingsTitle": "الإعدادات",
+      "tabs": [
+        {
+          "tab": "status",
+          "active": true,
+          "label": "الحالة"
+        },
+        {
+          "tab": "ai",
+          "active": false,
+          "label": "المساعد الذكي"
+        },
+        {
+          "tab": "viewers",
+          "active": false,
+          "label": "دردشة المشاهدين0"
+        },
+        {
+          "tab": "log",
+          "active": false,
+          "label": "السجل"
+        }
+      ],
+      "activePane": "tab-status",
+      "footerVer": "v3.14.0",
+      "brandVer": "v3.14.0",
+      "logEntries": 0
+    },
+    "tabWalk": [
+      {
+        "name": "status",
+        "active": true,
+        "paneActive": true,
+        "paneH": 472
+      },
+      {
+        "name": "viewers",
+        "active": true,
+        "paneActive": true,
+        "paneH": 472
+      },
+      {
+        "name": "files",
+        "error": "NO_BUTTON"
+      },
+      {
+        "name": "settings",
+        "error": "NO_BUTTON"
+      }
+    ]
+  },
+  "verdict": {
+    "statusIsDefaultStopped": true,
+    "settingsOpens": true,
+    "connInfoFilled": false,
+    "allTabsActivate": false
+  }
+}
