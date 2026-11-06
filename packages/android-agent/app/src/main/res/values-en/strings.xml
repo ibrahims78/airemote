@@ -112,4 +112,16 @@
     <string name="perm_overlay_desc">Required for some session tools</string>
     <string name="perm_overlay_ok">Allowed</string>
     <string name="perm_overlay_bad">Not allowed</string>
+    <!-- 3.14.0 - the eleven session states (message catalog) -->
+    <string name="sess_state_requested">Waiting for approval</string>
+    <string name="sess_state_accepted">Accepted</string>
+    <string name="sess_state_active">Active</string>
+    <string name="sess_state_denied">Denied</string>
+    <string name="sess_state_expired">Timed out</string>
+    <string name="sess_state_closed">Closed</string>
+    <string name="sess_state_suspended">Suspended</string>
+    <string name="sess_state_password_required">Password required</string>
+    <string name="sess_state_bad_password">Wrong password</string>
+    <string name="sess_state_password_locked">Temporarily locked after failed attempts</string>
+    <string name="sess_state_target_offline">Target device offline</string>
 </resources>

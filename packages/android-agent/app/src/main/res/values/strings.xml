@@ -112,4 +112,16 @@
     <string name="perm_overlay_desc">مطلوب لبعض أدوات الجلسة</string>
     <string name="perm_overlay_ok">مسموح</string>
     <string name="perm_overlay_bad">غير مسموح</string>
+    <!-- 3.14.0 - the eleven session states (message catalog) -->
+    <string name="sess_state_requested">بانتظار الموافقة</string>
+    <string name="sess_state_accepted">تم القبول</string>
+    <string name="sess_state_active">نشطة</string>
+    <string name="sess_state_denied">مرفوضة</string>
+    <string name="sess_state_expired">منتهية المهلة</string>
+    <string name="sess_state_closed">مغلقة</string>
+    <string name="sess_state_suspended">معلّقة</string>
+    <string name="sess_state_password_required">كلمة المرور مطلوبة</string>
+    <string name="sess_state_bad_password">كلمة المرور غير صحيحة</string>
+    <string name="sess_state_password_locked">مقفل مؤقتًا بعد محاولات فاشلة</string>
+    <string name="sess_state_target_offline">الجهاز الهدف غير متصل</string>
 </resources>
