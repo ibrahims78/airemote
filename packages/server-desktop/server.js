@@ -3898,6 +3898,12 @@ async function start(config) {
       return reply.code(403).send({ error: err.message, code: 'role_too_low' })
     }
     metrics.errors++
+    if (process.env.AIREMOTE_DEBUG_ERRORS === '1') {
+      try {
+        require('fs').appendFileSync(require('path').join(require('os').tmpdir(), 'airemote-errors.log'),
+          '\n' + new Date().toISOString() + ' ' + req.method + ' ' + (req.url || '') + '\n' + ((err && (err.stack || err.message)) || '') + '\n')
+      } catch {}
+    }
     reply.send(err)
   })
 
@@ -4351,8 +4357,12 @@ async function start(config) {
   })
 
   fastify.post('/api/auth/login', { config: { rateLimit: { max: 5, timeWindow: '1 minute' } } }, async (req, reply) => {
-    const { email, password } = req.body || {}
-    if (!email || !password) return reply.code(400).send({ error: 'Email and password required' })
+    // 3.14.1 — accept strings only: an object used to reach the SQL layer and surfaced as a
+    // 500 from the driver instead of a 400 that names the field.
+    const body = (req.body && typeof req.body === 'object') ? req.body : {}
+    const email    = typeof body.email === 'string' ? body.email.trim() : ''
+    const password = typeof body.password === 'string' ? body.password : ''
+    if (!email || !password) return reply.code(400).send({ error: 'Email and password required', field: !email ? 'email' : 'password' })
     const user = db.prepare("SELECT * FROM users WHERE email=?").get(email)
     if (!user) { dbLogAudit({ action: 'login_failed', userEmail: email, ipAddress: req.ip }); return reply.code(401).send({ error: 'بيانات الدخول غير صحيحة' }) }
     const valid = await bcrypt.compare(password, user.password_hash)

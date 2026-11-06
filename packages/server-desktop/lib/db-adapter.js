@@ -23,14 +23,29 @@ function createBetter(pathToDb, opts) {
   return new Database(pathToDb, opts)
 }
 
+// 3.14.1 — a failing statement must say which one it was. The node:sqlite shim reports
+// parameter problems without the SQL, which made a login 500 take hours to place.
+function call(method, stmt, sql, args) {
+  try {
+    return stmt[method](...args)
+  } catch (e) {
+    const shape = args.map(a => (a && typeof a === 'object' ? '{' + Object.keys(a).join(',') + '}' : typeof a)).join(',')
+    try {
+      console.error('[db] ' + method + ' FAILED: ' + String(sql).replace(/\s+/g, ' ').slice(0, 240) + '  args=[' + shape + ']')
+      console.error('[db] ' + e.message)
+    } catch {}
+    throw e
+  }
+}
+
 function createNode(pathToDb) {
   const { DatabaseSync } = require('node:sqlite')
   const raw = new DatabaseSync(pathToDb, { timeout: 5000 })
 
-  const wrap = (stmt) => ({
-    run: (...args) => stmt.run(...args),
-    get: (...args) => stmt.get(...args),
-    all: (...args) => stmt.all(...args),
+  const wrap = (stmt, sql) => ({
+    run: (...args) => call('run', stmt, sql, args),
+    get: (...args) => call('get', stmt, sql, args),
+    all: (...args) => call('all', stmt, sql, args),
     // better-sqlite3 returns the row id as a number; node:sqlite may hand back a BigInt.
     // Callers compare it with numbers, so normalise to Number when it is safe.
     safe: true
@@ -39,9 +54,13 @@ function createNode(pathToDb) {
   return {
     __engine: 'node:sqlite',
     prepare(sql) {
-      const stmt = raw.prepare(sql)
+      let stmt
+      try { stmt = raw.prepare(sql) } catch (e) {
+        try { console.error('[db] prepare FAILED: ' + String(sql).replace(/\s+/g, ' ').slice(0, 240)); console.error('[db] ' + e.message) } catch {}
+        throw e
+      }
       try { if (typeof stmt.setAllowBareNamedParameters === 'function') stmt.setAllowBareNamedParameters(true) } catch {}
-      return wrap(stmt)
+      return wrap(stmt, sql)
     },
     exec(sql) { return raw.exec(sql) },
     pragma(text) {
