@@ -125,6 +125,19 @@
     <string name="sess_state_password_locked">مقفل مؤقتًا بعد محاولات فاشلة</string>
     <string name="sess_state_target_offline">الجهاز الهدف غير متصل</string>
     <string name="card_connect">الاتصال بجهاز آخر</string>
+    <string name="toast_need_config">أدخل عنوان الخادم والرمز</string>
+    <string name="toast_saved">تم حفظ الإعدادات</string>
+    <string name="toast_saved_pw">تم حفظ الإعدادات وكلمة المرور</string>
+    <string name="toast_pw_cleared">حُذفت كلمة المرور — الآن تتم الموافقة يدوياً على الجهاز</string>
+    <string name="toast_need_config_first">أدخل عنوان الخادم والرمز أولاً</string>
+    <string name="toast_battery_settings">افتح إعدادات البطارية واسمح للتطبيق بالعمل في الخلفية</string>
+    <string name="toast_system_settings">افتح إعدادات النظام واسمح بتعديل الإعدادات</string>
+    <string name="toast_admin_on">إدارة الجهاز مفعّلة بالفعل</string>
+    <string name="toast_admin_fail">تعذر فتح إدارة الجهاز</string>
+    <string name="toast_session_closed">أُغلقت الجلسة</string>
+    <string name="toast_session_close_fail">تعذّر إغلاق الجلسة</string>
+    <string name="toast_agent_unconfigured">الوكيل غير مهيّأ</string>
+    <string name="toast_start_agent_first">ابدأ الوكيل أولاً</string>
     <string name="card_pw_field">كلمة مرور الجهاز (إن لزمت)</string>
     <string name="card_pw_hint">تُستخدم فقط إن كان الجهاز الهدف محميًّا بكلمة سر — وإلا يُرسل الطلب بدونها.</string>
 </resources>

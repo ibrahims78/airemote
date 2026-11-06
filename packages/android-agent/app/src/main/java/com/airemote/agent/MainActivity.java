@@ -378,14 +378,14 @@ public class MainActivity extends Activity {
     private void saveSettings() {
         String srv = inpServer.getText().toString().trim();
         String tok = inpToken.getText().toString().trim();
-        if (srv.isEmpty() || tok.isEmpty()) { toast("أدخل عنوان الخادم والرمز"); return; }
+        if (srv.isEmpty() || tok.isEmpty()) { toast(getString(R.string.toast_need_config)); return; }
         Prefs.save(this, srv, tok);
         footerTarget.setText(srv);
         String pw = inpCtrlPw.getText().toString().trim();
         if (!pw.isEmpty()) Prefs.saveControlPassword(this, pw);
         AgentService svc = AgentService.INSTANCE;
         if (svc != null) svc.sendCapabilities();
-        toast("تم حفظ الإعدادات" + (pw.isEmpty() ? "" : " وكلمة المرور"));
+        toast(getString(pw.isEmpty() ? R.string.toast_saved : R.string.toast_saved_pw));
         log("حُفظت الإعدادات — كلمة مرور التحكم: " + (Prefs.hasControlPassword(this) ? "مفعّلة" : "غير مفعّلة"));
     }
 
@@ -394,7 +394,7 @@ public class MainActivity extends Activity {
         inpCtrlPw.setText("");
         AgentService svc = AgentService.INSTANCE;
         if (svc != null) svc.sendCapabilities();
-        toast("حُذفت كلمة المرور — الآن تتم الموافقة يدوياً على الجهاز");
+        toast(getString(R.string.toast_pw_cleared));
         log("حُذفت كلمة مرور التحكم");
     }
 
@@ -404,7 +404,7 @@ public class MainActivity extends Activity {
         ensureBatteryExemption();
         String srv = inpServer.getText().toString().trim();
         String tok = inpToken.getText().toString().trim();
-        if (srv.isEmpty() || tok.isEmpty()) { toast("أدخل عنوان الخادم والرمز أولاً"); return; }
+        if (srv.isEmpty() || tok.isEmpty()) { toast(getString(R.string.toast_need_config_first)); return; }
         Prefs.save(this, srv, tok);
         footerTarget.setText(srv);
         String pw = inpCtrlPw.getText().toString().trim();
@@ -456,7 +456,7 @@ public class MainActivity extends Activity {
                         android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
                         android.net.Uri.parse("package:" + getPackageName()));
                 startActivity(i);
-            } catch (Exception ignore) { toast("افتح إعدادات البطارية واسمح للتطبيق بالعمل في الخلفية"); }
+            } catch (Exception ignore) { toast(getString(R.string.toast_battery_settings)); }
         }
     }
 
@@ -468,7 +468,7 @@ public class MainActivity extends Activity {
                         android.net.Uri.parse("package:" + getPackageName()));
                 startActivity(i);
             }
-        } catch (Exception ignore) { toast("افتح إعدادات النظام واسمح بتعديل الإعدادات"); }
+        } catch (Exception ignore) { toast(getString(R.string.toast_system_settings)); }
     }
 
     private void openDeviceAdmin() {
@@ -482,9 +482,9 @@ public class MainActivity extends Activity {
                         "يُستخدم لإطفاء شاشة الجهاز أثناء البث فقط.");
                 startActivity(i);
             } else {
-                toast("إدارة الجهاز مفعّلة بالفعل");
+                toast(getString(R.string.toast_admin_on));
             }
-        } catch (Exception ignore) { toast("تعذر فتح إدارة الجهاز"); }
+        } catch (Exception ignore) { toast(getString(R.string.toast_admin_fail)); }
     }
 
     private void requestCapture() {
@@ -839,9 +839,9 @@ public class MainActivity extends Activity {
                 os.write("{\"reason\":\"android_force\"}".getBytes("UTF-8"));
                 os.close();
                 c.getResponseCode();
-                UI.post(() -> { toast("أُغلقت الجلسة"); loadSessions(); });
+                UI.post(() -> { toast(getString(R.string.toast_session_closed)); loadSessions(); });
             } catch (Exception e) {
-                UI.post(() -> toast("تعذّر إغلاق الجلسة"));
+                UI.post(() -> toast(getString(R.string.toast_session_close_fail)));
             }
         }).start();
     }
@@ -888,7 +888,7 @@ public class MainActivity extends Activity {
     private void requestControl(final String targetId, final String targetName, final String access, final String password) {
         final String base = apiBase();
         final String tok = Prefs.token(this);
-        if (base == null || tok == null || tok.isEmpty()) { toast("الوكيل غير مهيّأ"); return; }
+        if (base == null || tok == null || tok.isEmpty()) { toast(getString(R.string.toast_agent_unconfigured)); return; }
         // النصوص تطابق وكيل ويندوز حرفياً (P3): نفس الحالات ونفس الترتيب.
         if (devState != null) devState.setText(getString(R.string.ses_sending));
         new Thread(() -> {
@@ -965,7 +965,7 @@ public class MainActivity extends Activity {
         String text = chatInput.getText().toString().trim();
         if (text.isEmpty()) return;
         AgentService svc = AgentService.INSTANCE;
-        if (svc == null) { toast("ابدأ الوكيل أولاً"); return; }
+        if (svc == null) { toast(getString(R.string.toast_start_agent_first)); return; }
         svc.sendScreenChat(text);
         appendViewer("أنت (المضيف): " + text);
         chatInput.setText("");
