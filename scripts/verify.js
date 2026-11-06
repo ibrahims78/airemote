@@ -96,6 +96,8 @@ const steps = [
   { name: 'policy: server messages (W2)', cmd: NODE + ' scripts/check-messages-en.cjs' },
   { name: 'policy: password length (P1)', cmd: NODE + ' scripts/check-password-policy.cjs' },
   { name: 'policy: version consistency (P6)', cmd: NODE + ' scripts/check-version-consistency.cjs --allow-missing-server' },
+  { name: 'policy: bridge shadow (W5)',    cmd: NODE + ' scripts/check-bridge-shadow.cjs' },
+  { name: 'policy: renderer dom ids (W5)', cmd: NODE + ' scripts/check-dom-ids.cjs' },
 ]
 
 let failures = 0

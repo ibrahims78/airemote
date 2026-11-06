@@ -1,11 +1,11 @@
 'use strict'
-/* global airemote */
+/* the preload bridge is read from window.airemote; the local alias is `bridge` */
 
 // 3.14.1 (W0) - the renderer is also opened outside Electron (preview, measurement).
-// Without the preload bridge, 'airemote.x' threw a ReferenceError and stopped the
+// Without the preload bridge, 'bridge.x' threw a ReferenceError and stopped the
 // rest of this file; a no-op proxy keeps the surface renderable. In the app the
 // real bridge exists, so this is a straight alias.
-const airemote = (typeof window !== 'undefined' && window.airemote)
+const bridge = (typeof window !== 'undefined' && window.airemote)
   ? window.airemote
   : new Proxy({}, { get: () => () => Promise.resolve() })
 
@@ -412,9 +412,9 @@ function updateStatsSummary() {
 }
 
 // ─── Window Controls ───────────────────────────────────────────────────────
-$('btn-min').addEventListener('click',   () => airemote.minimizeWin())
-$('btn-tray').addEventListener('click',  () => airemote.hideWin())
-$('btn-close').addEventListener('click', () => airemote.closeApp())
+$('btn-min').addEventListener('click',   () => bridge.minimizeWin())
+$('btn-tray').addEventListener('click',  () => bridge.hideWin())
+$('btn-close').addEventListener('click', () => bridge.closeApp())
 
 // ─── Token Eye ─────────────────────────────────────────────────────────────
 let tokenVisible = false
@@ -558,12 +558,12 @@ function getConnConfig() {
 
 $('toggle-btn').addEventListener('click', () => {
   if (currentState === 'stopped' || currentState === 'error') doStart()
-  else airemote.stopAgent()
+  else bridge.stopAgent()
 })
 
 $('reconnect-btn').addEventListener('click', () => {
   if (currentState !== 'stopped') {
-    airemote.stopAgent()
+    bridge.stopAgent()
     setTimeout(doStart, 800)
   } else {
     doStart()
@@ -585,7 +585,7 @@ function doStart() {
     if (sec && sec.classList.contains('collapsed')) toggleSection('settings')
     return
   }
-  airemote.startAgent(cfg)
+  bridge.startAgent(cfg)
 }
 
 // ─── Save Connection Config ─────────────────────────────────────────────────
@@ -595,7 +595,7 @@ $('save-btn').addEventListener('click', () => {
   if (cfg.serverUrl && !cfg.serverUrl.startsWith('ws://') && !cfg.serverUrl.startsWith('wss://')) {
     flashError($('inp-server'), t.errNeedWs); return
   }
-  airemote.saveConfig(cfg)
+  bridge.saveConfig(cfg)
   updateServerDisplay(cfg.serverUrl)
   const btn = $('save-btn')
   const origHtml = btn.innerHTML
@@ -657,11 +657,11 @@ if (saveCtrlBtn) {
   saveCtrlBtn.addEventListener('click', () => {
     const mode = ($('ctrl-mode-password') && $('ctrl-mode-password').checked) ? 'password' : 'consent'
     const pw   = ctrlPwInput ? ctrlPwInput.value : ''
-    if (typeof window.airemote !== 'undefined' && typeof window.airemote.saveControlAuth === 'function') airemote.saveControlAuth({ mode, password: pw })
+    if (typeof window.airemote !== 'undefined' && typeof window.airemote.saveControlAuth === 'function') bridge.saveControlAuth({ mode, password: pw })
   })
 }
 if (typeof window.airemote !== 'undefined' && typeof window.airemote.onControlAuthState === 'function') {
-  airemote.onControlAuthState(({ mode, ok, error, hasPassword }) => {
+  bridge.onControlAuthState(({ mode, ok, error, hasPassword }) => {
     const t = LANG[currentLang]
     if (error === 'short_password') { showToast(t.ctrlShort, 'error'); return }
     if (ok) {
@@ -692,14 +692,14 @@ if (ctrlPwInput) ctrlPwInput.addEventListener('input', paintCtrlStrength)
       if (ctrlPwInput) ctrlPwInput.value = ''
       paintCtrlStrength()
       applyCtrlMode('consent', false)
-      if (typeof window.airemote !== 'undefined' && typeof window.airemote.saveControlAuth === 'function') airemote.saveControlAuth({ mode: 'consent', password: '' })
+      if (typeof window.airemote !== 'undefined' && typeof window.airemote.saveControlAuth === 'function') bridge.saveControlAuth({ mode: 'consent', password: '' })
       showToast(t.ctrlCleared, 'success')
     })
   }
 }
 
 if (typeof window.airemote !== 'undefined' && typeof window.airemote.getState === 'function') {
-  airemote.getState().then(st => {
+  bridge.getState().then(st => {
     try { applyCtrlMode((st && st.config && st.config.controlAuthMode) || 'consent', !!(st && st.config && st.config.hasControlPassword)) } catch {}
   }).catch(() => {})
 }
@@ -707,7 +707,7 @@ if (typeof window.airemote !== 'undefined' && typeof window.airemote.getState ==
 // ─── Public IP ─────────────────────────────────────────────────────────────
 let ipReceived = false
 
-airemote.onPublicIp(ip => {
+bridge.onPublicIp(ip => {
   ipReceived = true
   const el = $('inf-pubip')
   if (ip && ip.trim()) {
@@ -842,7 +842,7 @@ function stopStatsPolling() {
   if (statsInterval) { clearInterval(statsInterval); statsInterval = null }
 }
 async function pollStats() {
-  try { const s = await airemote.getStatsNow(); if (s) applyStats(s) } catch {}
+  try { const s = await bridge.getStatsNow(); if (s) applyStats(s) } catch {}
 }
 function applyStats(s) {
   setBar($('bar-cpu'),  $('pct-cpu'),  s.cpuPercent,  s.cpuPercent  > 85)
@@ -870,13 +870,13 @@ function resetStats() {
 }
 
 // ─── IPC Stats (from heartbeat) ─────────────────────────────────────────────
-airemote.onStats(s => { if (s) applyStats(s) })
+bridge.onStats(s => { if (s) applyStats(s) })
 
 // ─── Screen Session Status ───────────────────────────────────────────────────
 let prevScreenCount = 0
 
 if (typeof window.airemote !== 'undefined' && typeof window.airemote.onScreenSessions === 'function') {
-  airemote.onScreenSessions(({ count }) => {
+  bridge.onScreenSessions(({ count }) => {
     const sep    = $('strip-screen-sep')
     const item   = $('strip-screen-item')
     const banner = $('screen-banner')
@@ -917,7 +917,7 @@ if (typeof window.airemote !== 'undefined' && typeof window.airemote.onScreenSes
 
 // ─── Privacy Mode Indicator ──────────────────────────────────────────────────
 if (typeof window.airemote !== 'undefined' && typeof window.airemote.onScreenPrivacy === 'function') {
-  airemote.onScreenPrivacy(({ enabled }) => {
+  bridge.onScreenPrivacy(({ enabled }) => {
     const badge = $('screen-privacy-badge')
     if (badge) badge.classList.toggle('hidden', !enabled)
     showToast(
@@ -954,7 +954,7 @@ function appendLog(entry) {
   }
 }
 
-airemote.onLog(entry => appendLog(entry))
+bridge.onLog(entry => appendLog(entry))
 
 // ─── T006: In-session chat panel ──────────────────────────────────────────────
 let chatUnread = 0
@@ -1004,7 +1004,7 @@ function updateChatUnread(delta) {
 }
 
 if (typeof window.airemote !== 'undefined' && typeof window.airemote.onScreenChat === 'function') {
-  airemote.onScreenChat(({ text, sender, ts }) => {
+  bridge.onScreenChat(({ text, sender, ts }) => {
     appendLog({ level: 'info', msg: `💬 ${sender}: ${text}`, ts: ts || Date.now() })
     appendChatMessage({ text, sender: sender || 'viewer', ts })
     updateChatUnread(+1)
@@ -1014,7 +1014,7 @@ if (typeof window.airemote !== 'undefined' && typeof window.airemote.onScreenCha
 }
 
 if (typeof window.airemote !== 'undefined' && typeof window.airemote.onOpenChatSection === 'function') {
-  airemote.onOpenChatSection(() => {
+  bridge.onOpenChatSection(() => {
     showChatSection()
     updateChatUnread(-chatUnread)
     if (chatInput) setTimeout(() => chatInput.focus(), 150)
@@ -1030,7 +1030,7 @@ function doSendChat() {
   const text = chatInput.value.trim()
   if (!text) return
   if (typeof window.airemote !== 'undefined' && typeof window.airemote.sendChat === 'function') {
-    airemote.sendChat({ text })
+    bridge.sendChat({ text })
     showChatSection()
   }
   chatInput.value = ''
@@ -1085,13 +1085,13 @@ const chatPopoutBtn = $('chat-popout-btn')
 if (chatPopoutBtn) {
   chatPopoutBtn.addEventListener('click', () => {
     if (typeof window.airemote !== 'undefined' && typeof window.airemote.openChatWindow === 'function') {
-      airemote.openChatWindow({ theme: currentTheme })
+      bridge.openChatWindow({ theme: currentTheme })
     }
   })
 }
 
 if (typeof window.airemote !== 'undefined' && typeof window.airemote.onChatWindowStatus === 'function') {
-  airemote.onChatWindowStatus(({ open }) => {
+  bridge.onChatWindowStatus(({ open }) => {
     const sec = $('chat-section')
     if (sec) sec.classList.toggle('popped-out', open)
     if (chatPopoutBtn) chatPopoutBtn.classList.toggle('active', open)
@@ -1114,7 +1114,7 @@ function esc(s) {
 }
 
 // ─── State IPC ───────────────────────────────────────────────────────────────
-airemote.onState(data => {
+bridge.onState(data => {
   applyState(data.state, data.deviceId, data.serverUrl, data.uptime)
 })
 
@@ -1128,13 +1128,13 @@ function flashError(el, msg) {
 
 // ─── Keyboard Shortcuts ───────────────────────────────────────────────────
 document.addEventListener('keydown', e => {
-  if (e.key === 'Escape') airemote.hideWin()
+  if (e.key === 'Escape') bridge.hideWin()
   if ((e.ctrlKey || e.metaKey) && e.key === 'i') { e.preventDefault(); toggleSection('info') }
   if ((e.ctrlKey || e.metaKey) && e.key === 'l') { e.preventDefault(); toggleSection('log') }
 })
 
 // ─── Init ────────────────────────────────────────────────────────────────────
-airemote.onInit(data => {
+bridge.onInit(data => {
   const { config, logs, state, deviceId, serverUrl, hostname, ipLocal, ipPublic, platform } = data
 
   $('inp-server').value         = config.serverUrl       || ''
