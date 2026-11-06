@@ -63,10 +63,10 @@
 <div id="app">
 
   <div id="tabbar">
-    <button class="tab-btn active" data-tab="status" type="button">الحالة</button>
-    <button class="tab-btn" data-tab="ai" type="button">المساعد الذكي</button>
-    <button class="tab-btn" data-tab="viewers" type="button">دردشة المشاهدين<span id="tab-chat-badge" class="chat-unread hidden">0</span></button>
-    <button class="tab-btn" data-tab="log" type="button">السجل</button>
+    <button class="tab-btn active" data-tab="status" type="button" data-i18n="tabStatus">الحالة</button>
+    <button class="tab-btn" data-tab="ai" type="button" data-i18n="tabAi">المساعد الذكي</button>
+    <button class="tab-btn" data-tab="viewers" type="button"><span data-i18n="tabChat">دردشة المشاهدين</span><span id="tab-chat-badge" class="chat-unread hidden">0</span></button>
+    <button class="tab-btn" data-tab="log" type="button" data-i18n="tabLog">السجل</button>
   </div>
 
   <div class="tab-pane active" id="tab-status">
@@ -131,7 +131,7 @@
       <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
         <rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>
       </svg>
-      <span id="screen-banner-text">جارٍ مشاركة الشاشة</span>
+      <span id="screen-banner-text" data-i18n="screenActive">جارٍ مشاركة الشاشة</span>
       <span id="screen-privacy-badge" class="privacy-badge hidden">
         <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>
@@ -246,7 +246,7 @@
               <label data-i18n="ctrlPwLabel">كلمة السر</label>
               <div class="input-wrap" style="display:flex;gap:6px;align-items:center">
                 <input id="inp-ctrl-pw" type="password" dir="ltr" autocomplete="new-password" placeholder="••••" style="flex:1" />
-                <button id="ctrl-pw-eye" type="button" class="btn-ghost" style="flex:0 0 auto;padding:0 8px;height:30px" title="إظهار/إخفاء">إظهار</button>
+                <button id="ctrl-pw-eye" type="button" class="btn-ghost" style="flex:0 0 auto;padding:0 8px;height:30px" title="إظهار/إخفاء" data-i18n-title="showHide"><span data-i18n="ctrlShow">إظهار</span></button>
               </div>
               <div style="height:4px;border-radius:999px;background:rgba(100,116,139,.22);margin-top:7px;overflow:hidden">
                 <div id="ctrl-pw-bar" style="height:100%;width:0%;background:#64748b;transition:width .18s,background .18s"></div>
@@ -419,15 +419,15 @@
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
         </svg>
-        <span id="chat-header-lbl">دردشة المشاهدين</span>
+        <span id="chat-header-lbl" data-i18n="tabChat">دردشة المشاهدين</span>
         <span id="chat-unread-badge" class="chat-unread hidden">0</span>
         <div style="flex:1"></div>
-        <button id="chat-clear-btn" class="icon-btn-sm" type="button" title="مسح المحادثة">
+        <button id="chat-clear-btn" class="icon-btn-sm" type="button" title="مسح المحادثة" data-i18n-title="chatClear">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
           </svg>
         </button>
-        <button id="chat-popout-btn" class="icon-btn-sm" type="button" title="فتح نافذة دردشة المشاهدين">
+        <button id="chat-popout-btn" class="icon-btn-sm" type="button" title="فتح نافذة دردشة المشاهدين" data-i18n-title="chatPopout">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <polyline points="15 3 21 3 21 9"/>
             <polyline points="9 21 3 21 3 15"/>
@@ -435,7 +435,7 @@
             <line x1="3" y1="21" x2="10" y2="14"/>
           </svg>
         </button>
-        <button id="chat-collapse-btn" class="icon-btn-sm" type="button" title="تصغير / توسيع">
+        <button id="chat-collapse-btn" class="icon-btn-sm" type="button" title="تصغير / توسيع" data-i18n-title="collapseToggle">
           <svg id="chat-chev" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <polyline points="6 9 12 15 18 9"/>
           </svg>
@@ -446,13 +446,13 @@
           <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
           <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
         </svg>
-        <span>الدردشة مفتوحة في نافذة منفصلة</span>
+        <span data-i18n="chatPopped">الدردشة مفتوحة في نافذة منفصلة</span>
       </div>
       <div id="chat-messages" class="chat-messages">
-        <div class="chat-empty" id="chat-empty">لا توجد رسائل بعد — دردشة للتواصل مع من يشاهد شاشتك (للذكاء الاصطناعي استخدم لوحة التحكم). </div>
+        <div class="chat-empty" id="chat-empty" data-i18n="chatEmpty">لا توجد رسائل بعد — دردشة للتواصل مع من يشاهد شاشتك (للذكاء الاصطناعي استخدم لوحة التحكم). </div>
       </div>
       <div class="chat-compose">
-        <input id="chat-input" type="text" class="chat-input" placeholder="اكتب رسالة للمشاهدين… (Enter للإرسال)" spellcheck="false" />
+        <input id="chat-input" type="text" class="chat-input" placeholder="اكتب رسالة للمشاهدين… (Enter للإرسال)" data-i18n-ph="chatPlaceholder" spellcheck="false" />
         <button id="chat-send-btn" class="chat-send-btn" type="button" disabled>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
@@ -474,23 +474,23 @@
           <circle cx="12" cy="12" r="3"/>
           <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M19.1 4.9L17 7M7 17l-2.1 2.1"/>
         </svg>
-        <span>المساعد الذكي</span>
+        <span data-i18n="tabAi">المساعد الذكي</span>
         <span class="ai-hint" id="ai-status"></span>
         <div style="flex:1"></div>
-        <button id="ai-hist-btn" class="icon-btn-sm" type="button" title="سجل المحادثات">
+        <button id="ai-hist-btn" class="icon-btn-sm" type="button" title="سجل المحادثات" data-i18n-title="aiHistory">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15.5 14"/>
           </svg>
         </button>
-        <button id="ai-new-btn" class="icon-btn-sm" type="button" title="محادثة جديدة">
+        <button id="ai-new-btn" class="icon-btn-sm" type="button" title="محادثة جديدة" data-i18n-title="aiNew">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
           </svg>
         </button>
-        <button id="ai-stop-btn" class="icon-btn-sm hidden" type="button" title="إيقاف التوليد">
+        <button id="ai-stop-btn" class="icon-btn-sm hidden" type="button" title="إيقاف التوليد" data-i18n-title="aiStop">
           <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
         </button>
-        <button id="ai-collapse-btn" class="icon-btn-sm" type="button" title="طي / توسيع">
+        <button id="ai-collapse-btn" class="icon-btn-sm" type="button" title="طي / توسيع" data-i18n-title="aiCollapse">
           <svg id="ai-chev" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <polyline points="6 9 12 15 18 9"/>
           </svg>
@@ -498,10 +498,10 @@
       </div>
       <div id="ai-hist" class="ai-hist hidden"></div>
       <div id="ai-messages" class="ai-messages">
-        <div class="chat-empty" id="ai-empty">اسأل المساعد الذكي مباشرة من هنا — يمكنه تنفيذ المهام على هذا الجهاز (فتح التطبيقات، الكتابة، النقر، لقطات الشاشة) عند طلبك.</div>
+        <div class="chat-empty" id="ai-empty" data-i18n="aiEmpty">اسأل المساعد الذكي مباشرة من هنا — يمكنه تنفيذ المهام على هذا الجهاز (فتح التطبيقات، الكتابة، النقر، لقطات الشاشة) عند طلبك.</div>
       </div>
       <div class="ai-compose chat-compose">
-        <input id="ai-input" type="text" class="chat-input" placeholder="اكتب رسالتك للمساعد الذكي… (Enter للإرسال)" spellcheck="false" />
+        <input id="ai-input" type="text" class="chat-input" placeholder="اكتب رسالتك للمساعد الذكي… (Enter للإرسال)" data-i18n-ph="aiPlaceholder" spellcheck="false" />
         <button id="ai-send-btn" class="chat-send-btn" type="button" disabled>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
@@ -530,32 +530,32 @@
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
             </svg>
-            <input id="log-search" type="text" placeholder="بحث..." spellcheck="false" />
+            <input id="log-search" type="text" placeholder="بحث..." data-i18n-ph="search" spellcheck="false" />
           </div>
           <div class="log-filter-wrap">
-            <button class="lf-btn active" data-level="all" type="button">الكل</button>
+            <button class="lf-btn active" data-level="all" type="button" data-i18n="logAll">الكل</button>
             <button class="lf-btn" data-level="info" type="button">Info</button>
             <button class="lf-btn" data-level="warn" type="button">Warn</button>
             <button class="lf-btn" data-level="error" type="button">Error</button>
           </div>
-          <button id="copy-log-btn" class="icon-btn-sm" type="button" title="نسخ الكل">
+          <button id="copy-log-btn" class="icon-btn-sm" type="button" title="نسخ الكل" data-i18n-title="copyAll">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
             </svg>
           </button>
-          <button id="export-log-btn" class="icon-btn-sm" type="button" title="تصدير .txt">
+          <button id="export-log-btn" class="icon-btn-sm" type="button" title="تصدير .txt" data-i18n-title="exportTxt">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
               <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
             </svg>
           </button>
-          <button id="clear-log" class="icon-btn-sm danger-hover" type="button" title="مسح السجل">
+          <button id="clear-log" class="icon-btn-sm danger-hover" type="button" title="مسح السجل" data-i18n-title="clearLog">
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
               <path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/>
             </svg>
           </button>
-          <button id="log-coll-btn" class="icon-btn-sm" type="button" title="تصغير / توسيع السجل">
+          <button id="log-coll-btn" class="icon-btn-sm" type="button" title="تصغير / توسيع السجل" data-i18n-title="collapseLog">
             <svg id="log-chev" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
               <polyline points="6 9 12 15 18 9"/>
             </svg>

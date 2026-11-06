@@ -1,0 +1,158 @@
+{
+  "html": "outputs/verify-2026-11-05/phase3/agent-light/index.html",
+  "theme": "light",
+  "geometry": {
+    "viewport": {
+      "w": 676,
+      "h": 801
+    },
+    "boxes": {
+      "#tabbar": {
+        "x": 0,
+        "y": 40,
+        "w": 676,
+        "h": 44,
+        "display": "flex",
+        "visibility": "visible",
+        "opacity": "1"
+      },
+      "#tab-status": {
+        "x": 0,
+        "y": 84,
+        "w": 676,
+        "h": 695,
+        "display": "flex",
+        "visibility": "visible",
+        "opacity": "1"
+      },
+      "#upper": {
+        "x": 0,
+        "y": 84,
+        "w": 676,
+        "h": 899,
+        "display": "flex",
+        "visibility": "visible",
+        "opacity": "1"
+      },
+      "#status-card": {
+        "x": 10,
+        "y": 92,
+        "w": 656,
+        "h": 66,
+        "display": "flex",
+        "visibility": "visible",
+        "opacity": "1"
+      },
+      "#conn-strip": {
+        "x": 0,
+        "y": 0,
+        "w": 0,
+        "h": 0,
+        "display": "none",
+        "visibility": "visible",
+        "opacity": "1"
+      },
+      "#screen-banner": {
+        "x": 0,
+        "y": 0,
+        "w": 0,
+        "h": 0,
+        "display": "none",
+        "visibility": "visible",
+        "opacity": "1"
+      },
+      "#sec-info": {
+        "x": 10,
+        "y": 164,
+        "w": 656,
+        "h": 34,
+        "display": "block",
+        "visibility": "visible",
+        "opacity": "1"
+      },
+      "#sec-settings": {
+        "x": 10,
+        "y": 204,
+        "w": 656,
+        "h": 739,
+        "display": "block",
+        "visibility": "visible",
+        "opacity": "1"
+      },
+      "#settings-inner": {
+        "x": 11,
+        "y": 237,
+        "w": 654,
+        "h": 705,
+        "display": "flex",
+        "visibility": "visible",
+        "opacity": "1"
+      },
+      "#panel-ctrl": {
+        "x": 11,
+        "y": 238,
+        "w": 654,
+        "h": 344,
+        "display": "flex",
+        "visibility": "visible",
+        "opacity": "1"
+      },
+      "#panel-conn": {
+        "x": 11,
+        "y": 594,
+        "w": 654,
+        "h": 348,
+        "display": "flex",
+        "visibility": "visible",
+        "opacity": "1"
+      },
+      "#card-session": {
+        "x": 0,
+        "y": 995,
+        "w": 676,
+        "h": 346,
+        "display": "block",
+        "visibility": "visible",
+        "opacity": "1"
+      },
+      "#sec-stats": {
+        "x": 10,
+        "y": 949,
+        "w": 656,
+        "h": 34,
+        "display": "block",
+        "visibility": "visible",
+        "opacity": "1"
+      },
+      "#panel-sessions": {
+        "x": 0,
+        "y": 1354,
+        "w": 676,
+        "h": 135,
+        "display": "flex",
+        "visibility": "visible",
+        "opacity": "1"
+      }
+    },
+    "scroll": {},
+    "cards": [
+      {
+        "id": "card-session",
+        "cls": "card sess-card",
+        "y": 995,
+        "h": 346,
+        "title": "الاتصال بجهاز آخر"
+      }
+    ],
+    "docHeight": 801,
+    "paneScroll": {
+      "h": 1404,
+      "client": 695
+    },
+    "overflowX": false
+  },
+  "console": [],
+  "pageErrors": [],
+  "errorCount": 0,
+  "consoleErrorCount": 0
+}

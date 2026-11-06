@@ -125,6 +125,31 @@ const LANG = {
     offerDeny: 'رفض',
     sessTitle: 'الجلسات',
     sessHint: 'جلساتك النشطة على هذا الحساب.',
+    tabStatus: 'الحالة',
+    tabAi: 'المساعد الذكي',
+    tabChat: 'دردشة المشاهدين',
+    tabLog: 'السجل',
+    showHide: 'إظهار/إخفاء',
+    chatClear: 'مسح المحادثة',
+    chatPopout: 'فتح نافذة دردشة المشاهدين',
+    collapseToggle: 'تصغير / توسيع',
+    chatPopped: 'الدردشة مفتوحة في نافذة منفصلة',
+    chatEmpty: 'لا توجد رسائل بعد — دردشة للتواصل مع من يشاهد شاشتك (للذكاء الاصطناعي استخدم لوحة التحكم).',
+    chatPlaceholder: 'اكتب رسالة للمشاهدين… (Enter للإرسال)',
+    aiHistory: 'سجل المحادثات',
+    aiNew: 'محادثة جديدة',
+    aiStop: 'إيقاف التوليد',
+    aiCollapse: 'طي / توسيع',
+    aiEmpty: 'اسأل المساعد الذكي مباشرة من هنا — يمكنه تنفيذ المهام على هذا الجهاز (فتح التطبيقات، الكتابة، النقر، لقطات الشاشة) عند طلبك.',
+    aiPlaceholder: 'اكتب رسالتك للمساعد الذكي… (Enter للإرسال)',
+    search: 'بحث...',
+    logAll: 'الكل',
+    copyAll: 'نسخ الكل',
+    exportTxt: 'تصدير .txt',
+    clearLog: 'مسح السجل',
+    collapseLog: 'تصغير / توسيع السجل',
+    ctrlHashNote: '🔒 تُحفظ بصمة فقط (salt + hash) داخل الوكيل، ولا تُرسل إلى السيرفر ولا تُسجَّل في أي سجل.',
+    ctrlAppliesNote: 'تنطبق على: التحكم من اللوحة (السيرفر) · التحكم من وكيل آخر (وكيل↔وكيل).',
   },
   en: {
     stopped:        'Stopped',
@@ -224,6 +249,31 @@ const LANG = {
     sessTitle: 'Sessions',
     sessHint: 'Your active sessions on this account.',
     sessRefresh: 'Refresh sessions',
+    tabStatus: 'Status',
+    tabAi: 'AI assistant',
+    tabChat: 'Viewer chat',
+    tabLog: 'Log',
+    showHide: 'Show/hide',
+    chatClear: 'Clear conversation',
+    chatPopout: 'Open the viewer chat window',
+    collapseToggle: 'Collapse / expand',
+    chatPopped: 'Chat is open in a separate window',
+    chatEmpty: 'No messages yet — chat with whoever is watching your screen (for AI use the dashboard).',
+    chatPlaceholder: 'Message the viewers… (Enter to send)',
+    aiHistory: 'Conversation history',
+    aiNew: 'New conversation',
+    aiStop: 'Stop generating',
+    aiCollapse: 'Collapse / expand',
+    aiEmpty: 'Ask the assistant right here — it can run tasks on this device (open apps, type, click, take screenshots) when you ask.',
+    aiPlaceholder: 'Message the assistant… (Enter to send)',
+    search: 'Search…',
+    logAll: 'All',
+    copyAll: 'Copy all',
+    exportTxt: 'Export .txt',
+    clearLog: 'Clear log',
+    collapseLog: 'Collapse / expand the log',
+    ctrlHashNote: '🔒 Only a fingerprint (salt + hash) is kept in the agent — never sent to the server or written to a log.',
+    ctrlAppliesNote: 'Applies to: control from the dashboard (server) and control from another agent (agent to agent).',
   }
 }
 
@@ -268,9 +318,16 @@ function applyLang(lang) {
     const key = el.getAttribute('data-i18n')
     if (LANG[lang][key] !== undefined) el.textContent = LANG[lang][key]
   })
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    const key = el.getAttribute('data-i18n-title')
+    if (LANG[lang][key] !== undefined) el.setAttribute('title', LANG[lang][key])
+  })
+  document.querySelectorAll('[data-i18n-ph]').forEach(el => {
+    const key = el.getAttribute('data-i18n-ph')
+    if (LANG[lang][key] !== undefined) el.setAttribute('placeholder', LANG[lang][key])
+  })
   $('inp-server').placeholder = 'wss://your-server.replit.app/ws'
   $('inp-token').placeholder  = lang === 'ar' ? 'أدخل الـ Token الخاص بهذا الجهاز' : 'Paste device token here'
-  $('log-search').placeholder = lang === 'ar' ? 'بحث...' : 'Search...'
   if (currentState) applyStateLabels(currentState, lastDeviceId, lastServerUrl)
 }
 
