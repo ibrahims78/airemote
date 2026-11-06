@@ -91,6 +91,8 @@ const steps = [
   { name: 'unit: agent password kdf (3.13.2)', cmd: NODE + ' packages/agent-desktop/test/password-kdf.test.cjs' },
   { name: 'unit: agent main loads', cmd: NODE + ' packages/agent-desktop/test/main-load.test.cjs' },
   { name: 'unit: secret storage (R2)',   cmd: electronStep('packages/server-desktop/test/secrets.test.cjs') },
+  // 3.14.1 (W2) - every translation reference must resolve in both languages.
+  { name: 'policy: i18n references (W2)', cmd: NODE + ' scripts/check-i18n-refs.cjs' },
   { name: 'policy: password length (P1)', cmd: NODE + ' scripts/check-password-policy.cjs' },
   { name: 'policy: version consistency (P6)', cmd: NODE + ' scripts/check-version-consistency.cjs --allow-missing-server' },
 ]
