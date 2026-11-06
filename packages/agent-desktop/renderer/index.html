@@ -364,34 +364,40 @@
     </div>
 
   </div><!-- /#upper -->
-      <div class="tab-panel active" id="panel-session" style="border-top:1px solid rgba(100,116,139,.18);margin-top:12px;padding-top:12px">
-        <div class="field">
-          <label>الأجهزة</label>
-          <div class="field-hint">اختر جهازاً من أجهزة حسابك، ثم نوع الوصول.</div>
-          <div class="device-picker">
-            <select id="session-device" dir="auto" aria-label="اختيار الجهاز">
-              <option value="">جارٍ جلب الأجهزة…</option>
-            </select>
-            <button id="session-refresh" type="button" class="btn-ghost" title="تحديث قائمة الأجهزة">تحديث</button>
+      <!-- 3.14.0 — D64: البطاقة الثالثة، بنفس تسلسل المرجع بعد بطاقتَي التحكم والخادم -->
+      <div class="card sess-card" id="card-session">
+        <div class="card-h">
+          <span class="ttl" data-i18n="sessConnect">الاتصال بجهاز آخر</span>
+          <div class="grow"></div>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
+        </div>
+        <div class="card-b">
+          <div class="field">
+            <label data-i18n="sessDevices">الأجهزة</label>
+            <div class="hint" data-i18n="sessDevicesHint">اختر جهازاً من أجهزة حسابك، ثم نوع الوصول.</div>
+            <div class="row2">
+              <select id="session-device" class="input" dir="auto"><option value="">جارٍ جلب الأجهزة…</option></select>
+              <button id="session-refresh" type="button" class="btn ghost sm"><span data-i18n="sessRefresh">تحديث</span></button>
+            </div>
           </div>
-        </div>
-        <div class="field">
-          <label>نوع الوصول</label>
-          <div class="checks-group">
-            <label class="check-row"><input type="radio" name="session-access" value="view" checked /><span>عرض فقط</span></label>
-            <label class="check-row"><input type="radio" name="session-access" value="control" /><span>تحكم كامل</span></label>
-            <label class="check-row"><input type="radio" name="session-access" value="files" /><span>ملفات</span></label>
+          <div class="field">
+            <label data-i18n="sessAccess">نوع الوصول</label>
+            <div class="seg" id="session-access-seg" role="group">
+              <button type="button" data-access="control" class="on" aria-pressed="true"><span data-i18n="sessFull">تحكم كامل</span></button>
+              <button type="button" data-access="view" aria-pressed="false"><span data-i18n="sessView">عرض</span></button>
+              <button type="button" data-access="files" aria-pressed="false"><span data-i18n="sessFiles">ملفات</span></button>
+            </div>
           </div>
+          <div class="field" id="session-pw-field">
+            <label data-i18n="sessPw">كلمة مرور الجهاز</label>
+            <input id="session-pw" class="input mono" type="password" dir="ltr" autocomplete="off" placeholder="••••••" />
+            <div class="hint" data-i18n="sessPwHint">تُستخدم فقط إن كان الجهاز الهدف محميًّا بكلمة سر.</div>
+          </div>
+          <div class="hint" id="session-state" role="status"></div>
+          <button id="session-request-btn" type="button" class="btn primary"><span data-i18n="sessRequest">طلب الاتصال</span></button>
         </div>
-        <div class="field" id="session-pw-field" style="display:none">
-          <label>كلمة مرور الجهاز</label>
-          <input id="session-pw" type="password" dir="ltr" autocomplete="off" placeholder="••••••" />
-        </div>
-        <div class="btn-row">
-          <button id="session-request-btn" type="button"><span>طلب الاتصال</span></button>
-        </div>
-        <div class="field-hint" id="session-state" role="status"></div>
       </div>
+
       <div class="tab-panel active" id="panel-sessions" style="border-top:1px solid rgba(100,116,139,.18);margin-top:12px;padding-top:12px">
         <div class="field">
           <label>الجلسات</label>

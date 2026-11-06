@@ -86,6 +86,32 @@ const LANG = {
     sessPwWrong: 'كلمة السر غير صحيحة — تحقق منها وأعد المحاولة.',
     sessPwLocked: 'الجهاز مقفل مؤقتًا بعد محاولات فاشلة — أعد المحاولة بعد 5 دقائق.',
     sessDenied: 'رفض الطرف الآخر الطلب.',
+    // 3.14.0 — D64 بطاقة «الاتصال بجهاز آخر»
+    sessConnect:   'الاتصال بجهاز آخر',
+    sessDevices:   'الأجهزة',
+    sessDevicesHint: 'اختر جهازًا من أجهزة حسابك، ثم نوع الوصول.',
+    sessRefresh:   'تحديث',
+    sessAccess:    'نوع الوصول',
+    sessFull:      'تحكم كامل',
+    sessView:      'عرض',
+    sessFiles:     'ملفات',
+    sessPw:        'كلمة مرور الجهاز',
+    sessPwHint:    'تُستخدم فقط إن كان الجهاز الهدف محميًا بكلمة سر — وإلا يُرسل الطلب بدونها.',
+    sessRequest:   'طلب الاتصال',
+    sessPickFirst: 'اختر جهازًا من القائمة أولًا.',
+    sessNoDevices: 'لا توجد أجهزة أخرى في حسابك.',
+    sessLoadFail:  'تعذّر جلب الأجهزة.',
+    sessLoading:   'جارٍ جلب الأجهزة…',
+    sessPickOpt:   '— اختر جهازًا —',
+    sessSending:   'جارٍ إرسال الطلب…',
+    sessPending:   'بانتظار موافقة الطرف الآخر ({n}ث)…',
+    sessAccepted:  'قبل الطرف الآخر — الجلسة نشطة وأصبحت في الجلسات.',
+    sessTimeout:   'انتهت مهلة الطلب دون ردّ.',
+    sessNetwork:   'فشل الشبكة — تعذّر إرسال الطلب. تحقّق من اتصال الوكيل بالخادم.',
+    sessClosed:    'انتهت الجلسة أو أُغلقت.',
+    sessAllowed:   'تم السماح — ستُفتح نافذة العرض.',
+    sessNoSessions: 'لا جلسات نشطة',
+    sessIncoming:  'طلب وارد — راجع نافذة الموافقة.',
   },
   en: {
     stopped:        'Stopped',
@@ -155,6 +181,31 @@ const LANG = {
     sessPwWrong: 'Wrong password — check it and try again.',
     sessPwLocked: 'The device is temporarily locked after failed attempts — retry in 5 minutes.',
     sessDenied: 'The other side refused the request.',
+    sessConnect:   'Connect to another device',
+    sessDevices:   'Devices',
+    sessDevicesHint: 'Pick a device from your account, then an access type.',
+    sessRefresh:   'Refresh',
+    sessAccess:    'Access type',
+    sessFull:      'Full control',
+    sessView:      'View',
+    sessFiles:     'Files',
+    sessPw:        'Device password',
+    sessPwHint:    'Used only when the target is protected by a password; otherwise the request is sent without one.',
+    sessRequest:   'Request connection',
+    sessPickFirst: 'Pick a device from the list first.',
+    sessNoDevices: 'No other devices in your account.',
+    sessLoadFail:  'Could not load the device list.',
+    sessLoading:   'Loading devices…',
+    sessPickOpt:   '— pick a device —',
+    sessSending:   'Sending the request…',
+    sessPending:   'Waiting for the other side ({n}s)…',
+    sessAccepted:  'Accepted — the session is active and listed under Sessions.',
+    sessTimeout:   'The request timed out with no answer.',
+    sessNetwork:   'Network failure — the request could not be sent. Check the agent connection.',
+    sessClosed:    'The session ended or was closed.',
+    sessAllowed:   'Allowed — the view window will open.',
+    sessNoSessions: 'No active sessions',
+    sessIncoming:  'Incoming request — see the approval dialog.',
   }
 }
 
@@ -1049,165 +1100,232 @@ airemote.onInit(data => {
   }
 })
 
-// ── 3.9.0 — الاتصال بجهاز آخر (طلب + موافقة) ────────────────────────────────
+// ── 3.14.0 — D64: بطاقة «الاتصال بجهاز آخر» (طلب + موافقة) ────────────────
 ;(function initAgentSessionUI () {
   const $id = (id) => document.getElementById(id)
   const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))
-  // P3 — قائمة منسدلة احترافية: تُبنى من /api/relay/devices عبر IPC، بدل رمز من 9 أرقام.
-  // كل خيار يعرض الاسم والمنصّة وحالة الاتصال، وقيمته معرّف الجهاز الذي يقبله السيرفر.
+  const T = () => LANG[currentLang] || LANG.ar
+
+  function setState (text) { const el = $id('session-state'); if (el) el.textContent = text || '' }
+  function showPw (show) { const f = $id('session-pw-field'); if (f) f.style.display = show ? '' : 'none' }
+
+  // ── access seg ──────────────────────────────────────────────────────────
+  function currentAccess () {
+    const on = document.querySelector('#session-access-seg [data-access].on')
+    return (on && on.getAttribute('data-access')) || 'control'
+  }
+  function bindSeg () {
+    const seg = $id('session-access-seg')
+    if (!seg) return
+    seg.querySelectorAll('[data-access]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        seg.querySelectorAll('[data-access]').forEach((b) => { b.classList.remove('on'); b.setAttribute('aria-pressed', 'false') })
+        btn.classList.add('on')
+        btn.setAttribute('aria-pressed', 'true')
+        if (btn.getAttribute('data-access') === 'control') showPw(true)
+      })
+    })
+  }
+
+  // ── device list (/api/relay/devices through the preload bridge) ─────────
   async function loadDevices () {
     const sel = $id('session-device')
     if (!sel) return
+    const t = T()
     const cur = sel.value
     sel.disabled = true
-    sel.innerHTML = '<option value="">جارٍ جلب الأجهزة…</option>'
+    sel.innerHTML = '<option value="">' + esc(t.sessLoading) + '</option>'
     let r = null
     try { r = await window.airemote.relayDevices() } catch (e) { r = { ok: false, error: String((e && e.message) || e) } }
     if (!r || !r.ok) {
-      sel.innerHTML = '<option value="">تعذّر جلب الأجهزة</option>'
+      sel.innerHTML = '<option value="">' + esc(t.sessLoadFail) + '</option>'
       sel.disabled = false
-      setState('تعذّر جلب الأجهزة: ' + ((r && (r.error || (r.data && r.data.code))) || 'خطأ'))
+      setState(t.sessLoadFail)
       return
     }
     const list = (r.data && (r.data.devices || r.data)) || []
     const devices = Array.isArray(list) ? list : []
     if (!devices.length) {
-      sel.innerHTML = '<option value="">لا توجد أجهزة أخرى في حسابك</option>'
+      sel.innerHTML = '<option value="">' + esc(t.sessNoDevices) + '</option>'
       sel.disabled = false
       return
     }
-    sel.innerHTML = '<option value="">— اختر جهازاً —</option>' + devices.map((d) => {
+    sel.innerHTML = '<option value="">' + esc(t.sessPickOpt) + '</option>' + devices.map((d) => {
       const name = String(d.name || d.id || '')
-      const mark = d.online ? '● متصل' : '○ غير متصل'
-      const kind = d.platform === 'android' ? 'أندرويد' : (d.platform === 'windows' ? 'ويندوز' : '')
-      // P5-fix — أظهر أن الجهاز داخل جلسة وكيل↔وكيل الآن.
-      const ses = d.session === 'active' ? ' · في جلسة' : (d.session === 'requested' ? ' · طلب معلّق' : '')
+      const mark = d.online ? '● ' + (currentLang === 'ar' ? 'متصل' : 'online') : '○ ' + (currentLang === 'ar' ? 'غير متصل' : 'offline')
+      const kind = d.platform === 'android' ? (currentLang === 'ar' ? 'أندرويد' : 'Android') : (d.platform === 'windows' ? (currentLang === 'ar' ? 'ويندوز' : 'Windows') : '')
+      const ses = d.session === 'active' ? (currentLang === 'ar' ? ' · في جلسة' : ' · in session') : (d.session === 'requested' ? (currentLang === 'ar' ? ' · طلب معلّق' : ' · pending') : '')
       return '<option value="' + esc(d.id) + '">' + esc(name + (kind ? ' · ' + kind : '') + ' — ' + mark + ses) + '</option>'
     }).join('')
     if (cur && devices.some((d) => String(d.id) === cur)) sel.value = cur
     sel.disabled = false
   }
-  let pending = null
-  let pendingTimer = null
 
-  function setState (text) { const el = $id('session-state'); if (el) el.textContent = text || '' }
-  function showPw (show) { const f = $id('session-pw-field'); if (f) f.style.display = show ? '' : 'none' }
-
-  // P4 — قسم «الجلسات»: نفس الصياغة على المنصّتين (الطالب ← الهدف · الوصول · الحالة).
+  // ── sessions list ───────────────────────────────────────────────────────
   async function loadSessions () {
     const box = $id('sessions-list')
     if (!box) return
-    box.innerHTML = '<div class="session-row muted">جارٍ التحميل…</div>'
+    const t = T()
+    box.innerHTML = '<div class="session-row muted">' + esc(t.sessLoading) + '</div>'
     let r = null
     try { r = await window.airemote.relaySessions() } catch (e) { r = { ok: false, error: String((e && e.message) || e) } }
-    if (!r || !r.ok) { box.innerHTML = '<div class="session-row muted">تعذّر جلب الجلسات</div>'; return }
+    if (!r || !r.ok) { box.innerHTML = '<div class="session-row muted">' + esc(t.sessLoadFail) + '</div>'; return }
     const list = (r.data && (r.data.sessions || r.data)) || []
     const rows = (Array.isArray(list) ? list : []).filter((s) => ['requested', 'active', 'suspended'].includes(String(s.state || '')))
-    if (!rows.length) { box.innerHTML = '<div class="session-row muted">لا جلسات نشطة</div>'; return }
-    const stLabel = { requested: 'بانتظار الموافقة', active: 'نشطة', suspended: 'معلّقة' }
-    const accLabel = { view: 'عرض', control: 'تحكم', files: 'ملفات' }
+    if (!rows.length) { box.innerHTML = '<div class="session-row muted">' + esc(t.sessNoSessions) + '</div>'; return }
+    const stLabel = currentLang === 'ar'
+      ? { requested: 'بانتظار الموافقة', active: 'نشطة', suspended: 'معلّقة' }
+      : { requested: 'waiting for approval', active: 'active', suspended: 'suspended' }
+    const accLabel = currentLang === 'ar'
+      ? { view: 'عرض', control: 'تحكم', files: 'ملفات' }
+      : { view: 'view', control: 'control', files: 'files' }
     box.innerHTML = rows.map((s) => {
-      // السيرفر يعيد حقولاً مسطّحة (requesterName/targetName) لا كائناً متداخلاً.
-      const who = s.requesterName || 'جهاز'
+      const who = s.requesterName || (currentLang === 'ar' ? 'جهاز' : 'a device')
       const to = s.targetName || s.targetDeviceId || ''
       return '<div class="session-row">' + esc(who + ' ← ' + to) + ' · ' + esc(accLabel[s.access] || s.access || '') + ' · ' + esc(stLabel[s.state] || s.state) + '</div>'
     }).join('')
   }
 
+  // ── request + waiting machine ───────────────────────────────────────────
+  let waitTimer = null
+  let pollTimer = null
+  let waitUntil = 0
+  let waitTarget = ''
+
+  function stopWait () {
+    if (waitTimer) { clearInterval(waitTimer); waitTimer = null }
+    if (pollTimer) { clearInterval(pollTimer); pollTimer = null }
+  }
+
+  function startWait (targetDeviceId) {
+    const t = T()
+    stopWait()
+    waitTarget = String(targetDeviceId || '')
+    waitUntil = Date.now() + 60000
+    waitTimer = setInterval(() => {
+      const left = Math.max(0, Math.round((waitUntil - Date.now()) / 1000))
+      if (left <= 0) { stopWait(); setState(t.sessTimeout); return }
+      setState(t.sessPending.replace('{n}', left))
+    }, 1000)
+    setState(t.sessPending.replace('{n}', 60))
+    pollTimer = setInterval(async () => {
+      if (!window.airemote || !window.airemote.relaySessions) return
+      let r = null
+      try { r = await window.airemote.relaySessions() } catch (e) { return }
+      if (!r || !r.ok) return
+      const list = (r.data && (r.data.sessions || r.data)) || []
+      const hit = (Array.isArray(list) ? list : []).find((s) => String(s.state) === 'active' &&
+        (String(s.targetDeviceId || '') === waitTarget || String(s.requesterDeviceId || '') === waitTarget))
+      if (hit) { stopWait(); setState(T().sessAccepted); loadDevices(); loadSessions() }
+    }, 2500)
+  }
+
   async function request () {
+    const t = T()
     const pick = $id('session-device')
     const targetDeviceId = pick ? pick.value : ''
-    if (!targetDeviceId) { setState('اختر جهازاً من القائمة أولاً.'); return }
-    const access = (document.querySelector('input[name="session-access"]:checked') || {}).value || 'view'
-    const password = ($id('session-pw').value || '').trim()
-    setState('جارٍ إرسال الطلب…')
-    const r = await window.airemote.relayRequest({ targetDeviceId, access, password: password || undefined })
+    if (!targetDeviceId) { setState(t.sessPickFirst); if (pick) pick.focus(); return }
+    const access = currentAccess()
+    const pwEl = $id('session-pw')
+    const password = pwEl ? String(pwEl.value || '').trim() : ''
+    const btn = $id('session-request-btn')
+    if (btn) btn.disabled = true
+    setState(t.sessSending)
+    let r = null
+    try {
+      r = await window.airemote.relayRequest({ targetDeviceId, access, password: password || undefined })
+    } catch (e) {
+      if (btn) btn.disabled = false
+      setState(t.sessNetwork + ' — ' + String((e && e.message) || e))
+      return
+    }
+    if (btn) btn.disabled = false
     if (!r || !r.ok) {
       const d = (r && r.data) || {}
       if (d.code === 'password_required' || d.code === 'control_password_required') {
-        showPw(true)
-        setState('هذا الجهاز يتطلب كلمة مرور التحكم — أدخلها ثم اضغط «طلب الاتصال» مرة أخرى.')
-        const f = $id('session-pw'); if (f) f.focus()
-        return
+        showPw(true); setState(t.sessPwRequired); if (pwEl) pwEl.focus(); return
       }
-      // 3.13.1 — رسائل واضحة لبقية حالات كلمة السر بدل رمز خام (bad_password / password_locked).
-      if (d.code === 'bad_password') { showPw(true); setState('كلمة المرور غير صحيحة' + (d.attemptsLeft ? ' — تبقّى ' + d.attemptsLeft + ' محاولة' : '')); return }
-      if (d.code === 'password_locked') { setState('مقفل مؤقتًا بعد محاولات فاشلة — أعد المحاولة بعد دقائق.'); return }
-      setState('تعذّر الطلب: ' + (d.code || (r && r.error) || 'خطأ'))
+      if (d.code === 'bad_password') { showPw(true); setState(t.sessPwWrong + (d.attemptsLeft ? ' (' + d.attemptsLeft + ')' : '')); return }
+      if (d.code === 'password_locked') { setState(t.sessPwLocked); return }
+      if (r && r.error && !d.code) { setState(t.sessNetwork); return }
+      setState(t.sessDenied + (d.code ? ' (' + d.code + ')' : ''))
       return
     }
-    showPw(false)
-    const until = Date.now() + 60000
-    setState('بانتظار موافقة الطرف الآخر (60 ثانية)…')
-    if (pendingTimer) clearInterval(pendingTimer)
-    pendingTimer = setInterval(() => {
-      const left = Math.max(0, Math.round((until - Date.now()) / 1000))
-      if (left <= 0) { clearInterval(pendingTimer); pendingTimer = null; setState('انتهت مهلة الطلب.') }
-      else setState('بانتظار موافقة الطرف الآخر (' + left + 'ث)…')
-    }, 1000)
+    startWait(targetDeviceId)
   }
 
+  // ── incoming offer ──────────────────────────────────────────────────────
+  let pending = null
+
   function showOffer (offer) {
+    const t = T()
     pending = offer || {}
     const b = $id('offer-body')
     if (b) {
-      const who = (pending.requester && (pending.requester.name || pending.requester.email)) || 'جهاز'
-      b.textContent = who + ' يطلب ' + (pending.accessLabel || pending.access || '') +
-        ' — المهلة ' + Math.round((pending.expiresInMs || 60000) / 1000) + ' ثانية.'
+      const who = (pending.requester && (pending.requester.name || pending.requester.email)) || (currentLang === 'ar' ? 'جهاز' : 'a device')
+      const acc = pending.accessLabel || pending.access || ''
+      b.textContent = currentLang === 'ar'
+        ? who + ' يطلب ' + acc + ' — المهلة ' + Math.round((pending.expiresInMs || 60000) / 1000) + ' ثانية.'
+        : who + ' requests ' + acc + ' — ' + Math.round((pending.expiresInMs || 60000) / 1000) + ' seconds to answer.'
     }
     const m = $id('session-offer'); if (m) m.style.display = 'flex'
     setTimeout(() => { const a = $id('offer-accept'); if (a) a.focus() }, 40)
+    if (t) setState(t.sessIncoming || '')
   }
 
   async function decide (accept) {
     if (!pending || !pending.sessionId) return
     await window.airemote.sessionDecision({ sessionId: pending.sessionId, accept })
     const m = $id('session-offer'); if (m) m.style.display = 'none'
-    setState(accept ? 'تم السماح — ستُفتح نافذة العرض.' : 'تم الرفض.')
+    setState(accept ? T().sessAllowed : T().sessDenied)
     pending = null
+    loadSessions()
   }
 
   function bind () {
     const pick = $id('session-device')
     if (!pick) return
+    bindSeg()
     const refresh = $id('session-refresh')
     if (refresh) refresh.addEventListener('click', loadDevices)
     const sref = $id('sessions-refresh')
     if (sref) sref.addEventListener('click', loadSessions)
-    $id('session-request-btn').addEventListener('click', request)
+    const req = $id('session-request-btn')
+    if (req) req.addEventListener('click', request)
     loadDevices()
     loadSessions()
-    $id('offer-accept').addEventListener('click', () => decide(true))
-    $id('offer-deny').addEventListener('click', () => decide(false))
+    const acc = $id('offer-accept'); if (acc) acc.addEventListener('click', () => decide(true))
+    const den = $id('offer-deny'); if (den) den.addEventListener('click', () => decide(false))
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind)
   else bind()
-  // 3.13.1 — اختيار «تحكم كامل» يُظهر حقل كلمة المرور فورًا (الجهاز قد يطلبها).
-  document.querySelectorAll('input[name="session-access"]').forEach((el) => {
-    el.addEventListener('change', () => { if (el.checked && el.value === 'control') showPw(true) })
-  })
 
   if (window.airemote && window.airemote.onSessionOffer) window.airemote.onSessionOffer(showOffer)
 
-  // 3.13.2 — رفض الطلب: رسالة محدّدة حسب السبب (كلمة ناقصة/خاطئة/مقفل/رفض صريح).
+  // رفض/تعذّر: رسالة محدّدة حسب السبب، ومنها الرفض الصريح (sessDenied).
   if (window.airemote && window.airemote.onSessionDenied) {
     window.airemote.onSessionDenied(function (p) {
-      const t = LANG[currentLang]
+      const t = T()
       const reason = String((p && p.reason) || '')
-      if (pendingTimer) { clearInterval(pendingTimer); pendingTimer = null }
+      stopWait()
       if (reason === 'password_required') { showPw(true); setState(t.sessPwRequired); const f = $id('session-pw'); if (f) f.focus(); return }
       if (reason === 'bad_password') { showPw(true); setState(t.sessPwWrong); return }
       if (reason === 'password_locked') { setState(t.sessPwLocked); return }
-      setState(t.sessDenied + (reason ? ' (' + reason + ')' : ''))
+      setState(t.sessDenied + (reason && reason !== 'denied' ? ' (' + reason + ')' : ''))
     })
   }
 
-  // 3.9.0 — إخفاء حوار العرض عند انتهاء/إغلاق الجلسة
   if (window.airemote && window.airemote.onSessionClosed) {
     window.airemote.onSessionClosed(function () {
       const m = $id('session-offer'); if (m) m.style.display = 'none'
-      setState('انتهت الجلسة أو أُغلقت.')
+      stopWait()
+      setState(T().sessClosed)
+      loadSessions()
     })
   }
+
+  // لغة الواجهة تتغيّر من الشريط: أعد رسم النصوص الديناميكية.
+  const langBtn = $id('btn-lang')
+  if (langBtn) langBtn.addEventListener('click', () => { setTimeout(() => { loadDevices(); loadSessions() }, 60) })
 })()

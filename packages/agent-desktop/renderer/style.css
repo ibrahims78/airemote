@@ -1638,3 +1638,27 @@ body {
 }
 #sec-settings .card-h .ttl { font-weight: 600; font-size: 12.5px; }
 #sec-settings .card-h svg { color: var(--accent); flex: 0 0 auto; }
+
+/* ── 3.14.0 — D64: بطاقة «الاتصال بجهاز آخر» ببنية المرجع (.card/.card-h/.card-b/.seg) ── */
+.sess-card { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; margin-top: 12px; overflow: hidden; flex: 0 0 auto; }
+.sess-card .card-h { display: flex; align-items: center; gap: 8px; padding: 11px 12px; border-bottom: 1px solid var(--border); }
+.sess-card .card-h .ttl { font-weight: 600; font-size: 12.5px; color: var(--text); }
+.sess-card .card-h svg { color: var(--accent); flex: 0 0 auto; }
+.sess-card .card-b { display: flex; flex-direction: column; gap: 10px; padding: 12px; }
+.sess-card .grow { flex: 1; }
+.sess-card .row2 { display: flex; gap: 8px; align-items: center; }
+.sess-card .row2 select { flex: 1; min-width: 0; }
+.sess-card .hint { font-size: 10px; color: var(--muted); }
+.sess-card select.input,
+.sess-card input.input { width: 100%; height: 32px; border-radius: 7px; border: 1px solid var(--border2); background: var(--bg); color: var(--text); font-size: 11.5px; padding: 0 9px; font-family: inherit; outline: none; }
+.sess-card input.input.mono { font-family: var(--mono); }
+.sess-card select.input:focus,
+.sess-card input.input:focus { border-color: var(--accent); }
+.sess-card .seg { display: inline-flex; width: 100%; border: 1px solid var(--border2); border-radius: 7px; overflow: hidden; }
+.sess-card .seg button { flex: 1; height: 28px; background: transparent; border: 0; color: var(--muted); font-size: 11px; cursor: pointer; font-family: inherit; }
+.sess-card .seg button.on { background: var(--bg3); color: var(--text); font-weight: 600; }
+.sess-card .btn { height: 30px; padding: 0 12px; border-radius: 7px; border: 1px solid var(--border2); background: var(--bg3); color: var(--text); font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; font-family: inherit; }
+.sess-card .btn.ghost { background: transparent; border-color: var(--border); }
+.sess-card .btn.primary { width: 100%; background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.sess-card .btn.primary:disabled { opacity: .6; cursor: default; }
+.sess-card .btn:hover { filter: brightness(1.05); }
