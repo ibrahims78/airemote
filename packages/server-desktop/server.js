@@ -1491,7 +1491,11 @@ function handleAgentWs(socket) {
       if (prevAgent && prevAgent.ws && prevAgent.ws !== socket) {
         try { prevAgent.ws.close(4000, 'replaced by newer agent connection') } catch {}
       }
-      agentSockets.set(deviceId, { ws: socket, info, deviceName: device.name, connectedAt: Date.now(), stats: null })
+      agentSockets.set(deviceId, {
+        ws: socket, info, deviceName: device.name, connectedAt: Date.now(), stats: null,
+        // 3.14.1 - does this agent start with Windows? Reported on register, refreshed on change.
+        runAtStartup: (typeof payload.runAtStartup === 'boolean') ? payload.runAtStartup : null
+      })
       // R4 — عودة الوكيل داخل مهلة السماح تُستأنف بها جلسته بدل إغلاقها.
       try { relayResumeForDevice(deviceId) } catch {}
       try {
@@ -1562,6 +1566,13 @@ function handleAgentWs(socket) {
       return
     }
 
+    if (type === 'agent:startup_state') {
+      const rec = agentSockets.get(deviceId)
+      const enabled = !!(payload && payload.enabled)
+      if (rec) rec.runAtStartup = enabled
+      broadcastToClients({ type: 'device:startup', payload: { deviceId, enabled } })
+      return
+    }
     if (type === 'agent:heartbeat') {
       // v3.8.21 - an Android agent in Doze can be slow to answer a protocol ping, but it
       // still sends heartbeats. Treat a heartbeat as proof of life: otherwise the socket
@@ -2484,6 +2495,7 @@ function handleClientWs(socket, user) {
     ...d, info: parseJson(d.info), tags: parseJson(d.tags, []),
     capabilities: parseJson(d.capabilities, {}), isOnline: agentSockets.has(d.id),
     stats: agentSockets.get(d.id)?.stats || null,
+    runAtStartup: (agentSockets.get(d.id) || {}).runAtStartup ?? null,
   }))
   sendJson(socket, { type: 'server:snapshot', payload: { devices: snapshot } })
 
@@ -4639,6 +4651,7 @@ async function start(config) {
         status: d.status === 'blocked' ? 'blocked' : (online ? 'online' : 'offline'),
         remoteIp: rmClean, tunnelLayer,
         stats: agentSockets.get(d.id)?.stats || null,
+        runAtStartup: (agentSockets.get(d.id) || {}).runAtStartup ?? null,
         // P6-fix — البطاقة تُظهر الآن اتصال وكيل↔وكيل: الطرف الآخر ونوع الوصول والحالة.
         relay: (function () {
           try {
@@ -4656,6 +4669,21 @@ async function start(config) {
         })(),
       }
     })
+  })
+
+  // 3.14.1 - start-with-Windows, switched from the dashboard and relayed to the agent.
+  fastify.post('/api/devices/:id/startup', { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } }, async (req, reply) => {
+    const p = authMiddleware(req, reply); if (!p) return
+    const device = db.prepare('SELECT * FROM devices WHERE id=?').get(req.params.id)
+    if (!device) return reply.code(404).send({ error: 'Device not found' })
+    if (!hasDeviceCapability(p, device.id, 'control')) return reply.code(403).send({ error: 'Forbidden' })
+    const enabled = !!(req.body && req.body.enabled)
+    const rec = agentSockets.get(device.id)
+    if (!rec || !rec.ws) return reply.code(409).send({ error: 'Device offline', code: 'device_offline' })
+    sendJson(rec.ws, { type: 'server:set_startup', payload: { enabled }, timestamp: Date.now() })
+    rec.runAtStartup = enabled
+    console.log('[startup] device=' + String(device.id).slice(0, 8) + ' enabled=' + enabled + ' by=' + (p.email || p.userId))
+    return { ok: true, deviceId: device.id, runAtStartup: enabled, pending: true }
   })
 
   fastify.post('/api/devices/:id/disconnect', async (req, reply) => {

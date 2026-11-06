@@ -41,6 +41,8 @@ const LANG = {
     serverHint:     'مثال: wss://myserver.replit.app/ws',
     deviceToken:    'Device Token',
     tokenHint:      'Dashboard → Devices → نسخ Token',
+    runAtStartup:   'بدء الوكيل مع إقلاع ويندوز',
+    runAtStartupNo: 'غير متاح على هذا النظام',
     autoStart:      'تشغيل تلقائي عند فتح البرنامج',
     startMinimized: 'بدء مصغراً في شريط الإشعارات',
     saveSettings:   'حفظ الإعدادات',
@@ -166,6 +168,8 @@ const LANG = {
     serverHint:     'Example: wss://myserver.replit.app/ws',
     deviceToken:    'Device Token',
     tokenHint:      'Dashboard → Devices → Copy Token',
+    runAtStartup:   'Start the agent with Windows',
+    runAtStartupNo: 'Not available on this system',
     autoStart:      'Auto-start when app opens',
     startMinimized: 'Start minimized to tray',
     saveSettings:   'Save Settings',
@@ -606,6 +610,28 @@ $('save-btn').addEventListener('click', () => {
 })
 
 // ── Remote Control Auth (v3.3.1) ────────────────────────────────────────
+// 3.14.1 — Windows-startup switch: independent of autoStart, and the server can flip it.
+const chkRunStartup = $('chk-runstartup')
+if (chkRunStartup) {
+  const paintStartup = (st) => {
+    if (!st) return
+    chkRunStartup.checked = !!st.effective
+    chkRunStartup.disabled = st.supported === false
+    chkRunStartup.title = st.supported === false ? (LANG[currentLang].runAtStartupNo || '') : ''
+  }
+  chkRunStartup.addEventListener('change', () => {
+    if (typeof window.airemote !== 'undefined' && typeof window.airemote.setStartup === 'function') {
+      bridge.setStartup(chkRunStartup.checked)
+    }
+  })
+  if (typeof window.airemote !== 'undefined' && typeof window.airemote.getStartup === 'function') {
+    bridge.getStartup().then(paintStartup).catch(() => {})
+  }
+  if (window.airemote && typeof window.airemote.onStartupState === 'function') {
+    window.airemote.onStartupState(paintStartup)
+  }
+}
+
 const ctrlPwField = $('ctrl-pw-field')
 const ctrlPwInput = $('inp-ctrl-pw')
 const ctrlStateEl = $('ctrl-pw-state')

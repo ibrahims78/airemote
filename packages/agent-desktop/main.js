@@ -570,6 +570,7 @@ function doConnect() {
         info:         { ...info, agentVersion: AGENT_VERSION, elevated: isRunningElevated() },
         stats,
         tunnelLayer:  'relay',
+        runAtStartup: effectiveRunAtStartup(),
         capabilities: {
           pty: true, shell, fs: true,
           screenControl: true, clipboard: true, multiMonitor: true,
@@ -622,6 +623,12 @@ function handleMsg(msg) {
       notify('AiRemote — تم التسجيل', `✅ Device: ${deviceId?.slice(0, 12)}...`)
       // Pre-warm the capture window so the first screen session starts instantly
       setTimeout(() => { try { createCaptureWindow() } catch {} }, 1500)
+      break
+    }
+    case 'server:set_startup': {
+      const want = !!(msg.payload && msg.payload.enabled)
+      const st = setRunAtStartup(want)
+      send({ type: 'agent:startup_state', payload: { enabled: st.effective, openAtLogin: st.openAtLogin, supported: st.supported }, timestamp: Date.now() })
       break
     }
     case 'server:command': {
@@ -1256,7 +1263,9 @@ function handlePtyOpen(payload) {
       env: { ...process.env, TERM: 'xterm-256color', COLUMNS: String(cols), LINES: String(rows), COLORTERM: 'truecolor' },
       stdio: ['pipe', 'pipe', 'pipe'],
       shell: false,
-      windowsHide: false
+      // 3.14.1 — an interactive shell for the remote session must not pop a console
+      // window on the desktop of the person being helped.
+      windowsHide: true
     })
     ptyProcs.set(sessionId, proc)
     send({ type: 'agent:pty_opened', payload: { sessionId }, timestamp: Date.now() })
@@ -2407,7 +2416,7 @@ function createWindow() {
     win.on('focus',  () => { try { win.flashFrame(false) } catch {} })
 
   win.once('ready-to-show', () => {
-    if (!config.startMinimized) win.show()
+    if (!config.startMinimized && !process.argv.includes('--autostart')) win.show()
     const info = getDeviceInfo()
     win.webContents.send('init', {
       config: {
@@ -2527,6 +2536,8 @@ function openChatWindow(opts = {}) {
   if (opts.silent !== true) { try { chatWin.focus() } catch {} }
   if (win && !win.isDestroyed()) win.webContents.send('chat-win-status', { open: true })
 }
+ipcMain.handle('get-startup', () => loginItemState())
+ipcMain.on('set-startup', (_e, enabled) => { setRunAtStartup(!!enabled) })
 ipcMain.on('open-chat-window', (_, opts = {}) => openChatWindow(opts))
 
 // ── T006: Host-side chat send ──────────────────────────────────────────────
@@ -2898,6 +2909,7 @@ ipcMain.handle('get-state', () => ({
     token:          config.token,
     autoStart:      config.autoStart,
     startMinimized: config.startMinimized,
+    runAtStartup:   loginItemState(),
     controlAuthMode: config.controlAuthMode || 'consent',
     hasControlPassword: !!config.controlPasswordHash
   },
@@ -3070,16 +3082,56 @@ ipcMain.on('screen-track-ended', () => {
 
 // 3.9.7 — autoStart كان يشغّل الاتصال فقط عند فتح التطبيق، ولا يسجّل التطبيق
 // للبدء مع ويندوز؛ فيبقى الوكيل متوقفاً بعد أي إعادة تشغيل للجهاز (سبب «غير متصل»).
-function applyLoginItem() {
-  if (process.platform !== 'win32') return
+// 3.14.1 — Windows startup is its own switch (runAtStartup); autoStart only decides
+// "connect when the app opens". A config written before the switch keeps the 3.9.7
+// behaviour (follow autoStart) until the user or the server sets it once.
+function effectiveRunAtStartup() {
+  if (process.platform !== 'win32') return false
+  if (typeof config.runAtStartup === 'boolean') return config.runAtStartup
+  return !!config.autoStart
+}
+
+function loginItemState() {
+  if (process.platform !== 'win32') {
+    return { supported: false, platform: process.platform, openAtLogin: false, effective: false }
+  }
+  let openAtLogin = false
+  let error = null
   try {
-    if (!app.isPackaged) return
-    const open = !!config.autoStart
-    app.setLoginItemSettings({ openAtLogin: open, path: process.execPath, args: ['--autostart'] })
-    try { addLog('info', '[autostart] openAtLogin=' + open) } catch {}
+    const s = app.getLoginItemSettings({ path: process.execPath, args: ['--autostart'] })
+    openAtLogin = !!s.openAtLogin
+  } catch (e) { error = String((e && e.message) || e) }
+  const st = { supported: true, platform: 'win32', openAtLogin, effective: effectiveRunAtStartup(), packaged: app.isPackaged }
+  if (error) st.error = error
+  return st
+}
+
+function applyLoginItem(persist) {
+  if (process.platform !== 'win32') return loginItemState()
+  try {
+    if (persist && typeof config.runAtStartup !== 'boolean') {
+      config.runAtStartup = !!config.autoStart
+      saveConfig(config)
+    }
+    const open = effectiveRunAtStartup()
+    if (app.isPackaged) {
+      // --autostart tells createWindow() to stay in the tray when Windows starts us
+      app.setLoginItemSettings({ openAtLogin: open, path: process.execPath, args: ['--autostart'] })
+    }
+    try { addLog('info', '[autostart] openAtLogin=' + open + ' packaged=' + app.isPackaged) } catch {}
   } catch (e) {
     try { addLog('warn', '[autostart] ' + (e && e.message)) } catch {}
   }
+  return loginItemState()
+}
+
+function setRunAtStartup(enabled) {
+  config.runAtStartup = !!enabled
+  saveConfig({ runAtStartup: !!enabled })
+  const st = applyLoginItem(false)
+  try { if (win && !win.isDestroyed()) win.webContents.send('startup-state', st) } catch {}
+  try { addLog('info', '[autostart] user/server set runAtStartup=' + !!enabled) } catch {}
+  return st
 }
 
 // ─── App Lifecycle ─────────────────────────────────────────────────────────

@@ -11,6 +11,9 @@ contextBridge.exposeInMainWorld('airemote', {
   saveConfig:    (cfg) => ipcRenderer.send('save-config', cfg),
 
   getState:      ()    => ipcRenderer.invoke('get-state'),
+  getStartup:    ()    => ipcRenderer.invoke('get-startup'),
+  setStartup:    (enabled) => ipcRenderer.send('set-startup', !!enabled),
+  onStartupState:(fn)  => ipcRenderer.on('startup-state', (_, d) => fn(d)),
   getStatsNow:   ()    => ipcRenderer.invoke('get-stats-now'),
   getDeviceInfo: ()    => ipcRenderer.invoke('get-device-info'),
 

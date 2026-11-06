@@ -24,7 +24,7 @@ const path = require('path')
 const SEED_KEYS = ['serverUrl', 'token', 'controlAuthMode', 'controlPasswordSalt', 'controlPasswordHash']
 
 function defaultConfig () {
-  return { serverUrl: '', token: '', autoStart: false, startMinimized: false, _winBounds: null }
+  return { serverUrl: '', token: '', autoStart: false, startMinimized: false, runAtStartup: null, _winBounds: null }
 }
 
 function readJsonObject (file) {

@@ -226,6 +226,19 @@ export function DevicesPage() {
   const isAdmin = user?.role === 'admin'
 
   const [connBusyId, setConnBusyId] = useState<string | null>(null)
+  const [startupBusyId, setStartupBusyId] = useState<string | null>(null)
+
+  // 3.14.1 - start-with-Windows, toggled from the server and confirmed by the agent
+  async function toggleStartup(id: string, enabled: boolean) {
+    if (startupBusyId) return
+    setStartupBusyId(id)
+    try {
+      await api.post('/api/devices/' + id + '/startup', { enabled })
+      await fetchDevices()
+      window.setTimeout(() => { fetchDevices().catch(() => {}) }, 1500)
+    } catch { /* offline or forbidden: the row keeps the state the agent reported */ }
+    finally { setStartupBusyId(null) }
+  }
 
   async function connAction(id: string, action: 'disconnect' | 'block' | 'unblock') {
     if (connBusyId) return
@@ -432,6 +445,23 @@ export function DevicesPage() {
                       >
                         <Terminal size={13} />
                       </button>
+                      {d.status === 'online' && (() => {
+                        const on = (d as unknown as { runAtStartup?: boolean | null }).runAtStartup
+                        return (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); toggleStartup(d.id, !on) }}
+                            disabled={startupBusyId === d.id}
+                            className={clsx(
+                              'rounded border px-1.5 py-0.5 text-[10px] transition-colors disabled:opacity-40 disabled:cursor-wait',
+                              on ? 'border-success/50 text-success' : 'border-line text-muted/80 hover:text-primary'
+                            )}
+                            title={on ? t('dev_startup_on') : t('dev_startup_off')}
+                            aria-label={on ? t('dev_startup_on') : t('dev_startup_off')}
+                          >
+                            {t('dev_startup')}{on ? ' ✓' : ''}
+                          </button>
+                        )
+                      })()}
                       {isAdmin && (
                       <button
                         onClick={() => connAction(d.id, d.status === 'blocked' ? 'unblock' : 'block')}

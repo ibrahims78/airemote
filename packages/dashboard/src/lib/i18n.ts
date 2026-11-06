@@ -5,6 +5,9 @@ const T = {
   ar: {
     overview: 'نظرة عامة', devices: 'الأجهزة', ai_assistant: 'المساعد الذكي',
     sessions: 'الجلسات', users: 'المستخدمون', settings: 'الإعدادات', logout: 'تسجيل الخروج',
+    dev_startup: 'بدء مع ويندوز',
+    dev_startup_on: 'يبدأ الوكيل مع إقلاع ويندوز - اضغط للإيقاف',
+    dev_startup_off: 'لا يبدأ مع ويندوز - اضغط للتشغيل',
     online: 'متصل', offline: 'غير متصل', connecting: 'جاري الاتصال...',
  disconnected_ws: 'WebSocket منقطع',
  version: 'الإصدار',
@@ -633,6 +636,9 @@ const T = {
   en: {
     overview: 'Overview', devices: 'Devices', ai_assistant: 'AI Assistant',
     sessions: 'Sessions', users: 'Users', settings: 'Settings', logout: 'Logout',
+    dev_startup: 'Start with Windows',
+    dev_startup_on: 'The agent starts with Windows - click to turn off',
+    dev_startup_off: 'Does not start with Windows - click to turn on',
     online: 'Online', offline: 'Offline', connecting: 'Connecting...',
  disconnected_ws: 'WebSocket disconnected',
  version: 'Version',
