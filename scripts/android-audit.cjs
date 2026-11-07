@@ -127,8 +127,11 @@ function focus () {
     const before = focus()
     try { adb('shell', 'input', 'tap', String(n.x), String(n.y)) } catch (e) { rows.push({ ...n, label, tapped: false, error: String(e.message || e) }); continue }
     await sleep(700)
-    const after = focus()
-    rows.push({ ...n, label, tapped: true, focusBefore: before, focusAfter: after, leftApp: !(after.includes(PKG) || after.includes('PopupWindow')) })
+    // A repaint can leave mCurrentFocus empty for a moment; an empty reading is not another app.
+    let after = focus()
+    if (!after) { await sleep(500); after = focus() }
+    const leftApp = !!after && !(after.includes(PKG) || after.includes('PopupWindow'))
+    rows.push({ ...n, label, tapped: true, focusBefore: before, focusAfter: after, leftApp })
     adb('shell', 'input', 'keyevent', '4')
     await sleep(300)
     adb('shell', 'am', 'start', '-n', `${PKG}/.MainActivity`)
