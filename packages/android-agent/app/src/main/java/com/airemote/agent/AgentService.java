@@ -740,6 +740,9 @@ public class AgentService extends Service {
         // الداخلية قديمة) فلا يرى المستخدم شيئاً ويبقى الطلب معلّقاً. الآن نفعل الثلاثة:
         // إشعار في الدرج دائماً + إظهار التطبيق بالحوار + الحوار نفسه إن كانت النافذة قائمة.
         notifySessionOffer(offer);
+        // P4 — سطح قرار واحد لا اثنان: إن كان التطبيق في المقدّمة فالحوار الداخلي هو السطح،
+        // وإطلاق النشاط فوقه كان يجعل التركيز يرتدّ ويختفي السطح خلال ~200ms (قياس w29).
+        final boolean inApp = MainActivity.foreground && MainActivity.instance != null;
         // 3.11.6 — تشخيص حاسم: Android 10+ يمنع بدء نشاط من خدمة في الخلفية إلا إذا كان
         // التطبيق يملك «الظهور فوق التطبيقات» (SYSTEM_ALERT_WINDOW). كان الفشل يُبتلع في
         // catch صامت، فيبدو الطلب «غير مرئي» بلا أي أثر في السجل. الآن نسجّل الحالة
@@ -748,10 +751,11 @@ public class AgentService extends Service {
         boolean canOverlay = android.os.Build.VERSION.SDK_INT < 23
                 || android.provider.Settings.canDrawOverlays(this);
         android.util.Log.d("AiR-Offer", "handle canOverlay=" + canOverlay + " sdk=" + android.os.Build.VERSION.SDK_INT);
-        if (canOverlay || android.os.Build.VERSION.SDK_INT < 29) {
+        if (!inApp && (canOverlay || android.os.Build.VERSION.SDK_INT < 29)) {
             try {
                 Intent ov = new Intent(this, SessionOfferActivity.class);
-                ov.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_SINGLE_TOP);
+                // بلا CLEAR_TOP: كانت تُفرّغ المكدّس فتتنافس مع MainActivity على المقدّمة.
+                ov.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_SINGLE_TOP);
                 ov.putExtra("offerJson", offer.toString());
                 startActivity(ov);
                 android.util.Log.d("AiR-Offer", "startActivity ok");
@@ -759,9 +763,9 @@ public class AgentService extends Service {
                 android.util.Log.e("AiR-Offer", "startActivity blocked: " + e.getClass().getSimpleName() + " " + e.getMessage());
             }
         } else {
-            android.util.Log.w("AiR-Offer", "background start skipped (no overlay) — relying on full-screen notification");
+            android.util.Log.w("AiR-Offer", "activity start skipped: inApp=" + inApp + " overlay=" + canOverlay);
         }
-        if (MainActivity.foreground && MainActivity.instance != null) {
+        if (inApp) {
             MainActivity.instance.showSessionOffer(offer);
         }
     }

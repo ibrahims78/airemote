@@ -68,7 +68,7 @@ public class MainActivity extends Activity {
                 final String sid = offer.optString("sessionId", "");
                 // P4 — نفس جملة وكيل ويندوز حرفياً: «<الطالب> يطلب <الوصول> — المهلة N ثانية.»
                 long expiresMs = offer.optLong("expiresInMs", 60000L);
-                String secs = String.valueOf(Math.round(expiresMs / 1000.0));
+                int secs = (int) Math.round(expiresMs / 1000.0);
                 // حوار واحد فقط: أي عرض جديد يُغلق السابق
                 dismissSessionOffer("");
                 AlertDialog dlg = new AlertDialog.Builder(this)
@@ -91,7 +91,9 @@ public class MainActivity extends Activity {
                 AgentService.cancelOfferNotification(sid);
                 // إغلاق تلقائي بعد انتهاء المهلة حتى لا يبقى فوق العارض
                 UI.postDelayed(() -> dismissSessionOffer(sid), expiresMs + 2000);
-            } catch (Exception ignore) {}
+            } catch (Exception e) {
+                android.util.Log.e("AiR-Offer", "dialog failed: " + e, e);
+            }
         });
     }
     private static final Handler UI = new Handler(Looper.getMainLooper());
