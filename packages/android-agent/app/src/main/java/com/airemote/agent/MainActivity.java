@@ -69,8 +69,13 @@ public class MainActivity extends Activity {
                 // P4 — نفس جملة وكيل ويندوز حرفياً: «<الطالب> يطلب <الوصول> — المهلة N ثانية.»
                 long expiresMs = offer.optLong("expiresInMs", 60000L);
                 int secs = (int) Math.round(expiresMs / 1000.0);
-                // حوار واحد فقط: أي عرض جديد يُغلق السابق
-                dismissSessionOffer("");
+                android.util.Log.d("AiR-Offer", "show sid=" + sid + " finishing=" + isFinishing());
+                // إغلاق أي حوار سابق **فورًا** قبل بناء الجديد. كان `dismissSessionOffer("")`
+                // يُنشر إلى الطابور فيُنفَّذ بعد `dlg.show()` ويُغلق الحوار الجديد في اللحظة نفسها
+                // (لأن sid الفارغ لا يمرّره حارس المطابقة) — وهو سبب «لا حوار» المقيس.
+                try { if (offerDialog != null) offerDialog.dismiss(); } catch (Exception ignore) { }
+                offerDialog = null;
+                offerSid = "";
                 AlertDialog dlg = new AlertDialog.Builder(this)
                         .setTitle(getString(R.string.dlg_request))
                         .setMessage(getString(R.string.dlg_who, who, access, secs))

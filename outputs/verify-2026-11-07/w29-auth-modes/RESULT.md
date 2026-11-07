@@ -1,8 +1,7 @@
-# w29 — وضعا التحكّم على أندرويد + تشخيص مسار الموافقة — 2026-11-07
+# w29 — وضعا التحكّم على أندرويد + إصلاح حوار الموافقة — 2026-11-07
 
-البناء: `AiRemote-Agent-3.14.2-vc63-lab.apk` · موقّع `a776659a…` · vc63 · مثبَّت على TAB16.
-الضبط برمجي عبر `run-as` (PBKDF2 HmacSHA1 · 60,000 · 256bit — مطابق للكود).
-المسار: وكيل→وكيل (`POST /api/relay/request` من TECNO، `access=control`).
+البناء النهائي: `AiRemote-Agent-3.14.2-vc67-lab.apk` (vc63→vc67) · موقّع `a776659a…` · مثبَّت على TAB16.
+المسار المقيس: وكيل→وكيل (`POST /api/relay/request` من TECNO إلى TAB16، `access=control`).
 
 ## 1) وضع كلمة السر — يعمل
 | الجهاز | الطلب | النتيجة |
@@ -13,30 +12,22 @@
 | TECNO | `123456` | `active` |
 | TECNO | `nope` | `denied · bad_password` |
 
-## 2) إعادة طلب وضع الموافقة (تشخيص)
-رصد كل 0.8s لمدة 11s بعد الطلب:
+## 2) وضع الموافقة اليدوية — يعمل بعد ثلاثة إصلاحات
+| المرحلة | الملاحظة | السبب الجذري |
+|---|---|---|
+| قبل | الطلب `requested` بلا أي سطح قرار | `SessionOfferActivity` تُفتح ثم يُسحب التركيز إلى `MainActivity` خلال ~200ms (سطحان يتنافسان) |
+| قبل | الحوار لا يرسم أبدًا | `dlg_who` يستخدم `%3$d` والكود يمرّر **String** ⇒ `IllegalFormatConversionException` في كل مرة (عيب قديم) |
+| قبل | الحوار يُنشأ ثم يُغلق فورًا | `dismissSessionOffer("")` يُنشر إلى الطابور فينفّذ **بعد** `dlg.show()` ويُغلق الحوار الجديد |
 
+**الإصلاحات:** إطلاق النشاط فقط عند غياب التطبيق (+إزالة `CLEAR_TOP`) · `int secs` بدل String · إغلاق الحوار السابق **تزامنيًّا** قبل بناء الجديد.
+
+### الإثبات بعد الإصلاح
 ```
-state=requested  (14 قياسًا متتاليًا، بلا انقلاب)
+W AiR-Offer: activity start skipped: inApp=true overlay=true
+dialog: 'TECNO-KL4 يطلب تحكم كامل — المهلة ٦٠ ثانية.'  [سماح] [رفض]
+tap سماح  ⇒  state=active
 ```
 
-**الخلاصة:** وضع `consent` **صحيح**: يبقي الطلب `requested` ولا يقبل تلقائيًّا. نتيجة `active` السابقة **لم تتكرّر** — كانت أثر حالة عابرة عند تبديل الوضع، لا سلوكًا.
-
-## 3) لماذا لا يظهر حوار؟
-من السجل:
-```
-20:24:18.878 Focus moving from com.airemote.agent/.SessionOfferActivity
-            to   com.airemote.agent/.MainActivity
-20:24:19.02x BufferQueue ... SessionOfferActivity#0/#1 disconnect + ~BufferQueueCore
-```
-- `SessionOfferActivity` **فُتحت فعلًا** ثم أُغلقت خلال ~200ms، وعادت `MainActivity` للمقدّمة.
-- إشعار `sessions_v1` **موجود** (`category=call` · `actions=2`) — أي أن مسار الإشعار يعمل.
-
-المرشّحان في الكود (`SessionOfferActivity`):
-1. `finish()` عند `offerJson` فارغ/غير صالح (السطر 49/53) أو عند استثناء في `onCreate` (السطر 62).
-2. `FLAG_ACTIVITY_CLEAR_TOP | SINGLE_TOP` مع كون `MainActivity` في المقدّمة ⇒ النشاط يُنشأ ثم يُزال فورًا، ويبقى المستخدم بلا سطح قرار إلا الإشعار.
-
-**لم أحسم أيّهما** — يحتاج سجلًّا من داخل `onCreate` (أو إزالة `CLEAR_TOP` وتجربة).
-
-## 4) ما لم يُغطَّ
+## 3) ما لم يُغطَّ
 - `emulator-5554` سقط أثناء الجلسة · `WIN10/WIN11` لم يُضبط وضعها · المسار **السيرفر→وكيل** لم يُختبر.
+- الإصدار: بناءات مختبر `3.14.2` بـ`versionCode` متزايد؛ إصدار 3.14.3 الحقيقي يحتاج إعادة بناء السيرفر/الوكيل/البيان.
