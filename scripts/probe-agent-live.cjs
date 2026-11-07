@@ -8,21 +8,35 @@
  * reads the live UI: the status card label, the connection fields, whether each
  * accordion opens, and whether every tab actually activates.
  *
- * Usage: node scripts/probe-agent-live.cjs <out-dir> [--port 9333]
+ * Usage: node scripts/probe-agent-live.cjs <out-dir> [--port 9333] [--exe <agent.exe>] [--root <repo>] [--out <dir>]
+ *        patch-probe.exe --root <repo> --out <dir> --exe "<agent.exe>" --audit   (Node SEA build)
+ *        patch-probe.exe --self-test                                            (runtime self-check)
  */
 const { spawn } = require('child_process')
 const fs = require('fs')
 const path = require('path')
 
-const ROOT = path.resolve(__dirname, '..')
+const argOf = (name) => { const i = process.argv.indexOf('--' + name); return i > 0 ? process.argv[i + 1] : null }
+// A Node SEA has no __dirname that points at the repository, so --root is authoritative there.
+const ROOT = path.resolve(argOf('root') || path.resolve(__dirname, '..'))
 const APP_DIR = path.join(ROOT, 'packages', 'agent-desktop')
 const ELECTRON = path.join(APP_DIR, 'node_modules', 'electron', 'dist', 'electron.exe')
 
-const outDir = path.resolve(process.argv[2] || path.join(ROOT, 'outputs', 'probe-agent-live'))
+const positional = process.argv[2] && !process.argv[2].startsWith('--') ? process.argv[2] : null
+const outDir = path.resolve(argOf('out') || positional || path.join(ROOT, 'outputs', 'probe-agent-live'))
 const exeArg = (() => { const i = process.argv.indexOf('--exe'); return i > 0 ? process.argv[i + 1] : null })()
 const portArg = process.argv.indexOf('--port')
 const PORT = portArg > 0 ? Number(process.argv[portArg + 1]) : 9333
 const sleep = (ms) => new Promise(r => setTimeout(r, ms))
+
+// proves the exe carries its own runtime: no Node install and no repository needed to print this
+if (process.argv.includes('--self-test')) {
+  console.log(JSON.stringify({
+    ok: true, selfTest: true, node: process.version, execPath: process.execPath,
+    root: ROOT, out: outDir, exe: exeArg, electronPresent: fs.existsSync(ELECTRON)
+  }, null, 2))
+  process.exit(0)
+}
 
 if (!exeArg && !fs.existsSync(ELECTRON)) {
   console.error('electron binary missing: ' + ELECTRON)
@@ -31,7 +45,6 @@ if (!exeArg && !fs.existsSync(ELECTRON)) {
 fs.mkdirSync(outDir, { recursive: true })
 
 // optional: seed the isolated profile so the agent boots straight into a connection
-const argOf = (name) => { const i = process.argv.indexOf('--' + name); return i > 0 ? process.argv[i + 1] : null }
 const seedServer = argOf('server')
 const seedToken = argOf('token') || 'probe-token'
 const seedAuto = process.argv.includes('--auto')
@@ -330,6 +343,12 @@ const SNAPSHOT_JS = `(() => {
     }
     fs.writeFileSync(path.join(outDir, 'agent-audit.json'), JSON.stringify(summary, null, 2), 'utf8')
     console.log(JSON.stringify({ audit: summary.mode, buttons: summary.buttons, candidates: summary.candidates, clicked: summary.clicked, vanished: summary.vanished, mismatched: summary.mismatched, skipped: summary.skipped, threw: summary.threw, exceptions: summary.exceptions }))
+    // The audit has just clicked every button, so the surface it left behind is no longer the one
+    // the visual probe describes: stop here with a clean exit instead of screenshotting that state.
+    c.close()
+    try { child.kill() } catch {}
+    await sleep(300)
+    process.exit(0)
   }
 
   // back to the status tab and take a picture
