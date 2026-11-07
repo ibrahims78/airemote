@@ -329,7 +329,9 @@ export async function handleScreenWebSocket(socket: WebSocket, request: FastifyR
           const requestId = msg.payload?.requestId || uuidv4()
           deviceRegistry.sendToDevice(deviceId, {
             type:    'server:screen_control_request',
-            payload: { sessionId: agentSessionId, requestId, requesterName: userEmail },
+            // 3.14.3 - مرِّر كلمة سر التحكّم كما في مسار وكيل→وكيل؛ كان إسقاطها يجعل
+            // وضع «كلمة سر» غير قابل للاستخدام من اللوحة (الوكيل يقرأ password من الحمولة).
+            payload: { sessionId: agentSessionId, requestId, requesterName: userEmail, password: msg.payload?.password },
             timestamp: Date.now()
           })
           break
