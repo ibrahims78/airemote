@@ -22,3 +22,7 @@
 ## البناء
 `node scripts/build-probe-exe.cjs` ⇒ `releases/tools/patch-probe.exe` · 93,532,160 بايت · Node v24.20.0 مدموج · `--self-test` = `ok:true`.
 `postject` من `%TEMP%\sea-tools` (خارج شجرة المنتج). الملف **متجاهَل في git** كبقية الحزم.
+
+## الحمل الذاتي (مُتحقَّق، لا مفترض)
+في الضيفين: `where node` فارغ · `where npm` فارغ · لا `C:\Program Files\nodejs` ولا `C:\Program Files (x86)\nodejs` ولا `%LOCALAPPDATA%\Programs\nodejs`.
+أي أن تدقيق **50/50** جرى على ويندوز **بلا أي runtime** — وهو جوهر قرار §4.1 (بلا تثبيت في الضيف وبلا رفع صلاحيات).
