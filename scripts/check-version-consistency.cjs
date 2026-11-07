@@ -59,6 +59,18 @@ try {
 } catch (e) { gradleName = 'MISSING' }
 add('android build.gradle versionName', gradleName, gradleCode ? 'versionCode=' + gradleCode : '')
 
+// 3b) Ø§Ù„Ù†Ø³Ø®Ø© Ø§Ù„Ù…Ø¯Ù…Ø¬Ø© ÙÙŠ Ø§Ù„Ù„ÙˆØØ© ÙˆØ§Ù„Ø§Ø­ØªÙŠØ§Ø·ÙŠ Ø§Ù„Ø³Ø§ÙƒÙ† ÙÙŠ ÙˆØ§Ø¬Ù‡Ø© Ø§Ù„ÙˆÙƒÙŠÙ„
+try {
+  const v = fs.readFileSync(path.join(ROOT, 'packages/dashboard/src/lib/version.ts'), 'utf8')
+  const m = /APP_VERSION\s*=\s*'([^']+)'/.exec(v)
+  add('dashboard APP_VERSION', m ? m[1] : 'MISSING')
+} catch { add('dashboard APP_VERSION', 'MISSING') }
+try {
+  const h = fs.readFileSync(path.join(ROOT, 'packages/agent-desktop/renderer/index.html'), 'utf8')
+  const m = /class="brand-version">v([^<]+)</.exec(h)
+  add('agent renderer fallback', m ? m[1] : 'MISSING')
+} catch { add('agent renderer fallback', 'MISSING') }
+
 // 4) ثوابت مكتوبة بيد داخل السيرفر — كانت 3.9.1 بعد بناء 3.10.0
 let hardcoded = []
 try {

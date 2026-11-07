@@ -1,7 +1,7 @@
 {
   "product": "AiRemote",
-  "version": "3.14.1",
-  "generatedAt": "2026-11-07T08:54:24.602Z",
+  "version": "3.14.2",
+  "generatedAt": "2026-11-07T09:32:20.489Z",
   "artifacts": [
     {
       "name": "AiRemote-Agent-3.14.0.apk",
@@ -12,6 +12,11 @@
       "name": "AiRemote-Agent-3.14.1.apk",
       "size": 243227,
       "sha256": "e4b8a863f3161abba43c11d1e0410cb750a5ba7176dc57139def3af9233bf200"
+    },
+    {
+      "name": "AiRemote-Agent-3.14.2.apk",
+      "size": 243227,
+      "sha256": "1063f159ac8988ad2b7164a0fee038e6d6e4a3bf2c809b767223381a7f9a81d6"
     },
     {
       "name": "agent-windows/AiRemote-Agent-Setup-v3.11.10-x64.exe",
@@ -79,6 +84,11 @@
       "sha256": "f977e3446577b5286c75446528e648440e6ab027d9f0e05a2192923ec0914391"
     },
     {
+      "name": "agent-windows/AiRemote-Agent-Setup-v3.14.2-x64.exe",
+      "size": 76400853,
+      "sha256": "17f7dd1c5e72232420358d3dce5be753ed37cd2bee86d175ab8aaf3857c38ef4"
+    },
+    {
       "name": "agent-windows/AiRemote-Agent-v3.11.10-Windows-x64.zip",
       "size": 103997974,
       "sha256": "19c116671d5c8530d9fbcfa9e4a900184dfbaf56d2f9fbdc60fda226977899f9"
@@ -142,6 +152,11 @@
       "name": "agent-windows/AiRemote-Agent-v3.14.1-Windows-x64.zip",
       "size": 104014978,
       "sha256": "4e150541212f488349d55f8c5b5a3581d4bd210e0149fd9cb341629abf4b754b"
+    },
+    {
+      "name": "agent-windows/AiRemote-Agent-v3.14.2-Windows-x64.zip",
+      "size": 104015002,
+      "sha256": "1fe56be7119a22d67eef20fa6307a442619f50c17f5cdd79f1706450f9036b6b"
     },
     {
       "name": "android-agent/AiRemote-Agent-Android-v3.11.9.apk",
@@ -229,6 +244,11 @@
       "sha256": "d1a07f9f12f52b320ac45cb39023b610075f12f51aeab0e3d7e46e533c7c83e4"
     },
     {
+      "name": "server-windows/AiRemote-Server-Setup-v3.14.2-x64.exe",
+      "size": 159427568,
+      "sha256": "6db3f2753b480cf5c77710000ee893d062b5a6a55b4bea1eb6c1ba0a8a6d279d"
+    },
+    {
       "name": "server-windows/AiRemote-Server-v3.11.10-Windows-x64.zip",
       "size": 212142102,
       "sha256": "546127a42a984dcabee62af9183b28147c6fe1a9217990b17ebdc62f3ba02e2c"
@@ -292,6 +312,11 @@
       "name": "server-windows/AiRemote-Server-v3.14.1-Windows-x64.zip",
       "size": 212158495,
       "sha256": "e6d073485c26ed57046cd75e45f7ad90d51e809a2be3de2918035dde5853c3b1"
+    },
+    {
+      "name": "server-windows/AiRemote-Server-v3.14.2-Windows-x64.zip",
+      "size": 212158479,
+      "sha256": "694b2ac0bdaa6e2d1c8043371634dba7b77d2bec44fc7c3544d5654cfb9612ff"
     }
   ]
 }

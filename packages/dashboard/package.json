@@ -1,6 +1,6 @@
 {
   "name": "@airemote/dashboard",
-  "version": "3.14.1",
+  "version": "3.14.2",
   "scripts": {
     "dev": "vite --port 5000 --host",
     "build": "tsc && vite build",
