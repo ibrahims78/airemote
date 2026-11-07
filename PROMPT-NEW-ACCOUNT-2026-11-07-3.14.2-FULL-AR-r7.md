@@ -12,6 +12,7 @@
 | البند | القيمة |
 |---|---|
 | الفرع | `feat/screen-unify-3.13.0` |
+| آخر التزام للكود | **`5041cc5`** · **17** التزامًا منذ r5 (`f0353f2`) · قد يليه التزام توثيقي لهذا الملف |
 | `VERSION` | **3.14.2** — أربعة `package.json` + `APP_VERSION` + `versionCode 62` |
 | السيرفر المثبَّت | **3.14.2** · `{"version":"3.14.2","tls":true,"port":3001}` · يخدم `index-DhvbJB7h.js` |
 | الوكيل المثبَّت | **3.14.2** · يعرض `v3.14.2` في الواجهة |
@@ -45,6 +46,61 @@
 | `agent-windows/AiRemote-Agent-Setup-v3.14.2-x64.exe` | 72.9MB | مثبَّت · `v3.14.2` |
 | `agent-windows/AiRemote-Agent-v3.14.2-Windows-x64.zip` | 99.2MB | محفوظ في البيان |
 | `AiRemote-Agent-3.14.2.apk` | 238KB | `versionCode 62` · موقّع · مثبَّت |
+
+---
+
+## 0.1) تسليم لحساب جديد — أول 15 دقيقة
+
+**لا تثق بأرقام هذا الملف، تحقّق منها أولًا. إن اختلف أي رقم فالحالة تغيّرت — أعد القياس قبل أن تلمس شيئًا.**
+
+```powershell
+cd 'D:\autoclaw projects-new\AiRemote'
+git rev-parse --short HEAD                        # 5041cc5 أو التزام توثيقي بعده؛ المهم ألا يكون الكود تغيّر
+git status --porcelain | Select-Object -First 5    # لا تعديلات في المصادر (outputs/ مستثنى)
+curl.exe -k -s https://127.0.0.1:3001/health       # {"version":"3.14.2","tls":true,"port":3001}
+node scripts/verify.js                             # ALL VERIFICATION STEPS PASSED (52/52)
+node scripts/check-version-consistency.cjs         # PASS كل المصادر تحمل 3.14.2
+node scripts/release-manifest.js --verify          # signature OK · all artifacts match
+node tools/lab/session/check-artifacts.cjs         # agent/server asar 3.14.2 · RESULT: ok
+```
+
+### الوصول والمفاتيح
+
+| ما | أين | من يقرأه |
+|---|---|---|
+| حساب اللوحة (مختبر، admin) | `C:\Users\admin\AppData\Roaming\AiRemote\lab-probe.json` (`{email,password}`) | `shot-surface` · `audit-buttons` · `lab.cjs` |
+| نفس الحساب بصيغة سطرين | `%TEMP%\airemote-lab-probe.txt` (email ثم password) | `shot-dashboard` · `probe-view` · `audit-buttons` |
+| بيانات ضيوف VMware | `C:\Users\admin\AppData\Roaming\AiRemote\lab-credentials.txt` (`vm_guest_user` · `vm_guest_password`) | `vmguest.cjs` · `guest-exec.cjs` |
+| قاعدة البيانات | `C:\Users\admin\AppData\Roaming\AiRemote-Server\airemote.db` | السيرفر (لا تفتحها للكتابة) |
+
+- **حسابا المالك** (`admin@airemote.local` · `admin@airemote.io`) **لم يُلمسا** — لا تعِد ضبطهما ولا تغيّر كلماتهما.
+- **لا تكتب أي سرّ** في `outputs/` أو في التزام: البروتوكول يمنع ذلك. كلمات المرور تبقى في `%TEMP%` أو ملفات المختبر أعلاه.
+
+### البيئة (مسارات مثبتة على هذا الجهاز)
+
+- Chrome: `C:\Program Files\Google\Chrome\Application\chrome.exe`
+- Electron (سيرفر/وكيل): `packages\server-desktop\node_modules\electron\dist\electron.exe`
+- adb: `D:\autoclaw projects\offline-build-tools\android-toolchain\sdk\platform-tools\adb.exe`
+- JDK/SDK: `D:\autoclaw projects\offline-build-tools\android-toolchain\{jdk,sdk}` · gradle: `...\gradle\bin\gradle.bat` · apksigner: `...\sdk\build-tools\34.0.0\apksigner.bat`
+- VMware: `C:\Program Files (x86)\VMware\VMware Workstation\vmrun.exe` · VMs: `E:\VMs\Win10_Pro_Custom\Win10_Pro_Custom.vmx` و`E:\VMs\Win11_Custom_2026-09-30\Win11_Custom_2026-09-30.vmx`
+
+### الحزم على القرص — وليست في git
+
+`releases/**/*.exe` و`*.zip` و`*.apk` **متجاهَلة في git**؛ الموجود في المستودع هو `releases/manifest.json` · `manifest.sig` · `release-key.pub.pem` فقط. أي أن الحزم الخمس موجودة على هذا القرص لأننا بنيناها هنا؛ إن نُقل المستودع إلى جهاز آخر فستبقى البصمات وحدها ويلزم إعادة البناء.
+
+### لا تفعل
+
+1. لا تلمس `design/*.html` (مرجع للقراءة فقط) ولا عقد API ولا تصميم سطح بلا قرار مالك.
+2. لا تعِد بناء 3.14.2 بنفس الرقم بعد أي تغيير — ارفع الرقم أولًا (المحتوى تغيّر ⇒ الإصدار يتغيّر).
+3. لا تقيس السطح بـ`shot-dashboard` (يقرأ السيرفر المثبَّت)؛ المقياس القانوني `shot-surface` بمقاس 1700×980 @2×.
+4. لا تشغّل مسبار أو تدقيق الوكيل قبل قتل `AiRemote Agent` — قفل النسخة الواحدة يجعل CDP ينتظر بلا نهاية.
+5. لا تفترض أن `packages/server-desktop/static` هو ما يخدمه 3001؛ المثبَّت يخدم `app.asar` الخاص به.
+6. لا تستخدم رفع صلاحيات داخل الضيوف (سياسة)؛ تحقّق بالنسخة + online + لقطة.
+7. أدوات الكتابة/التحرير عندك لا تعمل خارج مجلد العمل — للمسارات المطلقة استخدم سكربت Node أو `Copy-Item`.
+
+### التاريخ — لا تعده
+
+`docs/PROMPT-...-r5.md` و`r6.md` (استُبدلا بهذا الملف) · `docs/SESSION-2026-11-07-W13-W17-AR.md` · `docs/INLINE-STYLES-2026-11-07-AR.md` · `docs/DECISION-2026-11-07-AGENT-SURFACE-AR.md` · `CHANGELOG.md` قسم 3.14.2 · `PROJECT_STATE.md` قسم 0.0.
 
 ---
 
