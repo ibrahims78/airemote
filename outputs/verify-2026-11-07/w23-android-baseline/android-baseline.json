@@ -4,6 +4,7 @@
   "baseline": {
     "expected": 19,
     "clickable": 19,
+    "arabic": true,
     "steps": [
       {
         "step": "lang-ar",
@@ -35,8 +36,8 @@
       "y": 27,
       "label": "ع",
       "tapped": true,
-      "focusBefore": "Window{354abe3 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
-      "focusAfter": "Window{354abe3 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
+      "focusBefore": "Window{315bd36 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
+      "focusAfter": "Window{315bd36 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
       "leftApp": false
     },
     {
@@ -49,8 +50,8 @@
       "y": 27,
       "label": "EN",
       "tapped": true,
-      "focusBefore": "Window{73f65a6 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
-      "focusAfter": "Window{6386fcf u0 com.airemote.agent/com.airemote.agent.MainActivity}",
+      "focusBefore": "Window{a6b28f5 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
+      "focusAfter": "Window{b040f4 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
       "leftApp": false
     },
     {
@@ -63,8 +64,8 @@
       "y": 27,
       "label": "فاتح",
       "tapped": true,
-      "focusBefore": "Window{f33461c u0 com.airemote.agent/com.airemote.agent.MainActivity}",
-      "focusAfter": "Window{a08bb4d u0 com.airemote.agent/com.airemote.agent.MainActivity}",
+      "focusBefore": "Window{e6d72ab u0 com.airemote.agent/com.airemote.agent.MainActivity}",
+      "focusAfter": "Window{f508e6f u0 com.airemote.agent/com.airemote.agent.MainActivity}",
       "leftApp": false
     },
     {
@@ -77,8 +78,8 @@
       "y": 27,
       "label": "داكن",
       "tapped": true,
-      "focusBefore": "Window{547b2d3 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
-      "focusAfter": "Window{4eb9c96 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
+      "focusBefore": "Window{b11680e u0 com.airemote.agent/com.airemote.agent.MainActivity}",
+      "focusAfter": "Window{1455996 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
       "leftApp": false
     },
     {
@@ -91,8 +92,8 @@
       "y": 82,
       "label": "الحالة",
       "tapped": true,
-      "focusBefore": "Window{740dcc4 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
-      "focusAfter": "Window{740dcc4 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
+      "focusBefore": "Window{cceeb94 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
+      "focusAfter": "Window{cceeb94 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
       "leftApp": false
     },
     {
@@ -105,8 +106,8 @@
       "y": 82,
       "label": "المساعد الذكي",
       "tapped": true,
-      "focusBefore": "Window{f58a7dd u0 com.airemote.agent/com.airemote.agent.MainActivity}",
-      "focusAfter": "Window{f58a7dd u0 com.airemote.agent/com.airemote.agent.MainActivity}",
+      "focusBefore": "Window{362b326 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
+      "focusAfter": "Window{362b326 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
       "leftApp": false
     },
     {
@@ -119,8 +120,8 @@
       "y": 82,
       "label": "دردشة المشاهدين",
       "tapped": true,
-      "focusBefore": "Window{fb311d3 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
-      "focusAfter": "Window{fb311d3 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
+      "focusBefore": "Window{5ba6a58 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
+      "focusAfter": "Window{5ba6a58 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
       "leftApp": false
     },
     {
@@ -133,8 +134,8 @@
       "y": 82,
       "label": "السجل",
       "tapped": true,
-      "focusBefore": "Window{952ac32 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
-      "focusAfter": "Window{952ac32 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
+      "focusBefore": "Window{2fca6cf u0 com.airemote.agent/com.airemote.agent.MainActivity}",
+      "focusAfter": "Window{2fca6cf u0 com.airemote.agent/com.airemote.agent.MainActivity}",
       "leftApp": false
     },
     {
@@ -147,8 +148,8 @@
       "y": 223,
       "label": "android.widget.Spinner",
       "tapped": true,
-      "focusBefore": "Window{f6be533 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
-      "focusAfter": "Window{236344c u0 PopupWindow:9db774f}",
+      "focusBefore": "Window{32f0577 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
+      "focusAfter": "Window{c4a7980 u0 PopupWindow:99dc382}",
       "leftApp": false
     },
     {
@@ -161,8 +162,8 @@
       "y": 273,
       "label": "عرض فقط",
       "tapped": true,
-      "focusBefore": "Window{f6be533 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
-      "focusAfter": "Window{f6be533 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
+      "focusBefore": "Window{32f0577 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
+      "focusAfter": "Window{32f0577 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
       "leftApp": false
     },
     {
@@ -175,8 +176,8 @@
       "y": 273,
       "label": "تحكم كامل",
       "tapped": true,
-      "focusBefore": "Window{e52dac2 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
-      "focusAfter": "Window{e52dac2 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
+      "focusBefore": "Window{155a640 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
+      "focusAfter": "Window{155a640 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
       "leftApp": false
     },
     {
@@ -189,8 +190,8 @@
       "y": 273,
       "label": "ملفات",
       "tapped": true,
-      "focusBefore": "Window{36adc83 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
-      "focusAfter": "Window{36adc83 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
+      "focusBefore": "Window{60702d7 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
+      "focusAfter": "Window{60702d7 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
       "leftApp": false
     },
     {
@@ -203,8 +204,8 @@
       "y": 323,
       "label": "كلمة مرور الجهاز (إن لزمت)",
       "tapped": true,
-      "focusBefore": "Window{975708f u0 com.airemote.agent/com.airemote.agent.MainActivity}",
-      "focusAfter": "Window{975708f u0 com.airemote.agent/com.airemote.agent.MainActivity}",
+      "focusBefore": "Window{3d0d676 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
+      "focusAfter": "Window{3d0d676 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
       "leftApp": false
     },
     {
@@ -217,8 +218,8 @@
       "y": 392,
       "label": "تحديث",
       "tapped": true,
-      "focusBefore": "Window{975708f u0 com.airemote.agent/com.airemote.agent.MainActivity}",
-      "focusAfter": "Window{975708f u0 com.airemote.agent/com.airemote.agent.MainActivity}",
+      "focusBefore": "Window{3d0d676 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
+      "focusAfter": "Window{3d0d676 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
       "leftApp": false
     },
     {
@@ -231,8 +232,8 @@
       "y": 392,
       "label": "طلب الاتصال",
       "tapped": true,
-      "focusBefore": "Window{e840ed4 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
-      "focusAfter": "Window{e840ed4 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
+      "focusBefore": "Window{7893a96 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
+      "focusAfter": "Window{7893a96 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
       "leftApp": false
     },
     {
@@ -245,8 +246,8 @@
       "y": 468,
       "label": "معالج التهيئة (كل الصلاحيات)",
       "tapped": true,
-      "focusBefore": "Window{31935eb u0 com.airemote.agent/com.airemote.agent.MainActivity}",
-      "focusAfter": "Window{6e1ff53 u0 com.airemote.agent/com.airemote.agent.SetupActivity}",
+      "focusBefore": "Window{27cd565 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
+      "focusAfter": "Window{f431cfd u0 com.airemote.agent/com.airemote.agent.SetupActivity}",
       "leftApp": false
     },
     {
@@ -259,8 +260,8 @@
       "y": 589,
       "label": "تحديث الجلسات",
       "tapped": true,
-      "focusBefore": "Window{31935eb u0 com.airemote.agent/com.airemote.agent.MainActivity}",
-      "focusAfter": "Window{31935eb u0 com.airemote.agent/com.airemote.agent.MainActivity}",
+      "focusBefore": "Window{27cd565 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
+      "focusAfter": "Window{27cd565 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
       "leftApp": false
     },
     {
@@ -273,8 +274,8 @@
       "y": 669,
       "label": "بدء",
       "tapped": true,
-      "focusBefore": "Window{30d9d47 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
-      "focusAfter": "Window{30d9d47 u0 com.airemote.agent/com.airemote.agent.MainActivity}",
+      "focusBefore": "Window{e5d11f u0 com.airemote.agent/com.airemote.agent.MainActivity}",
+      "focusAfter": "Window{e5d11f u0 com.airemote.agent/com.airemote.agent.MainActivity}",
       "leftApp": false
     },
     {
