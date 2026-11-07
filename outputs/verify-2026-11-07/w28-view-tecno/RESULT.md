@@ -13,5 +13,15 @@
 
 **إطار حقيقي لا سواد:** اللقطة `view-tecno.png` تُظهر شاشة الهاتف نفسها بالعربية — «الإعدادات» · «عنوان الخادم (WebSocket)» = `wss://192.168.1.25:3001/ws` · «رمز الجهاز (Device Token)» بنقاط. حجم الإطار الأول (~92KB) يوافق صورة شاشة 720×1600 مضغوطة، لا شاشة فارغة.
 
-## قيد على جمع الدليل
-`adb connect 192.168.1.101:33273` يفشل رغم أن المنفذ **مفتوح** (`Test-NetConnection` = True) والجهاز يجيب على ping و`192.168.1.25` على نفس الشبكة. السبب المرجّح: المنفذ المعطى هو منفذ **الإقران** أو أن الإقران expired، و`adb pair` يحتاج رمزًا من شاشة الجهاز. لذلك جُمع هذا الدليل **عبر السيرفر** (بلا adb)، وهو كافٍ للحكم على الالتقاط.
+## دليل من الجهاز نفسه (بعد الإقران اللاسلكي)
+
+| الخطوة | الناتج |
+|---|---|
+| `adb pair 192.168.1.101:44927 673748` | `Successfully paired … [guid=adb-12927374CM001019-Q0lRGx]` |
+| `adb connect 192.168.1.101:33273` | `connected to 192.168.1.101:33273` |
+| `dumpsys package com.airemote.agent` | `versionName=3.14.2` · `versionCode=62` |
+| `dumpsys media_projection` **أثناء الجلسة** | `(com.airemote.agent, uid=10305): TYPE_SCREEN_CAPTURE` |
+
+الملف الخام: `dumpsys-media-projection.txt` · التشغيل الثاني: `view-tecno-adb.json` (`changing:false` لأن الشاشة ساكنة · `exceptions:0`).
+
+> **لا تستدل بـ`appops`:** قيمته تتغيّر بين `ignore` و`default` مع نجاح الالتقاط نفسه — لأنه consent لكل جلسة لا `allow` دائم.

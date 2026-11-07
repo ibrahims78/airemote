@@ -1,0 +1,4 @@
+﻿MEDIA PROJECTION MANAGER (dumpsys media_projection)
+Media Projection: 
+(com.airemote.agent, uid=10305): TYPE_SCREEN_CAPTURE
+PROJECT_MEDIA: default; time=+8d3h10m41s957ms ago; rejectTime=+5m49s555ms ago
