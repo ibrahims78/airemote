@@ -47,6 +47,17 @@ jobs:
       - name: Static import check
         run: node scripts/check-imports.js
 
+      # 3.14.2 — the gates that caught real regressions locally; every one is static.
+      - name: Policy gates
+        run: |
+          node scripts/check-version-consistency.cjs --allow-missing-server
+          node scripts/check-bridge-shadow.cjs
+          node scripts/check-dom-ids.cjs
+          node scripts/check-inline-styles.cjs
+          node scripts/check-agent-a11y.cjs
+          node scripts/check-i18n-refs.cjs
+          node scripts/check-messages.cjs
+
       - name: Build shared
         run: pnpm --filter @airemote/shared build
 
