@@ -1795,7 +1795,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
     }
     return (
       <div className="relative h-full w-full overflow-hidden rounded-lg bg-code">
-        <canvas ref={canvasRef} className="block h-full w-full" style={{ objectFit: 'contain' }} />
+        <canvas ref={canvasRef} className="block h-full w-full object-contain" />
         {status !== 'streaming' && (
           <div className="absolute inset-0 grid place-items-center bg-canvas/75 px-2 text-center text-[11px] text-muted">
             {status === 'connecting' ? tr('viewer_connecting') : (errorMsg || tr('viewer_offline'))}
@@ -2150,9 +2150,8 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
             </button>
             {showSettings && qualityPos && (() => { try { sendWs({ type: 'screen:get_resolutions', payload: {} }) } catch {} ; return true })() && createPortal(
               <div className="fixed inset-0 z-[300]" onClick={() => setShowSettings(false)} onContextMenu={e => e.preventDefault()}>
-                <div className="absolute rounded-xl border shadow-2xl"
-                     style={{ top: qualityPos.top, left: qualityPos.left, width: 268, maxHeight: 'min(72vh, 460px)', overflowY: 'auto',
-                              background: '#0b1622', borderColor: 'rgba(148,163,184,0.35)', color: '#e2e8f0' }}
+                <div className="sv-quality-menu absolute rounded-xl border shadow-2xl"
+                     style={{ top: qualityPos.top, left: qualityPos.left }}
                      onClick={e => e.stopPropagation()}>
                 <div className="px-3 py-2 border-b border-line">
                   <label className="block text-[10px] uppercase tracking-wider text-muted mb-1.5">
@@ -2499,20 +2498,12 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
         }}>
         <canvas ref={canvasRef}
           className={clsx(
-            'block shrink-0 transition-opacity duration-300',
+            'sv-stage-canvas block shrink-0 transition-opacity duration-300',
             status === 'streaming' ? 'opacity-100' : 'opacity-20',
             dragOver && 'ring-2 ring-info/60 ring-dashed',
             status === 'streaming' ? 'cursor-none' : ''
           )}
           style={{
-            width: '100%',
-            height: '100%',
-            imageRendering: 'auto',
-            // 3.9.3 — اللمس يذهب إلى الجلسة لا إلى تمرير الصفحة/تكبيرها.
-            touchAction: 'none',
-            userSelect: 'none',
-            WebkitUserSelect: 'none',
-            WebkitTouchCallout: 'none',
             transform: (viewZoom !== 1 || viewPan.x !== 0 || viewPan.y !== 0)
               ? `translate(${viewPan.x}px, ${viewPan.y}px) scale(${viewZoom})`
               : undefined,
@@ -2537,14 +2528,11 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
             viewBox="0 0 16 20"
             width="18"
             height="22"
-            className="pointer-events-none absolute z-30"
+            className="sv-cursor-arrow pointer-events-none absolute z-30"
             style={{
               left: `${(controlEnabled ? cursorPos.x : (remoteCursor ? remoteCursor.x : -1)) * 100}%`,
               top: `${(controlEnabled ? cursorPos.y : (remoteCursor ? remoteCursor.y : -1)) * 100}%`,
-              transform: 'translate(-1px, -1px)',
-              filter: 'drop-shadow(1px 1px 1.5px rgba(0,0,0,0.65))',
               opacity: (controlEnabled ? (cursorPos.x >= 0 ? 1 : 0) : 1),
-              transition: 'opacity 120ms linear',
             }}
           >
             <path d="M1 1 L1 16.2 L5.1 12.1 L8.1 19.4 L10.6 18.3 L7.6 11.1 L12.9 11.1 Z"
@@ -2761,14 +2749,13 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
 
         {chatOpen && (
           <div
-            className="absolute bottom-3 right-3 z-40 flex flex-col w-80 rounded-2xl shadow-2xl overflow-hidden"
-            style={{ height: '360px', background: 'rgba(8,12,28,0.97)', border: '1px solid rgba(255,255,255,0.08)', backdropFilter: 'blur(20px)' }}
+            className="sv-chat-panel absolute bottom-3 right-3 z-40 flex flex-col w-80 rounded-2xl shadow-2xl overflow-hidden"
             onClick={e => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-4 py-2.5" style={{ borderBottom: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.03)' }}>
+            <div className="sv-chat-head flex items-center justify-between px-4 py-2.5">
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ background: 'rgba(56,189,248,0.15)' }}>
+                <div className="sv-chat-badge w-6 h-6 rounded-full flex items-center justify-center">
                   <MessageSquare size={11} className="text-info"/>
                 </div>
                 <span className="text-xs font-semibold text-ink tracking-wide">{tr('viewer_session_chat')}</span>
@@ -2778,10 +2765,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
               </div>
               <button
                 onClick={() => setChatOpen(false)}
-                className="w-5 h-5 rounded-full flex items-center justify-center text-muted hover:text-ink transition-all"
-                style={{ background: 'transparent' }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                className="sv-chat-close w-5 h-5 rounded-full flex items-center justify-center text-muted hover:text-ink transition-all"
               >
                 <X size={11}/>
               </button>
@@ -2811,13 +2795,9 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
                   <div className={clsx(
                     'max-w-[82%] text-xs leading-relaxed px-3 py-2 rounded-2xl',
                     m.sender === 'viewer'
-                      ? 'bg-info/20 text-ink rounded-tr-sm'
-                      : 'bg-surface2 text-ink rounded-tl-sm'
-                  )} style={{
-                    border: m.sender === 'viewer'
-                      ? '1px solid rgba(56,189,248,0.18)'
-                      : '1px solid rgba(100,116,139,0.25)'
-                  }}>
+                      ? 'bg-info/20 text-ink rounded-tr-sm border border-[rgba(56,189,248,0.18)]'
+                      : 'bg-surface2 text-ink rounded-tl-sm border border-[rgba(100,116,139,0.25)]'
+                  )}>
                     {m.text}
                   </div>
                 </div>
@@ -2826,27 +2806,18 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
             </div>
 
             {/* Input */}
-            <div className="flex gap-2 p-3" style={{ borderTop: '1px solid rgba(255,255,255,0.07)', background: 'rgba(255,255,255,0.02)' }}>
+            <div className="sv-chat-foot flex gap-2 p-3">
               <input
                 value={chatInput}
                 onChange={e => setChatInput(e.target.value)}
                 onKeyDown={handleChatKey}
                 placeholder={tr('viewer_chat_placeholder')}
-                className="flex-1 rounded-xl px-3 py-2 text-xs text-ink placeholder:text-muted outline-none transition-all"
-                style={{
-                  background: 'rgba(30,41,59,0.7)',
-                  border: '1px solid rgba(100,116,139,0.3)',
-                }}
-                onFocus={e => { e.currentTarget.style.border = '1px solid rgba(56,189,248,0.45)'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(56,189,248,0.08)' }}
-                onBlur={e => { e.currentTarget.style.border = '1px solid rgba(100,116,139,0.3)'; e.currentTarget.style.boxShadow = 'none' }}
+                className="sv-chat-input flex-1 rounded-xl px-3 py-2 text-xs text-ink placeholder:text-muted outline-none transition-all"
               />
               <button
                 onClick={sendChat}
                 disabled={!chatInput.trim()}
-                className="flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center text-info transition-all disabled:opacity-25 disabled:cursor-not-allowed"
-                style={{ background: 'rgba(56,189,248,0.15)', border: '1px solid rgba(56,189,248,0.2)' }}
-                onMouseEnter={e => { if (!e.currentTarget.disabled) { e.currentTarget.style.background = 'rgba(56,189,248,0.25)'; e.currentTarget.style.borderColor = 'rgba(56,189,248,0.4)' } }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(56,189,248,0.15)'; e.currentTarget.style.borderColor = 'rgba(56,189,248,0.2)' }}
+                className="sv-chat-send flex-shrink-0 w-8 h-8 rounded-xl flex items-center justify-center text-info transition-all disabled:opacity-25 disabled:cursor-not-allowed"
               >
                 <Send size={13}/>
               </button>

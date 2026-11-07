@@ -98,6 +98,7 @@ const steps = [
   { name: 'policy: version consistency (P6)', cmd: NODE + ' scripts/check-version-consistency.cjs --allow-missing-server' },
   { name: 'policy: bridge shadow (W5)',    cmd: NODE + ' scripts/check-bridge-shadow.cjs' },
   { name: 'policy: renderer dom ids (W5)', cmd: NODE + ' scripts/check-dom-ids.cjs' },
+  { name: 'policy: inline styles (W13)', cmd: NODE + ' scripts/check-inline-styles.cjs' },
 ]
 
 let failures = 0

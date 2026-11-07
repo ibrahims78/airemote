@@ -81,7 +81,7 @@ export function LoginPage() {
     <div className="login-shell" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
       <WindowChrome />
 
-      <header className="login-topbar" style={{ direction: 'ltr' }}>
+      <header className="login-topbar" dir="ltr">
         <div className="login-lockup">
           <span className="login-lockup-mark"><Zap size={15} /></span>
           <div>
@@ -234,7 +234,7 @@ export function LoginPage() {
         </div>
       </main>
 
-      <footer className="login-footer" style={{ direction: 'ltr' }}>
+      <footer className="login-footer" dir="ltr">
         <span>AiRemote — Self-hosted Remote Access + AI</span>
         <span>{lang === 'ar' ? 'كل جلسة تحت سيطرتك.' : 'Every session under your control.'}</span>
       </footer>

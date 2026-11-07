@@ -352,9 +352,9 @@ export function SSHTerminal({ config, deviceId, onClose }: Props) {
         dir="ltr"
         className={clsx(
           'flex-1 overflow-hidden',
-          'p-2 bg-code'
+          'p-2 bg-code',
+          'min-h-0'
         )}
-        style={{ minHeight: 0 }}
       />
     </div>
   )

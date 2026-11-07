@@ -7,6 +7,7 @@
  * by the server.
  */
 import { useEffect, useRef, useState } from 'react'
+import clsx from 'clsx'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 
 export type AnnotationTool = 'off' | 'laser' | 'pen' | 'eraser'
@@ -107,17 +108,10 @@ export default function AnnotationLayer({ strokes, tool, color, onEvent, onErase
       ref={svgRef}
       viewBox="0 0 1 1"
       preserveAspectRatio="none"
-      className={className}
+      className={clsx('sv-annotation-layer', className)}
       style={{
-        position: 'absolute',
-        left: 0,
-        top: 0,
-        width: '100%',
-        height: '100%',
-        zIndex: 25,
         pointerEvents: tool === 'off' ? 'none' : 'auto',
-        cursor: tool === 'off' ? 'default' : tool === 'eraser' ? 'cell' : 'crosshair',
-        touchAction: 'none'
+        cursor: tool === 'off' ? 'default' : tool === 'eraser' ? 'cell' : 'crosshair'
       }}
       onPointerDown={down}
       onPointerMove={move}

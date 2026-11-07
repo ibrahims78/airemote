@@ -26,9 +26,9 @@ function ToastItem({ toast, onClose }: { toast: Toast; onClose: () => void }) {
       className={clsx(
         'flex items-start gap-3 px-4 py-3 rounded-xl border shadow-xl backdrop-blur-sm transition-all duration-300',
         cfg.bg,
-        visible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-8'
+        visible ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-8',
+        'min-w-[260px] max-w-[360px]'
       )}
-      style={{ minWidth: '260px', maxWidth: '360px' }}
     >
       <Icon size={16} className={clsx('flex-shrink-0 mt-0.5', cfg.color)} />
       <div className="flex-1 min-w-0">

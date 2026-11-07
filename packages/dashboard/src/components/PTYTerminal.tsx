@@ -374,8 +374,7 @@ export function PTYTerminal({ deviceId, deviceName, onClose }: Props) {
       <div
         ref={termRef}
         dir="ltr"
-        className={clsx('flex-1 overflow-hidden', 'p-2 bg-code')}
-        style={{ minHeight: 0 }}
+        className={clsx('flex-1 overflow-hidden', 'p-2 bg-code', 'min-h-0')}
       />
     </div>
   )

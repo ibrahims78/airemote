@@ -1379,7 +1379,7 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
       </div>
 
       {showConvs && (
-        <div className={clsx('absolute top-14 z-30 w-80 max-h-[420px] overflow-y-auto rounded-xl border shadow-2xl', 'bg-surface border-line')} style={{ insetInlineEnd: 12 }}>
+        <div className={clsx('absolute top-14 end-3 z-30 w-80 max-h-[420px] overflow-y-auto rounded-xl border shadow-2xl', 'bg-surface border-line')}>
           <button onClick={startNewConv}
             className={clsx('w-full flex items-center gap-2 px-3 py-2.5 text-xs border-b transition-colors', isLight ? 'border-line text-primary hover:bg-primary/10' : 'border-line text-primary hover:bg-surface2/70')}>
             <Plus size={12} /> {tr('chat_new_conversation')}
@@ -1696,8 +1696,7 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
               ? tr('chat_placeholder_device')
               : tr('chat_placeholder_plain')}
             rows={1}
-            className={inputCls}
-            style={{ minHeight: '44px', maxHeight: '128px' }}
+            className={clsx(inputCls, 'min-h-[44px] max-h-32')}
           />
           {loading ? (
             <button
