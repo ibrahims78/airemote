@@ -1,0 +1,1 @@
+﻿{"audit":"strict-by-index (reload before each click)","buttons":68,"candidates":50,"clicked":50,"vanished":0,"mismatched":13,"skipped":18,"threw":0,"exceptions":0}
