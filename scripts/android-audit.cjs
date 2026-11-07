@@ -7,8 +7,9 @@
  * Usage: node android-audit.cjs <out.json> [--serial emulator-5554] [--pkg com.airemote.agent] [--baseline]
  *
  * --baseline pins the §4.3 reference surface (Arabic · status tab · settings folded · no session)
- * and refuses to tap unless the surface holds exactly 19 clickables (exit code 3 otherwise).
- * Without it the run is a smoke reading: the count is recorded, never enforced.
+ * and refuses to tap unless the surface holds exactly 19 clickables **and the status tab reads
+ * Arabic** (exit code 3 otherwise). Without it the run is a smoke reading: the count is recorded,
+ * never enforced.
  */
 const { execFileSync } = require('child_process')
 const fs = require('fs')
@@ -101,14 +102,18 @@ function focus () {
     adb('shell', 'am', 'start', '-n', `${PKG}/.MainActivity`)
     await sleep(2200)
     const surface = nodes(dump())
-    baselineInfo = { expected: BASELINE_CLICKABLE, clickable: surface.length, steps }
-    if (surface.length !== BASELINE_CLICKABLE || steps.some(s => !s.ok)) {
+    // the decision defines the surface as Arabic, so the count alone is not the gate: an English
+    // surface has the same 19 clickables and would otherwise pass as "the reference surface".
+    const statusTab = surface.find(n => n.id === `${PKG}:id/tab_status`)
+    const arabic = !!(statusTab && /[\u0600-\u06FF]/.test(statusTab.text))
+    baselineInfo = { expected: BASELINE_CLICKABLE, clickable: surface.length, arabic, steps }
+    if (surface.length !== BASELINE_CLICKABLE || !arabic || steps.some(s => !s.ok)) {
       fs.mkdirSync(path.dirname(outFile), { recursive: true })
       fs.writeFileSync(outFile, JSON.stringify({
         package: PKG, serial: SERIAL, failed: 'baseline-surface-mismatch', baseline: baselineInfo,
         rows: surface.map(n => ({ id: n.id, text: n.text, desc: n.desc, enabled: n.enabled }))
       }, null, 2), 'utf8')
-      console.error(`BASELINE MISMATCH: clickable=${surface.length} expected=${BASELINE_CLICKABLE} ` +
+      console.error(`BASELINE MISMATCH: clickable=${surface.length} expected=${BASELINE_CLICKABLE} arabic=${arabic} ` +
         `steps=${steps.map(s => s.step + ':' + (s.ok ? 'ok' : 'missing')).join(',')} — surface drifted, refusing to tap`)
       process.exit(3)
     }
