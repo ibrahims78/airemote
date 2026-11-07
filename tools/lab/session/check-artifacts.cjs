@@ -71,6 +71,7 @@ const staticHits = grepTree(path.join(ROOT, 'packages/server-desktop/static'), '
 console.log(`dashboard dist files with dev_startup : ${distHits}`)
 console.log(`server static files with dev_startup  : ${staticHits}`)
 console.log(`VERSION file : ${fs.readFileSync(path.join(ROOT, 'VERSION'), 'utf8').trim()}`)
-const ok = vAgent === '3.14.1' && vServer === '3.14.1' && staticHits > 0
+const want = fs.readFileSync(path.join(ROOT, 'VERSION'), 'utf8').trim()
+const ok = vAgent === want && vServer === want && staticHits > 0
 console.log(ok ? 'RESULT: ok' : 'RESULT: FAIL')
 process.exit(ok ? 0 : 1)
