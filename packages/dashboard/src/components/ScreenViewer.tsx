@@ -960,8 +960,11 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
       return
     }
     const el = containerRef.current; if (!el) return
-    if (fullscreen) el.requestFullscreen?.()
-    else if (document.fullscreenElement) document.exitFullscreen?.()
+    // Chrome rejects a fullscreen request that has no user gesture; the promise was
+    // unhandled and surfaced as "Permissions check failed" on every popout load.
+    const swallow = (p: Promise<void> | undefined) => { if (p && typeof p.catch === 'function') p.catch(() => {}) }
+    if (fullscreen) swallow(el.requestFullscreen?.())
+    else if (document.fullscreenElement) swallow(document.exitFullscreen?.())
   }, [fullscreen, popout])
 
   // v3.5 — immersive mode. In the standalone window the toolbar must NOT
