@@ -247,6 +247,90 @@ const SNAPSHOT_JS = `(() => {
     tabWalk.push(r)
   }
 
+  const trace = (m) => { if (process.env.PROBE_TRACE) { try { fs.appendFileSync(path.join(outDir, 'trace.log'), '[trace] ' + m + '\n') } catch {} } }
+
+  if (process.argv.includes('--audit')) {
+    // 6.5 — one click per clickable button. The page is reloaded before every click and the
+    // button is addressed by its index among the visible buttons, so neither a rebuild of the
+    // surface nor a language reset between loads can make it vanish.
+    const TABS = ['status', 'ai', 'viewers', 'log']
+    const DESTRUCTIVE = /(delete|remove|clear|block|sign\s*out|log\s*out|stop|disconnect|terminate|quit|uninstall|exit|حذف|مسح|إزالة|حجب|خروج|إيقاف|قطع|فصل|إنهاء|إلغاء)/i
+    const VIS = "const vis = (el) => { const r = el.getBoundingClientRect(); const cs = getComputedStyle(el); return r.width > 1 && r.height > 1 && cs.visibility !== 'hidden' && cs.display !== 'none' && Number(cs.opacity) > 0 }"
+    const ENUM = `(() => {
+      ${VIS}
+      return [...document.querySelectorAll('button')].filter(vis).map(b => ({
+        label: (b.getAttribute('aria-label') || b.textContent || b.title || '').trim().replace(/\s+/g, ' ').slice(0, 60),
+        title: (b.getAttribute('title') || '').slice(0, 40),
+        id: b.id || '',
+        cls: String(b.className || '').slice(0, 40),
+        disabled: !!b.disabled
+      }))
+    })()`
+    const CLICK = (idx) => `(() => {
+      ${VIS}
+      const all = [...document.querySelectorAll('button')].filter(vis)
+      const b = all[${idx}]
+      if (!b) return { found: false, visible: all.length }
+      try { b.click() } catch (e) { return { found: true, threw: String((e && e.message) || e) } }
+      return { found: true, labelAt: (b.getAttribute('aria-label') || b.textContent || b.title || '').trim().replace(/\s+/g, ' ').slice(0, 60) }
+    })()`
+    const openTab = (tabName) => evalJson(`(() => { const b = document.querySelector('#tabbar .tab-btn[data-tab="${tabName}"]'); if (b) b.click(); return 1 })()`)
+    const exCount = () => c.events.filter(e => e.method === 'Runtime.exceptionThrown').length
+    const boot = async (tabName) => {
+      await c.send('Page.reload', { ignoreCache: false })
+      await sleep(3400)
+      await openTab(tabName)
+      await sleep(950)
+    }
+
+    const rows = []
+    for (const tabName of TABS) {
+      await boot(tabName)
+      const list = (await evalJson(ENUM)) || []
+      const picks = []
+      list.forEach((item, idx) => {
+        const chrome = /^(btn-min|btn-tray|btn-close)$/.test(item.id)
+        if (item.disabled || chrome || DESTRUCTIVE.test(item.label + ' ' + item.title)) {
+          rows.push({ tab: tabName, idx, ...item, skipped: true, reason: item.disabled ? 'disabled' : chrome ? 'window-chrome' : 'destructive' })
+          return
+        }
+        picks.push({ idx, item })
+      })
+      trace(tabName + ' candidates ' + picks.length)
+      for (const pick of picks) {
+        await boot(tabName)
+        const before = exCount()
+        const res = await evalJson(CLICK(pick.idx))
+        await sleep(320)
+        await c.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 })
+        await c.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Escape', code: 'Escape', windowsVirtualKeyCode: 27 })
+        await sleep(120)
+        rows.push({ tab: tabName, idx: pick.idx, ...pick.item, ...res, exceptions: exCount() - before })
+        trace('click ' + tabName + '#' + pick.idx + ' ' + JSON.stringify(res))
+      }
+    }
+
+    const all = c.events.filter(e => e.method === 'Runtime.exceptionThrown')
+    const clickedRows = rows.filter(r => !r.skipped)
+    const summary = {
+      mode: 'strict-by-index (reload before each click)',
+      buttons: rows.length,
+      candidates: clickedRows.length,
+      clicked: clickedRows.filter(r => r.found && r.labelAt).length,
+      vanished: clickedRows.filter(r => !r.found).length,
+      mismatched: clickedRows.filter(r => r.found && r.labelAt && r.labelAt.slice(0, 18) !== (r.label || '').slice(0, 18)).length,
+      skipped: rows.filter(r => r.skipped).length,
+      skippedReasons: rows.filter(r => r.skipped).reduce((m, r) => { m[r.reason] = (m[r.reason] || 0) + 1; return m }, {}),
+      threw: clickedRows.filter(r => r.threw).length,
+      exceptions: all.length,
+      exceptionList: all.map(e => e.params.exceptionDetails.text + ' @ ' + (e.params.exceptionDetails.url || '')).slice(0, 25),
+      perTab: TABS.map(t => ({ tab: t, candidates: rows.filter(r => r.tab === t && !r.skipped).length, clicked: rows.filter(r => r.tab === t && !r.skipped && r.found && r.labelAt).length })),
+      rows
+    }
+    fs.writeFileSync(path.join(outDir, 'agent-audit.json'), JSON.stringify(summary, null, 2), 'utf8')
+    console.log(JSON.stringify({ audit: summary.mode, buttons: summary.buttons, candidates: summary.candidates, clicked: summary.clicked, vanished: summary.vanished, mismatched: summary.mismatched, skipped: summary.skipped, threw: summary.threw, exceptions: summary.exceptions }))
+  }
+
   // back to the status tab and take a picture
   await evalJson(`(() => { const b = document.querySelector('#tabbar .tab-btn[data-tab="status"]'); if (b) b.click(); return 1 })()`)
   await evalJson(`(() => {
