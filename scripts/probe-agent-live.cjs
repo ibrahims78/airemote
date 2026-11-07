@@ -180,6 +180,16 @@ const SNAPSHOT_JS = `(() => {
 
   // optional deep style dump of one subtree: node scripts/probe-agent-live.cjs out --dom '#panel-ctrl'
   const domSel = argOf('dom')
+  const evalJs = argOf('eval')
+  if (evalJs) {
+    const value = await evalJson(evalJs)
+    console.log(JSON.stringify({ eval: evalJs, value }, null, 2))
+    const ex = c.events.filter(e => e.method === 'Runtime.exceptionThrown').length
+    if (ex) console.log(JSON.stringify({ exceptions: ex, first: c.events.find(e => e.method === 'Runtime.exceptionThrown').params.exceptionDetails.text }))
+    c.close(); try { child.kill() } catch {}
+    await sleep(300)
+    process.exit(0)
+  }
   if (domSel) {
     const deep = await evalJson(`(() => {
       const root = document.querySelector(${JSON.stringify('')} + ${JSON.stringify(domSel)});
