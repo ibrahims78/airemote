@@ -60,6 +60,8 @@ function focus () {
 
 ;(async () => {
   adb('logcat', '-c')
+  adb('shell', 'am', 'force-stop', PKG)
+  await sleep(800)
   adb('shell', 'am', 'start', '-n', `${PKG}/.MainActivity`)
   await sleep(2500)
   const list = nodes(dump())
@@ -72,7 +74,7 @@ function focus () {
     try { adb('shell', 'input', 'tap', String(n.x), String(n.y)) } catch (e) { rows.push({ ...n, label, tapped: false, error: String(e.message || e) }); continue }
     await sleep(700)
     const after = focus()
-    rows.push({ ...n, label, tapped: true, focusBefore: before, focusAfter: after, leftApp: !after.includes(PKG) })
+    rows.push({ ...n, label, tapped: true, focusBefore: before, focusAfter: after, leftApp: !(after.includes(PKG) || after.includes('PopupWindow')) })
     adb('shell', 'input', 'keyevent', '4')
     await sleep(300)
     adb('shell', 'am', 'start', '-n', `${PKG}/.MainActivity`)
