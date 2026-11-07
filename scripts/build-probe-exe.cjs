@@ -27,11 +27,17 @@ const entry = path.resolve(argOf('entry') || path.join(ROOT, 'scripts', 'probe-a
 const out = path.resolve(argOf('out') || path.join(ROOT, 'releases', 'tools', 'patch-probe.exe'))
 const FUSE = 'NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2'
 
-function fail (msg) { console.error('BUILD FAILED: ' + msg); process.exit(1) }
+let staging = null
+function fail (msg) {
+  // never leave a half-injected binary behind: it is a copy of node.exe with no blob inside
+  if (staging) { try { fs.rmSync(staging, { force: true }) } catch {} }
+  console.error('BUILD FAILED: ' + msg)
+  process.exit(1)
+}
 
 function resolvePostject () {
   const explicit = argOf('postject')
-  if (explicit) return path.resolve(explicit)
+  if (explicit) { const r = path.resolve(explicit); return fs.existsSync(r) ? r : null }
   const candidates = [
     path.join(ROOT, 'node_modules', 'postject', 'dist', 'cli.js'),
     path.join(os.tmpdir(), 'sea-tools', 'node_modules', 'postject', 'dist', 'cli.js')
@@ -71,20 +77,24 @@ run(nodeExe, ['--experimental-sea-config', cfgPath], { cwd: work })
 if (!fs.existsSync(blob) || fs.statSync(blob).size === 0) fail('sea blob not produced')
 const blobSize = fs.statSync(blob).size
 
-// 2) a copy of node.exe becomes the executable
+// 2) a copy of node.exe becomes the executable — built under a staging name, because the
+//    injection step can fail and a half-built exe is worse than no exe at all
 fs.mkdirSync(path.dirname(out), { recursive: true })
-fs.copyFileSync(nodeExe, out)
+staging = out + '.building'
+fs.copyFileSync(nodeExe, staging)
 
 // 3) inject the blob and flip the fuse
-run(nodeExe, [postject, out, 'NODE_SEA_BLOB', blob, '--sentinel-fuse', FUSE])
+run(nodeExe, [postject, staging, 'NODE_SEA_BLOB', blob, '--sentinel-fuse', FUSE])
 
-// 4) prove the result runs by itself
-const test = spawnSync(out, ['--self-test'], { encoding: 'utf8', maxBuffer: 8 * 1024 * 1024, timeout: 60000 })
+// 4) prove the result runs by itself, then put it in place
+const test = spawnSync(staging, ['--self-test'], { encoding: 'utf8', maxBuffer: 8 * 1024 * 1024, timeout: 60000 })
 let selfTest = null
 try { selfTest = JSON.parse(test.stdout) } catch { /* reported below */ }
 if (test.status !== 0 || !selfTest || !selfTest.ok) {
   fail(`self-test failed (exit ${test.status})\n${test.stdout || ''}${test.stderr || ''}`)
 }
+fs.renameSync(staging, out)
+staging = null
 
 if (!process.argv.includes('--keep')) { try { fs.rmSync(work, { recursive: true, force: true }) } catch {} }
 
