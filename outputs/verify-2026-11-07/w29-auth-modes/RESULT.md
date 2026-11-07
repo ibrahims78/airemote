@@ -1,31 +1,42 @@
-# w29 — وضعا التحكّم على أندرويد (consent | password) — 2026-11-07
+# w29 — وضعا التحكّم على أندرويد + تشخيص مسار الموافقة — 2026-11-07
 
-البناء: `AiRemote-Agent-3.14.2-vc63-lab.apk` · موقّع `CN=AiRemote Agent` (`a776659a…`) · vc63 · مثبَّت على TAB16.
-الضبط: برمجي عبر `run-as` (بناء debug) — `ctrlAuthMode` + بصمة PBKDF2 مطابقة للكود (HmacSHA1 · 60,000 · 256bit).
-المسار: **وكيل→وكيل** (`POST /api/relay/request` من TECNO، `access=control`).
-ملاحظة قياس: القرار يستغرق **>6 ثوان**؛ كل الفحوص هنا بانتظار 12s.
+البناء: `AiRemote-Agent-3.14.2-vc63-lab.apk` · موقّع `a776659a…` · vc63 · مثبَّت على TAB16.
+الضبط برمجي عبر `run-as` (PBKDF2 HmacSHA1 · 60,000 · 256bit — مطابق للكود).
+المسار: وكيل→وكيل (`POST /api/relay/request` من TECNO، `access=control`).
 
-## وضع كلمة السر (`ctrlAuthMode=password`) — يعمل
-| الجهاز | الطلب | الحالة | الحكم |
-|---|---|---|---|
-| TAB16 | `password=123456` | `active` | ✅ قبول تلقائي |
-| TAB16 | `password=wrongpw` | `denied · bad_password` | ✅ |
-| TAB16 | بلا كلمة | `denied · password_required` | ✅ |
-| TECNO | `password=123456` | `active` | ✅ |
-| TECNO | `password=nope` | `denied · bad_password` | ✅ |
+## 1) وضع كلمة السر — يعمل
+| الجهاز | الطلب | النتيجة |
+|---|---|---|
+| TAB16 | `123456` | `active` |
+| TAB16 | `wrongpw` | `denied · bad_password` |
+| TAB16 | بلا كلمة | `denied · password_required` |
+| TECNO | `123456` | `active` |
+| TECNO | `nope` | `denied · bad_password` |
 
-## وضع الموافقة اليدوية (`ctrlAuthMode=consent`) — **قبول تلقائي غير مفسَّر**
-| الجهاز | القدرة المعلنة | الطلب بلا كلمة | النتيجة |
-|---|---|---|---|
-| TAB16 | `controlAuth=consent` | `201` | **`active`** — لا `requested` ولا حوار قرار |
+## 2) إعادة طلب وضع الموافقة (تشخيص)
+رصد كل 0.8s لمدة 11s بعد الطلب:
 
-**هذا لا يطابق التعريف.** في وضع `consent` كان المتوقع أن يبقى الطلب `requested` حتى يقرّر المستخدم على الجهاز، فظهر `active` مباشرة. الاحتمالان:
-1. سياسة على السيرفر تقبل تلقائيًّا بين أجهزة المالك نفسه (فتكون النتيجة صحيحة والسلوك غير موثَّق)، أو
-2. عيب: مسار الموافقة اليدوية لا يُظهر حوارًا ويقبل ضمنًا.
+```
+state=requested  (14 قياسًا متتاليًا، بلا انقلاب)
+```
 
-**لم أحسم أيّهما** — وهذا أهم ما تبقّى.
+**الخلاصة:** وضع `consent` **صحيح**: يبقي الطلب `requested` ولا يقبل تلقائيًّا. نتيجة `active` السابقة **لم تتكرّر** — كانت أثر حالة عابرة عند تبديل الوضع، لا سلوكًا.
 
-## ما لم يُختبر
-- `emulator-5554`: سقط أثناء الجلسة (`device not found`) — لم يُضبط ولا يُختبر.
-- `WIN10-VM` · `WIN11-VM`: لم يُلمس كودهما؛ يحتاجان ضبط الوضع من داخل الضيف.
-- المسار **السيرفر→وكيل** (`server:screen_control_request`) في الوضعين — لم يُختبر.
+## 3) لماذا لا يظهر حوار؟
+من السجل:
+```
+20:24:18.878 Focus moving from com.airemote.agent/.SessionOfferActivity
+            to   com.airemote.agent/.MainActivity
+20:24:19.02x BufferQueue ... SessionOfferActivity#0/#1 disconnect + ~BufferQueueCore
+```
+- `SessionOfferActivity` **فُتحت فعلًا** ثم أُغلقت خلال ~200ms، وعادت `MainActivity` للمقدّمة.
+- إشعار `sessions_v1` **موجود** (`category=call` · `actions=2`) — أي أن مسار الإشعار يعمل.
+
+المرشّحان في الكود (`SessionOfferActivity`):
+1. `finish()` عند `offerJson` فارغ/غير صالح (السطر 49/53) أو عند استثناء في `onCreate` (السطر 62).
+2. `FLAG_ACTIVITY_CLEAR_TOP | SINGLE_TOP` مع كون `MainActivity` في المقدّمة ⇒ النشاط يُنشأ ثم يُزال فورًا، ويبقى المستخدم بلا سطح قرار إلا الإشعار.
+
+**لم أحسم أيّهما** — يحتاج سجلًّا من داخل `onCreate` (أو إزالة `CLEAR_TOP` وتجربة).
+
+## 4) ما لم يُغطَّ
+- `emulator-5554` سقط أثناء الجلسة · `WIN10/WIN11` لم يُضبط وضعها · المسار **السيرفر→وكيل** لم يُختبر.
