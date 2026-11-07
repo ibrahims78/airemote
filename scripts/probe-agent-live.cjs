@@ -272,7 +272,8 @@ const SNAPSHOT_JS = `(() => {
       const b = all[${idx}]
       if (!b) return { found: false, visible: all.length }
       try { b.click() } catch (e) { return { found: true, threw: String((e && e.message) || e) } }
-      return { found: true, labelAt: (b.getAttribute('aria-label') || b.textContent || b.title || '').trim().replace(/\s+/g, ' ').slice(0, 60) }
+      const nameAt = ((b.getAttribute('aria-label') || '').trim() || (b.getAttribute('title') || '').trim() || (b.textContent || '').replace(/\s+/g, ' ').trim()).slice(0, 60)
+      return { found: true, labelAt: nameAt }
     })()`
     const openTab = (tabName) => evalJson(`(() => { const b = document.querySelector('#tabbar .tab-btn[data-tab="${tabName}"]'); if (b) b.click(); return 1 })()`)
     const exCount = () => c.events.filter(e => e.method === 'Runtime.exceptionThrown').length

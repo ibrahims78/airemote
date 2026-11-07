@@ -1,7 +1,7 @@
 {
   "product": "AiRemote",
   "version": "3.14.1",
-  "generatedAt": "2026-11-06T23:27:29.254Z",
+  "generatedAt": "2026-11-07T08:54:24.602Z",
   "artifacts": [
     {
       "name": "AiRemote-Agent-3.14.0.apk",
@@ -75,8 +75,8 @@
     },
     {
       "name": "agent-windows/AiRemote-Agent-Setup-v3.14.1-x64.exe",
-      "size": 76400863,
-      "sha256": "8a381643216b6e8ea7fbc737f89fd9bc047aa6bc48263e9a366cc3cea28b60b3"
+      "size": 76400868,
+      "sha256": "f977e3446577b5286c75446528e648440e6ab027d9f0e05a2192923ec0914391"
     },
     {
       "name": "agent-windows/AiRemote-Agent-v3.11.10-Windows-x64.zip",
@@ -140,8 +140,8 @@
     },
     {
       "name": "agent-windows/AiRemote-Agent-v3.14.1-Windows-x64.zip",
-      "size": 104014913,
-      "sha256": "7f879702ac5f54c21af8f4639bb3b175ff7332e01f53f26dfb23c65b17e87486"
+      "size": 104014978,
+      "sha256": "4e150541212f488349d55f8c5b5a3581d4bd210e0149fd9cb341629abf4b754b"
     },
     {
       "name": "android-agent/AiRemote-Agent-Android-v3.11.9.apk",
@@ -225,8 +225,8 @@
     },
     {
       "name": "server-windows/AiRemote-Server-Setup-v3.14.1-x64.exe",
-      "size": 159427560,
-      "sha256": "16e63552d90ee14f937197e1b5c7f3b578347308be19c02a8685bd504587965d"
+      "size": 159427655,
+      "sha256": "d1a07f9f12f52b320ac45cb39023b610075f12f51aeab0e3d7e46e533c7c83e4"
     },
     {
       "name": "server-windows/AiRemote-Server-v3.11.10-Windows-x64.zip",
@@ -290,8 +290,8 @@
     },
     {
       "name": "server-windows/AiRemote-Server-v3.14.1-Windows-x64.zip",
-      "size": 212158641,
-      "sha256": "37d92d1f2338a69407ee187a3bb4d36b40cd201abca48b5516257ef55df7ceef"
+      "size": 212158495,
+      "sha256": "e6d073485c26ed57046cd75e45f7ad90d51e809a2be3de2918035dde5853c3b1"
     }
   ]
 }
