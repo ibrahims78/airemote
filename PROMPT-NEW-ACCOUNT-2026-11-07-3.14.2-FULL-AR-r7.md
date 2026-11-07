@@ -16,6 +16,8 @@
 | السيرفر المثبَّت | **3.14.2** · `{"version":"3.14.2","tls":true,"port":3001}` · يخدم `index-DhvbJB7h.js` |
 | الوكيل المثبَّت | **3.14.2** · يعرض `v3.14.2` في الواجهة |
 | WIN11-VM (جهاز ثانٍ) | **3.14.2** · `online` · `info.agentVersion=3.14.2` · app.asar 12:28 · واجهة حيّة بلقطة |
+| WIN10-VM (ثالث) | **3.14.2** · `online` · `info.agentVersion=3.14.2` · app.asar 12:28 · واجهة حيّة بلقطة |
+| الأسطول | المضيف + WIN10 + WIN11 + محاكي أندرويد + TECNO — **كلهم 3.14.2** |
 | APK | `releases/AiRemote-Agent-3.14.2.apk` · `versionCode 62` · `CN=AiRemote Agent` · مثبَّت على المحاكي |
 | البطارية | **52/52 — ALL VERIFICATION STEPS PASSED** |
 | البيان | `signature OK` · `all artifacts match` |
