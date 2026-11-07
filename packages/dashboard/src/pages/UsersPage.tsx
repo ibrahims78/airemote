@@ -5,7 +5,7 @@ import { toast } from '../store/toastStore'
 import type { User, UserRole } from '@airemote/shared'
 import { clsx } from 'clsx'
 import { useT } from '../lib/i18n'
-import { Button, Card, EmptyState, Input, Modal, Select, SkeletonRows } from '../components/ui'
+import { Alert, Button, Card, EmptyState, Input, Modal, Select, SkeletonRows } from '../components/ui'
 
 function RoleDropdown({ user, onUpdate }: { user: User; onUpdate: (updated: User) => void }) {
   const t = useT()
@@ -154,17 +154,22 @@ export function UsersPage({ embedded = false }: { embedded?: boolean } = {}) {
   const t = useT()
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [showAdd, setShowAdd] = useState(false)
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'viewer' as UserRole })
   const [adding, setAdding] = useState(false)
   const [pwModal, setPwModal] = useState<User | null>(null)
 
-  useEffect(() => {
+  function load () {
+    setLoading(true)
+    setLoadError(false)
     api.get('/api/users')
       .then(r => setUsers(r.data))
-      .catch(() => toast.error(t('toast_fail_load')))
+      .catch(() => { setLoadError(true); toast.error(t('toast_fail_load')) })
       .finally(() => setLoading(false))
-  }, [])
+  }
+
+  useEffect(() => { load() }, [])
 
   async function handleAdd(e: React.FormEvent) {
     e.preventDefault()
@@ -262,6 +267,15 @@ export function UsersPage({ embedded = false }: { embedded?: boolean } = {}) {
         </Card>
       )}
 
+      {loadError && (
+        <Alert tone="danger" className="mb-3">
+          <div className="flex items-center gap-2">
+            <span>{t('users_load_failed')}</span>
+            <button type="button" onClick={load} className="underline underline-offset-2">{t('ui_retry')}</button>
+          </div>
+        </Alert>
+      )}
+
       {loading ? (
         <Card><div className="p-3"><SkeletonRows rows={5} /></div></Card>
       ) : (
@@ -276,7 +290,7 @@ export function UsersPage({ embedded = false }: { embedded?: boolean } = {}) {
               </tr>
             </thead>
             <tbody>
-              {users.length === 0 && (
+              {users.length === 0 && !loadError && (
                 <tr>
                   <td colSpan={4}>
                     <EmptyState icon={<Users size={26} />} title={t('no_users_yet')} />

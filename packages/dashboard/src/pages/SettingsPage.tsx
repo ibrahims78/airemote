@@ -54,6 +54,7 @@ function Section({ icon: Icon, color, title, children }: { icon: React.ElementTy
 export function SettingsPage() {
   const [ai, setAi] = useState<AISettings>({ aiProvider: 'openai', aiModel: 'gpt-4o', aiApiKey: '', ollamaUrl: '' })
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [showKey, setShowKey] = useState(false)
@@ -84,7 +85,9 @@ export function SettingsPage() {
   const tab = tabItems.some(item => item.id === requestedTab) ? requestedTab : 'general'
   const selectTab = (id: string) => setSearchParams({ tab: id }, { replace: true })
 
-  useEffect(() => {
+  function loadSettings () {
+    setLoading(true)
+    setLoadError(false)
     api.get('/api/settings').then(res => {
       const d = res.data
       setAi({
@@ -98,9 +101,11 @@ export function SettingsPage() {
       setTelegramEnabled(d.telegramEnabled === true || d.telegramEnabled === 'true')
       if (d.telegramEvents && typeof d.telegramEvents === 'object') setTgEvents(p => ({ ...p, ...d.telegramEvents }))
       if (d.aiConfigs && typeof d.aiConfigs === 'object') setCfgMap(d.aiConfigs)
-    }).catch(() => {}).finally(() => setLoading(false))
+    }).catch(() => setLoadError(true)).finally(() => setLoading(false))
     api.get('/api/health').then(r => setAppVersion(r.data?.version || '')).catch(() => {})
-  }, [])
+  }
+
+  useEffect(() => { loadSettings() }, [])
 
   async function handleSave() {
     setSaving(true)
@@ -208,6 +213,15 @@ export function SettingsPage() {
           </Button>
         )}
       </div>
+
+      {loadError && (
+        <Alert tone="danger" className="mb-4">
+          <div className="flex items-center gap-2">
+            <span>{T('settings_load_failed')}</span>
+            <button type="button" onClick={loadSettings} className="underline underline-offset-2">{T('ui_retry')}</button>
+          </div>
+        </Alert>
+      )}
 
       <div className="cr-settings-tabs" role="tablist" aria-label={isAr ? 'أقسام الإعدادات' : 'Settings sections'}>
         {tabItems.map(item => {

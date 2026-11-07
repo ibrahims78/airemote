@@ -4,7 +4,7 @@ import { api } from '../lib/api'
 import { useT } from '../lib/i18n'
 import { clsx } from 'clsx'
 import { toast } from '../store/toastStore'
-import { Button, Card, EmptyState, SkeletonRows } from '../components/ui'
+import { Alert, Button, Card, EmptyState, SkeletonRows } from '../components/ui'
 
 interface SessionWithDevice {
   id: string; deviceId: string; deviceName: string; userId: string
@@ -44,6 +44,7 @@ export function SessionsPage({ embedded = false }: { embedded?: boolean } = {}) 
   const [sessions, setSessions]         = useState<SessionWithDevice[]>([])
   const [liveStreams, setLiveStreams]    = useState<LiveScreenSession[]>([])
   const [loading, setLoading]           = useState(true)
+  const [error, setError]               = useState<'' | 'sessions_load_failed'>('')
   const [stoppingId, setStoppingId]     = useState<string | null>(null)
   const [confirmId, setConfirmId]       = useState<string | null>(null)
   const [filter, setFilter]             = useState<string>('all')
@@ -86,6 +87,7 @@ export function SessionsPage({ embedded = false }: { embedded?: boolean } = {}) 
         setLiveStreams(liveRes.value.data)
         setIsAdmin(true)
       }
+      setError(sessRes.status === 'rejected' ? 'sessions_load_failed' : '')
     } finally {
       setLoading(false)
     }
@@ -293,12 +295,21 @@ export function SessionsPage({ embedded = false }: { embedded?: boolean } = {}) 
         ))}
       </div>
 
+      {error && (
+        <Alert tone="danger" className="mb-3">
+          <div className="flex items-center gap-2">
+            <span>{T(error)}</span>
+            <button type="button" onClick={() => load()} className="underline underline-offset-2">{T('ui_retry')}</button>
+          </div>
+        </Alert>
+      )}
+
       {/* Session history table */}
       {loading ? (
         <Card><div className="p-3"><SkeletonRows rows={6} /></div></Card>
       ) : (
         <div className="rounded-xl border border-line bg-surface overflow-hidden">
-          {filtered.length === 0 && (
+          {filtered.length === 0 && !error && (
             <EmptyState icon={<History size={26} />} title={T('no_sessions_yet')} />
           )}
           {filtered.length > 0 && (
