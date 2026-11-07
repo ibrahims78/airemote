@@ -27,7 +27,12 @@
     <string name="sec_settings">الإعدادات</string>
     <string name="fld_server">عنوان الخادم (WebSocket)</string>
     <string name="fld_token">رمز الجهاز (Device Token)</string>
-    <string name="fld_ctrl_pw">كلمة مرور التحكم (فارغة = موافقة يدوية على الجهاز)</string>
+    <string name="fld_ctrl_pw">كلمة مرور التحكم (تُطلب في وضع كلمة السر)</string>
+    <string name="fld_auth_mode">وضع التحكم بهذا الجهاز (مثل وكيل ويندوز)</string>
+    <string name="btn_auth_consent">موافقة يدوية</string>
+    <string name="btn_auth_password">كلمة سر</string>
+    <string name="fld_auth_consent_hint">الوضع الحالي: موافقة يدوية — لا كلمة سر</string>
+    <string name="toast_auth_need_pw">أدخل كلمة سر واحفظها أولًا</string>
     <string name="btn_save">حفظ الإعدادات</string>
     <string name="btn_clear_pw">حذف كلمة المرور</string>
     <string name="sec_resources">الموارد</string>

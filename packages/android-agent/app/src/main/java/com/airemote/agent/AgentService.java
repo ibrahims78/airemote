@@ -159,6 +159,8 @@ public class AgentService extends Service {
     private volatile boolean insetChecked = false;
     private volatile int lastDownX = -1, lastDownY = -1;
     private final java.util.List<Long> ctrlAuthAttempts = new java.util.ArrayList<>();
+    // مطابقة لوكيل ويندوز: الجلسات المقبولة تُسجّل هنا فلا يُطلب إذن ثانٍ عند طلب التحكم.
+    private static final java.util.Set<String> grantedSessions = java.util.Collections.synchronizedSet(new java.util.HashSet<>());
 
     /** v1.3.0 — running instance for the UI */
     public static volatile AgentService INSTANCE = null;
@@ -443,7 +445,7 @@ public class AgentService extends Service {
         cap.put("accessibility", AiRemoteA11y.I != null);
         cap.put("capture", CaptureHolder.ready());
         cap.put("streaming", true);
-        cap.put("controlAuth", Prefs.hasControlPassword(this) ? "password" : ("con" + "sent"));
+        cap.put("controlAuth", "password".equals(Prefs.getAuthMode(this)) ? "password" : ("con" + "sent"));
         return cap;
     }
     private void ensureHeartbeat() {
@@ -691,6 +693,7 @@ public class AgentService extends Service {
             JSONObject p = new JSONObject();
             p.put("sessionId", sessionId);
             if (!accept) p.put("reason", "denied");
+            if (accept) grantedSessions.add(String.valueOf(sessionId));
             s.sendMsg(accept ? "session:accept" : "session:deny", p);
         } catch (Exception ignore) {}
     }
@@ -717,7 +720,7 @@ public class AgentService extends Service {
         if (sid0.isEmpty()) return;
         // 3.13.1 — وكيل↔وكيل بكلمة سر: نفس دالة مسار السيرفر→وكيل، وبلا حوار إن صحّت.
         String offerPw = offer.optString("controlPassword", "");
-        if (Prefs.hasControlPassword(this)) {
+        if ("password".equals(Prefs.getAuthMode(this))) {
             if (offerPw.isEmpty()) {
                 sendSessionDenyReason(sid0, "password_required");
                 MainActivity.log("🔒 رُفض طلب جلسة: كلمة سر التحكم مطلوبة");
@@ -729,6 +732,7 @@ public class AgentService extends Service {
                 return;
             }
             MainActivity.log("🔓 قُبلت جلسة وكيل↔وكيل بكلمة مرور");
+            grantedSessions.add(sid0);
             sendSessionAcceptPlain(sid0);
             return;
         }
@@ -971,7 +975,15 @@ public class AgentService extends Service {
                     wakeScreenForRemote();
                     String scSid = payload.optString("sessionId", "");
                     String scReq = payload.optString("requestId", "");
-                    if (Prefs.hasControlPassword(AgentService.this)) {
+                    // مطابقة لوكيل ويندوز: جلسة قُبلت سابقًا لا تُسأل مرة ثانية — وإلا ضاع التحكم
+                    // في وضع «موافقة يدوية» لمن يقبل من حوار الجلسة ثم يصل طلب التحكم بعدها.
+                    if (scSid != null && !scSid.isEmpty() && grantedSessions.contains(scSid)) {
+                        JSONObject g0 = new JSONObject();
+                        g0.put("sessionId", scSid); g0.put("requestId", scReq); g0.put("via", "session");
+                        sendMsg("agent:screen_control_granted", g0);
+                        break;
+                    }
+                    if ("password".equals(Prefs.getAuthMode(AgentService.this))) {
                         long nowTs = System.currentTimeMillis();
                         try { ctrlAuthAttempts.removeIf(t -> nowTs - t >= 60000); } catch (Exception ignore) { }
                         if (ctrlAuthAttempts.size() >= 10) {

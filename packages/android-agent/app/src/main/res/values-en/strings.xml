@@ -27,7 +27,12 @@
     <string name="sec_settings">Settings</string>
     <string name="fld_server">Server address (WebSocket)</string>
     <string name="fld_token">Device token</string>
-    <string name="fld_ctrl_pw">Control password (empty = confirm on the device)</string>
+    <string name="fld_ctrl_pw">Control password (required in password mode)</string>
+    <string name="fld_auth_mode">Control mode on this device (same as the Windows agent)</string>
+    <string name="btn_auth_consent">Manual consent</string>
+    <string name="btn_auth_password">Password</string>
+    <string name="fld_auth_consent_hint">Current mode: manual consent - no password</string>
+    <string name="toast_auth_need_pw">Enter and save a password first</string>
     <string name="btn_save">Save settings</string>
     <string name="btn_clear_pw">Delete password</string>
     <string name="sec_resources">Resources</string>

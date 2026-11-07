@@ -116,6 +116,7 @@ public class MainActivity extends Activity {
     private EditText inpServer;
     private EditText inpToken;
     private EditText inpCtrlPw;
+    private Button btnAuthConsent, btnAuthPassword;
     private EditText aiInput;
     private EditText chatInput;
     private ProgressBar barCpu, barRam, barDisk;
@@ -169,6 +170,11 @@ public class MainActivity extends Activity {
         inpServer = findViewById(R.id.inp_server);
         inpToken = findViewById(R.id.inp_token);
         inpCtrlPw = findViewById(R.id.inp_ctrl_pw);
+        btnAuthConsent = findViewById(R.id.btn_auth_consent);
+        btnAuthPassword = findViewById(R.id.btn_auth_password);
+        if (btnAuthConsent != null) btnAuthConsent.setOnClickListener(v -> setAuthMode("consent"));
+        if (btnAuthPassword != null) btnAuthPassword.setOnClickListener(v -> setAuthMode("password"));
+        refreshAuthUi();
         aiInput = findViewById(R.id.ai_input);
         chatInput = findViewById(R.id.chat_input);
         barCpu = findViewById(R.id.bar_cpu);
@@ -382,16 +388,47 @@ public class MainActivity extends Activity {
         Prefs.save(this, srv, tok);
         footerTarget.setText(srv);
         String pw = inpCtrlPw.getText().toString().trim();
-        if (!pw.isEmpty()) Prefs.saveControlPassword(this, pw);
+        if (!pw.isEmpty()) { Prefs.saveControlPassword(this, pw); Prefs.setAuthMode(this, "password"); }
+        refreshAuthUi();
         AgentService svc = AgentService.INSTANCE;
         if (svc != null) svc.sendCapabilities();
         toast(getString(pw.isEmpty() ? R.string.toast_saved : R.string.toast_saved_pw));
         log("حُفظت الإعدادات — كلمة مرور التحكم: " + (Prefs.hasControlPassword(this) ? "مفعّلة" : "غير مفعّلة"));
     }
 
+    // ── وضع التحكم: موافقة يدوية | كلمة سر (مطابق لوكيل ويندوز) ──────
+    private void setAuthMode(String mode) {
+        boolean password = "password".equals(mode);
+        if (password && !Prefs.hasControlPassword(this)) {
+            toast(getString(R.string.toast_auth_need_pw));
+            try { inpCtrlPw.requestFocus(); } catch (Exception ignore) {}
+            return;
+        }
+        Prefs.setAuthMode(this, mode);
+        refreshAuthUi();
+        AgentService svc = AgentService.INSTANCE;
+        if (svc != null) svc.sendCapabilities();
+        log("وضع التحكم: " + (password ? "كلمة سر" : "موافقة يدوية"));
+    }
+
+    /** يُبرز الوضع الفعّال، ويُظهر حقل كلمة السر في وضعها فقط. */
+    private void refreshAuthUi() {
+        boolean pw = "password".equals(Prefs.getAuthMode(this));
+        try {
+            btnAuthConsent.setBackgroundResource(pw ? R.drawable.btn_ghost : R.drawable.btn_primary);
+            btnAuthConsent.setTextColor(getResources().getColor(pw ? R.color.app_ink2 : R.color.app_on_accent));
+            btnAuthPassword.setBackgroundResource(pw ? R.drawable.btn_primary : R.drawable.btn_ghost);
+            btnAuthPassword.setTextColor(getResources().getColor(pw ? R.color.app_on_accent : R.color.app_ink2));
+            inpCtrlPw.setEnabled(pw);
+            inpCtrlPw.setHint(pw ? getString(R.string.fld_ctrl_pw) : getString(R.string.fld_auth_consent_hint));
+        } catch (Exception ignore) { }
+    }
+
     private void deleteControlPassword() {
         Prefs.saveControlPassword(this, "");
+        Prefs.setAuthMode(this, "consent");
         inpCtrlPw.setText("");
+        refreshAuthUi();
         AgentService svc = AgentService.INSTANCE;
         if (svc != null) svc.sendCapabilities();
         toast(getString(R.string.toast_pw_cleared));

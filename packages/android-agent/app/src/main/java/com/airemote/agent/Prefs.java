@@ -63,7 +63,7 @@ public class Prefs {
     // ── v1.2.0 — control password (same model as the Windows agent) ──
     public static void saveControlPassword(Context c, String pw) {
         if (pw == null || pw.trim().isEmpty()) {
-            sp(c).edit().remove("ctrlSalt").remove("ctrlHash").apply();
+            sp(c).edit().remove("ctrlSalt").remove("ctrlHash").putString("ctrlAuthMode", "consent").apply();
             return;
         }
         try {
@@ -79,6 +79,23 @@ public class Prefs {
     public static boolean hasControlPassword(Context c) {
         String h = sp(c).getString("ctrlHash", "");
         return h != null && !h.isEmpty();
+    }
+
+    /**
+     * وضع التحكم — مطابق لـ`controlAuthMode` في وكيل ويندوز:
+     *   consent  = «موافقة يدوية»: يُعرَض الطلب ويقرّر المستخدم على الجهاز.
+     *   password = «كلمة سر»: لا قرار يدوي؛ تُقبل الجلسة فقط بكلمة السر الصحيحة.
+     * قبل هذا الحقل كان وجود كلمة السر وحده يعني وضع كلمة السر، فبقي ذلك توافقًا خلفيًا.
+     */
+    public static String getAuthMode(Context c) {
+        String m = sp(c).getString("ctrlAuthMode", "");
+        if ("consent".equals(m)) return "consent";
+        if ("password".equals(m)) return hasControlPassword(c) ? "password" : "consent";
+        return hasControlPassword(c) ? "password" : "consent";
+    }
+
+    public static void setAuthMode(Context c, String mode) {
+        sp(c).edit().putString("ctrlAuthMode", "password".equals(mode) ? "password" : "consent").apply();
     }
 
     public static boolean verifyControlPassword(Context c, String pw) {
