@@ -18,6 +18,6 @@
     { "type": "server:screen_set_monitor", "reason": "شاشة واحدة على أندرويد" },
     { "type": "server:screen_privacy", "reason": "غير مدعومة على أندرويد" },
     { "type": "server:snapshot", "reason": "يُرسَل إلى مقبس مشاهد لا وكيل" },
-    { "type": "server:set_startup", "reason": "**عيب مؤكَّد (3.16)** — اللوحة تعرض «بدء مع ويندوز» لأي جهاز متصل، وأندرويد بلا معالج ⇒ الزر يوهم بالنجاح ولا يفعل شيئًا" }
+    { "type": "server:set_startup", "reason": "أُصلح في 3.16.0: السيرفر يرفض غير ويندوز بـ400 platform_not_supported، واللوحة تخفي الزر. البوابة ساكنة ترى موضع الإرسال فتبقى هذه التبرئة" }
   ]
 }
