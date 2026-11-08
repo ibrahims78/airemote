@@ -37,7 +37,7 @@
 
 نُقل **131 ملفًا** من `docs/` (وثائق تسليم `r2`–`r8` · `HANDOFF-*` · `CHANGES-*` · `RELEASE-*` · `REPORT-*` · خطط ومخابر قديمة).
 
-بقي **21** ملفًا: وثيقة الاستئناف الحالية `r9` · تقرير الجلسة · مسح السطح · خطة 3.14.4 المفتوحة · قرارات معمارية `ADR-*` · بروتوكولا الريلاي ونقل الملفات · `ANDROID-TOOLCHAIN-AND-KEY` · `DECISIONS-LOG` · `WORKING_AGREEMENT` · `DEFINITION-OF-DONE` · `CI` · `README`.
+بقي **22** ملفًا: وثيقة الاستئناف الحالية `r9` · تقرير الجلسة · مسح السطح · خطة 3.14.4 المفتوحة · قرارات معمارية `ADR-*` · بروتوكولا الريلاي ونقل الملفات · `ANDROID-TOOLCHAIN-AND-KEY` · `DECISIONS-LOG` · `WORKING_AGREEMENT` · `DEFINITION-OF-DONE` · `CI` · `README`.
 
 ## 5) Replit
 
