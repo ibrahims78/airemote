@@ -493,6 +493,8 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
     const ctx    = canvas.getContext('2d'); if (!ctx) return
     if (canvas.width !== width || canvas.height !== height) {
       canvas.width = width; canvas.height = height
+      // 2026-11-08 — يعلن الاتجاه ليتبنّاه قالب البلاطة (بث عمودي لا يُحبس في إطار أفقي).
+      canvas.dataset.orient = height > width ? 'portrait' : 'landscape'
       setResolution({ w: width, h: height })
     }
     const byteStr = atob(base64)
@@ -686,6 +688,8 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
           if (!isDelta) {
             if (canvas.width !== width || canvas.height !== height) {
               canvas.width = width; canvas.height = height
+              // 2026-11-08 — نفس الإعلان في مسار البث الحيّ (لا الإطار الأول فقط).
+              canvas.dataset.orient = height > width ? 'portrait' : 'landscape'
               setResolution({ w: width, h: height })
             }
             ctx.drawImage(bmp, 0, 0)

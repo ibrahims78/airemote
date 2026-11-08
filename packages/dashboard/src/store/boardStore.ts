@@ -26,8 +26,8 @@ function load (): BoardTile[] {
     return (parsed.tiles || [])
       .filter(t => t && typeof t.key === 'string' && typeof t.deviceId === 'string')
       .slice(0, MAX_TILES)
-      // 3.13.1 — العودة إلى الصفحة لا تستأنف أي بث.
-      .map(t => ({ key: String(t.key), deviceId: String(t.deviceId), running: false }))
+      // 2026-11-08 — بناءً على طلب المالك: تحديث الصفحة لا يُسقط البث؛ تُستعاد حالة التشغيل.
+      .map(t => ({ key: String(t.key), deviceId: String(t.deviceId), running: t.running === true }))
   } catch {
     return []
   }
@@ -35,7 +35,7 @@ function load (): BoardTile[] {
 
 function persist (tiles: BoardTile[]) {
   try {
-    localStorage.setItem(BOARD_STORAGE_KEY, JSON.stringify({ tiles: tiles.map(t => ({ key: t.key, deviceId: t.deviceId })) }))
+    localStorage.setItem(BOARD_STORAGE_KEY, JSON.stringify({ tiles: tiles.map(t => ({ key: t.key, deviceId: t.deviceId, running: t.running })) }))
   } catch {}
 }
 
@@ -69,7 +69,9 @@ export const useBoardStore = create<BoardState>((set, get) => ({
   },
 
   toggle: (key) => {
-    set({ tiles: get().tiles.map(t => (t.key === key ? { ...t, running: !t.running } : t)) })
+    const next = get().tiles.map(t => (t.key === key ? { ...t, running: !t.running } : t))
+    persist(next)
+    set({ tiles: next })
   },
 
   seed: (deviceIds) => {

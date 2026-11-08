@@ -2,7 +2,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useCallback, useEffect, useState } from 'react'
 import {
   LayoutDashboard, Monitor, Settings, LogOut, Minus, Maximize2, Minimize2,
-  Bot, Menu, ChevronDown, Bell, HelpCircle, Search, History, X, Plus,
+  Bot, Menu, ChevronDown, Bell, HelpCircle, Search, History, X, Plus, Sun, Moon, Languages,
 } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { useDeviceStore } from '../store/deviceStore'
@@ -36,6 +36,7 @@ export function DashboardLayout() {
   const isRtl = lang === 'ar'
 
   const [paletteOpen, setPaletteOpen] = useState(false)
+  const [addMenuOpen, setAddMenuOpen] = useState(false)
   const [appMenuOpen, setAppMenuOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [maximized, setMaximized] = useState(false)
@@ -44,7 +45,7 @@ export function DashboardLayout() {
 
   // 3.13.1 — مخرج احتياطي: لو ابتُلع النقر (منطقة سحب إلكترون) فـEscape يُغلق القوائم.
   useEffect(() => {
-    if (!appMenuOpen && !userMenuOpen) return
+    if (!appMenuOpen && !userMenuOpen && !addMenuOpen) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
       setAppMenuOpen(false)
@@ -71,6 +72,12 @@ export function DashboardLayout() {
   const onControlRoom = location.pathname === '/'
   const boardTiles = useBoardStore(st => st.tiles)
   const addBoardTile = useBoardStore(st => st.add)
+  const addDeviceTile = useCallback((id: string) => {
+    if (boardTiles.length >= MAX_TILES) return
+    if (boardTiles.some(t => t.deviceId === id)) return
+    addBoardTile(id)
+  }, [boardTiles, addBoardTile])
+
   const addStream = useCallback(() => {
     if (boardTiles.length >= MAX_TILES) return
     const online = devices.filter(d => d.status === 'online').map(d => d.id)
@@ -193,17 +200,54 @@ export function DashboardLayout() {
           {/* 2026-11-08 — «إضافة بث» انتقل من رأس الصفحة إلى الشريط العلوي: إجراء الصفحة أولًا، ثم الأدوات، ثم الهوية. */}
           {onControlRoom && (
             <>
-              <button
-                type="button"
-                className="app-titlebar-action app-titlebar-add"
-                onClick={addStream}
-                disabled={boardTiles.length >= MAX_TILES}
-                title={isRtl ? 'إضافة بث إلى الحائط' : 'Add a stream to the wall'}
-                aria-label={isRtl ? 'إضافة بث إلى الحائط' : 'Add a stream to the wall'}
-              >
-                <Plus size={15} />
-                <span className="app-titlebar-label">{isRtl ? 'إضافة بث' : 'Add stream'}</span>
-              </button>
+              <div className="app-add-wrap">
+                <button
+                  type="button"
+                  className="app-titlebar-action app-titlebar-add"
+                  onClick={() => setAddMenuOpen(v => !v)}
+                  disabled={boardTiles.length >= MAX_TILES}
+                  aria-expanded={addMenuOpen}
+                  aria-haspopup="menu"
+                  title={isRtl ? 'اختر جهازًا لإضافته إلى الحائط' : 'Pick a device for the wall'}
+                  aria-label={isRtl ? 'إضافة بث إلى الحائط' : 'Add a stream to the wall'}
+                >
+                  <Plus size={15} />
+                  <span className="app-titlebar-label">{isRtl ? 'إضافة بث' : 'Add stream'}</span>
+                  <ChevronDown size={12} />
+                </button>
+                {addMenuOpen && (
+                  <>
+                    <div className="app-menu-backdrop" onClick={() => setAddMenuOpen(false)} />
+                    <div className="app-menu-pop app-add-pop" role="menu" dir={isRtl ? 'rtl' : 'ltr'}>
+                      <div className="app-menu-section">{isRtl ? 'أجهزة الأسطول' : 'Fleet'}</div>
+                      {devices.length === 0 && (
+                        <div className="app-add-empty">{isRtl ? 'لا أجهزة معرّفة' : 'No devices'}</div>
+                      )}
+                      {devices.map(d => {
+                        const onWall = boardTiles.some(t => t.deviceId === d.id)
+                        const offline = d.status !== 'online'
+                        const disabled = onWall || offline
+                        return (
+                          <button
+                            key={d.id}
+                            type="button"
+                            role="menuitem"
+                            disabled={disabled}
+                            className={clsx('app-add-item', disabled && 'is-off')}
+                            onClick={() => { addDeviceTile(d.id); setAddMenuOpen(false) }}
+                          >
+                            <Monitor size={13} />
+                            <span className="app-add-name">{d.name}</span>
+                            <span className="app-add-tag">
+                              {onWall ? (isRtl ? 'مضاف' : 'added') : offline ? (isRtl ? 'غير متصل' : 'offline') : (isRtl ? 'إضافة' : 'add')}
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
               <span className="app-titlebar-sep" aria-hidden="true" />
             </>
           )}
@@ -220,6 +264,28 @@ export function DashboardLayout() {
           <button type="button" className="app-titlebar-icon" onClick={() => navigate('/settings')} title={isRtl ? 'الإعدادات' : 'Settings'} aria-label={isRtl ? 'الإعدادات' : 'Settings'}>
             <Settings size={15} />
           </button>
+          {/* 2026-11-08 — الثيم واللغة انتقلا من قائمة التطبيق إلى الشريط العلوي. */}
+          <button
+            type="button"
+            className="app-titlebar-icon"
+            onClick={toggleTheme}
+            title={theme === 'dark' ? T('theme_light') : T('theme_dark')}
+            aria-label={theme === 'dark' ? T('theme_light') : T('theme_dark')}
+          >
+            {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+          </button>
+          {!onHelpPage && (
+            <button
+              type="button"
+              className="app-titlebar-action app-titlebar-lang"
+              onClick={toggleLang}
+              title={isRtl ? 'Switch to English' : 'التبديل إلى العربية'}
+              aria-label={isRtl ? 'Switch to English' : 'التبديل إلى العربية'}
+            >
+              <Languages size={14} />
+              <span className="app-titlebar-label">{lang === 'ar' ? 'EN' : 'ع'}</span>
+            </button>
+          )}
           <span className="app-titlebar-sep" aria-hidden="true" />
 
           <div className="app-user-wrap">
@@ -304,8 +370,6 @@ export function DashboardLayout() {
                 <button type="button" onClick={() => menuAction(() => window.location.reload())}>{isRtl ? 'إعادة تحميل' : 'Reload'}</button>
 
                 <div className="app-menu-section">{isRtl ? 'عرض' : 'View'}</div>
-                <button type="button" onClick={() => menuAction(toggleTheme)}>{theme === 'dark' ? T('theme_light') : T('theme_dark')}</button>
-                {!onHelpPage && <button type="button" onClick={() => menuAction(toggleLang)}>{lang === 'ar' ? 'English' : 'العربية'}</button>}
                 <button type="button" onClick={() => menuAction(() => document.documentElement.requestFullscreen?.())}>{isRtl ? 'ملء الشاشة' : 'Fullscreen'}</button>
 
                 <div className="app-menu-section">{isRtl ? 'نافذة' : 'Window'}</div>

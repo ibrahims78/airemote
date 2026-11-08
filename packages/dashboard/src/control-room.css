@@ -2212,13 +2212,13 @@ html.light .ai-page-online, html.light .ai-page-cancel { background: #fff; borde
    أصناف المرجع (.wall/.tile/.screen/.ph/.foot/.chip/.tool) تأتي من
    control-room-ref.css. هنا فقط ما لا يوجد في المرجع:
    سقف العرض (1612px = عرض جدار اللوحة عند 1644)، طبقة البث، وحالة التكبير. */
-.cr-wall .wall { max-width: 1612px; margin-inline: auto; }
-.cr-wall .cr-wall-live { position: absolute; inset: 0; display: flex; }
-.cr-wall .tile.is-max {
+.cr-page .wall { max-width: 1612px; margin-inline: auto; }
+.cr-page .cr-wall-live { position: absolute; inset: 0; display: flex; }
+.cr-page .tile.is-max {
   position: fixed; inset: 0; z-index: 95;
   border: 0; border-radius: 0; background: var(--cr-bg); padding: 8px;
 }
-.cr-wall .tile.is-max .screen { aspect-ratio: auto; flex: 1; min-height: 0; }
+.cr-page .tile.is-max .screen { aspect-ratio: auto; flex: 1; min-height: 0; }
 
 /* ── 3.14.0 · §4.1(أ) — إطار اللوحة: شريط 44 · صفحة 22 · حشو 12 ──
    القيم من قياس server-production-light.png: يبدأ المحتوى عند 78،
@@ -2231,7 +2231,9 @@ html.light .ai-page-online, html.light .ai-page-cancel { background: #fff; borde
   background: var(--b-bg);
   border: 1px solid var(--b-line);
   border-radius: 14px;
-  overflow: hidden;
+  /* 2026-11-08 — كان overflow:hidden يقصّ كل القوائم المنسدلة (الأجهزة المخفية · قائمة التطبيق · قائمة المستخدم).
+     الحواف الدائرية محفوظة بالخلفية والحدّ، وليس بالقصّ. */
+  overflow: visible;
   /* اللوحة تلتصق بمحتواها: المرجع ينتهي عند 660 وتحتّه خلفية الصفحة. */
   align-self: flex-start;
   width: 100%;
@@ -2305,3 +2307,57 @@ html.light .cr-board { box-shadow: 0 18px 44px rgba(15,23,42,.10); }
 .app-titlebar-add:disabled { opacity: .45; cursor: not-allowed; background: transparent; }
 html.light .app-titlebar-add { color: #0f766e; border-color: rgba(15,118,110,.3); background: rgba(15,118,110,.07); }
 .app-titlebar-sep { width: 1px; height: 18px; background: rgba(148,163,184,.35); margin: 0 2px; flex: 0 0 auto; }
+
+/* ── 2026-11-08 — قائمة اختيار جهاز لزر «إضافة بث» ── */
+.app-add-wrap { position: relative; display: inline-flex; }
+.app-add-pop { top: 34px; right: 0; width: 246px; max-height: 60vh; overflow-y: auto; }
+.app-add-item {
+  display: flex; align-items: center; gap: 7px; width: 100%;
+  height: 30px; padding: 0 8px; border: 0; border-radius: 5px;
+  background: transparent; color: var(--cr-text-2); font-size: 11px; cursor: pointer; text-align: start;
+}
+.app-add-item:hover { background: rgba(56,214,196,.08); color: var(--cr-teal); }
+.app-add-item.is-off { opacity: .45; cursor: not-allowed; }
+.app-add-item.is-off:hover { background: transparent; color: var(--cr-text-2); }
+.app-add-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.app-add-tag { font: 9px "Cascadia Code", monospace; color: var(--cr-muted-2); }
+.app-add-empty { padding: 8px; font-size: 11px; color: var(--cr-muted-2); }
+html.light .app-add-tag { color: #64748b; }
+
+/* ── 2026-11-08 — أشرطة الموارد + شارات القدرة في بطاقة الجهاز ── */
+.fcard .res-bars { display: flex; flex-direction: column; gap: 5px; margin-top: 2px; }
+.fcard .res-row { display: flex; align-items: center; gap: 6px; }
+.fcard .res-k { width: 26px; font: 9px "Cascadia Code", monospace; color: var(--b-muted); text-transform: uppercase; }
+.fcard .res-track { flex: 1; height: 5px; border-radius: 4px; background: var(--b-surface2); overflow: hidden; }
+.fcard .res-fill { display: block; height: 100%; width: 100%; border-radius: 4px; background: var(--b-ok); transform-origin: right center; transition: transform .2s ease; }
+.fcard .res-fill.is-warm { background: var(--b-warn); }
+.fcard .res-fill.is-hot { background: var(--b-danger); }
+.fcard .res-v { width: 34px; text-align: end; font: 9.5px "Cascadia Code", monospace; color: var(--b-ink2); }
+.fcard .cap-row { display: flex; flex-wrap: wrap; gap: 4px; }
+.fcard .cap-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  height: 18px; padding: 0 6px; border-radius: 999px;
+  border: 1px solid var(--b-line); background: var(--b-surface2);
+  font-size: 9.5px; color: var(--b-muted);
+}
+.fcard .cap-chip.is-live { border-color: rgba(5,150,105,.45); color: var(--b-ok); background: rgba(5,150,105,.08); }
+.fcard .cap-chip.is-relay { border-color: rgba(180,83,9,.4); color: var(--b-warn); background: rgba(180,83,9,.08); }
+.fcard .cap-chip .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+
+/* ── 2026-11-08 — بلاطة البث تتبع اتجاه الإطار: العمودي يأخذ شكله الطبيعي بدل حبسه في 16:9 ── */
+.cr-page .tile:has(canvas[data-orient="portrait"]) {
+  max-width: 380px;
+  margin-inline: auto;
+  width: 100%;
+}
+.cr-page .tile .screen:has(canvas[data-orient="portrait"]) {
+  aspect-ratio: 9 / 16;
+  width: 100%;
+  height: auto;
+  max-height: 62vh;
+  background: #0a1218;
+}
+.cr-page .wall.wall-1:has(canvas[data-orient="portrait"]) {
+  grid-template-columns: minmax(0, 380px);
+}
+.cr-page .tile .screen canvas { display: block; width: 100%; height: 100%; object-fit: contain; }

@@ -360,8 +360,18 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, loading, ha
         {shownDevices.map(device => {
           const online = device.status === 'online'
           const stats = statsMap[device.id] || device.stats
-          const cpu = stats && typeof stats.cpuPercent === 'number' ? `${Math.round(stats.cpuPercent)}%` : '—'
-          const ram = stats && typeof stats.ramPercent === 'number' ? `${Math.round(stats.ramPercent)}%` : '—'
+          const pct = (v?: number) => (typeof v === 'number' ? Math.round(v) : null)
+          const cpu = pct(stats?.cpuPercent)
+          const ram = pct(stats?.ramPercent)
+          const disk = pct((stats as { diskPercent?: number } | undefined)?.diskPercent)
+          // 2026-11-08 — حالة البث: من السيرفر إلى الوكيل (مشاهد يشاهد) أو وكيل↔وكيل (relay).
+          const screen = activeScreens[device.id]
+          const relay = (device as { relay?: { id?: string } | boolean | null }).relay
+          const relayOn = !!relay
+          const caps = ((device as unknown as { capabilities?: Record<string, unknown> }).capabilities || {}) as Record<string, unknown>
+          const canTerm = !!caps.pty || !!caps.shell
+          const canFiles = !!caps.fs
+          const canControl = !!caps.screenControl
           return (
             <div className="fcard" key={device.id}>
               <button
@@ -384,7 +394,43 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, loading, ha
               <div className="rows">
                 <div><b>{tr('النظام', 'OS')}</b> {device.info?.platform || '—'}{device.info?.arch ? ` · ${device.info.arch}` : ''}</div>
                 <div><b>{tr('المضيف', 'Host')}</b> {device.info?.hostname || device.id.slice(0, 12)}</div>
-                <div><b>{tr('الموارد', 'Resources')}</b> {online ? `${cpu} · ${ram}` : '—'}</div>
+              </div>
+
+              {online && (
+                <div className="res-bars">
+                  {[
+                    { key: 'CPU', v: cpu },
+                    { key: 'RAM', v: ram },
+                    { key: 'DSK', v: disk },
+                  ].map(({ key, v }) => (
+                    <div className="res-row" key={key}>
+                      <span className="res-k">{key}</span>
+                      <progress
+                        className={clsx('res-bar', v != null && v >= 85 ? 'is-hot' : v != null && v >= 60 ? 'is-warm' : '')}
+                        max={100}
+                        value={v ?? 0}
+                        aria-label={key + ' ' + (v == null ? '—' : v + '%')}
+                      />
+                      <span className="res-v">{v == null ? '—' : v + '%'}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="cap-row">
+                {screen && (
+                  <span className="cap-chip is-live" title={tr('بث من السيرفر إلى الوكيل — مشاهد يشاهد هذه الشاشة الآن', 'Server → agent stream — a viewer is watching now')}>
+                    <span className="dot" />{tr('بث', 'live')}{typeof screen.viewers === 'number' ? ' · ' + screen.viewers : ''}
+                  </span>
+                )}
+                {relayOn && !screen && (
+                  <span className="cap-chip is-relay" title={tr('جلسة وكيل↔وكيل', 'Agent ↔ agent session')}>
+                    <span className="dot" />{tr('وكيل↔وكيل', 'agent↔agent')}
+                  </span>
+                )}
+                {canTerm && <span className="cap-chip">{tr('طرفية', 'shell')}</span>}
+                {canFiles && <span className="cap-chip">{tr('ملفات', 'files')}</span>}
+                {canControl && <span className="cap-chip">{tr('تحكم', 'control')}</span>}
               </div>
               <div className="acts">
                 <button type="button" className="btn ghost sm" onClick={() => onOpenDevice(device.id)}>
