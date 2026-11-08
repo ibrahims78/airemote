@@ -1,1 +1,0 @@
-﻿{"ready":true,"version":"3.9.1","uptime":1220,"checks":{"db":"ok","schema":"ok"}}

@@ -1,3 +1,0 @@
-﻿IW| 12:04:10.411 command-loop-start
-IW| 12:27:38.681 B R 3277 58982 ok=True
-IW| 12:27:38.697 E R 3277 58982 ok=True

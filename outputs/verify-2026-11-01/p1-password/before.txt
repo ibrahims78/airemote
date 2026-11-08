@@ -1,9 +1,0 @@
-server: 12 حرفاً (4 موضعاً: 3931, 3954, 4101, 4118)
-setup : 8 حرفاً (السطر 13)
-node : FAIL عدم تطابق: الواجهة 8 والسيرفر 12 — المستخدم سيرى «قوية» ثم 400.
-At line:8 char:1
-+ node scripts\check-password-policy.cjs 2>&1 | Tee-Object -FilePath "$ ...
-+ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-    + CategoryInfo          : NotSpecified: (FAIL عدم تطابق:... «قوية» ثم 400.:String) [], RemoteException
-    + FullyQualifiedErrorId : NativeCommandError
- 

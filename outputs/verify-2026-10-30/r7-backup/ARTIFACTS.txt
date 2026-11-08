@@ -1,9 +1,0 @@
-manifest version: 3.8.29
-agent-windows/AiRemote-Agent-Setup-v3.8.28-x64.exe | 76363694 bytes | 9439f7802582778f90626fc4a6022125
-agent-windows/AiRemote-Agent-v3.8.28-Windows-x64.zip | 103969644 bytes | 11d0fb1a7bdf26e8fb9086e1a929ad50
-android-agent/AiRemote-Agent-Android-v3.8.28.apk | 152759 bytes | 07406eb0447deaebea4dd32a41c126d4
-server-windows/AiRemote-Server-Setup-v3.8.29-x64.exe | 159385683 bytes | 33f45e31d524eaaea5ae12eda1cc90bb
-server-windows/AiRemote-Server-v3.8.29-Windows-x64.zip | 212112558 bytes | 0519f66e76f2a2e99316c1d75f47103c
-
-live backup: 3,923,968 bytes | users=3 devices=4 sessions=244 | dir=%APPDATA%\AiRemote-Server\backups
-battery: 23/23 (verify.log) - gates: 0 colour, 22/22 contrast

@@ -1,9 +1,0 @@
-﻿ASSET=ScreenViewer-CVW48uVS.js
-SIZE=83614
-HAS_BUTTON2=True
-HAS_POINTER_MOUSE=True
-HAS_INPUT_WARNING=True
-RUNNER=headless Chrome via CDP on the installed viewer build
-ASSET=ScreenViewer-CVW48uVS.js
-DISPATCH=pointerdown/up pointerType=mouse button=2 at 0.05/0.90
-WORKER=E R/B R ok=True

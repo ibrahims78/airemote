@@ -1,7 +1,0 @@
-﻿start 2026-10-27T22:55:35.2199202+03:00
-stopped old agent
-target: C:\Users\admin\AppData\Local\Programs\AiRemote Agent
-extracted
-asar: 2026-10-27T22:42:26.0000000+03:00
-running: 4
-done

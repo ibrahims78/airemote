@@ -1,9 +1,0 @@
-﻿anonymous -> 401
-policy  -> {"enabled":true,"recordingsDays":30,"auditDays":180,"notifyBeforeDays":3}
-preview -> {"cutoffs":{"recordings":"2026-09-30 18:26:57","soon":"2026-10-03 18:26:57","audit":"2026-05-03 18:26:57"},"recordings":{"expired":0,"expiredMb":0,"soon":0,"soonMb":0,"total":28,"totalMb":184.8},"audit":{"expired":0}}
-dryRun  -> ok (nothing deleted)
-metric airemote_recordings_rows 28
-metric airemote_recordings_megabytes 184.8
-metric airemote_retention_expired_recordings 0
-metric airemote_retention_expired_audit_rows 0
-metric airemote_retention_failures_total 0

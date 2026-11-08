@@ -1,7 +1,0 @@
-﻿server: 12 حرفاً (4 موضعاً: 3931, 3954, 4101, 4118)
-BAD  packages\dashboard\src\lib\i18n.ts:36 → 8  | password_min: '8 أحرف على الأقل', passwords_mismatch: 'كلمتا المرور لا
-BAD  packages\dashboard\src\lib\i18n.ts:496 → 8  | password_min: 'At least 8 characters', passwords_mismatch: 'Passwords 
-BAD  packages\dashboard\src\pages\UsersPage.tsx:97 → 8  | if (password.length < 8) { toast.error(t('password_min')); return }
-BAD  packages\dashboard\src\pages\UsersPage.tsx:171 → 8  | if (form.password.length < 8) { toast.error(t('password_min')); return
-System.Management.Automation.RemoteException
-FAIL 4 موضعاً يخالف حدّ السيرفر (12): packages\dashboard\src\lib\i18n.ts:36, packages\dashboard\src\lib\i18n.ts:496, packages\dashboard\src\pages\UsersPage.tsx:97, packages\dashboard\src\pages\UsersPage.tsx:171

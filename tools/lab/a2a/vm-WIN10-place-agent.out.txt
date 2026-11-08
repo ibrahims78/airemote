@@ -1,2 +1,0 @@
-﻿PLACED pid=5356
-DONE

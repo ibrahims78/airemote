@@ -1,6 +1,0 @@
-﻿=== 2026-10-31T13:01:52.1022349+03:00 ===
-before: {"status":"ok","version":"3.8.41","tls":true,"uptime":1280,"port":3001,"isDesktop":true}
-rollback 3.8.40 in 36s -> {"status":"ok","version":"3.8.40","tls":true,"uptime":11,"port":3001,"isDesktop":true}
-ready 3.8.40: {"ready":true,"version":"3.8.40","uptime":43,"checks":{"db":"ok","schema":"ok"}}
-restore 3.8.41 in 35s -> {"status":"ok","version":"3.8.41","tls":true,"uptime":11,"port":3001,"isDesktop":true}
-ready 3.8.41: {"ready":true,"version":"3.8.41","uptime":11,"checks":{"db":"ok","schema":"ok"}}

@@ -1,6 +1,0 @@
-WHILE={"started":1,"chunks":5,"bytes":81409,"stopped":0,"blobs":[]}
-STOP_RECORDING=clicked
-FINAL_REC={"started":1,"chunks":6,"bytes":86197,"stopped":1,"blobs":[86197]}
-DOWNLOAD_DIR=empty
-VERDICT_TC015=PASS (recording captured and stopped, artifact blob created)
-SHOT=D:\autoclaw projects-new\AiRemote\outputs\verify-2026-11-04\ui\tc-015-stopped.png

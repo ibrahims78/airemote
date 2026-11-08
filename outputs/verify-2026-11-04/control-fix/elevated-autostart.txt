@@ -1,9 +1,0 @@
-﻿TASK=AiRemote Agent (Elevated) state=Running runlevel=Highest
-TASK_CREATED=True
-TASK_RUN=True
-AGENT_COUNT=5
-AGENT pid=3472 ELEVATED
-RUNKEY_REMOVED=True
-CLICK=C L 6422 19595 ok=True (twice; first click activated the window)
-KEY=Ctrl+Tab via viewer -> Task Manager switched to the Details tab
-SCREENSHOT=taskmgr-elevated.png (Details tab visible)

@@ -1,8 +1,0 @@
-﻿mirror: 397 files · 9.8 MB · synced 2026-11-01T13:36:48.601Z
-src : C:\Users\admin\AppData\Roaming\AutoClaw-oversea-official\accounts\1dc9d2becc91d4389a146adc79342837489b355f1325cdb54509f36c1c08198a\projects\Default\mirror\src
-repo: D:\autoclaw projects-new\AiRemote
-OK   packages/agent-desktop/main.js
-OK   packages/agent-desktop/lib/coords.js
-OK   packages/server-desktop/server.js
-OK   packages/dashboard/src/components/ScreenViewer.tsx
-OK   packages/android-agent/app/src/main/java/com/airemote/agent/AgentService.java

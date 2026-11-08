@@ -1,7 +1,0 @@
-CANVAS=true
-START_CLICK=clicked
-REC_AFTER_START={"constructed":1,"started":1,"chunks":5,"bytes":79287,"stopped":0,"mime":"video/webm;codecs=vp9,opus","errors":[]}
-STOP_CLICK=clicked:إيقاف البث
-REC_AFTER_STOP={"constructed":1,"started":1,"chunks":5,"bytes":79287,"stopped":0,"mime":"video/webm;codecs=vp9,opus","errors":[]}
-SUPPORT_WEBM=true
-SHOT=D:\autoclaw projects-new\AiRemote\outputs\verify-2026-11-04\ui\tc-015-instrumented.png
