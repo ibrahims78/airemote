@@ -27,6 +27,12 @@ function asarFiles (asar) {
 }
 
 function report (label, asar, markerRelPath, marker) {
+  // 2026-11-08 — win-unpacked صار يُؤرشف بعد كل بناء (791MB وسيطة يعيدها electron-builder).
+  // الغياب ليس فشلًا: الإثبات الأقوى موجود في check-shipped-bytes الذي يفحص الـasar المثبَّت.
+  if (!fs.existsSync(asar)) {
+    console.log(`${label}: SKIP (not built here — win-unpacked is archived; use scripts/check-shipped-bytes.cjs for the installed bytes)`)
+    return null
+  }
   const a = asarFiles(asar)
   try {
     const { header, readEntry } = a
@@ -72,6 +78,6 @@ console.log(`dashboard dist files with dev_startup : ${distHits}`)
 console.log(`server static files with dev_startup  : ${staticHits}`)
 console.log(`VERSION file : ${fs.readFileSync(path.join(ROOT, 'VERSION'), 'utf8').trim()}`)
 const want = fs.readFileSync(path.join(ROOT, 'VERSION'), 'utf8').trim()
-const ok = vAgent === want && vServer === want && staticHits > 0
+const ok = (vAgent === null || vAgent === want) && (vServer === null || vServer === want) && staticHits > 0
 console.log(ok ? 'RESULT: ok' : 'RESULT: FAIL')
 process.exit(ok ? 0 : 1)
