@@ -2415,3 +2415,8 @@ html.light .cr-page .tile .screen:has(canvas[data-orient="portrait"]) {
 
 /* 2026-11-09 — شارات القدرة تبدأ من حدّ البطاقة (يمين في RTL) لا من اليسار. */
 .fcard .cap-row { justify-content: flex-start; margin-top: 2px; }
+
+/* 2026-11-09 — في التكبير: المسرح يأخذ المساحة المتبقية والفوتر يبقى أسفله (كان يغطي آخر 40px من الإطار). */
+.cr-page .tile.is-max { display: flex; flex-direction: column; }
+.cr-page .tile.is-max .screen { flex: 1 1 auto; min-height: 0; overflow: hidden; }
+.cr-page .tile.is-max .foot { flex: 0 0 auto; }
