@@ -1,4 +1,4 @@
-﻿'use strict';
+'use strict';
 /**
  * check-shipped-bytes.cjs — تقرير فقط (ليس بوابة).
  * يفحص البايتات المشحونة فعلًا: app.asar المثبَّت للسيرفر، وapp.asar المبني للوكيل.
@@ -24,7 +24,8 @@ function scan(file, needles) {
 if (!fs.existsSync(SERVER_ASAR)) { console.log('FAIL: installed server asar missing'); process.exit(1); }
 const serverText = fs.readFileSync(SERVER_ASAR).toString('latin1');
 const serverVer = (serverText.match(/"version"\s*:\s*"([0-9.]+)"/) || [])[1];
-check('installed server asar is 3.15.0', serverVer === '3.15.0', 'found ' + serverVer);
+const EXPECTED = fs.readFileSync('D:/autoclaw projects-new/AiRemote/VERSION', 'utf8').trim()
+check('installed server asar is ' + EXPECTED, serverVer === EXPECTED, 'found ' + serverVer);
 
 const serverNeedles = [
   'sftp_denied_role',
@@ -34,13 +35,15 @@ const serverNeedles = [
   'credentials_list',
   'agent:fs_response',   // bridge still accepts the 3.14.3 name
   'agent:pty_output',
+  'platform_not_supported', // 3.16.0 — the startup switch is refused off Windows
+  'server:set_startup',
 ];
 for (const [n, ok] of scan(SERVER_ASAR, serverNeedles)) check('server asar contains "' + n + '"', ok, 'missing');
 
 if (fs.existsSync(AGENT_ASAR)) {
   const agentText = fs.readFileSync(AGENT_ASAR).toString('latin1');
   const agentVer = (agentText.match(/"version"\s*:\s*"([0-9.]+)"/) || [])[1];
-  check('agent asar is 3.15.0', agentVer === '3.15.0', 'found ' + agentVer);
+  check('agent asar is ' + EXPECTED, agentVer === EXPECTED, 'found ' + agentVer);
   for (const [n, ok] of scan(AGENT_ASAR, ['__chatSeen', 'tab-chat-badge'])) check('agent asar contains "' + n + '"', ok, 'missing');
 } else {
   console.log('SKIP: built agent asar missing');
