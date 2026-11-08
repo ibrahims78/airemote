@@ -5994,25 +5994,32 @@ if ($target -eq $null) { 'name-not-found' } else {
   // ── SSH Credentials ───────────────────────────────────────────────────────
   fastify.get('/api/credentials', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
+    // 3.14.4 — P0-3: مخزن أسرار مشفَّر ⇒ manager فأعلى، وسطر تدقيق لكل قراءة.
+    if (!atLeast(p.role, 'manager')) return reply.code(403).send({ error: 'Manager role required', code: 'role_too_low' })
     const { deviceId } = req.query || {}
+    dbLogAudit({ userId: p.userId, userEmail: p.email || '', action: 'credentials_list', details: { deviceId: deviceId || null }, ipAddress: req.ip })
     if (deviceId) return db.prepare("SELECT id, device_id, label, ssh_host, ssh_port, ssh_username, secret_type, last_used, created_at FROM device_credentials WHERE user_id=? AND device_id=? ORDER BY created_at DESC").all(p.userId, deviceId)
     return db.prepare("SELECT id, device_id, label, ssh_host, ssh_port, ssh_username, secret_type, last_used, created_at FROM device_credentials WHERE user_id=? ORDER BY created_at DESC").all(p.userId)
   })
 
   fastify.post('/api/credentials', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
+    if (!atLeast(p.role, 'manager')) return reply.code(403).send({ error: 'Manager role required', code: 'role_too_low' })
     const { deviceId, label, sshHost, sshPort = 22, sshUsername, secretType = 'password', secret } = req.body || {}
     if (!deviceId || !label || !sshHost || !sshUsername || !secret) return reply.code(400).send({ error: 'deviceId, label, sshHost, sshUsername, secret required' })
     const id = uuidv4()
     db.prepare("INSERT INTO device_credentials (id, user_id, device_id, label, ssh_host, ssh_port, ssh_username, secret_type, secret_enc) VALUES (?,?,?,?,?,?,?,?,?)").run(id, p.userId, deviceId, label, sshHost, sshPort, sshUsername, secretType, encryptSecret(secret))
+    dbLogAudit({ userId: p.userId, userEmail: p.email || '', action: 'credential_create', details: { credentialId: id, deviceId, sshHost: String(sshHost) }, ipAddress: req.ip })
     return reply.code(201).send({ id, deviceId, label, sshHost, sshPort, sshUsername, secretType })
   })
 
   fastify.delete('/api/credentials/:id', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
+    if (!atLeast(p.role, 'manager')) return reply.code(403).send({ error: 'Manager role required', code: 'role_too_low' })
     const cred = db.prepare("SELECT user_id FROM device_credentials WHERE id=?").get(req.params.id)
     if (!cred) return reply.code(404).send({ error: 'Not found' })
     if (cred.user_id !== p.userId && p.role !== 'admin') return reply.code(403).send({ error: 'Forbidden' })
+    dbLogAudit({ userId: p.userId, userEmail: p.email || '', action: 'credential_delete', details: { credentialId: req.params.id }, ipAddress: req.ip })
     db.prepare("DELETE FROM device_credentials WHERE id=?").run(req.params.id)
     return reply.code(204).send()
   })
