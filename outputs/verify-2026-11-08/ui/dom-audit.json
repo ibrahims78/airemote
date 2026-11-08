@@ -1,0 +1,1037 @@
+[
+ {
+  "url": "/",
+  "title": "AiRemote — Remote Access + AI",
+  "docW": 1700,
+  "docH": 980,
+  "scrollH": 980,
+  "headKids": [
+   {
+    "cls": "H1",
+    "rect": {
+     "x": 1572,
+     "y": 95,
+     "w": 93,
+     "h": 24
+    }
+   },
+   {
+    "cls": "metrics",
+    "rect": {
+     "x": 1218,
+     "y": 79,
+     "w": 343,
+     "h": 55
+    }
+   },
+   {
+    "cls": "seg",
+    "rect": {
+     "x": 135,
+     "y": 93,
+     "w": 106,
+     "h": 28
+    }
+   },
+   {
+    "cls": "btn primary",
+    "rect": {
+     "x": 35,
+     "y": 92,
+     "w": 88,
+     "h": 30
+    }
+   }
+  ],
+  "overlaps": [],
+  "overflowRight": [],
+  "buttonCount": 36,
+  "unnamedButtons": 0,
+  "disabledButtons": 0,
+  "buttons": [
+   {
+    "label": "AiRemote",
+    "tag": "button",
+    "rect": {
+     "x": 31,
+     "y": 28,
+     "w": 98,
+     "h": 34
+    },
+    "disabled": false,
+    "aria": "",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "الأجهزة",
+    "tag": "button",
+    "rect": {
+     "x": 135,
+     "y": 31,
+     "w": 67,
+     "h": 28
+    },
+    "disabled": false,
+    "aria": "",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "المساعد الذكي",
+    "tag": "button",
+    "rect": {
+     "x": 204,
+     "y": 31,
+     "w": 101,
+     "h": 28
+    },
+    "disabled": false,
+    "aria": "",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "سجل الجلسات",
+    "tag": "button",
+    "rect": {
+     "x": 307,
+     "y": 31,
+     "w": 100,
+     "h": 28
+    },
+    "disabled": false,
+    "aria": "",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "مركز المساعدة",
+    "tag": "button",
+    "rect": {
+     "x": 1291,
+     "y": 31,
+     "w": 78,
+     "h": 28
+    },
+    "disabled": false,
+    "aria": "",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "بحث",
+    "tag": "button",
+    "rect": {
+     "x": 1372,
+     "y": 30,
+     "w": 30,
+     "h": 30
+    },
+    "disabled": false,
+    "aria": "",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "التنبيهات",
+    "tag": "button",
+    "rect": {
+     "x": 1404,
+     "y": 30,
+     "w": 30,
+     "h": 30
+    },
+    "disabled": false,
+    "aria": "",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "الإعدادات",
+    "tag": "button",
+    "rect": {
+     "x": 1436,
+     "y": 31,
+     "w": 78,
+     "h": 28
+    },
+    "disabled": false,
+    "aria": "",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "UUI Auditمسؤول",
+    "tag": "button",
+    "rect": {
+     "x": 1518,
+     "y": 28,
+     "w": 107,
+     "h": 34
+    },
+    "disabled": false,
+    "aria": "",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "قائمة التطبيق",
+    "tag": "button",
+    "rect": {
+     "x": 1635,
+     "y": 23,
+     "w": 42,
+     "h": 43
+    },
+    "disabled": false,
+    "aria": "",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "عرض الكل",
+    "tag": "a",
+    "rect": {
+     "x": 1429,
+     "y": 105,
+     "w": 69,
+     "h": 21
+    },
+    "disabled": false,
+    "aria": "",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "SM",
+    "tag": "button",
+    "rect": {
+     "x": 205,
+     "y": 94,
+     "w": 35,
+     "h": 26
+    },
+    "disabled": false,
+    "aria": "",
+    "pressed": "false",
+    "overflow": false
+   },
+   {
+    "label": "MD",
+    "tag": "button",
+    "rect": {
+     "x": 169,
+     "y": 94,
+     "w": 37,
+     "h": 26
+    },
+    "disabled": false,
+    "aria": "",
+    "pressed": "false",
+    "overflow": false
+   },
+   {
+    "label": "LG",
+    "tag": "button",
+    "rect": {
+     "x": 136,
+     "y": 94,
+     "w": 32,
+     "h": 26
+    },
+    "disabled": false,
+    "aria": "",
+    "pressed": "true",
+    "overflow": false
+   },
+   {
+    "label": "إضافة بث",
+    "tag": "button",
+    "rect": {
+     "x": 35,
+     "y": 92,
+     "w": 88,
+     "h": 30
+    },
+    "disabled": false,
+    "aria": "",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "فتح",
+    "tag": "button",
+    "rect": {
+     "x": 1598,
+     "y": 263,
+     "w": 54,
+     "h": 26
+    },
+    "disabled": false,
+    "aria": "",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "بث",
+    "tag": "button",
+    "rect": {
+     "x": 1541,
+     "y": 263,
+     "w": 52,
+     "h": 26
+    },
+    "disabled": false,
+    "aria": "",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "فتح",
+    "tag": "button",
+    "rect": {
+     "x": 1270,
+     "y": 263,
+     "w": 54,
+     "h": 26
+    },
+    "disabled": false,
+    "aria": "",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "بث",
+    "tag": "button",
+    "rect": {
+     "x": 1212,
+     "y": 263,
+     "w": 52,
+     "h": 26
+    },
+    "disabled": false,
+    "aria": "",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "فتح",
+    "tag": "button",
+    "rect": {
+     "x": 942,
+     "y": 263,
+     "w": 54,
+     "h": 26
+    },
+    "disabled": false,
+    "aria": "",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "فتح",
+    "tag": "button",
+    "rect": {
+     "x": 613,
+     "y": 263,
+     "w": 54,
+     "h": 26
+    },
+    "disabled": false,
+    "aria": "",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "بث",
+    "tag": "button",
+    "rect": {
+     "x": 555,
+     "y": 263,
+     "w": 52,
+     "h": 26
+    },
+    "disabled": false,
+    "aria": "",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "فتح",
+    "tag": "button",
+    "rect": {
+     "x": 285,
+     "y": 263,
+     "w": 54,
+     "h": 26
+    },
+    "disabled": false,
+    "aria": "",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "بث",
+    "tag": "button",
+    "rect": {
+     "x": 227,
+     "y": 263,
+     "w": 52,
+     "h": 26
+    },
+    "disabled": false,
+    "aria": "",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "تشغيل البث",
+    "tag": "button",
+    "rect": {
+     "x": 1229,
+     "y": 621,
+     "w": 26,
+     "h": 26
+    },
+    "disabled": false,
+    "aria": "تشغيل البث",
+    "pressed": "false",
+    "overflow": false
+   },
+   {
+    "label": "تكبير",
+    "tag": "button",
+    "rect": {
+     "x": 1199,
+     "y": 621,
+     "w": 26,
+     "h": 26
+    },
+    "disabled": false,
+    "aria": "تكبير",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "فتح الشاشة",
+    "tag": "button",
+    "rect": {
+     "x": 1169,
+     "y": 621,
+     "w": 26,
+     "h": 26
+    },
+    "disabled": false,
+    "aria": "فتح الشاشة",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "إزالة",
+    "tag": "button",
+    "rect": {
+     "x": 1139,
+     "y": 621,
+     "w": 26,
+     "h": 26
+    },
+    "disabled": false,
+    "aria": "إزالة",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "تشغيل البث",
+    "tag": "button",
+    "rect": {
+     "x": 681,
+     "y": 621,
+     "w": 26,
+     "h": 26
+    },
+    "disabled": false,
+    "aria": "تشغيل البث",
+    "pressed": "false",
+    "overflow": false
+   },
+   {
+    "label": "تكبير",
+    "tag": "button",
+    "rect": {
+     "x": 651,
+     "y": 621,
+     "w": 26,
+     "h": 26
+    },
+    "disabled": false,
+    "aria": "تكبير",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "فتح الشاشة",
+    "tag": "button",
+    "rect": {
+     "x": 621,
+     "y": 621,
+     "w": 26,
+     "h": 26
+    },
+    "disabled": false,
+    "aria": "فتح الشاشة",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "إزالة",
+    "tag": "button",
+    "rect": {
+     "x": 591,
+     "y": 621,
+     "w": 26,
+     "h": 26
+    },
+    "disabled": false,
+    "aria": "إزالة",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "تشغيل البث",
+    "tag": "button",
+    "rect": {
+     "x": 134,
+     "y": 621,
+     "w": 26,
+     "h": 26
+    },
+    "disabled": false,
+    "aria": "تشغيل البث",
+    "pressed": "false",
+    "overflow": false
+   },
+   {
+    "label": "تكبير",
+    "tag": "button",
+    "rect": {
+     "x": 104,
+     "y": 621,
+     "w": 26,
+     "h": 26
+    },
+    "disabled": false,
+    "aria": "تكبير",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "فتح الشاشة",
+    "tag": "button",
+    "rect": {
+     "x": 74,
+     "y": 621,
+     "w": 26,
+     "h": 26
+    },
+    "disabled": false,
+    "aria": "فتح الشاشة",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "إزالة",
+    "tag": "button",
+    "rect": {
+     "x": 44,
+     "y": 621,
+     "w": 26,
+     "h": 26
+    },
+    "disabled": false,
+    "aria": "إزالة",
+    "pressed": "",
+    "overflow": false
+   }
+  ],
+  "clipped": []
+ },
+ {
+  "url": "/devices",
+  "title": "AiRemote — Remote Access + AI",
+  "docW": 1700,
+  "docH": 980,
+  "scrollH": 980,
+  "headKids": [],
+  "overlaps": [],
+  "overflowRight": [],
+  "buttonCount": 33,
+  "unnamedButtons": 0,
+  "disabledButtons": 0,
+  "buttons": [
+   {
+    "label": "AiRemote",
+    "tag": "button",
+    "rect": {
+     "x": 31,
+     "y": 28,
+     "w": 98,
+     "h": 34
+    },
+    "disabled": false,
+    "aria": "",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "الأجهزة",
+    "tag": "button",
+    "rect": {
+     "x": 135,
+     "y": 31,
+     "w": 67,
+     "h": 28
+    },
+    "disabled": false,
+    "aria": "",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "المساعد الذكي",
+    "tag": "button",
+    "rect": {
+     "x": 204,
+     "y": 31,
+     "w": 101,
+     "h": 28
+    },
+    "disabled": false,
+    "aria": "",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "سجل الجلسات",
+    "tag": "button",
+    "rect": {
+     "x": 307,
+     "y": 31,
+     "w": 100,
+     "h": 28
+    },
+    "disabled": false,
+    "aria": "",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "مركز المساعدة",
+    "tag": "button",
+    "rect": {
+     "x": 1291,
+     "y": 31,
+     "w": 78,
+     "h": 28
+    },
+    "disabled": false,
+    "aria": "",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "بحث",
+    "tag": "button",
+    "rect": {
+     "x": 1372,
+     "y": 30,
+     "w": 30,
+     "h": 30
+    },
+    "disabled": false,
+    "aria": "",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "التنبيهات",
+    "tag": "button",
+    "rect": {
+     "x": 1404,
+     "y": 30,
+     "w": 30,
+     "h": 30
+    },
+    "disabled": false,
+    "aria": "",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "الإعدادات",
+    "tag": "button",
+    "rect": {
+     "x": 1436,
+     "y": 31,
+     "w": 78,
+     "h": 28
+    },
+    "disabled": false,
+    "aria": "",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "UUI Auditمسؤول",
+    "tag": "button",
+    "rect": {
+     "x": 1518,
+     "y": 28,
+     "w": 107,
+     "h": 34
+    },
+    "disabled": false,
+    "aria": "",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "قائمة التطبيق",
+    "tag": "button",
+    "rect": {
+     "x": 1635,
+     "y": 23,
+     "w": 42,
+     "h": 43
+    },
+    "disabled": false,
+    "aria": "",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "إضافة جهاز",
+    "tag": "button",
+    "rect": {
+     "x": 35,
+     "y": 90,
+     "w": 104,
+     "h": 30
+    },
+    "disabled": false,
+    "aria": "",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "Open screen",
+    "tag": "button",
+    "rect": {
+     "x": 459,
+     "y": 211,
+     "w": 25,
+     "h": 25
+    },
+    "disabled": false,
+    "aria": "Open screen",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "Agent install",
+    "tag": "button",
+    "rect": {
+     "x": 430,
+     "y": 211,
+     "w": 25,
+     "h": 25
+    },
+    "disabled": false,
+    "aria": "Agent install",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "Block device",
+    "tag": "button",
+    "rect": {
+     "x": 401,
+     "y": 211,
+     "w": 25,
+     "h": 25
+    },
+    "disabled": false,
+    "aria": "Block device",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "حذف",
+    "tag": "button",
+    "rect": {
+     "x": 343,
+     "y": 211,
+     "w": 25,
+     "h": 25
+    },
+    "disabled": false,
+    "aria": "حذف",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "Open screen",
+    "tag": "button",
+    "rect": {
+     "x": 459,
+     "y": 272,
+     "w": 25,
+     "h": 25
+    },
+    "disabled": false,
+    "aria": "Open screen",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "Agent install",
+    "tag": "button",
+    "rect": {
+     "x": 430,
+     "y": 272,
+     "w": 25,
+     "h": 25
+    },
+    "disabled": false,
+    "aria": "Agent install",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "Block device",
+    "tag": "button",
+    "rect": {
+     "x": 401,
+     "y": 272,
+     "w": 25,
+     "h": 25
+    },
+    "disabled": false,
+    "aria": "Block device",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "حذف",
+    "tag": "button",
+    "rect": {
+     "x": 343,
+     "y": 272,
+     "w": 25,
+     "h": 25
+    },
+    "disabled": false,
+    "aria": "حذف",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "Agent install",
+    "tag": "button",
+    "rect": {
+     "x": 459,
+     "y": 333,
+     "w": 25,
+     "h": 25
+    },
+    "disabled": false,
+    "aria": "Agent install",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "Block device",
+    "tag": "button",
+    "rect": {
+     "x": 430,
+     "y": 333,
+     "w": 25,
+     "h": 25
+    },
+    "disabled": false,
+    "aria": "Block device",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "Wake-on-LAN",
+    "tag": "button",
+    "rect": {
+     "x": 401,
+     "y": 333,
+     "w": 25,
+     "h": 25
+    },
+    "disabled": false,
+    "aria": "Wake-on-LAN",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "حذف",
+    "tag": "button",
+    "rect": {
+     "x": 343,
+     "y": 333,
+     "w": 25,
+     "h": 25
+    },
+    "disabled": false,
+    "aria": "حذف",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "Open screen",
+    "tag": "button",
+    "rect": {
+     "x": 459,
+     "y": 394,
+     "w": 25,
+     "h": 25
+    },
+    "disabled": false,
+    "aria": "Open screen",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "Agent install",
+    "tag": "button",
+    "rect": {
+     "x": 430,
+     "y": 394,
+     "w": 25,
+     "h": 25
+    },
+    "disabled": false,
+    "aria": "Agent install",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "لا يبدأ مع ويندوز - اضغط للتشغيل",
+    "tag": "button",
+    "rect": {
+     "x": 356,
+     "y": 393,
+     "w": 70,
+     "h": 26
+    },
+    "disabled": false,
+    "aria": "لا يبدأ مع ويندوز - اضغط للتشغيل",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "Block device",
+    "tag": "button",
+    "rect": {
+     "x": 327,
+     "y": 394,
+     "w": 25,
+     "h": 25
+    },
+    "disabled": false,
+    "aria": "Block device",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "حذف",
+    "tag": "button",
+    "rect": {
+     "x": 269,
+     "y": 394,
+     "w": 25,
+     "h": 25
+    },
+    "disabled": false,
+    "aria": "حذف",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "Open screen",
+    "tag": "button",
+    "rect": {
+     "x": 459,
+     "y": 455,
+     "w": 25,
+     "h": 25
+    },
+    "disabled": false,
+    "aria": "Open screen",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "Agent install",
+    "tag": "button",
+    "rect": {
+     "x": 430,
+     "y": 455,
+     "w": 25,
+     "h": 25
+    },
+    "disabled": false,
+    "aria": "Agent install",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "يبدأ الوكيل مع إقلاع ويندوز - اضغط للإيقاف",
+    "tag": "button",
+    "rect": {
+     "x": 346,
+     "y": 454,
+     "w": 81,
+     "h": 26
+    },
+    "disabled": false,
+    "aria": "يبدأ الوكيل مع إقلاع ويندوز - اضغط للإيقاف",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "Block device",
+    "tag": "button",
+    "rect": {
+     "x": 317,
+     "y": 455,
+     "w": 25,
+     "h": 25
+    },
+    "disabled": false,
+    "aria": "Block device",
+    "pressed": "",
+    "overflow": false
+   },
+   {
+    "label": "حذف",
+    "tag": "button",
+    "rect": {
+     "x": 259,
+     "y": 455,
+     "w": 25,
+     "h": 25
+    },
+    "disabled": false,
+    "aria": "حذف",
+    "pressed": "",
+    "overflow": false
+   }
+  ],
+  "clipped": []
+ }
+]
