@@ -52,6 +52,8 @@ interface Props {
   loading?: boolean
   hasError?: boolean
   onOpen: (deviceId: string) => void
+  // 2026-11-08 (D2) — «فتح» يذهب لمساحة عمل الجهاز، و«بث» يفتح العارض. كانا يستدعيان دالة واحدة.
+  onOpenDevice: (deviceId: string) => void
   onRetry: () => void
 }
 
@@ -102,7 +104,7 @@ function loadSnapshot (): { tiles: Tile[]; size: Size } {
  * جسم غرفة العمليات — بنية design/server.html: `.dash-head` ثم `.fleet` ثم `.wall`.
  * 3.14.0 — كل صنف من المرجع (control-room-ref.css)؛ لا قياس بلا قبل/بعد (D54).
  */
-export function ControlRoomBody ({ devices, statsMap, activeScreens, loading, hasError, onOpen, onRetry }: Props) {
+export function ControlRoomBody ({ devices, statsMap, activeScreens, loading, hasError, onOpen, onOpenDevice, onRetry }: Props) {
   const { lang } = useUIStore()
   const T = useT()
   const isRtl = lang === 'ar'
@@ -310,7 +312,7 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, loading, ha
                 <div><b>{tr('الموارد', 'Resources')}</b> {online ? `${cpu} · ${ram}` : '—'}</div>
               </div>
               <div className="acts">
-                <button type="button" className="btn ghost sm" onClick={() => onOpen(device.id)}>
+                <button type="button" className="btn ghost sm" onClick={() => onOpenDevice(device.id)}>
                   <RefIcon name="open" /> {tr('فتح', 'Open')}
                 </button>
                 {online && (

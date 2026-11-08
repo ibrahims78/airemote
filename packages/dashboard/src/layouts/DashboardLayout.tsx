@@ -194,8 +194,11 @@ export function DashboardLayout() {
           </button>
 
           <div className="app-user-wrap">
-            <button type="button" className="app-user-btn" onClick={() => setUserMenuOpen(v => !v)}>
-              <span className="app-user-avatar">{user?.name?.charAt(0)?.toUpperCase() || 'A'}</span>
+            {/* 2026-11-08 (D5) — الاسم الكامل يُبنى من الأبناء بلا فواصل فيصير «UUI Auditمسؤول»؛ aria-label يعطي قارئ الشاشة عبارة مفصولة. */}
+            <button type="button" className="app-user-btn" onClick={() => setUserMenuOpen(v => !v)}
+              aria-label={(user?.name || 'Admin') + ' — ' + roleLabel}
+              title={(user?.name || 'Admin') + ' — ' + roleLabel}>
+              <span className="app-user-avatar" aria-hidden="true">{user?.name?.charAt(0)?.toUpperCase() || 'A'}</span>
               <span className="app-user-copy">
                 <strong>{user?.name || 'Admin'}</strong>
                 <small>{roleLabel}</small>

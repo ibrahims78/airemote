@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useDeviceStore } from '../store/deviceStore'
 import { api } from '../lib/api'
 import { openScreenWindow } from '../lib/screenWindow'
@@ -14,6 +15,7 @@ interface ActiveScreen {
  * بأصناف design/server.html (3.14.0 · §4.1(أ)).
  */
 export function OverviewPage () {
+  const navigate = useNavigate()
   const { devices, loading, error, fetchDevices, statsMap } = useDeviceStore()
   const [activeScreens, setActiveScreens] = useState<Record<string, ActiveScreen>>({})
 
@@ -44,6 +46,7 @@ export function OverviewPage () {
         loading={loading}
         hasError={!!error}
         onOpen={openScreenWindow}
+        onOpenDevice={(id) => navigate('/devices/' + id)}
         onRetry={() => fetchDevices()}
       />
     </div>

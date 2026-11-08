@@ -25,7 +25,12 @@ export const useDeviceStore = create<DeviceState>((set, get) => ({
     set({ loading: true })
     try {
       const res = await api.get('/api/devices')
-      set({ devices: res.data, loading: false, error: null })
+      // 2026-11-08 (D1) — الـAPI يرسل last_seen، والشيفرة تقرأ lastSeen ⇒ عمود «آخر اتصال» كان فارغًا دائمًا.
+      const rows = (Array.isArray(res.data) ? res.data : []).map((d: Device & { last_seen?: string | null }) => ({
+        ...d,
+        lastSeen: d.lastSeen ?? (d.last_seen ? new Date(d.last_seen) : undefined),
+      }))
+      set({ devices: rows, loading: false, error: null })
     } catch {
       set({ loading: false, error: 'load_failed' })
     }
