@@ -445,7 +445,8 @@ export function DevicesPage() {
                       >
                         <Terminal size={13} />
                       </button>
-                      {d.status === 'online' && (() => {
+                      {/* 3.16.0 — DEFECT-3.16: «البدء مع ويندوز» لا معنى له على أندرويد (لا معالج server:set_startup) */}
+                      {d.status === 'online' && String(d.info?.platform || '').toLowerCase() === 'windows' && (() => {
                         const on = (d as unknown as { runAtStartup?: boolean | null }).runAtStartup
                         return (
                           <button

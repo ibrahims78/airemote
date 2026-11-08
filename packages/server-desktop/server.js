@@ -4693,6 +4693,13 @@ async function start(config) {
     const device = db.prepare('SELECT * FROM devices WHERE id=?').get(req.params.id)
     if (!device) return reply.code(404).send({ error: 'Device not found' })
     if (!hasDeviceCapability(p, device.id, 'control')) return reply.code(403).send({ error: 'Forbidden' })
+    // 3.16.0 — DEFECT-3.16: البدء مع الإقلاع ميزة ويندوز؛ وكيل أندرويد لا يعالج server:set_startup إطلاقًا،
+    // فكان الزر يعرض نجاحًا ولا يفعل شيئًا. نرفض على الخادم لأنه المرجع، واللوحة تخفي الزر أيضًا.
+    let devPlatform = ''
+    try { devPlatform = String((JSON.parse(device.info || '{}') || {}).platform || '').toLowerCase() } catch {}
+    if (devPlatform && devPlatform !== 'windows') {
+      return reply.code(400).send({ error: 'Start with boot is a Windows feature', code: 'platform_not_supported' })
+    }
     const enabled = !!(req.body && req.body.enabled)
     const rec = agentSockets.get(device.id)
     if (!rec || !rec.ws) return reply.code(409).send({ error: 'Device offline', code: 'device_offline' })
