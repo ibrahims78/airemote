@@ -255,7 +255,7 @@ export function DashboardLayout() {
                 <button type="button" onClick={() => menuAction(() => navigate('/'))}>{isRtl ? 'الرئيسية' : 'Home'}</button>
                 <button type="button" onClick={() => menuAction(() => navigate('/devices'))}>{T('devices')}</button>
                 <button type="button" onClick={() => menuAction(() => navigate('/ai'))}>{T('ai_assistant')}</button>
-                <button type="button" onClick={() => menuAction(() => navigate('/settings?tab=sessions'))}>{isRtl ? 'سجل الجلسات' : 'Session log'}</button>
+                <button type="button" onClick={() => menuAction(() => navigate('/sessions'))}>{isRtl ? 'سجل الجلسات' : 'Session log'}</button>
                 <button type="button" onClick={() => menuAction(() => navigate('/notifications'))}>{T('nav_notifications')}</button>
                 <button type="button" onClick={() => menuAction(() => navigate('/settings'))}>{T('settings')}</button>
                 <button type="button" onClick={() => menuAction(handleLogout)}>{T('logout')}</button>
