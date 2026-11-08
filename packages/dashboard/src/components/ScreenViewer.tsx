@@ -490,6 +490,9 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
   // Each call gets a unique drawId; the .then() callback discards its result if
   // a newer frame has already started decoding (prevents out-of-order redraws).
   const drawFrame = useCallback((base64: string, width: number, height: number) => {
+    // 2026-11-09 — إطار تالف (أصغر من 320×240، وهو أدنى مقاس يضمنه الوكيل) كان يمحو
+    // صورة سليمة ويترك البلاطة سوداء بمقاس بضعة عشرات من البكسلات.
+    if (width < 320 || height < 240) return
     if (decodingRef.current) return  // skip — previous frame still decoding
     const canvas = canvasRef.current; if (!canvas) return
     const ctx    = canvas.getContext('2d'); if (!ctx) return
@@ -692,7 +695,8 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
           // that header makes the rest of the screen black (the cursor-only
           // symptom on Windows). Only full frames may resize the backing store.
           if (!isDelta) {
-            if (canvas.width !== width || canvas.height !== height) {
+            const headerIsFull = bmp.width !== width || bmp.height !== height
+            if (headerIsFull && (canvas.width !== width || canvas.height !== height)) {
               canvas.width = width; canvas.height = height
               // 2026-11-08 — نفس الإعلان في مسار البث الحيّ (لا الإطار الأول فقط).
               canvas.dataset.orient = height > width ? 'portrait' : 'landscape'
@@ -730,17 +734,6 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
             if (seq <= lastSeqRef.current && seq !== 0) break
             lastSeqRef.current = seq
             if (deltaRegion) {
-              // 2026-11-09 — مقاس الترويسة هو مقاس الشاشة الكامل حتى في إطارات الدلتا.
-              // بعد تغيير دقة النظام (مثلاً 1600×677 ← 1280×720) كانت الدلتا تُلصق على
-              // لوحة بالمقاس القديم، فيبقى العرض مقصوصًا ويبدو «الملاءمة غير كاملة».
-              const cv = canvasRef.current
-              if (cv && (cv.width !== width || cv.height !== height) && width > 0 && height > 0) {
-                cv.width = width; cv.height = height
-                cv.dataset.orient = height > width ? 'portrait' : 'landscape'
-                setResolution({ w: width, h: height })
-                const c2 = cv.getContext('2d')
-                if (c2) { c2.fillStyle = '#000'; c2.fillRect(0, 0, width, height) }
-              }
               // Partial update: stamp only the changed region on the existing canvas
               drawDeltaFrame(data, deltaRegion)
             } else {
