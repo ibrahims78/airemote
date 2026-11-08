@@ -102,6 +102,8 @@ const steps = [
   { name: 'policy: renderer dom ids (W5)', cmd: NODE + ' scripts/check-dom-ids.cjs' },
   { name: 'policy: inline styles (W13)', cmd: NODE + ' scripts/check-inline-styles.cjs' },
   { name: 'policy: agent button names (W18)', cmd: NODE + ' scripts/check-agent-a11y.cjs' },
+  // 3.14.4 (P1-4) — كل نوع رسالة مُستخدم في الشيفرة الحيّة يجب أن يكون معلنًا في العقد.
+  { name: 'policy: message contract (P1-4)', cmd: NODE + ' scripts/check-message-contract.cjs' },
 ]
 
 let failures = 0
