@@ -130,6 +130,23 @@ async function main() {
   const e5j = await e5.json().catch(() => ({}))
   check('E5. audit is queryable through the admin API', e5.status === 200 && (e5j.total || 0) > 0, 'status=' + e5.status)
 
+  // ── F. 3.16.0 (DEFECT-3.16) — «البدء مع ويندوز» لا يُقبل على غير ويندوز ─────
+  // كان السيرفر يرسل server:set_startup لأي وكيل ويردّ بالنجاح، ووكيل أندرويد بلا معالج.
+  const androidId = crypto.randomUUID()
+  const dbA = new Database(dbPath)
+  dbA.prepare('INSERT INTO devices (id, name, token, owner_id, info) VALUES (?,?,?,?,?)')
+    .run(androidId, 'p0-android', crypto.randomUUID(), adminId, JSON.stringify({ platform: 'Android', hostname: 'p0' }))
+  dbA.close()
+  const f1 = await fetch(BASE + '/api/devices/' + androidId + '/startup', {
+    method: 'POST', headers: H(adminTok), body: JSON.stringify({ enabled: true }),
+  })
+  const f1j = await f1.json().catch(() => ({}))
+  check('F1. android device: start-with-boot → 400 platform_not_supported', f1.status === 400 && f1j.code === 'platform_not_supported', 'status=' + f1.status + ' ' + JSON.stringify(f1j))
+  const f2 = await fetch(BASE + '/api/devices/' + mgrDevice + '/startup', {
+    method: 'POST', headers: H(adminTok), body: JSON.stringify({ enabled: true }),
+  })
+  check('F2. windows device passes the platform gate (409 offline, never 400)', f2.status === 409, 'status=' + f2.status)
+
   console.log(failed ? `\n${failed} CHECK(S) FAILED` : '\nALL P0 AUTHORIZATION CHECKS PASSED')
   process.exit(failed ? 1 : 0)
 }
