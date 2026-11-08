@@ -2,7 +2,7 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useCallback, useEffect, useState } from 'react'
 import {
   LayoutDashboard, Monitor, Settings, LogOut, Minus, Maximize2, Minimize2,
-  Bot, Menu, ChevronDown, Bell, HelpCircle, Search, History, X, Plus, Sun, Moon, Languages,
+  Bot, ChevronDown, Bell, HelpCircle, Search, History, X, Plus, Sun, Moon, Languages,
 } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { useDeviceStore } from '../store/deviceStore'
@@ -37,7 +37,6 @@ export function DashboardLayout() {
 
   const [paletteOpen, setPaletteOpen] = useState(false)
   const [addMenuOpen, setAddMenuOpen] = useState(false)
-  const [appMenuOpen, setAppMenuOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [maximized, setMaximized] = useState(false)
   const [serverVersion, setServerVersion] = useState('')
@@ -45,15 +44,14 @@ export function DashboardLayout() {
 
   // 3.13.1 — مخرج احتياطي: لو ابتُلع النقر (منطقة سحب إلكترون) فـEscape يُغلق القوائم.
   useEffect(() => {
-    if (!appMenuOpen && !userMenuOpen && !addMenuOpen) return
+    if (!userMenuOpen && !addMenuOpen) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
-      setAppMenuOpen(false)
       setUserMenuOpen(false)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [appMenuOpen, userMenuOpen])
+  }, [userMenuOpen, addMenuOpen])
 
   const desktopApi = typeof window !== 'undefined'
     ? (window as unknown as { airemote?: { windowCtl?: WindowCtl } }).airemote
@@ -130,7 +128,6 @@ export function DashboardLayout() {
         setPaletteOpen(true)
       }
       if (event.key === 'Escape') {
-        setAppMenuOpen(false)
         setUserMenuOpen(false)
       }
     }
@@ -153,10 +150,6 @@ export function DashboardLayout() {
     { to: '/sessions', label: isRtl ? 'سجل الجلسات' : 'Session log', icon: History },
   ]
 
-  const menuAction = (action: () => void) => {
-    setAppMenuOpen(false)
-    action()
-  }
 
   return (
     <div className="app-shell h-screen bg-canvas overflow-auto">
@@ -324,14 +317,6 @@ export function DashboardLayout() {
         <div className="app-titlebar-spacer" />
 
         <div className="app-window-controls">
-          <button
-            type="button"
-            className="app-window-btn app-menu-trigger"
-            onClick={() => setAppMenuOpen(v => !v)}
-            title={isRtl ? 'قائمة التطبيق' : 'Application menu'}
-          >
-            <Menu size={15} />
-          </button>
           {windowCtl && (
             <>
               <button type="button" className="app-window-btn" onClick={() => windowCtl.minimize?.()} title={isRtl ? 'تصغير' : 'Minimize'}>
@@ -343,44 +328,6 @@ export function DashboardLayout() {
               <button type="button" className="app-window-btn is-close" onClick={() => windowCtl.close?.()} title={isRtl ? 'إغلاق' : 'Close'}>
                 <X size={15} />
               </button>
-            </>
-          )}
-          {appMenuOpen && (
-            <>
-              <div className="app-menu-backdrop" onClick={() => setAppMenuOpen(false)} />
-              <div className="app-menu-pop" role="menu" dir={isRtl ? 'rtl' : 'ltr'}>
-                <div className="app-menu-section">{isRtl ? 'ملف' : 'File'}</div>
-                <button type="button" onClick={() => menuAction(() => navigate('/'))}>{isRtl ? 'الرئيسية' : 'Home'}</button>
-                <button type="button" onClick={() => menuAction(() => navigate('/devices'))}>{T('devices')}</button>
-                <button type="button" onClick={() => menuAction(() => navigate('/ai'))}>{T('ai_assistant')}</button>
-                <button type="button" onClick={() => menuAction(() => navigate('/sessions'))}>{isRtl ? 'سجل الجلسات' : 'Session log'}</button>
-                <button type="button" onClick={() => menuAction(() => navigate('/notifications'))}>{T('nav_notifications')}</button>
-                <button type="button" onClick={() => menuAction(() => navigate('/settings'))}>{T('settings')}</button>
-                <button type="button" onClick={() => menuAction(handleLogout)}>{T('logout')}</button>
-                {user?.role === 'admin' && (
-                  <>
-                    <div className="app-menu-section">{isRtl ? 'الإدارة' : 'Administration'}</div>
-                    <button type="button" onClick={() => menuAction(() => navigate('/audit'))}>{T('nav_audit')}</button>
-                    <button type="button" onClick={() => menuAction(() => navigate('/users'))}>{T('users')}</button>
-                  </>
-                )}
-
-                <div className="app-menu-section">{isRtl ? 'تحرير' : 'Edit'}</div>
-                <button type="button" onClick={() => menuAction(() => navigator.clipboard?.writeText(window.location.href))}>{isRtl ? 'نسخ رابط الصفحة' : 'Copy page URL'}</button>
-                <button type="button" onClick={() => menuAction(() => window.location.reload())}>{isRtl ? 'إعادة تحميل' : 'Reload'}</button>
-
-                <div className="app-menu-section">{isRtl ? 'عرض' : 'View'}</div>
-                <button type="button" onClick={() => menuAction(() => document.documentElement.requestFullscreen?.())}>{isRtl ? 'ملء الشاشة' : 'Fullscreen'}</button>
-
-                <div className="app-menu-section">{isRtl ? 'نافذة' : 'Window'}</div>
-                <button type="button" onClick={() => menuAction(() => windowCtl?.minimize?.())}>{isRtl ? 'تصغير' : 'Minimize'}</button>
-                <button type="button" onClick={() => menuAction(() => windowCtl?.maximize?.())}>{maximized ? (isRtl ? 'استعادة' : 'Restore') : (isRtl ? 'تكبير' : 'Maximize')}</button>
-                <button type="button" onClick={() => menuAction(() => windowCtl?.close?.())}>{isRtl ? 'إغلاق' : 'Close'}</button>
-
-                <div className="app-menu-section">{isRtl ? 'مساعدة' : 'Help'}</div>
-                <button type="button" onClick={() => menuAction(() => navigate('/help'))}>{isRtl ? 'مركز المساعدة' : 'Help center'}</button>
-                <button type="button" onClick={() => menuAction(() => alert('AiRemote v' + (serverVersion || APP_VERSION)))}>{isRtl ? 'حول التطبيق' : 'About AiRemote'}</button>
-              </div>
             </>
           )}
         </div>

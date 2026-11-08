@@ -5,7 +5,7 @@ import { useUIStore } from '../store/uiStore'
 import { useBoardStore, nextDeviceId, MAX_TILES } from '../store/boardStore'
 import { useT } from '../lib/i18n'
 import { clsx } from 'clsx'
-import { Monitor } from 'lucide-react'
+import { Monitor, Terminal, FolderOpen, MousePointer2 } from 'lucide-react'
 import { ScreenViewer } from './ScreenViewer'
 import { EmptyState, SkeletonRows } from './ui'
 
@@ -356,7 +356,7 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, loading, ha
         </div>
       )}
 
-      <div className={clsx('fleet', devices.length > FLEET_MAX && 'six')}>
+      <div className="fleet">
         {shownDevices.map(device => {
           const online = device.status === 'online'
           const stats = statsMap[device.id] || device.stats
@@ -428,9 +428,21 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, loading, ha
                     <span className="dot" />{tr('وكيل↔وكيل', 'agent↔agent')}
                   </span>
                 )}
-                {canTerm && <span className="cap-chip">{tr('طرفية', 'shell')}</span>}
-                {canFiles && <span className="cap-chip">{tr('ملفات', 'files')}</span>}
-                {canControl && <span className="cap-chip">{tr('تحكم', 'control')}</span>}
+                {canTerm && (
+                  <span className="cap-ic" title={tr('طرفية متاحة', 'Shell available')} aria-label={tr('طرفية متاحة', 'Shell available')}>
+                    <Terminal size={11} />
+                  </span>
+                )}
+                {canFiles && (
+                  <span className="cap-ic" title={tr('مدير ملفات متاح', 'Files available')} aria-label={tr('مدير ملفات متاح', 'Files available')}>
+                    <FolderOpen size={11} />
+                  </span>
+                )}
+                {canControl && (
+                  <span className="cap-ic" title={tr('تحكّم بالشاشة متاح', 'Screen control available')} aria-label={tr('تحكّم بالشاشة متاح', 'Screen control available')}>
+                    <MousePointer2 size={11} />
+                  </span>
+                )}
               </div>
               <div className="acts">
                 <button type="button" className="btn ghost sm" onClick={() => onOpenDevice(device.id)}>

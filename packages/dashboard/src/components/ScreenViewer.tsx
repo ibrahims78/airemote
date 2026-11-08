@@ -1808,13 +1808,8 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
             {status === 'connecting' ? tr('viewer_connecting') : (errorMsg || tr('viewer_offline'))}
           </div>
         )}
-        <button
-          type="button"
-          onClick={() => openScreenWindow(deviceId)}
-          className="absolute bottom-1.5 end-1.5 flex items-center gap-1 rounded-md bg-canvas/85 px-2 py-1 text-[10px] font-medium text-ink shadow-sm backdrop-blur transition-colors hover:bg-surface2"
-        >
-          <ExternalLink size={10}/> {tr('viewer_open')}
-        </button>
+        {/* 2026-11-09 — حُذف زر «فتح» العائم من داخل صورة البث: زر الفوتر يغني عنه،
+            وكان يغطّي محتوى الشاشة في كل بلاطة على الحائط. */}
       </div>
     )
   }
