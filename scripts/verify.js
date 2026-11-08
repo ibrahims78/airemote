@@ -104,6 +104,9 @@ const steps = [
   { name: 'policy: agent button names (W18)', cmd: NODE + ' scripts/check-agent-a11y.cjs' },
   // 3.14.4 (P1-4) — كل نوع رسالة مُستخدم في الشيفرة الحيّة يجب أن يكون معلنًا في العقد.
   { name: 'policy: message contract (P1-4)', cmd: NODE + ' scripts/check-message-contract.cjs' },
+  // 3.15.0 — مسار كتابة بلا حراسة = شكل عيب P0-2؛ ورسالة تُرسَل بلا معالج = شكل عيب fs/pty.
+  { name: 'policy: route guards (P0-2 shape)', cmd: NODE + ' scripts/check-route-roles.cjs' },
+  { name: 'policy: message pairs (fs/pty shape)', cmd: NODE + ' scripts/check-message-pairs.cjs' },
 ]
 
 let failures = 0

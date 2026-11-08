@@ -1,0 +1,12 @@
+{
+  "_comment": "مسارات كتابة عامة بحكم التصميم. أي إضافة جديدة هنا تحتاج سببًا مكتوبًا ومراجعة بشرية.",
+  "allowed": [
+    { "method": "POST", "path": "/api/setup/init", "reason": "إنشاء أول حساب — لا مستخدم بعد" },
+    { "method": "POST", "path": "/api/auth/setup", "reason": "نفس السبب، مسار قديم" },
+    { "method": "POST", "path": "/api/auth/login", "reason": "بوابة الدخول نفسها (محدودة المعدّل 5/دقيقة)" },
+    { "method": "POST", "path": "/api/auth/login/verify-totp", "reason": "الخطوة الثانية من الدخول" },
+    { "method": "POST", "path": "/api/auth/refresh", "reason": "تجديد رمز منتهٍ" },
+    { "method": "POST", "path": "/api/access/unattended", "reason": "تبادل كلمة مرور + رمز جهاز مقابل وصول — لا حساب لوحة (محدود 10/دقيقة)" },
+    { "method": "POST", "path": "/api/relay/:id/keepalive", "reason": "تُصادَق بتذكرة جلسة rt؛ بدونها 403 ticket_required" }
+  ]
+}

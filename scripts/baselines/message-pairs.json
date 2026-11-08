@@ -1,0 +1,23 @@
+{
+  "_comment": "فجوات مقبولة بين ما يرسله السيرفر وما يعالجه الوكيل. كل سطر يحتاج سببًا؛ أي فجوة جديدة تُفشل البوابة.",
+  "win": [
+    { "type": "server:pong", "reason": "ردّ نبضة لا يقرأه الوكيل — ضجيج لا سلوك" },
+    { "type": "server:screen_control", "reason": "يُرسَل من case 'screen_control' لا تستخدمه اللوحة (ترسل screen:mouse_event/key_event) — مسار ميت" },
+    { "type": "server:screen_display", "reason": "ميزة إطفاء شاشة أندرويد؛ تُرسَل لأي وكيل ⇒ على ويندوز لا تفعل شيئًا" },
+    { "type": "server:screen_set_delta", "reason": "تعليق في السيرفر نفسه: وكيل سطح المكتب بلا معالج delta" },
+    { "type": "server:snapshot", "reason": "يُرسَل إلى مقبس مشاهد لا وكيل" }
+  ],
+  "android": [
+    { "type": "server:pty_start", "reason": "الوكيل يعلن pty:false — لا طرفية على أندرويد" },
+    { "type": "server:pty_resize", "reason": "نفسه" },
+    { "type": "server:pty_stop", "reason": "نفسه" },
+    { "type": "server:pong", "reason": "ضجيج نبضة" },
+    { "type": "server:screen_control", "reason": "مسار ميت (انظر win)" },
+    { "type": "server:screen_get_resolutions", "reason": "قدرة لا يعلنها الوكيل؛ hasDeviceCapability يمنع الإرسال" },
+    { "type": "server:screen_set_resolution", "reason": "نفسه" },
+    { "type": "server:screen_set_monitor", "reason": "شاشة واحدة على أندرويد" },
+    { "type": "server:screen_privacy", "reason": "غير مدعومة على أندرويد" },
+    { "type": "server:snapshot", "reason": "يُرسَل إلى مقبس مشاهد لا وكيل" },
+    { "type": "server:set_startup", "reason": "**عيب مؤكَّد (3.16)** — اللوحة تعرض «بدء مع ويندوز» لأي جهاز متصل، وأندرويد بلا معالج ⇒ الزر يوهم بالنجاح ولا يفعل شيئًا" }
+  ]
+}
