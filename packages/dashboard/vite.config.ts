@@ -18,7 +18,8 @@ export default defineConfig({
     port: 5000,
     host: true,
     allowedHosts: true,
-    hmr: false,
+    // 2026-11-09 — كُan معطّلًا، فتبويب المعاينة لا يرى التعديلات إلا بإعادة تحميل يدوية.
+    hmr: { overlay: true },
     proxy: {
       // السيرفر المكتبي يخدم TLS فقط؛ http كان يجعل كل نداء /api يفشل بـ500 في التطوير.
       '/api': { target: 'https://localhost:3001', changeOrigin: true, secure: false },
