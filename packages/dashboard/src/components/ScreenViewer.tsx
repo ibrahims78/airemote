@@ -173,8 +173,9 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
   const [fitMode,        setFitMode]        = useState<'fit' | 'fill' | 'actual'>(() => {
     try {
       const v = localStorage.getItem('airemote.screen.fit')
-      return (v === 'fill' || v === 'actual' || v === 'fit') ? v : (popout ? 'fill' : 'fit')
-    } catch { return popout ? 'fill' : 'fit' }
+      // 2026-11-09 — كان العارض المستقل يفتح على «ملء» فيقصّ حواف الشاشة.
+      return (v === 'fill' || v === 'actual' || v === 'fit') ? v : 'fit'
+    } catch { return 'fit' }
   })
   const [canvasBox,      setCanvasBox]      = useState<{ w: number; h: number } | null>(null)
   // 3.9.4 — قياس منطقة العرض نفسها، لأن «ملاءمة» تحتاج نسبة أبعاد حقيقية لا شدّاً.
@@ -296,6 +297,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
   const statsKeyRef        = useRef(0)
   const fpsTimerRef        = useRef<ReturnType<typeof setInterval> | null>(null)
   const pingTimerRef       = useRef<ReturnType<typeof setInterval> | null>(null)
+  const geomTimerRef       = useRef<ReturnType<typeof setInterval> | null>(null)
   // 3.11.13 (M0) — آخر RTT مقيس محلياً، يُرسل مع ping التالي ليقرأه السيرفر في /metrics
   const latencyRef         = useRef(0)
   const lastSeqRef         = useRef(-1)
@@ -645,6 +647,10 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
         if (wsRef.current?.readyState === WebSocket.OPEN)
           wsRef.current.send(JSON.stringify({ type: 'screen:ping', payload: { ts: Date.now(), rtt: latencyRef.current } }))
       }, 3000)
+      if (geomTimerRef.current) clearInterval(geomTimerRef.current)
+      geomTimerRef.current = setInterval(() => {
+        if (wsRef.current?.readyState === WebSocket.OPEN) sendWs({ type: 'screen:get_monitors', payload: {} })
+      }, 15000)
       startStaleWatchdog(myId)
     }
 
@@ -694,6 +700,15 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
             }
             ctx.drawImage(bmp, 0, 0)
           } else if (canvas.width > 0 && canvas.height > 0) {
+            // 2026-11-09 — ترويسة إطار الدلتا تحمل مقاس الشاشة الكامل، لا مقاس المستطيل.
+            // بعد تغيير دقة النظام تصل الدلتا بمقاس جديد؛ تجاهله يُبقي الظهور مقصوصًا.
+            if (canvas.width !== width || canvas.height !== height) {
+              canvas.width = width; canvas.height = height
+              canvas.dataset.orient = height > width ? 'portrait' : 'landscape'
+              setResolution({ w: width, h: height })
+              ctx.fillStyle = '#000'
+              ctx.fillRect(0, 0, width, height)
+            }
             ctx.drawImage(bmp, dx, dy)
           }
           bmp.close()
@@ -715,6 +730,17 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
             if (seq <= lastSeqRef.current && seq !== 0) break
             lastSeqRef.current = seq
             if (deltaRegion) {
+              // 2026-11-09 — مقاس الترويسة هو مقاس الشاشة الكامل حتى في إطارات الدلتا.
+              // بعد تغيير دقة النظام (مثلاً 1600×677 ← 1280×720) كانت الدلتا تُلصق على
+              // لوحة بالمقاس القديم، فيبقى العرض مقصوصًا ويبدو «الملاءمة غير كاملة».
+              const cv = canvasRef.current
+              if (cv && (cv.width !== width || cv.height !== height) && width > 0 && height > 0) {
+                cv.width = width; cv.height = height
+                cv.dataset.orient = height > width ? 'portrait' : 'landscape'
+                setResolution({ w: width, h: height })
+                const c2 = cv.getContext('2d')
+                if (c2) { c2.fillStyle = '#000'; c2.fillRect(0, 0, width, height) }
+              }
               // Partial update: stamp only the changed region on the existing canvas
               drawDeltaFrame(data, deltaRegion)
             } else {
@@ -884,6 +910,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
     ws.onclose = () => {
       if (fpsTimerRef.current)   { clearInterval(fpsTimerRef.current);   fpsTimerRef.current   = null }
       if (pingTimerRef.current)  { clearInterval(pingTimerRef.current);  pingTimerRef.current  = null }
+      if (geomTimerRef.current)  { clearInterval(geomTimerRef.current);  geomTimerRef.current  = null }
       if (bwTimerRef.current)    { clearInterval(bwTimerRef.current);    bwTimerRef.current    = null }
       if (staleTimerRef.current) { clearInterval(staleTimerRef.current); staleTimerRef.current = null }
       setFps(0); setLatency(-1); setBwDisplay(0)

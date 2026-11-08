@@ -890,7 +890,9 @@ export class AgentService {
             quality,
             maxWidth,
             monitorId: currentMonitorId,
-            monitors: this.cachedMonitors.length > 0 ? this.cachedMonitors : undefined
+            // 2026-11-09 — الشاشة الأساسية: لا تُمرّر هندسة مخزّنة، ليقيس الالتقاط
+            // الأبعاد الحقيقية في كل إطار (تغيير دقة النظام كان يبقى غير مرئي).
+            monitors: (currentMonitorId ?? 0) === 0 ? undefined : (this.cachedMonitors.length > 0 ? this.cachedMonitors : undefined)
           })
 
           if (!frame) {
