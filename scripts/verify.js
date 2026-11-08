@@ -60,6 +60,8 @@ const steps = [
   { name: 'e2e: desktop late viewer',     cmd: electronStep('packages/server-desktop/test/e2e-screen-join.test.cjs') },
   { name: 'e2e: desktop force keyframe', cmd: electronStep('packages/server-desktop/test/e2e-force-keyframe.test.cjs') },
   { name: 'e2e: security (R2)',          cmd: electronStep('packages/server-desktop/test/e2e-security.test.cjs') },
+  // 3.14.4 (P0-2/P0-3) — بوابتا الدور على SFTP ومخزن الاعتمادات + حصر المضيف.
+  { name: 'e2e: P0 authz (3.14.4)',      cmd: electronStep('packages/server-desktop/test/e2e-p0-authz.test.cjs') },
   { name: 'e2e: contacts + codes (R3)',   cmd: electronStep('packages/server-desktop/test/e2e-contacts.test.cjs') },
   { name: 'e2e: unattended access (R3)',  cmd: electronStep('packages/server-desktop/test/e2e-unattended.test.cjs') },
   { name: 'e2e: device permissions (R3)', cmd: electronStep('packages/server-desktop/test/e2e-device-permissions.test.cjs') },

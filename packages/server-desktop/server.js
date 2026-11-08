@@ -5991,6 +5991,27 @@ if ($target -eq $null) { 'name-not-found' } else {
     return reply.code(204).send()
   })
 
+  // 3.14.4 — P0-2: المضيف المسموح لـSFTP = عناوين أجهزة المستخدم المتاحة + مضيفات اعتماداته المخزَّنة.
+  function sftpHostAllowed(user, host) {
+    const want = String(host || '').trim().toLowerCase()
+    if (!want) return false
+    const allowed = new Set()
+    try {
+      for (const d of accessibleDeviceRows(user)) {
+        try {
+          const info = d.info ? JSON.parse(d.info) : {}
+          for (const k of ['ipLocal', 'ipPublic']) if (info && info[k]) allowed.add(String(info[k]).trim().toLowerCase())
+        } catch {}
+      }
+    } catch {}
+    try {
+      for (const r of db.prepare('SELECT DISTINCT ssh_host FROM device_credentials WHERE user_id=?').all(user.userId)) {
+        if (r.ssh_host) allowed.add(String(r.ssh_host).trim().toLowerCase())
+      }
+    } catch {}
+    return allowed.has(want)
+  }
+
   // ── SSH Credentials ───────────────────────────────────────────────────────
   fastify.get('/api/credentials', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
@@ -6027,6 +6048,11 @@ if ($target -eq $null) { 'name-not-found' } else {
   // ── SFTP ──────────────────────────────────────────────────────────────────
   fastify.post('/api/sftp/connect', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
+    // 3.14.4 — P0-2: الاتصال يفتح SSH من السيرفر ⇒ دور manager فأعلى (كان أي مستخدم مصادَق).
+    if (!atLeast(p.role, 'manager')) {
+      dbLogAudit({ userId: p.userId, userEmail: p.email || '', action: 'sftp_denied_role', details: { role: p.role || null }, ipAddress: req.ip })
+      return reply.code(403).send({ error: 'Manager role required', code: 'role_too_low' })
+    }
     const { host, port = 22, username, password, privateKey, credentialId } = req.body || {}
     let fHost = host, fPort = port, fUser = username, fPass = password, fKey = privateKey
     if (credentialId) {
@@ -6038,6 +6064,12 @@ if ($target -eq $null) { 'name-not-found' } else {
       db.prepare("UPDATE device_credentials SET last_used=datetime('now') WHERE id=?").run(credentialId)
     }
     if (!fHost || !fUser) return reply.code(400).send({ error: 'host and username required' })
+    // 3.14.4 — P0-2: لا يفتح السيرفر SSH إلى مضيف يختاره العميل بحرّية.
+    if (!sftpHostAllowed(p, fHost)) {
+      dbLogAudit({ userId: p.userId, userEmail: p.email || '', action: 'sftp_denied_host', details: { host: String(fHost), viaCredential: !!credentialId }, ipAddress: req.ip })
+      return reply.code(403).send({ error: 'Host not allowed', code: 'host_not_allowed' })
+    }
+    dbLogAudit({ userId: p.userId, userEmail: p.email || '', action: 'sftp_connect', details: { host: String(fHost), port: Number(fPort) || 22, viaCredential: !!credentialId }, ipAddress: req.ip })
     return new Promise((resolve) => {
       try {
         const { Client } = getSsh2(); const conn = new Client(); const sessionId = uuidv4()
