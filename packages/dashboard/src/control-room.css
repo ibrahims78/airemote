@@ -2264,3 +2264,44 @@ html.light .cr-board { box-shadow: 0 18px 44px rgba(15,23,42,.10); }
 .ws-item .tool:hover { background: var(--b-surface3); border-color: var(--b-line); }
 .ws-item .tool:disabled { opacity: .35; cursor: not-allowed; }
 .ws-hint { font-size: 11px; color: var(--b-muted); margin-inline-start: auto; padding-inline-end: 4px; }
+
+/* ── 2026-11-08 — رأس غرفة العمليات: شريط البث أولًا + زر «إضافة بث» ── */
+.cr-page .cr-top {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+  max-width: 1612px; margin: 0 auto 10px;
+}
+.cr-page .cr-top .wall-strip { flex: 0 1 auto; max-width: none; margin: 0; }
+.cr-page .ws-empty { font-size: 12px; color: var(--b-muted); padding: 10px 2px; }
+.cr-page .add-stream {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 38px; padding: 0 14px 0 10px; border-radius: 999px;
+  font-size: 12.5px; font-weight: 700; white-space: nowrap;
+  box-shadow: 0 6px 16px rgba(15,118,110,.18);
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+.cr-page .add-stream:hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(15,118,110,.26); }
+.cr-page .add-stream:active { transform: translateY(0); }
+.cr-page .add-stream:disabled { opacity: .5; box-shadow: none; cursor: not-allowed; }
+.cr-page .add-stream-ic {
+  width: 22px; height: 22px; border-radius: 50%;
+  display: grid; place-items: center;
+  background: rgba(255,255,255,.18);
+}
+.cr-page .wall { margin-bottom: 10px; }
+
+/* 2026-11-08 — توزيع الحائط حسب عدد البثوث: واحد يتمركز، اثنان عمودان، ثلاثة أو أكثر ثلاثة. */
+.cr-page .wall.wall-1 { grid-template-columns: minmax(0, 900px); justify-content: center; }
+.cr-page .wall.wall-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+/* ── 2026-11-08 — زر «إضافة بث» في الشريط العلوي + فاصل مجموعات ── */
+.app-titlebar-add {
+  color: var(--cr-accent);
+  border: 1px solid rgba(15,118,110,.28);
+  background: rgba(15,118,110,.08);
+  border-radius: 8px;
+  font-weight: 700;
+}
+.app-titlebar-add:hover { background: rgba(15,118,110,.16); color: var(--cr-accent); }
+.app-titlebar-add:disabled { opacity: .45; cursor: not-allowed; background: transparent; }
+html.light .app-titlebar-add { color: #0f766e; border-color: rgba(15,118,110,.3); background: rgba(15,118,110,.07); }
+.app-titlebar-sep { width: 1px; height: 18px; background: rgba(148,163,184,.35); margin: 0 2px; flex: 0 0 auto; }

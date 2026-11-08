@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Device } from '@airemote/shared'
 import { useUIStore } from '../store/uiStore'
+import { useBoardStore, nextDeviceId, MAX_TILES } from '../store/boardStore'
 import { useT } from '../lib/i18n'
 import { clsx } from 'clsx'
 import { Monitor } from 'lucide-react'
@@ -37,13 +38,10 @@ function RefIcon ({ name }: { name: RefName }) {
 interface ActiveScreen { sessionId: string; viewers?: number }
 interface Stats { cpuPercent?: number; ramPercent?: number }
 
-const MAX_TILES = 6
-const BOARD_STORAGE_KEY = 'airemote-live-board-v1'
 // 3.14.0 — D65: six cards at most, and only the owner hides a card (D53 kept).
 const FLEET_MAX = 6
 const FLEET_HIDDEN_KEY = 'airemote-fleet-hidden-v1'
 // 2026-11-08 (D3) — حُذف مُحدِّد حجم البلاطة (SM/MD/LG): كان يُحفظ ولا يُطبَّق على أي عنصر.
-interface Tile { key: string; deviceId: string; running: boolean }
 
 interface Props {
   devices: Device[]
@@ -79,26 +77,6 @@ function loadHidden (): string[] {
   }
 }
 
-function newKey (): string {
-  return Math.random().toString(36).slice(2, 10)
-}
-
-function loadSnapshot (): { tiles: Tile[] } {
-  try {
-    const raw = localStorage.getItem(BOARD_STORAGE_KEY)
-    if (!raw) return { tiles: [] }
-    const parsed = JSON.parse(raw) as { tiles?: Partial<Tile>[] }
-    const tiles = (parsed.tiles || [])
-      .filter(t => t && typeof t.key === 'string' && typeof t.deviceId === 'string')
-      .slice(0, MAX_TILES)
-      // 3.13.1 — always hydrate idle: returning to the page must not resume any stream.
-      .map(t => ({ key: String(t.key), deviceId: String(t.deviceId), running: false }))
-    return { tiles }
-  } catch {
-    return { tiles: [] }
-  }
-}
-
 /**
  * جسم غرفة العمليات — بنية design/server.html: `.dash-head` ثم `.fleet` ثم `.wall`.
  * 3.14.0 — كل صنف من المرجع (control-room-ref.css)؛ لا قياس بلا قبل/بعد (D54).
@@ -116,7 +94,12 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, loading, ha
     || devices[0]
   ), [devices, onlineDevices])
 
-  const [tiles, setTiles] = useState<Tile[]>(() => loadSnapshot().tiles)
+  const tiles = useBoardStore(s => s.tiles)
+  const addTileToBoard = useBoardStore(s => s.add)
+  const removeTileFromBoard = useBoardStore(s => s.remove)
+  const toggleTile = useBoardStore(s => s.toggle)
+  const seedBoard = useBoardStore(s => s.seed)
+  const replaceOrphans = useBoardStore(s => s.replaceOrphans)
   const [maxKey, setMaxKey] = useState<string | null>(null)
   // 3.14.0 — D65
   const [hidden, setHidden] = useState<string[]>(() => loadHidden())
@@ -139,26 +122,19 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, loading, ha
     const s = statsMap[d.id] || d.stats
     return !!s && ((s.cpuPercent ?? 0) > 85 || (s.ramPercent ?? 0) > 85)
   }).length
-
-  useEffect(() => {
-    try {
-      localStorage.setItem(BOARD_STORAGE_KEY, JSON.stringify({
-        tiles: tiles.map(t => ({ key: t.key, deviceId: t.deviceId })),
-      }))
-    } catch {}
-  }, [tiles])
+  // 2026-11-08 — بعد إزالة شريط المؤشرات انتقل عدّاد التنبيهات إلى شارة مستقلة في شريط الأدوات.
+  const runningTiles = useMemo(() => tiles.filter(t => t.running), [tiles])
 
   useEffect(() => {
     if (!preferred) return
-    setTiles(prev => {
-      if (prev.length > 0) {
-        return prev.map(t => devices.some(d => d.id === t.deviceId) ? t : { ...t, deviceId: preferred.id })
-      }
-      const seed = [...onlineDevices].sort((a, b) => wallRank(a) - wallRank(b)).slice(0, 3)
-      if (seed.length === 0) return [{ key: newKey(), deviceId: preferred.id, running: false }]
-      return seed.map(d => ({ key: newKey(), deviceId: d.id, running: false }))
-    })
-  }, [preferred, devices, onlineDevices])
+    const alive = devices.map(d => d.id)
+    if (tiles.length > 0) {
+      if (tiles.some(t => !alive.includes(t.deviceId))) replaceOrphans(alive, preferred.id)
+      return
+    }
+    const seed = [...onlineDevices].sort((a, b) => wallRank(a) - wallRank(b)).slice(0, 3)
+    seedBoard((seed.length ? seed : [preferred]).map(d => d.id))
+  }, [preferred, devices, onlineDevices, tiles, replaceOrphans, seedBoard])
 
   useEffect(() => {
     if (!maxKey) return
@@ -169,38 +145,67 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, loading, ha
 
   function addTile () {
     if (tiles.length >= MAX_TILES) return
-    const used = new Set(tiles.map(t => t.deviceId))
-    const next = [...onlineDevices].sort((a, b) => wallRank(a) - wallRank(b)).find(d => !used.has(d.id)) || preferred
+    const ordered = [...onlineDevices].sort((a, b) => wallRank(a) - wallRank(b)).map(d => d.id)
+    const next = nextDeviceId(tiles, ordered, preferred?.id)
     if (!next) return
-    setTiles(prev => [...prev, { key: newKey(), deviceId: next.id, running: false }])
+    addTileToBoard(next)
   }
 
   function removeTile (key: string) {
-    setTiles(prev => prev.length > 1 ? prev.filter(t => t.key !== key) : prev)
+    removeTileFromBoard(key)
     setMaxKey(prev => prev === key ? null : prev)
   }
 
   function toggleRun (key: string) {
-    setTiles(prev => prev.map(t => t.key === key ? { ...t, running: !t.running } : t))
+    toggleTile(key)
   }
 
   return (
     <>
-      <div className="dash-head">
-        <h1>{T('ov_room')}</h1>
-        <div className="metrics">
-          <div className="metric">
-            <b>{onlineDevices.length}</b>
-            <span>{tr('أجهزة متصلة', 'devices online')}</span>
-            <a className="linkbtn" href="/devices">{T('view_all')}</a>
+      {/* 2026-11-08 — الرأس الجديد: شريط البث أولًا + زر إضافة بث. أُلغي العنوان والمؤشرات الثلاثة ورابط «عرض الكل». */}
+      <div className="cr-top">
+        {tiles.length > 0 ? (
+          <div className="wall-strip">
+            {tiles.map(tile => {
+              const device = devices.find(d => d.id === tile.deviceId)
+              const online = !!device && device.status === 'online'
+              const live = !!activeScreens[tile.deviceId]
+              const name = device?.name || tile.deviceId.slice(0, 10)
+              const state = !online ? tr('غير متصل', 'Offline') : tile.running ? tr('مباشر', 'Live') : tr('متوقف', 'Stopped')
+              return (
+                <div className="ws-item" key={tile.key}>
+                  <RefIcon name="monitor" />
+                  <span className="ws-name">{name}</span>
+                  <span className={clsx('chip', online && (tile.running || live) ? 'ok' : 'off')}>
+                    <span className="dot" />{state}
+                  </span>
+                  <button
+                    type="button"
+                    className={clsx('tool', tile.running ? 'on' : 'play')}
+                    onClick={() => toggleRun(tile.key)}
+                    disabled={!online}
+                    title={tile.running ? tr('إيقاف البث', 'Stop stream') : tr('تشغيل البث', 'Start stream')}
+                    aria-label={tile.running ? tr('إيقاف البث', 'Stop stream') : tr('تشغيل البث', 'Start stream')}
+                    aria-pressed={tile.running}
+                  >
+                    {tile.running ? <RefIcon name="stop" /> : <RefIcon name="play" />}
+                  </button>
+                  <button
+                    type="button"
+                    className="tool"
+                    onClick={() => removeTile(tile.key)}
+                    title={tr('إزالة', 'Remove')}
+                    aria-label={tr('إزالة', 'Remove')}
+                  >
+                    <RefIcon name="x" />
+                  </button>
+                </div>
+              )
+            })}
           </div>
-          <div className="metric"><b>{liveCount}</b><span>{tr('بث نشط', 'active stream')}</span></div>
-          <div className="metric"><b>{alerts}</b><span>{tr('تنبيهات', 'alerts')}</span></div>
-        </div>
-        <div className="grow" />
-        <button type="button" className="btn primary" onClick={addTile} disabled={tiles.length >= MAX_TILES}>
-          <RefIcon name="plus" /> {tr('إضافة بث', 'Add stream')}
-        </button>
+        ) : (
+          <div className="ws-empty">{tr('لا بث مفتوح بعد', 'No stream open yet')}</div>
+        )}
       </div>
 
       {hasError && (
@@ -226,6 +231,86 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, loading, ha
           description={tr('أضف جهازًا من صفحة الأجهزة ليظهر هنا.', 'Add a device from the Devices page to see it here.')}
           action={<a className="btn primary" href="/devices">{tr('إضافة جهاز', 'Add device')}</a>}
         />
+      )}
+
+      {runningTiles.length > 0 && (
+        <div className={clsx('wall', 'wall-' + Math.min(runningTiles.length, 3))}>
+          {runningTiles.map(tile => {
+            const device = devices.find(d => d.id === tile.deviceId)
+            const online = !!device && device.status === 'online'
+            const live = !!activeScreens[tile.deviceId]
+            const maximized = maxKey === tile.key
+            const name = device?.name || tile.deviceId.slice(0, 10)
+            const state = !online ? tr('غير متصل', 'Offline') : live ? tr('مباشر', 'Live') : tr('متوقف', 'Stopped')
+            return (
+              <div key={tile.key} className={clsx('tile', maximized && 'is-max')}>
+                <div className="screen">
+                  {online && device && tile.running ? (
+                    <div className="cr-wall-live">
+                      <ScreenViewer
+                        key={`${tile.key}:run`}
+                        preview
+                        autoStart
+                        deviceId={device.id}
+                        deviceName={device.name}
+                      />
+                    </div>
+                  ) : (
+                    <div className="ph">
+                      <div className="big">{name}</div>
+                      <div>{online ? tr('لا بث — اضغط تشغيل', 'No stream — press play') : tr('غير متصل', 'Offline')}</div>
+                    </div>
+                  )}
+                </div>
+                <div className="foot">
+                  <span className="name">{name}</span>
+                  <span className={clsx('chip', online && live ? 'ok' : 'off')}>
+                    <span className="dot" />
+                    {state}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => toggleRun(tile.key)}
+                    title={tile.running ? tr('إيقاف البث', 'Stop stream') : tr('تشغيل البث', 'Start stream')}
+                    aria-label={tile.running ? tr('إيقاف البث', 'Stop stream') : tr('تشغيل البث', 'Start stream')}
+                    aria-pressed={tile.running}
+                    className={clsx('tool', tile.running ? 'on' : 'play')}
+                  >
+                    {tile.running ? <RefIcon name="stop" /> : <RefIcon name="play" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMaxKey(prev => prev === tile.key ? null : tile.key)}
+                    title={maximized ? tr('تصغير', 'Restore') : tr('تكبير', 'Maximize')}
+                    aria-label={maximized ? tr('تصغير', 'Restore') : tr('تكبير', 'Maximize')}
+                    className="tool"
+                  >
+                    {maximized ? <RefIcon name="restore" /> : <RefIcon name="max" />}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onOpen(tile.deviceId)}
+                    title={tr('فتح الشاشة', 'Open screen')}
+                    aria-label={tr('فتح الشاشة', 'Open screen')}
+                    className="tool"
+                  >
+                    <RefIcon name="open" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeTile(tile.key)}
+                    disabled={tiles.length <= 1}
+                    title={tr('إزالة', 'Remove')}
+                    aria-label={tr('إزالة', 'Remove')}
+                    className="tool"
+                  >
+                    <RefIcon name="x" />
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
       )}
 
       {fleetHead && (
@@ -316,129 +401,6 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, loading, ha
         })}
       </div>
 
-      {tiles.length === 0 && devices.length > 0 ? (
-        <div className="ph py-8">
-          <div className="big">{tr('لا بث مفتوح — اضغط «إضافة بث»', 'No stream open — press "Add stream"')}</div>
-        </div>
-      ) : tiles.length === 0 ? null : !tiles.some(t => t.running) ? (
-        /* 2026-11-08 (D4) — حالة الخمول: شريط رقيق بدل ثلاث بلاطات فارغة تحتل الشاشة. */
-        <div className="wall-strip">
-          {tiles.map(tile => {
-            const device = devices.find(d => d.id === tile.deviceId)
-            const online = !!device && device.status === 'online'
-            const live = !!activeScreens[tile.deviceId]
-            const name = device?.name || tile.deviceId.slice(0, 10)
-            const state = !online ? tr('غير متصل', 'Offline') : live ? tr('مباشر', 'Live') : tr('متوقف', 'Stopped')
-            return (
-              <div className="ws-item" key={tile.key}>
-                <RefIcon name="monitor" />
-                <span className="ws-name">{name}</span>
-                <span className={clsx('chip', online && live ? 'ok' : 'off')}>
-                  <span className="dot" />{state}
-                </span>
-                <button
-                  type="button"
-                  className="tool play"
-                  onClick={() => toggleRun(tile.key)}
-                  disabled={!online}
-                  title={tr('تشغيل البث', 'Start stream')}
-                  aria-label={tr('تشغيل البث', 'Start stream')}
-                >
-                  <RefIcon name="play" />
-                </button>
-                <button
-                  type="button"
-                  className="tool"
-                  onClick={() => removeTile(tile.key)}
-                  title={tr('إزالة', 'Remove')}
-                  aria-label={tr('إزالة', 'Remove')}
-                >
-                  <RefIcon name="x" />
-                </button>
-              </div>
-            )
-          })}
-          <span className="ws-hint">{tr('اضغط تشغيل لعرض بث — أو «إضافة بث» لزيادة اللوحات', 'Press play to open a stream — or Add stream for more tiles')}</span>
-        </div>
-      ) : (
-        <div className="wall">
-          {tiles.map(tile => {
-            const device = devices.find(d => d.id === tile.deviceId)
-            const online = !!device && device.status === 'online'
-            const live = !!activeScreens[tile.deviceId]
-            const maximized = maxKey === tile.key
-            const name = device?.name || tile.deviceId.slice(0, 10)
-            const state = !online ? tr('غير متصل', 'Offline') : live ? tr('مباشر', 'Live') : tr('متوقف', 'Stopped')
-            return (
-              <div key={tile.key} className={clsx('tile', maximized && 'is-max')}>
-                <div className="screen">
-                  {online && device && tile.running ? (
-                    <div className="cr-wall-live">
-                      <ScreenViewer
-                        key={`${tile.key}:run`}
-                        preview
-                        autoStart
-                        deviceId={device.id}
-                        deviceName={device.name}
-                      />
-                    </div>
-                  ) : (
-                    <div className="ph">
-                      <div className="big">{name}</div>
-                      <div>{online ? tr('لا بث — اضغط تشغيل', 'No stream — press play') : tr('غير متصل', 'Offline')}</div>
-                    </div>
-                  )}
-                </div>
-                <div className="foot">
-                  <span className="name">{name}</span>
-                  <span className={clsx('chip', online && live ? 'ok' : 'off')}>
-                    <span className="dot" />
-                    {state}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => toggleRun(tile.key)}
-                    title={tile.running ? tr('إيقاف البث', 'Stop stream') : tr('تشغيل البث', 'Start stream')}
-                    aria-label={tile.running ? tr('إيقاف البث', 'Stop stream') : tr('تشغيل البث', 'Start stream')}
-                    aria-pressed={tile.running}
-                    className={clsx('tool', tile.running ? 'on' : 'play')}
-                  >
-                    {tile.running ? <RefIcon name="stop" /> : <RefIcon name="play" />}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setMaxKey(prev => prev === tile.key ? null : tile.key)}
-                    title={maximized ? tr('تصغير', 'Restore') : tr('تكبير', 'Maximize')}
-                    aria-label={maximized ? tr('تصغير', 'Restore') : tr('تكبير', 'Maximize')}
-                    className="tool"
-                  >
-                    {maximized ? <RefIcon name="restore" /> : <RefIcon name="max" />}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onOpen(tile.deviceId)}
-                    title={tr('فتح الشاشة', 'Open screen')}
-                    aria-label={tr('فتح الشاشة', 'Open screen')}
-                    className="tool"
-                  >
-                    <RefIcon name="open" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => removeTile(tile.key)}
-                    disabled={tiles.length <= 1}
-                    title={tr('إزالة', 'Remove')}
-                    aria-label={tr('إزالة', 'Remove')}
-                    className="tool"
-                  >
-                    <RefIcon name="x" />
-                  </button>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
     </>
   )
 }

@@ -2,10 +2,11 @@ import { Outlet, useLocation, useNavigate } from 'react-router-dom'
 import { useCallback, useEffect, useState } from 'react'
 import {
   LayoutDashboard, Monitor, Settings, LogOut, Minus, Maximize2, Minimize2,
-  Bot, Menu, ChevronDown, Bell, HelpCircle, Search, History, X,
+  Bot, Menu, ChevronDown, Bell, HelpCircle, Search, History, X, Plus,
 } from 'lucide-react'
 import { useAuthStore } from '../store/authStore'
 import { useDeviceStore } from '../store/deviceStore'
+import { useBoardStore, nextDeviceId, MAX_TILES } from '../store/boardStore'
 import { useUIStore } from '../store/uiStore'
 import { connectWebSocket, disconnectWebSocket } from '../lib/websocket'
 import { api } from '../lib/api'
@@ -60,10 +61,22 @@ export function DashboardLayout() {
 
   const onlineCount = devices.filter(d => d.status === 'online').length
   const roleLabel = user?.role === 'admin'
+
     ? (isRtl ? 'مسؤول' : 'Administrator')
     : user?.role === 'manager'
       ? (isRtl ? 'مشرف' : 'Manager')
       : (isRtl ? 'مشاهد' : 'Viewer')
+
+  // 2026-11-08 — زر «إضافة بث» في الشريط العلوي: نفس مخزن اللوحة الذي تقرأه غرفة العمليات.
+  const onControlRoom = location.pathname === '/'
+  const boardTiles = useBoardStore(st => st.tiles)
+  const addBoardTile = useBoardStore(st => st.add)
+  const addStream = useCallback(() => {
+    if (boardTiles.length >= MAX_TILES) return
+    const online = devices.filter(d => d.status === 'online').map(d => d.id)
+    const next = nextDeviceId(boardTiles, online, devices[0]?.id)
+    if (next) addBoardTile(next)
+  }, [boardTiles, devices, addBoardTile])
 
   const pathname = location.pathname
   const search = location.search
@@ -177,21 +190,37 @@ export function DashboardLayout() {
         </div>
 
         <div className="app-titlebar-actions">
-          <button type="button" className="app-titlebar-action" onClick={() => navigate('/help')} title={isRtl ? 'مركز المساعدة' : 'Help'}>
-            <HelpCircle size={14} />
-            <span className="app-titlebar-label">{isRtl ? 'المساعدة' : 'Help'}</span>
-          </button>
-          <button type="button" className="app-titlebar-icon" onClick={() => setPaletteOpen(true)} title={isRtl ? 'بحث' : 'Search'}>
+          {/* 2026-11-08 — «إضافة بث» انتقل من رأس الصفحة إلى الشريط العلوي: إجراء الصفحة أولًا، ثم الأدوات، ثم الهوية. */}
+          {onControlRoom && (
+            <>
+              <button
+                type="button"
+                className="app-titlebar-action app-titlebar-add"
+                onClick={addStream}
+                disabled={boardTiles.length >= MAX_TILES}
+                title={isRtl ? 'إضافة بث إلى الحائط' : 'Add a stream to the wall'}
+                aria-label={isRtl ? 'إضافة بث إلى الحائط' : 'Add a stream to the wall'}
+              >
+                <Plus size={15} />
+                <span className="app-titlebar-label">{isRtl ? 'إضافة بث' : 'Add stream'}</span>
+              </button>
+              <span className="app-titlebar-sep" aria-hidden="true" />
+            </>
+          )}
+          <button type="button" className="app-titlebar-icon" onClick={() => setPaletteOpen(true)} title={isRtl ? 'بحث' : 'Search'} aria-label={isRtl ? 'بحث' : 'Search'}>
             <Search size={15} />
           </button>
-          <button type="button" className="app-titlebar-icon app-notify-btn" onClick={() => navigate('/settings?tab=notifications')} title={isRtl ? 'التنبيهات' : 'Notifications'}>
+          <button type="button" className="app-titlebar-icon app-notify-btn" onClick={() => navigate('/settings?tab=notifications')} title={isRtl ? 'التنبيهات' : 'Notifications'} aria-label={isRtl ? 'التنبيهات' : 'Notifications'}>
             <Bell size={15} />
             {unreadCount > 0 && <span className="app-notify-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>}
           </button>
-          <button type="button" className="app-titlebar-action" onClick={() => navigate('/settings')} title={isRtl ? 'الإعدادات' : 'Settings'}>
-            <Settings size={14} />
-            <span className="app-titlebar-label">{isRtl ? 'الإعدادات' : 'Settings'}</span>
+          <button type="button" className="app-titlebar-icon" onClick={() => navigate('/help')} title={isRtl ? 'مركز المساعدة' : 'Help'} aria-label={isRtl ? 'مركز المساعدة' : 'Help'}>
+            <HelpCircle size={15} />
           </button>
+          <button type="button" className="app-titlebar-icon" onClick={() => navigate('/settings')} title={isRtl ? 'الإعدادات' : 'Settings'} aria-label={isRtl ? 'الإعدادات' : 'Settings'}>
+            <Settings size={15} />
+          </button>
+          <span className="app-titlebar-sep" aria-hidden="true" />
 
           <div className="app-user-wrap">
             {/* 2026-11-08 (D5) — الاسم الكامل يُبنى من الأبناء بلا فواصل فيصير «UUI Auditمسؤول»؛ aria-label يعطي قارئ الشاشة عبارة مفصولة. */}
