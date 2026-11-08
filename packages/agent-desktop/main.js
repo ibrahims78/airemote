@@ -991,7 +991,7 @@ async function handleFsRequest(payload) {
   const opId = (payload && (payload.opId || payload.requestId))
   const op = (payload && (payload.op || payload.action))
   const respond = (data) => send({
-    type: 'agent:fs_response',
+    type: 'agent:fs_result',
     payload: { requestId: opId, opId, ...data },
     timestamp: Date.now()
   })
@@ -1166,7 +1166,7 @@ function handleFsWriteChunk(payload) {
     const fileData = Buffer.concat(parts)
     const osp = toOsPath(accum.path)
     if (!osp) {
-      send({ type: 'agent:fs_response', payload: { requestId: opId, opId, error: 'مسار غير صالح' }, timestamp: Date.now() })
+      send({ type: 'agent:fs_result', payload: { requestId: opId, opId, error: 'مسار غير صالح' }, timestamp: Date.now() })
       return
     }
     const dir = require('path').dirname(osp)
@@ -1174,11 +1174,11 @@ function handleFsWriteChunk(payload) {
       .then(() => fsPromises.writeFile(osp, fileData))
       .then(() => {
         addLog('info', `✅ رُفع الملف: ${accum.path} (${(fileData.length / 1024 / 1024).toFixed(1)} MB)`)
-        send({ type: 'agent:fs_response', payload: { requestId: opId, opId, data: { ok: true, size: fileData.length } }, timestamp: Date.now() })
+        send({ type: 'agent:fs_result', payload: { requestId: opId, opId, data: { ok: true, size: fileData.length } }, timestamp: Date.now() })
       })
       .catch(e => {
         addLog('error', `❌ فشل رفع الملف: ${e.message}`)
-        send({ type: 'agent:fs_response', payload: { requestId: opId, opId, error: e.message }, timestamp: Date.now() })
+        send({ type: 'agent:fs_result', payload: { requestId: opId, opId, error: e.message }, timestamp: Date.now() })
       })
   }
 }
@@ -1272,10 +1272,10 @@ function handlePtyOpen(payload) {
     if (win && !win.isDestroyed()) win.webContents.send('pty-state', { active: true, sessionId })
 
     proc.stdout.on('data', data => {
-      send({ type: 'agent:pty_output', payload: { sessionId, data: data.toString('base64') }, timestamp: Date.now() })
+      send({ type: 'agent:pty_data', payload: { sessionId, data: data.toString('base64') }, timestamp: Date.now() })
     })
     proc.stderr.on('data', data => {
-      send({ type: 'agent:pty_output', payload: { sessionId, data: data.toString('base64') }, timestamp: Date.now() })
+      send({ type: 'agent:pty_data', payload: { sessionId, data: data.toString('base64') }, timestamp: Date.now() })
     })
     proc.on('close', () => {
       send({ type: 'agent:pty_closed', payload: { sessionId }, timestamp: Date.now() })
@@ -1304,7 +1304,7 @@ function _cleanWinBuf(sessionId) {
 }
 
 function _sendPtyData(sessionId, str) {
-  send({ type: 'agent:pty_output', payload: { sessionId, data: Buffer.from(str).toString('base64') }, timestamp: Date.now() })
+  send({ type: 'agent:pty_data', payload: { sessionId, data: Buffer.from(str).toString('base64') }, timestamp: Date.now() })
 }
 
 function handlePtyData(payload) {
@@ -1360,7 +1360,7 @@ function handlePtyResize(payload) {
     if (proc) {
       // Send resize escape sequence so xterm.js adjusts its viewport
       const hint = Buffer.from(`\x1b[8;${rows};${cols}t`).toString('base64')
-      send({ type: 'agent:pty_output', payload: { sessionId, data: hint }, timestamp: Date.now() })
+      send({ type: 'agent:pty_data', payload: { sessionId, data: hint }, timestamp: Date.now() })
     }
     // Update winPtyBufs so next PTY open uses the new size
     const state = winPtyBufs.get(sessionId)

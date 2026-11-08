@@ -1203,7 +1203,7 @@ public class AgentService extends Service {
                 d.put("ok", true);
                 d.put("path", path);
                 out.put("data", d);
-                sendMsg("agent:fs_response", out);
+                sendMsg("agent:fs_result", out);
             }
         } catch (Exception e) {
             try {
@@ -1212,7 +1212,7 @@ public class AgentService extends Service {
                 out.put("requestId", opId);
                 out.put("opId", opId);
                 out.put("error", String.valueOf(e.getMessage()));
-                sendMsg("agent:fs_response", out);
+                sendMsg("agent:fs_result", out);
             } catch (Exception ignore) { }
         }
     }
@@ -1354,14 +1354,14 @@ public class AgentService extends Service {
             } else {
                 out.put("error", "op not supported: " + op);
             }
-            sendMsg("agent:fs_response", out);
+            sendMsg("agent:fs_result", out);
         } catch (Exception e) {
             try {
                 JSONObject out = new JSONObject();
                 out.put("requestId", requestId);
                 out.put("opId", requestId);
                 out.put("error", String.valueOf(e.getMessage()));
-                sendMsg("agent:fs_response", out);
+                sendMsg("agent:fs_result", out);
             } catch (Exception ignore) { }
         }
     }

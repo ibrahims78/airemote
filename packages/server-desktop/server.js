@@ -1608,7 +1608,10 @@ function handleAgentWs(socket) {
       return
     }
 
-    if (type === 'agent:pty_output') {
+    // 3.14.4 — الاسم المعتمد agent:pty_data (packages/shared/src/types/messages.ts:15).
+    // التوافق المؤقت: وكلاء ≤ 3.14.3 يرسلون agent:pty_output — يُحذف في 3.15.0.
+    const isPtyDataFromAgent = type === 'agent:pty_data' || type === 'agent:pty_output' // agent:pty_output DEPRECATED (3.14.4 ← → 3.15.0)
+    if (isPtyDataFromAgent) {
       const { sessionId, data } = payload
       broadcastToClients({ type: 'agent:pty_output', payload: { deviceId, sessionId, data } })
       const set = ptyClients.get(sessionId)
@@ -1847,7 +1850,10 @@ function handleAgentWs(socket) {
       return
     }
 
-    if (type === 'agent:fs_response') {
+    // 3.14.4 — الاسم المعتمد agent:fs_result (packages/shared/src/types/messages.ts:70).
+    // التوافق المؤقت: وكلاء ≤ 3.14.3 يرسلون agent:fs_response — يُحذف في 3.15.0.
+    const isFsResultFromAgent = type === 'agent:fs_result' || type === 'agent:fs_response' // agent:fs_response DEPRECATED (3.14.4 ← → 3.15.0)
+    if (isFsResultFromAgent) {
       const { requestId, data, error } = payload
       const pending = pendingFsRequests.get(requestId)
       if (pending) { clearTimeout(pending.timer); pendingFsRequests.delete(requestId); error ? pending.reject(new Error(error)) : pending.resolve(data) }
