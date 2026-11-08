@@ -2238,3 +2238,29 @@ html.light .ai-page-online, html.light .ai-page-cancel { background: #fff; borde
 }
 html.light .cr-board { box-shadow: 0 18px 44px rgba(15,23,42,.10); }
 .cr-page { padding: 12px; }
+
+/* ── 2026-11-08 (D4) — شريط البث عند الخمول: بدل ثلاث بلاطات فارغة بعرض الشاشة ── */
+.wall-strip {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+  max-width: 1612px; margin-inline: auto;
+  border: 1px solid var(--b-line); border-radius: var(--b-r2);
+  background: var(--b-surface); padding: 8px 10px;
+}
+.ws-item {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 8px; border: 1px solid var(--b-line); border-radius: 999px;
+  background: var(--b-surface2);
+}
+.ws-name {
+  font-size: 11.5px; font-weight: 600; color: var(--b-ink2);
+  max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ws-item .tool {
+  width: 22px; height: 22px; border-radius: 50%;
+  display: grid; place-items: center; background: transparent;
+  border: 1px solid transparent; color: var(--b-muted); cursor: pointer;
+}
+.ws-item .tool.play { color: var(--b-accent); }
+.ws-item .tool:hover { background: var(--b-surface3); border-color: var(--b-line); }
+.ws-item .tool:disabled { opacity: .35; cursor: not-allowed; }
+.ws-hint { font-size: 11px; color: var(--b-muted); margin-inline-start: auto; padding-inline-end: 4px; }

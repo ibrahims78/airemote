@@ -42,7 +42,7 @@ const BOARD_STORAGE_KEY = 'airemote-live-board-v1'
 // 3.14.0 — D65: six cards at most, and only the owner hides a card (D53 kept).
 const FLEET_MAX = 6
 const FLEET_HIDDEN_KEY = 'airemote-fleet-hidden-v1'
-type Size = 'sm' | 'md' | 'lg'
+// 2026-11-08 (D3) — حُذف مُحدِّد حجم البلاطة (SM/MD/LG): كان يُحفظ ولا يُطبَّق على أي عنصر.
 interface Tile { key: string; deviceId: string; running: boolean }
 
 interface Props {
@@ -83,20 +83,19 @@ function newKey (): string {
   return Math.random().toString(36).slice(2, 10)
 }
 
-function loadSnapshot (): { tiles: Tile[]; size: Size } {
+function loadSnapshot (): { tiles: Tile[] } {
   try {
     const raw = localStorage.getItem(BOARD_STORAGE_KEY)
-    if (!raw) return { tiles: [], size: 'lg' }
-    const parsed = JSON.parse(raw) as { tiles?: Partial<Tile>[]; size?: Size }
+    if (!raw) return { tiles: [] }
+    const parsed = JSON.parse(raw) as { tiles?: Partial<Tile>[] }
     const tiles = (parsed.tiles || [])
       .filter(t => t && typeof t.key === 'string' && typeof t.deviceId === 'string')
       .slice(0, MAX_TILES)
       // 3.13.1 — always hydrate idle: returning to the page must not resume any stream.
       .map(t => ({ key: String(t.key), deviceId: String(t.deviceId), running: false }))
-    const size: Size = parsed.size === 'sm' || parsed.size === 'md' || parsed.size === 'lg' ? parsed.size : 'lg'
-    return { tiles, size }
+    return { tiles }
   } catch {
-    return { tiles: [], size: 'lg' }
+    return { tiles: [] }
   }
 }
 
@@ -118,7 +117,6 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, loading, ha
   ), [devices, onlineDevices])
 
   const [tiles, setTiles] = useState<Tile[]>(() => loadSnapshot().tiles)
-  const [size, setSize] = useState<Size>(() => loadSnapshot().size)
   const [maxKey, setMaxKey] = useState<string | null>(null)
   // 3.14.0 — D65
   const [hidden, setHidden] = useState<string[]>(() => loadHidden())
@@ -146,10 +144,9 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, loading, ha
     try {
       localStorage.setItem(BOARD_STORAGE_KEY, JSON.stringify({
         tiles: tiles.map(t => ({ key: t.key, deviceId: t.deviceId })),
-        size
       }))
     } catch {}
-  }, [tiles, size])
+  }, [tiles])
 
   useEffect(() => {
     if (!preferred) return
@@ -201,13 +198,6 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, loading, ha
           <div className="metric"><b>{alerts}</b><span>{tr('تنبيهات', 'alerts')}</span></div>
         </div>
         <div className="grow" />
-        <div className="seg" role="group" aria-label={tr('حجم المربّع', 'Tile size')}>
-          {(['sm', 'md', 'lg'] as Size[]).map(s => (
-            <button key={s} type="button" onClick={() => setSize(s)} className={size === s ? 'on' : undefined} aria-pressed={size === s}>
-              {s.toUpperCase()}
-            </button>
-          ))}
-        </div>
         <button type="button" className="btn primary" onClick={addTile} disabled={tiles.length >= MAX_TILES}>
           <RefIcon name="plus" /> {tr('إضافة بث', 'Add stream')}
         </button>
@@ -330,7 +320,47 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, loading, ha
         <div className="ph py-8">
           <div className="big">{tr('لا بث مفتوح — اضغط «إضافة بث»', 'No stream open — press "Add stream"')}</div>
         </div>
-      ) : tiles.length === 0 ? null : (
+      ) : tiles.length === 0 ? null : !tiles.some(t => t.running) ? (
+        /* 2026-11-08 (D4) — حالة الخمول: شريط رقيق بدل ثلاث بلاطات فارغة تحتل الشاشة. */
+        <div className="wall-strip">
+          {tiles.map(tile => {
+            const device = devices.find(d => d.id === tile.deviceId)
+            const online = !!device && device.status === 'online'
+            const live = !!activeScreens[tile.deviceId]
+            const name = device?.name || tile.deviceId.slice(0, 10)
+            const state = !online ? tr('غير متصل', 'Offline') : live ? tr('مباشر', 'Live') : tr('متوقف', 'Stopped')
+            return (
+              <div className="ws-item" key={tile.key}>
+                <RefIcon name="monitor" />
+                <span className="ws-name">{name}</span>
+                <span className={clsx('chip', online && live ? 'ok' : 'off')}>
+                  <span className="dot" />{state}
+                </span>
+                <button
+                  type="button"
+                  className="tool play"
+                  onClick={() => toggleRun(tile.key)}
+                  disabled={!online}
+                  title={tr('تشغيل البث', 'Start stream')}
+                  aria-label={tr('تشغيل البث', 'Start stream')}
+                >
+                  <RefIcon name="play" />
+                </button>
+                <button
+                  type="button"
+                  className="tool"
+                  onClick={() => removeTile(tile.key)}
+                  title={tr('إزالة', 'Remove')}
+                  aria-label={tr('إزالة', 'Remove')}
+                >
+                  <RefIcon name="x" />
+                </button>
+              </div>
+            )
+          })}
+          <span className="ws-hint">{tr('اضغط تشغيل لعرض بث — أو «إضافة بث» لزيادة اللوحات', 'Press play to open a stream — or Add stream for more tiles')}</span>
+        </div>
+      ) : (
         <div className="wall">
           {tiles.map(tile => {
             const device = devices.find(d => d.id === tile.deviceId)
