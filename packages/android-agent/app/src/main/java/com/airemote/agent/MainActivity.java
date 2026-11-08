@@ -109,6 +109,8 @@ public class MainActivity extends Activity {
     private TextView tbState;
     private TextView statusTitle;
     private TextView statusSub;
+    private View statusDot;
+    private View cardDot;
     private TextView connServer;
     private TextView connDevinfo;
     private TextView connUptime;
@@ -163,6 +165,8 @@ public class MainActivity extends Activity {
         tbState = findViewById(R.id.tb_state);
         statusTitle = findViewById(R.id.status_title);
         statusSub = findViewById(R.id.status_sub);
+        statusDot = findViewById(R.id.status_dot);
+        cardDot = findViewById(R.id.card_dot);
         connServer = findViewById(R.id.conn_server);
         connDevinfo = findViewById(R.id.conn_devinfo);
         connUptime = findViewById(R.id.conn_uptime);
@@ -1069,6 +1073,10 @@ public class MainActivity extends Activity {
                 if (a.tbState != null) { a.tbState.setText(ok ? a.getString(R.string.state_online) : s); a.tbState.setTextColor(ok ? 0xFF34D399 : 0xFF94A3B8); }
                 if (a.statusTitle != null) { a.statusTitle.setText(s); a.statusTitle.setTextColor(ok ? 0xFF34D399 : 0xFFF1F5F9); }
                 if (a.statusSub != null) a.statusSub.setText(ok ? a.getString(R.string.agent_active) : a.getString(R.string.hint_press_start));
+                // 3.15.0 (P1-2) — النقطتان كانتا @drawable/btn_ghost ثابتة ولا تعكسان الحالة.
+                android.content.res.ColorStateList tint = android.content.res.ColorStateList.valueOf(ok ? 0xFF34D399 : 0xFF94A3B8);
+                if (a.statusDot != null) a.statusDot.setBackgroundTintList(tint);
+                if (a.cardDot != null) a.cardDot.setBackgroundTintList(tint);
             }
         });
     }

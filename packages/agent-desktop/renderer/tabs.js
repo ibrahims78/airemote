@@ -15,8 +15,9 @@
     if (name === 'viewers') {
       const sec = document.getElementById('chat-section')
       if (sec) sec.classList.remove('hidden')
-      const b = document.getElementById('tab-chat-badge')
-      if (b) b.classList.add('hidden')
+      // 3.15.0 (P1-2) — عدّاد واحد: يُصفّر بادج التبويب بدل إخفائه يدويًا فقط.
+      if (typeof window.__chatSeen === 'function') window.__chatSeen()
+      else { const b = document.getElementById('tab-chat-badge'); if (b) b.classList.add('hidden') }
     }
     try { localStorage.setItem(KEY, name) } catch (e) {}
   }

@@ -1035,15 +1035,22 @@ function appendChatMessage({ text, sender, ts }) {
 
 function updateChatUnread(delta) {
   chatUnread = Math.max(0, chatUnread + delta)
-  const badge = $('chat-unread-badge')
-  if (!badge) return
-  if (chatUnread > 0) {
-    badge.textContent = chatUnread > 9 ? '9+' : String(chatUnread)
-    badge.classList.remove('hidden')
-  } else {
-    badge.classList.add('hidden')
+  // 3.15.0 (P1-2) — عدّاد واحد لرقمين: داخل لوحة الدردشة وعلى تبويبها (بادج التبويب كان ميتًا).
+  const text = chatUnread > 9 ? '9+' : String(chatUnread)
+  for (const id of ['chat-unread-badge', 'tab-chat-badge']) {
+    const badge = $(id)
+    if (!badge) continue
+    if (chatUnread > 0) {
+      badge.textContent = text
+      badge.classList.remove('hidden')
+    } else {
+      badge.classList.add('hidden')
+    }
   }
 }
+
+// 3.15.0 (P1-2) — يُستدعى من tabs.js عند فتح تبويب الدردشة فيصفّر العدّاد ويُخفي البادجين.
+window.__chatSeen = function () { updateChatUnread(-chatUnread) }
 
 if (typeof window.airemote !== 'undefined' && typeof window.airemote.onScreenChat === 'function') {
   bridge.onScreenChat(({ text, sender, ts }) => {
