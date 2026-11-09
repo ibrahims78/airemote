@@ -1925,6 +1925,13 @@ public class AgentService extends Service {
                     ensureProjectionForeground();
                     projection = mgr.getMediaProjection(CaptureHolder.resultCode, CaptureHolder.data);
                     if (projection == null) throw new Exception("projection null");
+                    // FIXED-ORIENT — 2026-11-10: مقاس ثابت أفقي لكل الجلسة، فلا إعادة بناء
+                    // ولا تبديل مقاس ⇒ لا تراكب ولا سواد ولا تأخير عند تدوير الهاتف.
+                    {
+                        int lw = Math.max(fullW, fullH), lh = Math.min(fullW, fullH);
+                        fullW = lw; fullH = lh;
+                        if (dpi <= 0) dpi = 320;
+                    }
                     reader = ImageReader.newInstance(fullW, fullH, PixelFormat.RGBA_8888, 4);
                     vd = projection.createVirtualDisplay("airemote-stream", fullW, fullH, dpi,
                             DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, reader.getSurface(), null, null);
@@ -1997,9 +2004,9 @@ public class AgentService extends Service {
                             } else {
                                 pendingSince = 0;
                             }
-                            int longSide = Math.max(physW, physH), shortSide = Math.min(physW, physH);
-                            curW = appliedLand ? longSide : shortSide;
-                            curH = appliedLand ? shortSide : longSide;
+                            // FIXED-ORIENT — الأبعاد ثابتة، والحسّاس للتشخيص فقط.
+                            curW = fullW;
+                            curH = fullH;
                             curDpi = metrics.densityDpi;
                             if (android.os.SystemClock.elapsedRealtime() - diagAt > 2000) {
                                 diagAt = android.os.SystemClock.elapsedRealtime();
@@ -2017,8 +2024,7 @@ public class AgentService extends Service {
                     } catch (Exception ignore) { }
 
                     // 2026-11-09 — تشخيص الفرع + إعادة إنشاء VirtualDisplay بدل resize فقط.
-                    if (curW > 0 && curH > 0 && (curW != fullW || curH != fullH
-                            || currentRotation != lastRotation)) {
+                    if (false && curW > 0 && curH > 0) {   // FIXED-ORIENT: لا تحجيم أثناء الجلسة
                         android.util.Log.d("AiRemoteAgent", "branch cur=" + curW + "x" + curH
                                 + " full=" + fullW + "x" + fullH
                                 + " rot=" + currentRotation + "/" + lastRotation);
