@@ -2472,3 +2472,39 @@ html.light .cr-page .tile .screen:has(canvas[data-orient="portrait"]) {
 
 .cr-page .tile:has(canvas[data-orient="portrait"]) { width: fit-content; justify-self: center; }
 .cr-page .tile .screen:has(canvas[data-orient="portrait"]) { display: grid; place-items: center; }
+
+/* unified-wall-v5 — 2026-11-09: إلغاء كل تجارب شكل البلاطة والعودة للقاعدة الصحيحة:
+   بلاطات موحّدة 16:9، وكل إطار (عمودي أو أفقي) يُعرض كاملًا في وسطها. */
+.cr-page .wall,
+.cr-page .wall:has(.tile:has(canvas[data-orient="portrait"])) {
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
+  justify-content: normal;
+  align-items: start;
+}
+.cr-page .tile,
+.cr-page .tile:has(canvas[data-orient="portrait"]) {
+  width: auto;
+  max-width: none;
+  justify-self: stretch;
+}
+.cr-page .tile .screen,
+.cr-page .tile .screen:has(canvas[data-orient="portrait"]) {
+  aspect-ratio: 16 / 9;
+  height: auto;
+  width: 100%;
+  display: block;
+  background: #0a1218;
+}
+html.light .cr-page .tile .screen:has(canvas[data-orient="portrait"]) {
+  background: #0f1a24;
+}
+.cr-page .tile .screen canvas,
+.cr-page .tile .screen canvas[data-orient="portrait"] {
+  height: 100%;
+  width: 100%;
+  object-fit: contain;
+  border-radius: 0;
+}
+.cr-page .wall.wall-1 .screen:has(canvas[data-orient="portrait"]) {
+  height: auto;
+}
