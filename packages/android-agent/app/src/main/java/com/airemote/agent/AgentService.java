@@ -111,6 +111,11 @@ public class AgentService extends Service {
     // 2026-11-09 — اتجاه الشاشة من الحسّاس: أندرويد يعطي التطبيق شاشة منطقية عمودية
     // (وضع التوافق) فتظل VirtualDisplay عمودية والمحتوى مدارًا. الحسّاس يحسم الاتجاه الحقيقي.
     private volatile boolean sensorLandscape = false;
+    private boolean lastOrientLand = false;
+    // 2026-11-09 — تثبيت الاتجاه: لا نبدّل المقاس إلا بعد ثباته 3 ثوانٍ (كان يتذبذب).
+    private boolean appliedLand = false;
+    private boolean pendingLand = false;
+    private long pendingSince = 0;
     private android.hardware.SensorManager sensorMgr = null;
     private final android.hardware.SensorEventListener rotListener = new android.hardware.SensorEventListener() {
         @Override public void onSensorChanged(android.hardware.SensorEvent e) {
@@ -1964,9 +1969,27 @@ public class AgentService extends Service {
                             int mw = metrics.widthPixels, mh = metrics.heightPixels;
                             currentRotation = display.getRotation();
                             // الاتجاه الحقيقي = الحسّاس (أو الدوران إن توفّر)
-                            // 2026-11-09 — نُبقي مقاييس الشاشة كما يعطيها النظام (السلوك المستقر).
-                            curW = mw;
-                            curH = mh;
+                            // 2026-11-09 — اتجاه مثبَّت (hysteresis) لتفادي تذبذب المقاس.
+                            boolean wantLand = sensorLandscape
+                                    || currentRotation == android.view.Surface.ROTATION_90
+                                    || currentRotation == android.view.Surface.ROTATION_270;
+                            long nowMs = android.os.SystemClock.elapsedRealtime();
+                            if (wantLand != appliedLand) {
+                                if (pendingSince == 0 || pendingLand != wantLand) {
+                                    pendingLand = wantLand;
+                                    pendingSince = nowMs;
+                                } else if (nowMs - pendingSince > 3000) {
+                                    appliedLand = wantLand;
+                                    pendingSince = 0;
+                                    forceKeyframe = true;
+                                    prevPixels = null; curPixels = null; deltaRun = 0;
+                                }
+                            } else {
+                                pendingSince = 0;
+                            }
+                            int longSide = Math.max(mw, mh), shortSide = Math.min(mw, mh);
+                            curW = appliedLand ? longSide : shortSide;
+                            curH = appliedLand ? shortSide : longSide;
                             curDpi = metrics.densityDpi;
                             if (android.os.SystemClock.elapsedRealtime() - diagAt > 2000) {
                                 diagAt = android.os.SystemClock.elapsedRealtime();
@@ -2018,6 +2041,8 @@ public class AgentService extends Service {
                             MainActivity.log("screen rotation resize failed: " + re.getMessage());
                         }
                     }
+                    // 2026-11-09 — عند تغيّر الاتجاه اطلب إطارًا كاملًا ليعيد العارض ضبط مقاسه.
+                    if (sensorLandscape != lastOrientLand) { lastOrientLand = sensorLandscape; forceKeyframe = true; }
                     lastRotation = currentRotation;
 
                     Image image = reader.acquireLatestImage();
@@ -2041,6 +2066,26 @@ public class AgentService extends Service {
                         Bitmap bmp = frameBitmap(fullW, fullH, rowPadding, pixelStride);
                         buffer.rewind();
                         bmp.copyPixelsFromBuffer(buffer);
+                        // 2026-11-09 — أندرويد يعطي المخزن عموديًا دائمًا على هذه النسخة،
+                        // فنُدوّر الإطار نفسه عند كون الجهاز أفقيًا (بلا لمس VirtualDisplay).
+                        if (sensorLandscape && fullH > fullW) {
+                            try {
+                                android.graphics.Matrix mtx = new android.graphics.Matrix();
+                                mtx.postRotate(90f);
+                                Bitmap rotatedFrame = Bitmap.createBitmap(bmp, 0, 0, fullW, fullH, mtx, true);
+                                if (rotatedFrame != null && rotatedFrame != bmp) {
+                                    bmp.recycle();
+                                    bmp = rotatedFrame;
+                                    int swapDim = fullW; fullW = fullH; fullH = swapDim;
+                                    insetChecked = true;
+                                    scaleCanvas = null;
+                                    prevPixels = null; curPixels = null; deltaRun = 0;
+                                    forceKeyframe = true;
+                                }
+                            } catch (Exception rotEx) {
+                                android.util.Log.e("AiRemoteAgent", "frame rotate failed", rotEx);
+                            }
+                        }
                         if (!insetChecked) {
                             measureCrops(bmp);
                             insetChecked = true;
