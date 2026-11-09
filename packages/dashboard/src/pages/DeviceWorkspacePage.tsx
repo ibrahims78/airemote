@@ -36,10 +36,10 @@ function DeviceInfoPanel({ device }: { device: Device }) {
   const infoRows = [
     { label: t('hostname'),  value: device.info?.hostname || '—', icon: Server },
     { label: t('platform'),  value: device.info ? ([device.info.platform, device.info.osVersion].filter(Boolean).join(' ') || '—') : '—', icon: Monitor },
-    { label: 'Arch',         value: device.info?.arch || '—', icon: Cpu },
+    { label: 'المعمارية',         value: device.info?.arch || '—', icon: Cpu },
     { label: t('ip_local'),  value: device.info?.ipLocal || '—', icon: Globe },
     { label: t('ip_public'), value: device.info?.ipPublic || '—', icon: Globe },
-    { label: 'Tunnel',       value: device.tunnelLayer || '—', icon: Wifi },
+    { label: 'النفق',       value: device.tunnelLayer || '—', icon: Wifi },
     { label: t('uptime'),    value: uptime, icon: Clock },
   ]
 
