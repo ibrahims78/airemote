@@ -172,6 +172,26 @@ export function DeviceWorkspacePage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 p-5">
             <div className="lg:col-span-1">
               <DeviceInfoPanel device={device} />
+
+              {/* 2026-11-09 — ملء فراغ العمود الأيمن بإجراءات سريعة بدل مساحة مهدرة. */}
+              <div className="mt-4 rounded-xl border border-line bg-surface p-4">
+                <h3 className="mb-3 text-sm font-medium text-ink">إجراءات سريعة</h3>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { id: 'screen' as Tab, label: t('tab_screen'), icon: Tv2 },
+                    { id: 'files' as Tab, label: t('tab_files'), icon: FolderOpen },
+                    { id: 'terminal' as Tab, label: t('tab_terminal'), icon: Terminal },
+                    { id: 'ai' as Tab, label: t('tab_ai'), icon: Bot },
+                  ].map(a => (
+                    <button key={a.id} type="button" onClick={() => setTab(a.id)}
+                      disabled={!isOnline && a.id !== 'ai'}
+                      className="flex items-center gap-2 rounded-lg border border-line bg-canvas px-2.5 py-2 text-[12px] text-ink transition-colors hover:border-primary/40 hover:bg-surface2 disabled:opacity-40">
+                      <a.icon size={13} className="text-muted" />
+                      <span className="truncate">{a.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
             <div className="lg:col-span-2">
               <div className="rounded-xl border border-line bg-surface p-5">
