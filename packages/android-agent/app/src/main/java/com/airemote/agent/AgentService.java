@@ -108,6 +108,7 @@ public class AgentService extends Service {
     private static final long KEYFRAME_INTERVAL_MS = 2000;
     private boolean streamDelta = true;
     private long diagAt = 0;
+    private long lastFullMs = 0;   // FIXED-ORIENT: إطار كامل دوري يمسح بقايا الاتجاه السابق
     // 2026-11-09 — اتجاه الشاشة من الحسّاس: أندرويد يعطي التطبيق شاشة منطقية عمودية
     // (وضع التوافق) فتظل VirtualDisplay عمودية والمحتوى مدارًا. الحسّاس يحسم الاتجاه الحقيقي.
     private volatile boolean sensorLandscape = false;
@@ -2059,6 +2060,14 @@ public class AgentService extends Service {
                     }
                     // 2026-11-09 — عند تغيّر الاتجاه اطلب إطارًا كاملًا ليعيد العارض ضبط مقاسه.
                     if (sensorLandscape != lastOrientLand) { lastOrientLand = sensorLandscape; forceKeyframe = true; }
+                    // FULL-RESCAN — 2026-11-10: كل 8 ثوانٍ إطار كامل، حتى تُمسح أشرطة الاتجاه السابق
+                    // التي لا تتغيّر فلا تُرسل ضمن الدلتا (كانت تبقى كصور شبح على الحواف).
+                    if (android.os.SystemClock.elapsedRealtime() - lastFullMs > 8000) {
+                        lastFullMs = android.os.SystemClock.elapsedRealtime();
+                        forceKeyframe = true;
+                        prevPixels = null;
+                    }
+
                     lastRotation = currentRotation;
 
                     Image image = reader.acquireLatestImage();
