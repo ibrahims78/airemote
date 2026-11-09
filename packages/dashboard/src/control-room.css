@@ -2508,3 +2508,7 @@ html.light .cr-page .tile .screen:has(canvas[data-orient="portrait"]) {
 .cr-page .wall.wall-1 .screen:has(canvas[data-orient="portrait"]) {
   height: auto;
 }
+
+/* landscape-fill — 2026-11-09: الإطار الأفقي يملأ البلاطة كالمحاكي بلا أشرطة. */
+.cr-page .tile .screen canvas[data-orient="landscape"] { object-fit: cover; }
+.cr-page .tile .screen:has(canvas[data-orient="landscape"]) { display: block; }
