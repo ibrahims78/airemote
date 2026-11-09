@@ -408,6 +408,27 @@ export function DevicesPage() {
         </Card>
       )}
 
+      {/* 2026-11-09 — حالة «لا نتائج»: الفلترة إلى صفر كانت تُفرّغ المساحة بلا رسالة. */}
+      {!loading && devices.length > 0 && visible.length === 0 && (
+        <Card>
+          <EmptyState
+            icon={<Search size={26} />}
+            title="لا نتائج مطابقة"
+            description={
+              q.trim()
+                ? `لا يوجد جهاز يطابق «${q.trim()}»${statusFilter !== 'all' ? ' ضمن الفلتر الحالي' : ''}.`
+                : 'لا يوجد جهاز ضمن هذا الفلتر.'
+            }
+            action={(
+              <Button variant="primary" size="md" icon={<RefreshCw size={14} />}
+                onClick={() => { setQ(''); setStatusFilter('all') }}>
+                مسح البحث والفلترة
+              </Button>
+            )}
+          />
+        </Card>
+      )}
+
       {!loading && visible.length > 0 && (
         <div className="overflow-hidden rounded-xl border border-line bg-surface">
           <table className="w-full text-sm">
