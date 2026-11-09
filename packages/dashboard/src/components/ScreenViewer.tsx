@@ -703,15 +703,8 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
             }
             ctx.drawImage(bmp, 0, 0)
           } else if (canvas.width > 0 && canvas.height > 0) {
-            // 2026-11-09 — ترويسة إطار الدلتا تحمل مقاس الشاشة الكامل، لا مقاس المستطيل.
-            // بعد تغيير دقة النظام تصل الدلتا بمقاس جديد؛ تجاهله يُبقي الظهور مقصوصًا.
-            if (canvas.width !== width || canvas.height !== height) {
-              canvas.width = width; canvas.height = height
-              canvas.dataset.orient = height > width ? 'portrait' : 'landscape'
-              setResolution({ w: width, h: height })
-              ctx.fillStyle = '#000'
-              ctx.fillRect(0, 0, width, height)
-            }
+            // 2026-11-09 — لا تُغيّر المقاس من إطارات الدلتا: وكلاء أندرويد يضعون مقاس
+            // المستطيل المتغيّر في الترويسة (23×21 مثلًا)، فكانت اللوحة تتقلّص وتظهر سوداء.
             ctx.drawImage(bmp, dx, dy)
           }
           bmp.close()

@@ -1941,14 +1941,6 @@ public class AgentService extends Service {
                             curH = metrics.heightPixels;
                             curDpi = metrics.densityDpi;
                             currentRotation = display.getRotation();
-                            // 2026-11-09 — getRealMetrics يعيد المقاس الطبيعي (عمودي) مهما كان
-                            // الدوران، فلا يتغيّر fullW/fullH أبدًا ويبقى VirtualDisplay عموديًا
-                            // والمحتوى مدارًا داخله (الشاشة الأفقي تظهر مائلة/مقصوصة).
-                            // نبدّل الأبعاد عند 90/270 ليطابق المخزن اتجاه الشاشة الفعلي.
-                            if (currentRotation == android.view.Surface.ROTATION_90
-                                    || currentRotation == android.view.Surface.ROTATION_270) {
-                                int swap = curW; curW = curH; curH = swap;
-                            }
                         }
                     } catch (Exception ignore) { }
 
@@ -1978,6 +1970,7 @@ public class AgentService extends Service {
                             android.util.Log.d("AiRemoteAgent", "orientation changed " + fullW + "x" + fullH + " - forcing keyframe");
                             MainActivity.log("screen orientation changed: " + fullW + "x" + fullH);
                         } catch (Exception re) {
+                            android.util.Log.e("AiRemoteAgent", "rotation resize failed", re);
                             MainActivity.log("screen rotation resize failed: " + re.getMessage());
                         }
                     }
