@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Monitor, Plus, Copy, Trash2, Check, X, ExternalLink, Terminal, Laptop, Zap, Loader2, Ban, Power } from 'lucide-react'
+import { Monitor, Plus, Copy, Trash2, Check, X, ExternalLink, Terminal, Laptop, Zap, Loader2, Ban, Power, Search, RefreshCw } from 'lucide-react'
 import { useDeviceStore } from '../store/deviceStore'
 import { Alert, Badge, Button, Card, CardBody, EmptyState, Field, Input, Modal, SkeletonRows } from '../components/ui'
 import { clsx } from 'clsx'
@@ -290,6 +290,20 @@ export function DevicesPage() {
 
   const online = devices.filter(d => d.status === 'online').length
 
+  // 2026-11-09 — أدوات الصفحة: بحث وفلتر حالة (كانت الصفحة بلا أي أدوات).
+  const [q, setQ] = useState('')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'online' | 'offline'>('all')
+  const needle = q.trim().toLowerCase()
+  const visible = devices.filter(d => {
+    if (statusFilter !== 'all' && (d.status === 'online') !== (statusFilter === 'online')) return false
+    if (!needle) return true
+    const info = (d.info || {}) as Record<string, unknown>
+    const hay = [d.name, info.hostname, info.ipLocal, info.ipPublic, info.platform]
+      .filter(Boolean).map(v => String(v).toLowerCase()).join(' ')
+    return hay.includes(needle)
+  })
+  const offline = devices.length - online
+
   return (
     <div className="cr-page">
       {installDevice && (
@@ -299,16 +313,51 @@ export function DevicesPage() {
         <WolModal device={wolDevice} token={token} onClose={() => setWolDevice(null)} />
       )}
 
-      <div className="mb-5 flex items-center justify-between gap-3">
-        <div>
+      <div className="mb-4">
+        <div className="min-w-0">
           <h2 className="text-xl font-bold text-ink">{t('devices_title')}</h2>
-          <p className="mt-1 text-sm text-muted">
-            {devices.length} {t('devices')} · <span className="text-success">{online} {t('online')}</span>
-          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-[11.5px]">
+            <span className="rounded-full border border-line bg-surface2 px-2.5 py-1 text-muted">
+              الأجهزة <b className="text-ink">{devices.length}</b>
+            </span>
+            <span className="rounded-full border border-success/30 bg-success/10 px-2.5 py-1 text-success">
+              متصل <b>{online}</b>
+            </span>
+            <span className="rounded-full border border-line bg-surface2 px-2.5 py-1 text-muted">
+              غير متصل <b>{offline}</b>
+            </span>
+            <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => setShowAdd(true)}>
+              {t('add_device_btn')}
+            </Button>
+          </div>
         </div>
-        <Button variant="primary" size="md" icon={<Plus size={15} />} onClick={() => setShowAdd(true)}>
-          {t('add_device_btn')}
-        </Button>
+      </div>
+
+      <div className="mb-4 flex flex-wrap items-center gap-2 rounded-xl border border-line bg-surface px-3 py-2">
+        <div className="relative min-w-[220px] flex-1">
+          <Search size={14} className="pointer-events-none absolute inset-y-0 my-auto start-3 text-muted" />
+          <input
+            type="search" value={q} onChange={e => setQ(e.target.value)}
+            placeholder="ابحث بالاسم أو المضيف أو IP"
+            aria-label="بحث في الأجهزة"
+            className="h-9 w-full rounded-lg border border-line bg-canvas ps-9 pe-3 text-[12.5px] text-ink outline-none transition-colors focus:border-primary"
+          />
+        </div>
+        <div className="flex items-center gap-1 rounded-lg border border-line bg-canvas p-0.5" role="group" aria-label="فلتر الحالة">
+          {([
+            ['all', 'الكل'], ['online', 'متصل'], ['offline', 'غير متصل'],
+          ] as const).map(([key, label]) => (
+            <button key={key} type="button" onClick={() => setStatusFilter(key)}
+              aria-pressed={statusFilter === key}
+              className={
+                'h-8 rounded-md px-3 text-[11.5px] transition-colors ' +
+                (statusFilter === key ? 'bg-primary text-primary-fg font-medium' : 'text-muted hover:text-ink')
+              }>
+              {label}
+            </button>
+          ))}
+        </div>
+        <Button variant="ghost" size="md" aria-label="تحديث" title="تحديث" icon={<RefreshCw size={14} />} onClick={() => fetchDevices()} />
       </div>
 
       {error && <Alert tone="danger" className="mb-4" title={t('devices_load_failed')}>{error}</Alert>}
@@ -349,7 +398,7 @@ export function DevicesPage() {
         </Card>
       )}
 
-      {!loading && devices.length > 0 && (
+      {!loading && visible.length > 0 && (
         <div className="overflow-hidden rounded-xl border border-line bg-surface">
           <table className="w-full text-sm">
             <thead>
@@ -363,7 +412,7 @@ export function DevicesPage() {
               </tr>
             </thead>
             <tbody>
-              {devices.map(d => (
+              {visible.map(d => (
                 <tr key={d.id} className="border-b border-line/60 hover:bg-surface2 transition-colors group cursor-pointer"
                 onClick={(e) => { if ((e.target as HTMLElement).closest('button,a')) return; navigate(`/devices/${d.id}`) }}>
                   <td className="px-4 py-3">
