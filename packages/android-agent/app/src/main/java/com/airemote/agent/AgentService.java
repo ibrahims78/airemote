@@ -107,6 +107,20 @@ public class AgentService extends Service {
     private static final int DELTA_MAX_RUN = 20;
     private static final long KEYFRAME_INTERVAL_MS = 2000;
     private boolean streamDelta = true;
+    private long diagAt = 0;
+    // 2026-11-09 — اتجاه الشاشة من الحسّاس: أندرويد يعطي التطبيق شاشة منطقية عمودية
+    // (وضع التوافق) فتظل VirtualDisplay عمودية والمحتوى مدارًا. الحسّاس يحسم الاتجاه الحقيقي.
+    private volatile boolean sensorLandscape = false;
+    private android.hardware.SensorManager sensorMgr = null;
+    private final android.hardware.SensorEventListener rotListener = new android.hardware.SensorEventListener() {
+        @Override public void onSensorChanged(android.hardware.SensorEvent e) {
+            if (e == null || e.values == null || e.values.length < 2) return;
+            float ax = Math.abs(e.values[0]), ay = Math.abs(e.values[1]);
+            if (ay > ax * 1.25f) sensorLandscape = false;
+            else if (ax > ay * 1.25f) sensorLandscape = true;
+        }
+        @Override public void onAccuracyChanged(android.hardware.Sensor sensor, int acc) { }
+    };
     private int[] curPixels = null, prevPixels = null;
     private int prevFw = 0, prevFh = 0, deltaRun = 0;
     // v3.9.4 (T10) — the server asks for one full frame when a late viewer joins or the
@@ -1935,12 +1949,30 @@ public class AgentService extends Service {
                         android.view.Display display = dmgr != null
                                 ? dmgr.getDisplay(android.view.Display.DEFAULT_DISPLAY) : null;
                         if (display != null) {
+                            // 2026-11-09 — نعود لقراءة أبعاد **الشاشة** (تتبع الدوران) كما كان
+                            // السلوك الأصلي الذي كان يعمل؛ مقاييس النافذة تبقى عمودية فتجمّد البث.
+                            if (sensorMgr == null) {
+                                try {
+                                    sensorMgr = (android.hardware.SensorManager) getSystemService(SENSOR_SERVICE);
+                                    if (sensorMgr != null) sensorMgr.registerListener(rotListener,
+                                            sensorMgr.getDefaultSensor(android.hardware.Sensor.TYPE_ACCELEROMETER),
+                                            android.hardware.SensorManager.SENSOR_DELAY_NORMAL);
+                                } catch (Exception ignore) { }
+                            }
                             DisplayMetrics metrics = new DisplayMetrics();
                             display.getRealMetrics(metrics);
-                            curW = metrics.widthPixels;
-                            curH = metrics.heightPixels;
-                            curDpi = metrics.densityDpi;
+                            int mw = metrics.widthPixels, mh = metrics.heightPixels;
                             currentRotation = display.getRotation();
+                            // الاتجاه الحقيقي = الحسّاس (أو الدوران إن توفّر)
+                            // 2026-11-09 — نُبقي مقاييس الشاشة كما يعطيها النظام (السلوك المستقر).
+                            curW = mw;
+                            curH = mh;
+                            curDpi = metrics.densityDpi;
+                            if (android.os.SystemClock.elapsedRealtime() - diagAt > 2000) {
+                                diagAt = android.os.SystemClock.elapsedRealtime();
+                                android.util.Log.d("AiRemoteAgent", "diag rot=" + currentRotation
+                                        + " land=" + sensorLandscape + " cur=" + curW + "x" + curH + " vd=" + fullW + "x" + fullH);
+                            }
                             // 2026-11-09 — getRealMetrics يعيد المقاس الطبيعي (عمودي) مهما كان الدوران،
                             // فيبقى VirtualDisplay عموديًا والمحتوى مدارًا 90° داخله (مقيس على TECNO).
                             // نبدّل الأبعاد عند 90/270 ليطابق المخزن اتجاه الشاشة الفعلي.
@@ -1951,8 +1983,12 @@ public class AgentService extends Service {
                         }
                     } catch (Exception ignore) { }
 
-                    if (curW > 0 && curH > 0 && (curW != fullW || curH != fullH ||
-                            (lastRotation >= 0 && currentRotation >= 0 && currentRotation != lastRotation))) {
+                    // 2026-11-09 — تشخيص الفرع + إعادة إنشاء VirtualDisplay بدل resize فقط.
+                    if (curW > 0 && curH > 0 && (curW != fullW || curH != fullH
+                            || currentRotation != lastRotation)) {
+                        android.util.Log.d("AiRemoteAgent", "branch cur=" + curW + "x" + curH
+                                + " full=" + fullW + "x" + fullH
+                                + " rot=" + currentRotation + "/" + lastRotation);
                         try {
                             ImageReader nextReader = ImageReader.newInstance(curW, curH, PixelFormat.RGBA_8888, 4);
                             if (vd != null) {
@@ -1974,6 +2010,7 @@ public class AgentService extends Service {
                             scaleCanvas = null;
                             prevPixels = null; curPixels = null; deltaRun = 0;
                             forceKeyframe = true;   // v3.9.4 — first frame after a rotation is whole
+                            android.util.Log.d("AiRemoteAgent", "resized vd to " + fullW + "x" + fullH);
                             android.util.Log.d("AiRemoteAgent", "orientation changed " + fullW + "x" + fullH + " - forcing keyframe");
                             MainActivity.log("screen orientation changed: " + fullW + "x" + fullH);
                         } catch (Exception re) {

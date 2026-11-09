@@ -2425,3 +2425,50 @@ html.light .cr-page .tile .screen:has(canvas[data-orient="portrait"]) {
 .cr-page .fleet.fleet { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); align-items: start; }
 @media (max-width: 1180px) { .cr-page .fleet.fleet { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 820px)  { .cr-page .fleet.fleet { grid-template-columns: minmax(0, 1fr); } }
+
+/* fit-v3 — 2026-11-09: إطارات الهاتف 20:9 كانت تُحبس في مسرح 16:9 بأشرطة سوداء،
+   والإطار العمودي كان كبيرًا وداكنًا. الحل: «تغطية» للأفقي ومسرح محايد أصغر للعمودي. */
+.cr-page .tile .screen canvas[data-orient="landscape"] {
+  object-fit: contain;
+}
+.cr-page .tile .screen:has(canvas[data-orient="portrait"]) {
+  background: var(--b-surface2, #eef3f7);
+}
+html.light .cr-page .tile .screen:has(canvas[data-orient="portrait"]) {
+  background: var(--b-surface2, #eef3f7);
+}
+.cr-page .tile .screen canvas[data-orient="portrait"] {
+  height: 82%;
+  width: auto;
+}
+
+/* tile-shape-v4 — 2026-11-09: البلاطة تأخذ شكل إطارها بدل حبسه داخل 16:9.
+   العمودي = بطاقة هاتف ضيقة بعرض 9/16 من الارتفاع، والأفقي يملأ باقي الصف. */
+.cr-page .wall:has(.tile:has(canvas[data-orient="portrait"])) {
+  grid-template-columns: auto minmax(0, 1fr);
+  justify-content: center;
+  align-items: stretch;
+}
+.cr-page .wall:has(.tile:has(canvas[data-orient="portrait"])) .tile {
+  width: auto;
+}
+.cr-page .tile .screen:has(canvas[data-orient="portrait"]) {
+  aspect-ratio: auto;
+  height: 505px;
+  width: auto;
+  background: transparent;
+}
+html.light .cr-page .tile .screen:has(canvas[data-orient="portrait"]) {
+  background: transparent;
+}
+.cr-page .tile .screen canvas[data-orient="portrait"] {
+  height: 100%;
+  width: auto;
+  border-radius: 10px;
+}
+.cr-page .wall.wall-1 .screen:has(canvas[data-orient="portrait"]) {
+  height: 56vh;
+}
+
+.cr-page .tile:has(canvas[data-orient="portrait"]) { width: fit-content; justify-self: center; }
+.cr-page .tile .screen:has(canvas[data-orient="portrait"]) { display: grid; place-items: center; }
