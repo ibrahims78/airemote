@@ -489,7 +489,7 @@ export function DevicesPage() {
                     {fmtSeen(d.lastSeen)}
                   </td>
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                    <div className="flex items-center gap-1 opacity-100 transition-opacity">
                       {d.status === 'online' && (
                         <button
                           onClick={() => openScreenWindow(d.id)}
@@ -565,6 +565,19 @@ export function DevicesPage() {
               ))}
             </tbody>
           </table>
+
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-2.5 text-[11.5px] text-muted">
+            <span>
+              عرض <b className="text-ink">{visible.length}</b> من أصل <b className="text-ink">{devices.length}</b> أجهزة
+              {visible.length !== devices.length && (
+                <span className="ms-2 rounded-full bg-surface2 px-2 py-0.5">
+                  {statusFilter === 'online' ? 'متصل فقط' : statusFilter === 'offline' ? 'غير متصل فقط' : 'نتائج البحث'}
+                  {q.trim() ? ` · «${q.trim()}»` : ''}
+                </span>
+              )}
+            </span>
+            <span className="tabular-nums">متصل الآن: <b className="text-success">{online}</b> · غير متصل: <b>{offline}</b></span>
+          </div>
         </div>
       )}
     </div>
