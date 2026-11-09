@@ -1968,6 +1968,16 @@ public class AgentService extends Service {
                             display.getRealMetrics(metrics);
                             int mw = metrics.widthPixels, mh = metrics.heightPixels;
                             currentRotation = display.getRotation();
+                            // 2026-11-09 — المقاس الفيزيائي للوضع الحالي: يعمل حتى عندما
+                            // يمنح النظام التطبيق شاشة منطقية عمودية (وضع التوافق على TECNO).
+                            int physW = mw, physH = mh;
+                            try {
+                                android.view.Display.Mode mode = display.getMode();
+                                if (mode != null) {
+                                    physW = Math.max(physW, mode.getPhysicalWidth());
+                                    physH = Math.max(physH, mode.getPhysicalHeight());
+                                }
+                            } catch (Exception ignore) { }
                             // الاتجاه الحقيقي = الحسّاس (أو الدوران إن توفّر)
                             // 2026-11-09 — اتجاه مثبَّت (hysteresis) لتفادي تذبذب المقاس.
                             boolean wantLand = sensorLandscape
@@ -1987,14 +1997,14 @@ public class AgentService extends Service {
                             } else {
                                 pendingSince = 0;
                             }
-                            int longSide = Math.max(mw, mh), shortSide = Math.min(mw, mh);
+                            int longSide = Math.max(physW, physH), shortSide = Math.min(physW, physH);
                             curW = appliedLand ? longSide : shortSide;
                             curH = appliedLand ? shortSide : longSide;
                             curDpi = metrics.densityDpi;
                             if (android.os.SystemClock.elapsedRealtime() - diagAt > 2000) {
                                 diagAt = android.os.SystemClock.elapsedRealtime();
                                 android.util.Log.d("AiRemoteAgent", "diag rot=" + currentRotation
-                                        + " land=" + sensorLandscape + " cur=" + curW + "x" + curH + " vd=" + fullW + "x" + fullH);
+                                        + " land=" + appliedLand + " phys=" + physW + "x" + physH + " cur=" + curW + "x" + curH + " vd=" + fullW + "x" + fullH);
                             }
                             // 2026-11-09 — getRealMetrics يعيد المقاس الطبيعي (عمودي) مهما كان الدوران،
                             // فيبقى VirtualDisplay عموديًا والمحتوى مدارًا 90° داخله (مقيس على TECNO).
