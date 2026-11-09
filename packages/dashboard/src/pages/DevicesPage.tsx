@@ -333,6 +333,27 @@ export function DevicesPage() {
     return hay.includes(needle)
   })
   const offline = devices.length - online
+  // 2026-11-09 — تحديد متعدد لأفعال جماعية (حجب/حذف).
+  const [selected, setSelected] = useState<Record<string, boolean>>({})
+  const [bulkBusy, setBulkBusy] = useState(false)
+  const chosen = Object.keys(selected).filter(id => selected[id])
+  const allChosen = visible.length > 0 && visible.every(d => selected[d.id])
+  const toggleOne = (id: string) => setSelected(prev => ({ ...prev, [id]: !prev[id] }))
+  const toggleAll = () => {
+    if (allChosen) setSelected({})
+    else setSelected(Object.fromEntries(visible.map(d => [d.id, true])))
+  }
+  const bulkBlock = async (block: boolean) => {
+    setBulkBusy(true)
+    try { for (const id of chosen) await connAction(id, block ? 'block' : 'unblock') }
+    finally { setBulkBusy(false); setSelected({}) }
+  }
+  const bulkDelete = async () => {
+    if (!confirm(`حذف ${chosen.length} جهازًا نهائيًا؟`)) return
+    setBulkBusy(true)
+    try { for (const id of chosen) await deleteDevice(id) }
+    finally { setBulkBusy(false); setSelected({}) }
+  }
   // 2026-11-09 — ترتيب بالنقر على العمود (الاسم · الحالة · آخر اتصال).
   const [sortKey, setSortKey] = useState<'name' | 'status' | 'lastSeen' | null>(null)
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
@@ -506,11 +527,32 @@ export function DevicesPage() {
         </Card>
       )}
 
+      {chosen.length > 0 && (
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-[12px]">
+          <span className="text-ink">حُدِّد <b>{chosen.length}</b> جهاز</span>
+          <span className="flex-1" />
+          {isAdmin && (
+            <Button variant="ghost" size="sm" disabled={bulkBusy} onClick={() => bulkBlock(true)}>حجب</Button>
+          )}
+          {isAdmin && (
+            <Button variant="ghost" size="sm" disabled={bulkBusy} onClick={() => bulkBlock(false)}>إلغاء الحجب</Button>
+          )}
+          {isAdmin && (
+            <Button variant="ghost" size="sm" disabled={bulkBusy} onClick={bulkDelete}>حذف</Button>
+          )}
+          <Button variant="ghost" size="sm" onClick={() => setSelected({})}>إلغاء التحديد</Button>
+        </div>
+      )}
+
       {!loading && visible.length > 0 && (
         <div className="overflow-hidden rounded-xl border border-line bg-surface">
           <table className="w-full text-sm">
             <thead className="sticky top-0 z-10 bg-surface">
               <tr className="border-b border-line">
+                <th className="w-10 px-3 py-2.5">
+                  <input type="checkbox" checked={allChosen} onChange={toggleAll} aria-label="تحديد كل الأجهزة"
+                    className="h-3.5 w-3.5 cursor-pointer accent-[var(--b-accent)]" />
+                </th>
                 <th className="px-4 py-2.5 text-start text-xs font-medium text-muted">
                   <button type="button" onClick={() => toggleSort('name')}
                     className="inline-flex items-center gap-1 hover:text-ink"
@@ -544,7 +586,11 @@ export function DevicesPage() {
               {sorted.map(d => (
                 <tr key={d.id} className="border-b border-line/60 hover:bg-surface2 transition-colors group cursor-pointer"
                 onClick={(e) => { if ((e.target as HTMLElement).closest('button,a')) return; navigate(`/devices/${d.id}`) }}>
-                  <td className="px-4 py-3">
+                  <td className="px-3 py-2.5">
+                    <input type="checkbox" checked={!!selected[d.id]} onChange={() => toggleOne(d.id)}
+                      onClick={(e) => e.stopPropagation()} aria-label={`تحديد ${d.name}`}
+                      className="h-3.5 w-3.5 cursor-pointer accent-[var(--b-accent)]" />
+                  </td>                  <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
                       <div className={clsx('w-7 h-7 rounded-lg flex items-center justify-center', d.status === 'online' ? 'bg-primary/15' : 'bg-surface2')}>
                         {/android/i.test(String(d.info?.platform || ''))
