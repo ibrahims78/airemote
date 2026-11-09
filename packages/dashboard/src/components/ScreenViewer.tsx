@@ -510,6 +510,8 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
     decodingRef.current = true
     createImageBitmap(blob).then(bmp => {
       decodingRef.current = false
+      // CLEAR-ON-FULL — 2026-11-10: امسح اللوحة قبل كل إطار كامل حتى لا تبقى بقايا اتجاه سابق.
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
       ctx.drawImage(bmp, 0, 0)
       bmp.close()
       fpsCountRef.current++
