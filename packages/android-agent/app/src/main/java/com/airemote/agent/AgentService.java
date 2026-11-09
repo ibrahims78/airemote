@@ -1941,6 +1941,13 @@ public class AgentService extends Service {
                             curH = metrics.heightPixels;
                             curDpi = metrics.densityDpi;
                             currentRotation = display.getRotation();
+                            // 2026-11-09 — getRealMetrics يعيد المقاس الطبيعي (عمودي) مهما كان الدوران،
+                            // فيبقى VirtualDisplay عموديًا والمحتوى مدارًا 90° داخله (مقيس على TECNO).
+                            // نبدّل الأبعاد عند 90/270 ليطابق المخزن اتجاه الشاشة الفعلي.
+                            if (currentRotation == android.view.Surface.ROTATION_90
+                                    || currentRotation == android.view.Surface.ROTATION_270) {
+                                int swap = curW; curW = curH; curH = swap;
+                            }
                         }
                     } catch (Exception ignore) { }
 
