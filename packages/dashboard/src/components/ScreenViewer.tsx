@@ -343,6 +343,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
   // This prevents the drawId race where 30fps arrivals stack up faster than
   // createImageBitmap resolves, causing every frame to be discarded as stale.
   const decodingRef        = useRef(false)
+  const needKeyRef         = useRef(false)   // بعد تغيّر المقاس: انتظر إطارًا كاملًا قبل لصق أي دلتا
 
   // Keep startedRef in sync so event handlers (visibilitychange) can read it
   useEffect(() => { startedRef.current = started }, [started])
@@ -695,6 +696,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
           // that header makes the rest of the screen black (the cursor-only
           // symptom on Windows). Only full frames may resize the backing store.
           if (!isDelta) {
+            needKeyRef.current = false
             if (canvas.width !== width || canvas.height !== height) {
               canvas.width = width; canvas.height = height
               // 2026-11-08 — نفس الإعلان في مسار البث الحيّ (لا الإطار الأول فقط).
@@ -732,12 +734,13 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
               if (cv0 && (cv0.width !== width || cv0.height !== height)) {
                 cv0.width = width; cv0.height = height
                 cv0.dataset.orient = height > width ? 'portrait' : 'landscape'
+                needKeyRef.current = true
                 setResolution({ w: width, h: height })
                 const c0 = cv0.getContext('2d')
                 if (c0) { c0.clearRect(0, 0, width, height) }
               }
-              // Partial update: stamp only the changed region on the existing canvas
-              drawDeltaFrame(data, deltaRegion)
+              // 2026-11-09 — لا نلصق دلتا على لوحة ممسوحة حديثًا
+              if (!needKeyRef.current) drawDeltaFrame(data, deltaRegion)
             } else {
               drawFrame(data, width, height)
             }
