@@ -5,7 +5,8 @@ import { useUIStore } from '../store/uiStore'
 import { useBoardStore, nextDeviceId, MAX_TILES } from '../store/boardStore'
 import { useT } from '../lib/i18n'
 import { clsx } from 'clsx'
-import { Monitor, Terminal, FolderOpen, MousePointer2 } from 'lucide-react'
+import { api } from '../lib/api'
+import { Monitor, Terminal, FolderOpen, MousePointer2, Sun } from 'lucide-react'
 import { ScreenViewer } from './ScreenViewer'
 import { EmptyState, SkeletonRows } from './ui'
 
@@ -123,6 +124,11 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, loading, ha
     return !!s && ((s.cpuPercent ?? 0) > 85 || (s.ramPercent ?? 0) > 85)
   }).length
   // 2026-11-08 — بعد إزالة شريط المؤشرات انتقل عدّاد التنبيهات إلى شارة مستقلة في شريط الأدوات.
+  // 2026-11-09 — إيقاظ شاشة الجهاز عن بُعد (أندرويد): يُرسل KEYCODE_WAKEUP عبر الوكيل.
+  const wakeScreen = async (id: string) => {
+    try { await api.post(`/api/devices/${id}/exec`, { command: 'input keyevent KEYCODE_WAKEUP', timeoutMs: 10000 }) } catch {}
+  }
+
   const runningTiles = useMemo(() => tiles.filter(t => t.running), [tiles])
 
   useEffect(() => {
@@ -278,6 +284,18 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, loading, ha
                   >
                     {tile.running ? <RefIcon name="stop" /> : <RefIcon name="play" />}
                   </button>
+                  {String(device?.info?.platform || '').toLowerCase() === 'android' && (
+                    <button
+                      type="button"
+                      onClick={() => { void wakeScreen(tile.deviceId) }}
+                      title={tr('إيقاظ الشاشة', 'Wake screen')}
+                      aria-label={tr('إيقاظ الشاشة', 'Wake screen')}
+                      className="tool"
+                    >
+                      <Sun size={13} />
+                    </button>
+                  )}
+
                   <button
                     type="button"
                     onClick={() => setMaxKey(prev => prev === tile.key ? null : tile.key)}
