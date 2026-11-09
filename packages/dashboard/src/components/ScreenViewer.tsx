@@ -695,8 +695,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
           // that header makes the rest of the screen black (the cursor-only
           // symptom on Windows). Only full frames may resize the backing store.
           if (!isDelta) {
-            const headerIsFull = bmp.width !== width || bmp.height !== height
-            if (headerIsFull && (canvas.width !== width || canvas.height !== height)) {
+            if (canvas.width !== width || canvas.height !== height) {
               canvas.width = width; canvas.height = height
               // 2026-11-08 — نفس الإعلان في مسار البث الحيّ (لا الإطار الأول فقط).
               canvas.dataset.orient = height > width ? 'portrait' : 'landscape'
