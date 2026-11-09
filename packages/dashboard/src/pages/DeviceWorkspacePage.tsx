@@ -130,7 +130,7 @@ export function DeviceWorkspacePage() {
             <h2 className="text-base font-bold text-ink leading-none">{device.name}</h2>
             <p className="text-xs text-muted mt-0.5">{device.info?.hostname || device.id.slice(0, 12)}</p>
           </div>
-          <Badge tone={isOnline ? 'success' : 'neutral'} className="ms-auto px-2.5 py-1">
+          <Badge tone={isOnline ? 'success' : 'neutral'} className="px-2.5 py-1">
             {isOnline ? <Wifi size={10} /> : <WifiOff size={10} />}
             {isOnline ? t('device_online') : t('device_offline')}
           </Badge>
