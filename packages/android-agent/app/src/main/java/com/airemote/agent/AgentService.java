@@ -2060,6 +2060,28 @@ public class AgentService extends Service {
                     }
                     // 2026-11-09 — عند تغيّر الاتجاه اطلب إطارًا كاملًا ليعيد العارض ضبط مقاسه.
                     if (sensorLandscape != lastOrientLand) { lastOrientLand = sensorLandscape; forceKeyframe = true; }
+                    // ORIENT-REBUILD — 2026-11-10: عند تبديل الاتجاه يُعاد إنشاء السطح بنفس المقاس،
+                    // لأن النظام لا يُعيد رسم الأشرطة داخل سطح الالتقاط فتبقى صورة الاتجاه السابق.
+                    if (sensorLandscape != lastOrientLand) {
+                        lastOrientLand = sensorLandscape;
+                        try {
+                            if (activeProjection != null && vd != null && reader != null) {
+                                ImageReader nr = ImageReader.newInstance(fullW, fullH, PixelFormat.RGBA_8888, 4);
+                                vd.setSurface(nr.getSurface());
+                                ImageReader or = reader;
+                                reader = nr;
+                                activeReader = nr;
+                                if (or != null) or.close();
+                                if (scaled != null) { scaled.recycle(); scaled = null; }
+                                scaleCanvas = null;
+                                prevPixels = null; curPixels = null; deltaRun = 0;
+                                forceKeyframe = true;
+                                android.util.Log.d("AiRemoteAgent", "orient rebuild (same size) " + fullW + "x" + fullH);
+                            }
+                        } catch (Exception re) {
+                            android.util.Log.e("AiRemoteAgent", "orient rebuild failed", re);
+                        }
+                    }
                     // FULL-RESCAN — 2026-11-10: كل 8 ثوانٍ إطار كامل، حتى تُمسح أشرطة الاتجاه السابق
                     // التي لا تتغيّر فلا تُرسل ضمن الدلتا (كانت تبقى كصور شبح على الحواف).
                     if (android.os.SystemClock.elapsedRealtime() - lastFullMs > 8000) {
