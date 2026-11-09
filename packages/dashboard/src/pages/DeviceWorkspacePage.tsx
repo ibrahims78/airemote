@@ -24,7 +24,6 @@ type Tab = 'overview' | 'terminal' | 'monitor' | 'files' | 'ai' | 'commands' | '
 /** كل التبويبات — تُستخدم للتحقق من ?tab= قبل التبديل. */
 const TABS: Tab[] = ['overview', 'commands', 'terminal', 'screen', 'monitor', 'files', 'ai']
 
-
 function DeviceInfoPanel({ device }: { device: Device }) {
   const t = useT()
   const { statsMap } = useDeviceStore()
@@ -63,38 +62,6 @@ function DeviceInfoPanel({ device }: { device: Device }) {
         </div>
       </div>
 
-      {stats && (
-        <div className="rounded-xl border border-line bg-surface overflow-hidden">
-          <div className="px-4 py-3 border-b border-line">
-            <h3 className="text-sm font-medium text-ink">{t('tab_monitor')}</h3>
-          </div>
-          <div className="p-4 grid grid-cols-3 gap-4">
-            {[
-              { label: 'CPU', value: stats.cpuPercent, stroke: '#38bdf8' },
-              { label: 'RAM', value: stats.ramPercent, stroke: '#2dd4bf' },
-              { label: 'Disk', value: stats.diskPercent, stroke: '#c084fc' }
-            ].map(item => (
-              <div key={item.label} className="text-center">
-                <div className="relative w-14 h-14 mx-auto mb-2">
-                  <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                    <circle cx="18" cy="18" r="15.9" fill="none" stroke="currentColor" strokeWidth="3" className="text-line" />
-                    <circle
-                      cx="18" cy="18" r="15.9" fill="none"
-                      stroke={item.stroke} strokeWidth="3"
-                      strokeDasharray={`${item.value} 100`} strokeLinecap="round"
-                      className="transition-all duration-500"
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-xs font-bold text-ink">{item.value}%</span>
-                  </div>
-                </div>
-                <p className="text-xs text-muted">{item.label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   )
 }
