@@ -227,10 +227,14 @@ export function MonitoringCharts({ deviceId, stats }: Props) {
           <div className="rounded-xl border border-line bg-surface p-4">
             <h4 className="text-xs font-medium text-muted mb-3 flex items-center gap-1.5">
               <Network size={11} className="text-warning" /> {T('mon_net')}
-              {history.every(p => p.netUp === 0 && p.netDown === 0) && (
-                <span className="text-[10px] text-muted ms-auto">{T('mon_no_net')}</span>
-              )}
             </h4>
+            {history.every(p => p.netUp === 0 && p.netDown === 0) ? (
+              <div className="flex h-[130px] flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-line text-center">
+                <Network size={16} className="text-muted/60" />
+                <span className="text-[11px] text-muted">{T('mon_no_net')}</span>
+                <span className="text-[10px] text-muted/70">0 B/s ↑ · 0 B/s ↓</span>
+              </div>
+            ) : (
             <ResponsiveContainer width="100%" height={130}>
               <LineChart data={history} margin={{ top: 2, right: 2, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke={chart.grid} />
@@ -244,8 +248,9 @@ export function MonitoringCharts({ deviceId, stats }: Props) {
                 <Tooltip content={<NetTooltip />} />
                 <Line type="monotone" dataKey="netUp"   name={T('mon_up')}   stroke={chart.netUp} strokeWidth={1.5} dot={false} />
                 <Line type="monotone" dataKey="netDown" name={T('mon_down')} stroke={chart.netDown} strokeWidth={1.5} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </div>
       )}
