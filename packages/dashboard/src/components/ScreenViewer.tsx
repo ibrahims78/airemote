@@ -729,12 +729,12 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
               // 2026-11-09 — إذا كانت ترويسة الدلتا أكبر من اللوحة فهي مقاس شاشة جديد
               // (رؤوس المستطيل أصغر دائمًا)، فنكبّر اللوحة قبل اللصق.
               const cv0 = canvasRef.current
-              if (cv0 && width > cv0.width && height > cv0.height) {
+              if (cv0 && (cv0.width !== width || cv0.height !== height)) {
                 cv0.width = width; cv0.height = height
                 cv0.dataset.orient = height > width ? 'portrait' : 'landscape'
                 setResolution({ w: width, h: height })
                 const c0 = cv0.getContext('2d')
-                if (c0) { c0.fillStyle = '#000'; c0.fillRect(0, 0, width, height) }
+                if (c0) { c0.clearRect(0, 0, width, height) }
               }
               // Partial update: stamp only the changed region on the existing canvas
               drawDeltaFrame(data, deltaRegion)
