@@ -333,6 +333,39 @@ export function DevicesPage() {
     return hay.includes(needle)
   })
   const offline = devices.length - online
+  // 2026-11-09 — ترتيب بالنقر على العمود (الاسم · الحالة · آخر اتصال).
+  const [sortKey, setSortKey] = useState<'name' | 'status' | 'lastSeen' | null>(null)
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const toggleSort = (k: 'name' | 'status' | 'lastSeen') => {
+    if (sortKey === k) setSortDir(d => (d === 'asc' ? 'desc' : 'asc'))
+    else { setSortKey(k); setSortDir('asc') }
+  }
+  const rank = (st: string) => (st === 'online' ? 0 : st === 'blocked' ? 1 : 2)
+  const sorted = sortKey
+    ? [...visible].sort((a, b) => {
+        let d = 0
+        if (sortKey === 'name') d = String(a.name).localeCompare(String(b.name), 'ar')
+        else if (sortKey === 'status') d = rank(a.status) - rank(b.status)
+        else {
+          const ta = a.lastSeen ? new Date(a.lastSeen as unknown as string).getTime() : 0
+          const tb = b.lastSeen ? new Date(b.lastSeen as unknown as string).getTime() : 0
+          d = ta - tb
+        }
+        return sortDir === 'asc' ? d : -d
+      })
+    : visible
+
+  // اختصار / لتركيز البحث و Esc لمسحه
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null
+      const typing = !!el && /INPUT|TEXTAREA|SELECT/.test(el.tagName)
+      if (e.key === '/' && !typing) { e.preventDefault(); document.querySelector<HTMLInputElement>('input[type=search]')?.focus() }
+      if (e.key === 'Escape' && (el as HTMLInputElement)?.type === 'search') { setQ(''); (el as HTMLInputElement).blur() }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
   // 2026-11-09 — وقت نسبي لآخر اتصال («قبل 3 د») مع التاريخ الكامل في التلميح.
   const relSeen = (v?: string | Date) => {
     if (!v) return '—'
@@ -478,16 +511,37 @@ export function DevicesPage() {
           <table className="w-full text-sm">
             <thead className="sticky top-0 z-10 bg-surface">
               <tr className="border-b border-line">
-                <th className="px-4 py-2.5 text-start text-xs font-medium text-muted">{t('devices')}</th>
+                <th className="px-4 py-2.5 text-start text-xs font-medium text-muted">
+                  <button type="button" onClick={() => toggleSort('name')}
+                    className="inline-flex items-center gap-1 hover:text-ink"
+                    title="ترتيب حسب الأجهزة">
+                    الأجهزة
+                    <span className="text-[9px]">{sortKey === 'name' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span>
+                  </button>
+                </th>
                 <th className="px-4 py-2.5 text-start text-xs font-medium text-muted">{t('platform')}</th>
-                <th className="px-4 py-2.5 text-start text-xs font-medium text-muted">الحالة</th>
+                <th className="px-4 py-2.5 text-start text-xs font-medium text-muted">
+                  <button type="button" onClick={() => toggleSort('status')}
+                    className="inline-flex items-center gap-1 hover:text-ink"
+                    title="ترتيب حسب الحالة">
+                    الحالة
+                    <span className="text-[9px]">{sortKey === 'status' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span>
+                  </button>
+                </th>
                 <th className="px-4 py-2.5 text-start text-xs font-medium text-muted">{t('hostname')}</th>
-                <th className="px-4 py-2.5 text-start text-xs font-medium text-muted">{t('last_seen')}</th>
+                <th className="px-4 py-2.5 text-start text-xs font-medium text-muted">
+                  <button type="button" onClick={() => toggleSort('lastSeen')}
+                    className="inline-flex items-center gap-1 hover:text-ink"
+                    title="ترتيب حسب آخر اتصال">
+                    آخر اتصال
+                    <span className="text-[9px]">{sortKey === 'lastSeen' ? (sortDir === 'asc' ? '▲' : '▼') : '⇅'}</span>
+                  </button>
+                </th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody>
-              {visible.map(d => (
+              {sorted.map(d => (
                 <tr key={d.id} className="border-b border-line/60 hover:bg-surface2 transition-colors group cursor-pointer"
                 onClick={(e) => { if ((e.target as HTMLElement).closest('button,a')) return; navigate(`/devices/${d.id}`) }}>
                   <td className="px-4 py-3">
