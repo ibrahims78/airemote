@@ -333,6 +333,20 @@ export function DevicesPage() {
     return hay.includes(needle)
   })
   const offline = devices.length - online
+  // 2026-11-09 — وقت نسبي لآخر اتصال («قبل 3 د») مع التاريخ الكامل في التلميح.
+  const relSeen = (v?: string | Date) => {
+    if (!v) return '—'
+    const d0 = new Date(typeof v === 'string' ? v.replace(' ', 'T') : v)
+    if (isNaN(d0.getTime())) return String(v)
+    const mins = Math.floor((Date.now() - d0.getTime()) / 60000)
+    if (mins < 1) return 'الآن'
+    if (mins < 60) return `قبل ${mins} د`
+    const hours = Math.floor(mins / 60)
+    if (hours < 24) return `قبل ${hours} س`
+    const days = Math.floor(hours / 24)
+    if (days < 30) return `قبل ${days} ي`
+    return fmtSeen(v)
+  }
 
   // 2026-11-09 — تنسيق ثابت وواضح لآخر اتصال بدل toLocaleString الافتراضي
   // الذي يُخرج «AM 10:19:39 ,11/9/2026» (فاصلة في غير موضعها وAM لاتينية).
@@ -462,7 +476,7 @@ export function DevicesPage() {
       {!loading && visible.length > 0 && (
         <div className="overflow-hidden rounded-xl border border-line bg-surface">
           <table className="w-full text-sm">
-            <thead>
+            <thead className="sticky top-0 z-10 bg-surface">
               <tr className="border-b border-line">
                 <th className="px-4 py-2.5 text-start text-xs font-medium text-muted">{t('devices')}</th>
                 <th className="px-4 py-2.5 text-start text-xs font-medium text-muted">{t('platform')}</th>
@@ -569,7 +583,7 @@ export function DevicesPage() {
                     </div>
                   </td>
                   <td className="px-4 py-2.5 text-xs text-muted tabular-nums">
-                    {fmtSeen(d.lastSeen)}
+                    <span title={fmtSeen(d.lastSeen)}>{relSeen(d.lastSeen)}</span>
                   </td>
                   <td className="px-4 py-2.5">
                     <div className="relative flex items-center justify-end gap-1">
