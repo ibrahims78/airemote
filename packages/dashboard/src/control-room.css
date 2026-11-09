@@ -2466,9 +2466,11 @@ html.light .cr-page .tile .screen:has(canvas[data-orient="portrait"]) {
   width: auto;
   border-radius: 10px;
 }
+.cr-page .wall.wall-1 .screen:has(canvas[data-orient="portrait"]) {
+  height: auto;
+}
 
-
-
+.cr-page .tile:has(canvas[data-orient="portrait"]) { width: auto; }
 .cr-page .tile .screen:has(canvas[data-orient="portrait"]) { display: grid; place-items: center; }
 
 /* unified-wall-v5 — 2026-11-09: إلغاء كل تجارب شكل البلاطة والعودة للقاعدة الصحيحة:
@@ -2480,7 +2482,11 @@ html.light .cr-page .tile .screen:has(canvas[data-orient="portrait"]) {
   align-items: start;
 }
 .cr-page .tile,
-
+.cr-page .tile:has(canvas[data-orient="portrait"]) {
+  width: auto;
+  max-width: none;
+  justify-self: stretch;
+}
 .cr-page .tile .screen,
 .cr-page .tile .screen:has(canvas[data-orient="portrait"]) {
   aspect-ratio: 16 / 9;
@@ -2499,4 +2505,6 @@ html.light .cr-page .tile .screen:has(canvas[data-orient="portrait"]) {
   object-fit: contain;
   border-radius: 0;
 }
-
+.cr-page .wall.wall-1 .screen:has(canvas[data-orient="portrait"]) {
+  height: auto;
+}
