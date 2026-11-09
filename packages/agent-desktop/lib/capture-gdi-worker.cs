@@ -283,6 +283,18 @@ public class GdiStream
                 continue;
             }
             if (!wasActive) { wasActive = true; lastSig = 0L; lastSentAt = 0L; }
+            // 2026-11-09 — تغيير دقة الشاشة كان لا يُرى: الحدود تُقرأ مرة واحدة قبل الحلقة.
+            // نُعيد قراءتها كل دورة ونُصفّر البصمة عند التغيّر ليُرسل إطار كامل.
+            {
+                int nvx = GetSystemMetrics(76), nvy = GetSystemMetrics(77);
+                int nvw = GetSystemMetrics(78), nvh = GetSystemMetrics(79);
+                if (nvw <= 0 || nvh <= 0) { nvw = GetSystemMetrics(0); nvh = GetSystemMetrics(1); nvx = 0; nvy = 0; }
+                if (nvw > 0 && nvh > 0 && (nvw != vw || nvh != vh || nvx != vx || nvy != vy))
+                {
+                    vx = nvx; vy = nvy; vw = nvw; vh = nvh;
+                    lastSig = 0L; lastSentAt = 0L;
+                }
+            }
 
             sw.Restart();
             using (Bitmap full = Grab(vx, vy, vw, vh))
