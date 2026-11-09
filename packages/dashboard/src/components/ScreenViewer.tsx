@@ -24,7 +24,7 @@ import {
 import {
   Monitor, Maximize2, Minimize2, RefreshCw, Wifi, WifiOff, ExternalLink, ArrowLeftRight, PenLine, Eraser, Crosshair, Trash2, Fingerprint,
   AlertTriangle, Loader2, Settings2,
-  Clipboard, ClipboardPaste, EyeOff, Eye,
+  Clipboard, ClipboardPaste, Smartphone, EyeOff, Eye,
   Video, Tv2, Mouse, Keyboard, ChevronDown, ChevronUp, Undo2, Home, Layers, Circle, Type,
   Upload, Shield, Zap, CheckCircle2, Pin, PinOff,
   MessageSquare, Send, Download, Activity, X, PlayCircle, Square, Volume2, VolumeX, RotateCw, Sun, Scaling, MoreHorizontal
@@ -1878,7 +1878,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
 
       {/* ── Toolbar ── */}
       {started && <div onMouseEnter={revealControls} onMouseLeave={() => { if (!pinned) scheduleControlsHide(1000) }} className={clsx(
-        'flex items-center gap-2 px-3 py-2 bg-canvas/95 backdrop-blur border border-line z-10 flex-wrap transition-all duration-200',
+        'flex items-center gap-2 px-3 py-2 bg-canvas/95 backdrop-blur border border-line z-[120] flex-nowrap overflow-x-auto transition-all duration-200',
         popout ? 'absolute top-2 left-1/2 -translate-x-1/2 w-auto max-w-[96%] rounded-xl shadow-2xl overflow-x-auto flex-nowrap whitespace-nowrap' : 'border-b',
         fullscreen && !controlsVisible && !pinned && !showSettings && 'opacity-0 -translate-y-2 pointer-events-none'
       )}>
@@ -2241,15 +2241,37 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
             <Square size={12} className="fill-current"/>
             <span>{tr('viewer_stop')}</span>
           </button>
+          {remoteIsAndroid && status === 'streaming' && (
+            <>
+              <span className="mx-0.5 h-4 w-px shrink-0 bg-line" aria-hidden="true" />
+              <button type="button" onClick={() => sendWs({ type: 'screen:rotate', payload: {} })}
+                data-tb="1" title={tr('viewer_rotate_90')}
+                className="rounded p-1.5 text-muted transition-colors hover:bg-surface2 hover:text-ink">
+                <RotateCw size={13} />
+              </button>
+              <button type="button" aria-pressed={autoRotate}
+                onClick={() => { const next = !autoRotate; setAutoRotate(next); sendWs({ type: 'screen:rotate_auto', payload: { enabled: next } }) }}
+                data-tb="1" title={autoRotate ? tr('viewer_autorotate_on') : tr('viewer_autorotate_off')}
+                className={clsx('rounded p-1.5 transition-colors', autoRotate ? 'bg-success/15 text-success' : 'text-muted hover:bg-surface2 hover:text-ink')}>
+                <Smartphone size={13} />
+              </button>
+              <button type="button" onClick={() => setShowClipboard(v => !v)}
+                data-tb="1" title={tr('viewer_clipboard_sync')}
+                className={clsx('rounded p-1.5 transition-colors', showClipboard ? 'bg-info/20 text-info' : 'text-muted hover:bg-surface2 hover:text-ink')}>
+                <Clipboard size={13} />
+              </button>
+            </>
+          )}
           <button onClick={() => setFullscreen(f => !f)} className="p-1.5 rounded text-muted hover:text-ink hover:bg-surface2 transition-colors" data-tb="1" title={fullscreen ? tr('viewer_exit_fullscreen') : tr('viewer_fullscreen')}>
             {fullscreen ? <Minimize2 size={13}/> : <Maximize2 size={13}/>}
           </button>          <button onClick={() => setShowMore(v => !v)} data-tb="1" title={tr('viewer_more')} aria-expanded={showMore}
             className={clsx('p-1.5 rounded transition-colors', showMore ? 'bg-info/20 text-info' : 'text-muted hover:text-ink hover:bg-surface2')}>
             <MoreHorizontal size={14}/>
           </button>
-          {showMore && (
+          {showMore && createPortal(
             <div
-              className="absolute top-full end-0 z-40 mt-1.5 w-[248px] overflow-hidden rounded-xl border border-line bg-canvas shadow-2xl shadow-black/40"
+              className="fixed z-[130] w-[308px] overflow-hidden rounded-xl border border-line bg-canvas shadow-2xl shadow-black/40"
+              style={{ top: 54, right: 12, left: 'auto' }}
               onClick={e => e.stopPropagation()}
               role="menu"
               aria-label={tr('viewer_more')}
@@ -2266,7 +2288,8 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
                 </button>
               </div>
 
-              <div className="max-h-[62vh] overflow-y-auto p-1.5">
+              <div className="overflow-y-auto p-1.5" style={{ maxHeight: 'calc(100vh - 140px)' }}>
+                <div className="px-2 pb-1 pt-1 text-[9.5px] font-semibold uppercase tracking-[.08em] text-muted">مشاهدة</div>
                 <button
                   type="button" role="menuitem"
                   onClick={() => { setShowMore(false); setShowDeviceRes(true) }}
@@ -2368,6 +2391,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
                   </>
                 )}
 
+                <div className="px-2 pb-1 pt-2 text-[9.5px] font-semibold uppercase tracking-[.08em] text-muted">أدوات الجهاز</div>
                 {remoteIsAndroid && status === 'streaming' && (
                   <>
                     <div className="mt-1 border-t border-line/60" />
@@ -2434,6 +2458,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
 
                 {status === 'streaming' && (
                   <>
+                <div className="px-2 pb-1 pt-2 text-[9.5px] font-semibold uppercase tracking-[.08em] text-muted">الجلسة</div>
                     <div className="mt-1 border-t border-line/60" />
                     <button
                       type="button" role="menuitem"
@@ -2464,7 +2489,8 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
                   </>
                 )}
               </div>
-            </div>
+            </div>,
+            document.body
           )}
         </div>
       </div>}
