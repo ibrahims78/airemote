@@ -108,7 +108,8 @@ public class AgentService extends Service {
     private static final long KEYFRAME_INTERVAL_MS = 2000;
     private boolean streamDelta = true;
     private long diagAt = 0;
-    private long lastFullMs = 0;   // FIXED-ORIENT: إطار كامل دوري يمسح بقايا الاتجاه السابق
+    private long lastFullMs = 0;
+    private boolean rebuildLand = false;   // آخر اتجاه أُعيد بناء السطح عنده   // FIXED-ORIENT: إطار كامل دوري يمسح بقايا الاتجاه السابق
     // 2026-11-09 — اتجاه الشاشة من الحسّاس: أندرويد يعطي التطبيق شاشة منطقية عمودية
     // (وضع التوافق) فتظل VirtualDisplay عمودية والمحتوى مدارًا. الحسّاس يحسم الاتجاه الحقيقي.
     private volatile boolean sensorLandscape = false;
@@ -2059,11 +2060,11 @@ public class AgentService extends Service {
                         }
                     }
                     // 2026-11-09 — عند تغيّر الاتجاه اطلب إطارًا كاملًا ليعيد العارض ضبط مقاسه.
-                    if (sensorLandscape != lastOrientLand) { lastOrientLand = sensorLandscape; forceKeyframe = true; }
+                    if (sensorLandscape != rebuildLand) { lastOrientLand = sensorLandscape; forceKeyframe = true; }
                     // ORIENT-REBUILD — 2026-11-10: عند تبديل الاتجاه يُعاد إنشاء السطح بنفس المقاس،
                     // لأن النظام لا يُعيد رسم الأشرطة داخل سطح الالتقاط فتبقى صورة الاتجاه السابق.
                     if (sensorLandscape != lastOrientLand) {
-                        lastOrientLand = sensorLandscape;
+                        rebuildLand = sensorLandscape;
                         try {
                             if (activeProjection != null && vd != null && reader != null) {
                                 ImageReader nr = ImageReader.newInstance(fullW, fullH, PixelFormat.RGBA_8888, 4);
