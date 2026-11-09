@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Monitor, Plus, Copy, Trash2, Check, X, ExternalLink, Terminal, Laptop, Zap, Loader2, Ban, Power, Search, RefreshCw } from 'lucide-react'
+import { Monitor, Smartphone, Plus, Copy, Trash2, Check, X, ExternalLink, Terminal, Laptop, Zap, Loader2, Ban, Power, Search, RefreshCw } from 'lucide-react'
 import { useDeviceStore } from '../store/deviceStore'
 import { Alert, Badge, Button, Card, CardBody, EmptyState, Field, Input, Modal, SkeletonRows } from '../components/ui'
 import { clsx } from 'clsx'
@@ -304,6 +304,16 @@ export function DevicesPage() {
   })
   const offline = devices.length - online
 
+  // 2026-11-09 — تنسيق ثابت وواضح لآخر اتصال بدل toLocaleString الافتراضي
+  // الذي يُخرج «AM 10:19:39 ,11/9/2026» (فاصلة في غير موضعها وAM لاتينية).
+  const fmtSeen = (v?: string | Date) => {
+    if (!v) return '—'
+    const d0 = new Date(typeof v === 'string' ? v.replace(' ', 'T') : v)
+    if (isNaN(d0.getTime())) return String(v)
+    const p2 = (n: number) => String(n).padStart(2, '0')
+    return `${d0.getFullYear()}-${p2(d0.getMonth() + 1)}-${p2(d0.getDate())} · ${p2(d0.getHours())}:${p2(d0.getMinutes())}`
+  }
+
   return (
     <div className="cr-page">
       {installDevice && (
@@ -403,11 +413,11 @@ export function DevicesPage() {
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-line">
-                <th className="px-4 py-3 text-start text-xs font-medium text-muted">{t('devices')}</th>
-                <th className="px-4 py-3 text-start text-xs font-medium text-muted">{t('platform')}</th>
-                <th className="px-4 py-3 text-start text-xs font-medium text-muted">{t('stat_connected')}</th>
-                <th className="px-4 py-3 text-start text-xs font-medium text-muted">{t('hostname')}</th>
-                <th className="px-4 py-3 text-start text-xs font-medium text-muted">{t('last_seen')}</th>
+                <th className="px-4 py-2.5 text-start text-xs font-medium text-muted">{t('devices')}</th>
+                <th className="px-4 py-2.5 text-start text-xs font-medium text-muted">{t('platform')}</th>
+                <th className="px-4 py-2.5 text-start text-xs font-medium text-muted">{t('stat_connected')}</th>
+                <th className="px-4 py-2.5 text-start text-xs font-medium text-muted">{t('hostname')}</th>
+                <th className="px-4 py-2.5 text-start text-xs font-medium text-muted">{t('last_seen')}</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
@@ -418,7 +428,9 @@ export function DevicesPage() {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
                       <div className={clsx('w-7 h-7 rounded-lg flex items-center justify-center', d.status === 'online' ? 'bg-primary/15' : 'bg-surface2')}>
-                        <Monitor size={13} className={d.status === 'online' ? 'text-primary' : 'text-muted'} />
+                        {/android/i.test(String(d.info?.platform || ''))
+                          ? <Smartphone size={13} className={d.status === 'online' ? 'text-primary' : 'text-muted'} />
+                          : <Monitor size={13} className={d.status === 'online' ? 'text-primary' : 'text-muted'} />}
                       </div>
                       <div>
                         <div className="font-medium text-ink">{d.name}</div>
@@ -459,7 +471,7 @@ export function DevicesPage() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-4 py-3 text-muted text-xs">
+                  <td className="px-4 py-2.5 text-muted text-xs">
                     {d.info?.platform || '—'} {d.info?.arch || ''}
                   </td>
                   <td className="px-4 py-3">
@@ -468,13 +480,13 @@ export function DevicesPage() {
                       {d.status === 'online' ? t('online') : d.status === 'blocked' ? 'محجوب' : t('offline')}
                     </Badge>
                   </td>
-                  <td className="px-4 py-3 text-xs text-muted font-mono">{d.info?.hostname || '—'}
-                    {(d as unknown as { remoteIp?: string }).remoteIp && (
-                      <div className="text-[10px] text-muted">{String((d as unknown as { remoteIp?: string }).remoteIp).replace('::ffff:', '')}</div>
-                    )}
+                  <td className="px-4 py-2.5 text-xs text-muted font-mono">{d.info?.hostname || '—'}
+                    <div className="text-[10px] text-muted">
+                      {String(d.info?.ipLocal || (d as unknown as { remoteIp?: string }).remoteIp || '—').replace('::ffff:', '')}
+                    </div>
                   </td>
-                  <td className="px-4 py-3 text-xs text-muted">
-                    {d.lastSeen ? new Date(d.lastSeen).toLocaleString() : '—'}
+                  <td className="px-4 py-2.5 text-xs text-muted tabular-nums">
+                    {fmtSeen(d.lastSeen)}
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
