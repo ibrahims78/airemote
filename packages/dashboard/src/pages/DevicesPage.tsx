@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Monitor, Smartphone, Plus, Copy, Trash2, Check, X, ExternalLink, Terminal, Laptop, Zap, Loader2, Ban, Power, Search, RefreshCw } from 'lucide-react'
+import { Monitor, Smartphone, Plus, Copy, Trash2, Check, X, ExternalLink, Terminal, Laptop, Zap, Loader2, Ban, Power, Search, RefreshCw, MoreVertical, FolderOpen } from 'lucide-react'
 import { useDeviceStore } from '../store/deviceStore'
 import { Alert, Badge, Button, Card, CardBody, EmptyState, Field, Input, Modal, SkeletonRows } from '../components/ui'
 import { clsx } from 'clsx'
@@ -266,6 +266,7 @@ export function DevicesPage() {
   const [adding, setAdding] = useState(false)
   const [installDevice, setInstallDevice] = useState<Device | null>(null)
   const [wolDevice, setWolDevice] = useState<Device | null>(null)
+  const [rowMenu, setRowMenu] = useState<string | null>(null)  // قائمة أفعال الصف
 
   useEffect(() => { fetchDevices() }, [])
 
@@ -456,6 +457,39 @@ export function DevicesPage() {
                       <div>
                         <div className="font-medium text-ink">{d.name}</div>
                         <div className="text-xs text-muted font-mono">{d.id.slice(0, 8)}...</div>
+                        {/* 2026-11-09 — شارات من بيانات موجودة ولم تكن معروضة */}
+                        <div className="mt-1 flex flex-wrap items-center gap-1">
+                          {(() => {
+                            const info = (d.info || {}) as Record<string, unknown>
+                            const ver = String(info.agentVersion || '')
+                            const layer = String((d as unknown as { tunnelLayer?: string }).tunnelLayer || '')
+                            const caps = ((d as unknown as { capabilities?: Record<string, unknown> }).capabilities || {}) as Record<string, unknown>
+                            const tags = Array.isArray(d.tags) ? d.tags.slice(0, 2) : []
+                            return (
+                              <>
+                                {ver && (
+                                  <span className="rounded bg-surface2 px-1.5 py-0.5 text-[9.5px] tabular-nums text-muted" title={`نسخة الوكيل ${ver}`}>
+                                    v{ver}
+                                  </span>
+                                )}
+                                {layer && (
+                                  <span className="rounded bg-surface2 px-1.5 py-0.5 text-[9.5px] text-muted" title="نوع الاتصال">
+                                    {layer === 'lan' ? 'LAN' : 'نفق'}
+                                  </span>
+                                )}
+                                {info.elevated === true && (
+                                  <span className="rounded bg-success/15 px-1.5 py-0.5 text-[9.5px] text-success" title="صلاحيات مرتفعة">مرتفع</span>
+                                )}
+                                {caps.pty === true && <span title="طرفية"><Terminal size={10} className="text-muted" /></span>}
+                                {caps.fs === true && <span title="ملفات"><FolderOpen size={10} className="text-muted" /></span>}
+                                {caps.screenControl === true && <span title="تحكم بالشاشة"><Monitor size={10} className="text-muted" /></span>}
+                                {tags.map(tg => (
+                                  <span key={tg} className="rounded-full border border-line px-1.5 py-0.5 text-[9px] text-muted">{tg}</span>
+                                ))}
+                              </>
+                            )
+                          })()}
+                        </div>
                         {/* P6-fix — اتصال وكيل↔وكيل: الطرف الآخر ونوع الاتصال وحالته */}
                         {(() => {
                           const r = (d as unknown as { relay?: { state: string; access: string; direction: string; peerName: string } }).relay
@@ -509,76 +543,76 @@ export function DevicesPage() {
                   <td className="px-4 py-2.5 text-xs text-muted tabular-nums">
                     {fmtSeen(d.lastSeen)}
                   </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-1 opacity-100 transition-opacity">
+                  <td className="px-4 py-2.5">
+                    <div className="relative flex items-center justify-end gap-1">
                       {d.status === 'online' && (
-                        <button
-                          onClick={() => openScreenWindow(d.id)}
-                          className="p-1.5 text-muted/70 hover:text-info transition-colors rounded"
-                          title={t('devices_open_screen')} aria-label="Open screen"
-                        >
-                          <Monitor size={13} />
+                        <button type="button" onClick={(e) => { e.stopPropagation(); openScreenWindow(d.id) }}
+                          className="rounded p-1.5 text-muted/80 transition-colors hover:text-info"
+                          title={t('devices_open_screen')} aria-label={t('devices_open_screen')}>
+                          <Monitor size={14} />
                         </button>
                       )}
-                      <button
-                        onClick={() => setInstallDevice(d)}
-                        className="p-1.5 text-muted/70 hover:text-primary transition-colors rounded"
-                        title="Agent" aria-label="Agent install"
-                      >
-                        <Terminal size={13} />
+                      <button type="button" aria-haspopup="menu" aria-expanded={rowMenu === d.id}
+                        onClick={(e) => { e.stopPropagation(); setRowMenu(rowMenu === d.id ? null : d.id) }}
+                        className={clsx('rounded p-1.5 transition-colors', rowMenu === d.id ? 'bg-surface2 text-ink' : 'text-muted/80 hover:bg-surface2 hover:text-ink')}
+                        title="أفعال الجهاز" aria-label="أفعال الجهاز">
+                        <MoreVertical size={15} />
                       </button>
-                      {/* 3.16.0 — DEFECT-3.16: «البدء مع ويندوز» لا معنى له على أندرويد (لا معالج server:set_startup) */}
-                      {d.status === 'online' && String(d.info?.platform || '').toLowerCase() === 'windows' && (() => {
-                        const on = (d as unknown as { runAtStartup?: boolean | null }).runAtStartup
-                        return (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); toggleStartup(d.id, !on) }}
-                            disabled={startupBusyId === d.id}
-                            className={clsx(
-                              'rounded border px-1.5 py-0.5 text-[10px] transition-colors disabled:opacity-40 disabled:cursor-wait',
-                              on ? 'border-success/50 text-success' : 'border-line text-muted/80 hover:text-primary'
+
+                      {rowMenu === d.id && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setRowMenu(null)} />
+                          <div role="menu" className="absolute end-0 top-full z-50 mt-1 w-52 overflow-hidden rounded-lg border border-line bg-surface py-1 shadow-2xl">
+                            <button type="button" role="menuitem" onClick={() => { setRowMenu(null); navigate(`/devices/${d.id}`) }}
+                              className="flex w-full items-center gap-2 px-3 py-1.5 text-start text-[12px] text-ink hover:bg-surface2">
+                              <ExternalLink size={12} className="text-muted" /> فتح التفاصيل
+                            </button>
+                            {d.status === 'online' && (
+                              <>
+                                <button type="button" role="menuitem" onClick={() => { setRowMenu(null); openScreenWindow(d.id) }}
+                                  className="flex w-full items-center gap-2 px-3 py-1.5 text-start text-[12px] text-ink hover:bg-surface2">
+                                  <Monitor size={12} className="text-muted" /> بث الشاشة
+                                </button>
+                                <button type="button" role="menuitem" onClick={() => { setRowMenu(null); navigate(`/files/${d.id}`) }}
+                                  className="flex w-full items-center gap-2 px-3 py-1.5 text-start text-[12px] text-ink hover:bg-surface2">
+                                  <FolderOpen size={12} className="text-muted" /> الملفات
+                                </button>
+                              </>
                             )}
-                            title={on ? t('dev_startup_on') : t('dev_startup_off')}
-                            aria-label={on ? t('dev_startup_on') : t('dev_startup_off')}
-                          >
-                            {t('dev_startup')}{on ? ' ✓' : ''}
-                          </button>
-                        )
-                      })()}
-                      {isAdmin && (
-                      <button
-                        onClick={() => connAction(d.id, d.status === 'blocked' ? 'unblock' : 'block')}
-                        disabled={connBusyId === d.id}
-                        className={clsx('p-1.5 transition-colors rounded disabled:opacity-40 disabled:cursor-wait', d.status === 'blocked' ? 'text-success hover:text-success' : 'text-muted/70 hover:text-danger')}
-                        title={d.status === 'blocked' ? 'Unblock device' : 'Block device'} aria-label={d.status === 'blocked' ? 'Unblock device' : 'Block device'}
-                      >
-                        {connBusyId === d.id ? <Loader2 size={13} className="animate-spin" /> : d.status === 'blocked' ? <Check size={13} /> : <Power size={13} />}
-                      </button>
-                      )}
-                      {d.status === 'offline' && (
-                        <button
-                          onClick={() => setWolDevice(d)}
-                          className="p-1.5 text-muted/70 hover:text-warning transition-colors rounded"
-                          title="Wake-on-LAN" aria-label="Wake-on-LAN"
-                        >
-                          <Zap size={13} />
-                        </button>
-                      )}
-                      <Link
-                        to={`/devices/${d.id}`}
-                        className="p-1.5 text-muted/70 hover:text-primary transition-colors rounded"
-                        title={t('tab_overview')} aria-label={t('tab_overview')}
-                      >
-                        <ExternalLink size={13} />
-                      </Link>
-                      {isAdmin && (
-                        <button
-                          onClick={() => handleDelete(d.id, d.name)}
-                          className="p-1.5 text-muted/70 hover:text-danger transition-colors rounded"
-                          title={t('delete')} aria-label={t('delete')}
-                        >
-                          <Trash2 size={13} />
-                        </button>
+                            <button type="button" role="menuitem" onClick={() => { setRowMenu(null); setInstallDevice(d) }}
+                              className="flex w-full items-center gap-2 px-3 py-1.5 text-start text-[12px] text-ink hover:bg-surface2">
+                              <Terminal size={12} className="text-muted" /> تثبيت الوكيل
+                            </button>
+                            {d.status === 'online' && String(d.info?.platform || '').toLowerCase() === 'windows' && (() => {
+                              const on = (d as unknown as { runAtStartup?: boolean | null }).runAtStartup
+                              return (
+                                <button type="button" role="menuitemcheckbox" aria-checked={!!on} onClick={() => { setRowMenu(null); toggleStartup(d.id, !on) }}
+                                  className="flex w-full items-center gap-2 px-3 py-1.5 text-start text-[12px] text-ink hover:bg-surface2">
+                                  <Power size={12} className="text-muted" /> {on ? 'إيقاف البدء مع ويندوز' : 'البدء مع ويندوز'}
+                                </button>
+                              )
+                            })()}
+                            {d.status === 'offline' && (
+                              <button type="button" role="menuitem" onClick={() => { setRowMenu(null); setWolDevice(d) }}
+                                className="flex w-full items-center gap-2 px-3 py-1.5 text-start text-[12px] text-warning hover:bg-surface2">
+                                <Zap size={12} /> إيقاظ (WOL)
+                              </button>
+                            )}
+                            {isAdmin && (
+                              <>
+                                <div className="my-1 border-t border-line" />
+                                <button type="button" role="menuitem" onClick={() => { setRowMenu(null); connAction(d.id, d.status === 'blocked' ? 'unblock' : 'block') }}
+                                  className="flex w-full items-center gap-2 px-3 py-1.5 text-start text-[12px] text-ink hover:bg-surface2">
+                                  <Ban size={12} className="text-muted" /> {d.status === 'blocked' ? 'إلغاء الحجب' : 'حجب الجهاز'}
+                                </button>
+                                <button type="button" role="menuitem" onClick={() => { setRowMenu(null); handleDelete(d.id, d.name) }}
+                                  className="flex w-full items-center gap-2 px-3 py-1.5 text-start text-[12px] text-danger hover:bg-danger/10">
+                                  <Trash2 size={12} /> حذف الجهاز
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        </>
                       )}
                     </div>
                   </td>
