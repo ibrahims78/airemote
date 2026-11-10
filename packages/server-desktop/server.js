@@ -2510,12 +2510,18 @@ function handleClientWs(socket, user) {
   // v3.2.1 hardening — non-admins only receive their own devices
   // R3-2 — الأجهزة المرئية: المملوكة + الممنوحة بقدرة + جهاز الرمز غير المراقب
   const devices = accessibleDeviceRows(user)
-  const snapshot = devices.map(d => ({
-    ...d, info: parseJson(d.info), tags: parseJson(d.tags, []),
-    capabilities: parseJson(d.capabilities, {}), isOnline: agentSockets.has(d.id),
-    stats: agentSockets.get(d.id)?.stats || null,
-    runAtStartup: (agentSockets.get(d.id) || {}).runAtStartup ?? null,
-  }))
+  // 3.16.7 — the snapshot is broadcast to every connected client, viewers included:
+  // the registration token is admin-only here exactly as in the REST routes.
+  const keepToken = !!user && user.role === 'admin'
+  const snapshot = devices.map(d => {
+    const { token: _t, ...row } = d
+    return {
+      ...(keepToken ? d : row), info: parseJson(d.info), tags: parseJson(d.tags, []),
+      capabilities: parseJson(d.capabilities, {}), isOnline: agentSockets.has(d.id),
+      stats: agentSockets.get(d.id)?.stats || null,
+      runAtStartup: (agentSockets.get(d.id) || {}).runAtStartup ?? null,
+    }
+  })
   sendJson(socket, { type: 'server:snapshot', payload: { devices: snapshot } })
 
   socket.on('message', (raw) => {
