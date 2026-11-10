@@ -1486,6 +1486,8 @@ function handleAgentWs(socket) {
       const prevDeviceStatus = device.status
       markDeviceOnline(deviceId, info)
       if (prevDeviceStatus !== 'online') fireOnlineAlerts(deviceId)
+      // DIRECT-ONLINE — الإشعار لا يعتمد على وجود قاعدة تنبيه
+      try { telegramEvent('online', '✅ جهاز متصل: ' + device.name) } catch {}
       if (capabilities) db.prepare("UPDATE devices SET capabilities=? WHERE id=?").run(JSON.stringify(capabilities), deviceId)
       const prevAgent = agentSockets.get(deviceId)
       if (prevAgent && prevAgent.ws && prevAgent.ws !== socket) {
@@ -1884,6 +1886,11 @@ function handleAgentWs(socket) {
         serverLogger?.warn('agent', `disconnected name="${rec ? rec.deviceName : String(deviceId).slice(0, 8)}" after=${up}s`)
       } catch {}
       agentSockets.delete(deviceId); markDeviceOffline(deviceId); fireOfflineAlerts(deviceId)
+      // DIRECT-OFFLINE — نفس السبب
+      try {
+        const _devName = (db.prepare('SELECT name FROM devices WHERE id=?').get(deviceId) || {}).name || deviceId
+        telegramEvent('offline', '📴 جهاز غير متصل: ' + _devName)
+      } catch {}
       try { fileTransfers && fileTransfers.onDeviceOffline(deviceId) } catch {}
       // R4 — لا تُغلق فوراً: مهلة سماح واحدة ثم إغلاق بسبب network.
       try { relaySuspendForDevice(deviceId) } catch {}
@@ -5738,6 +5745,17 @@ if ($target -eq $null) { 'name-not-found' } else {
   })
 
   // 2026-11-10 — إطلاق إشعار من نوع محدد لاختبار كل حدث عبر نفس دالة telegramEvent
+  // 2026-11-10 — معاينة نص الرسالة (لفحص الترميز قبل الإرسال)
+  fastify.get('/api/settings/telegram/preview', async (req, reply) => {
+    const p = adminMiddleware(req, reply); if (!p) return
+    const kind = (req.query && req.query.kind) || 'online'
+    const samples = {
+      online: '✅ جهاز متصل: WIN10-VM',
+      offline: '📴 جهاز غير متصل: WIN10-VM',
+      chat: '💬 رسالة من WIN10-VM: مرحبًا، هذه رسالة عربية للاختبار',
+    }
+    return { kind, text: samples[kind] || samples.online, length: (samples[kind] || samples.online).length }
+  })
   fastify.post('/api/settings/telegram/notify', async (req, reply) => {
     const p = adminMiddleware(req, reply); if (!p) return
     const kind = (req.body && req.body.kind) || 'chat'
