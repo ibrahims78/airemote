@@ -4114,6 +4114,12 @@ async function start(config) {
     try { db.prepare('UPDATE scheduled_tasks SET last_run_at=?, last_result=? WHERE id=?').run(startedAt, txt, t.id) } catch {}
     try { addNotification({ userId: t.user_id, deviceId: t.device_id || null, type: 'task', title: 'مهمة مجدولة — ' + t.name, message: txt.slice(0, 600), severity: 'info' }) } catch {}
     try { dbLogAudit({ userId: t.user_id, action: 'scheduled_task_run', deviceId: t.device_id || null, details: { task: t.name, kind: t.kind } }) } catch {}
+
+    // TASK-NOTIFY 2026-11-10 — نتيجة المهمة تصل إلى Telegram (حدث مستقل: task)
+    try {
+      const head = txt.startsWith('فشلت المهمة') ? '⚠️ مهمة فشلت' : '✅ مهمة نُفِّذت'
+      telegramEvent('task', head + ': ' + t.name + '\n' + txt.slice(0, 400))
+    } catch {}
   }
   let taskTimer = null
   if (!taskTimer) {

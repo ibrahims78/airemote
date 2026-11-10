@@ -61,7 +61,7 @@ export function SettingsPage() {
   const [telegramToken, setTelegramToken] = useState('')
   const [telegramChatId, setTelegramChatId] = useState('')
   const [telegramEnabled, setTelegramEnabled] = useState(false)
-  const [tgEvents, setTgEvents] = useState<{ online: boolean; offline: boolean; chat: boolean }>({ online: true, offline: true, chat: true })
+  const [tgEvents, setTgEvents] = useState<{ online: boolean; offline: boolean; chat: boolean; task: boolean }>({ online: true, offline: true, chat: true, task: true })
   const [tgTest, setTgTest] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle')
   const [tgTestMsg, setTgTestMsg] = useState('')
   const [copied, setCopied] = useState(false)
@@ -555,7 +555,7 @@ export function SettingsPage() {
                 </label>
               </div>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                {([{ key: 'online' as const, label: 'اتصال جهاز' }, { key: 'offline' as const, label: 'انقطاع جهاز' }, { key: 'chat' as const, label: 'رسائل الدردشة' }]).map(ev => (
+                {([{ key: 'online' as const, label: 'اتصال جهاز' }, { key: 'offline' as const, label: 'انقطاع جهاز' }, { key: 'chat' as const, label: 'رسائل الدردشة' }, { key: 'task' as const, label: 'نتائج المهام' }]).map(ev => (
                   <label key={ev.key} className="flex items-center gap-1.5 text-[11px] text-muted bg-surface2/60 rounded-lg px-2 py-1.5 cursor-pointer">
                     <input type="checkbox" checked={!!tgEvents[ev.key]} onChange={e => setTgEvents(p => ({ ...p, [ev.key]: e.target.checked }))} className="accent-primary" />
                     {isAr ? ev.label : ev.key}
