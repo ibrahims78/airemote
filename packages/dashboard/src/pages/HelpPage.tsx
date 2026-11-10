@@ -235,7 +235,7 @@ export function HelpPage() {
             </div>
             <Button
               variant="secondary"
-              className="hidden h-9 rounded-xl border-line bg-surface/80 px-3.5 sm:inline-flex"
+              className="inline-flex h-9 rounded-xl border-line bg-surface/80 px-3.5"
               icon={<Info size={14} />}
               onClick={() => setAboutOpen(true)}
             >
