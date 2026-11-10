@@ -973,6 +973,12 @@ function fireOnlineAlerts(deviceId) {
             try { telegramEvent('online', msg) } catch {}
 broadcastToClients({ type: 'alert:triggered', payload: { ruleId: rule.id, deviceId, deviceName, type: 'device_online', message: msg } })
       addNotification({ userId: rule.user_id, deviceId, type: 'device_online', title: deviceName, message: msg, severity: 'info' })
+      // 3.16.7 — the form offers a webhook channel for this rule type; only the offline
+      // path ever posted, so a Slack rule for device_online stayed silent.
+      if (rule.channel === 'webhook' && rule.webhook_url) {
+        fetch(rule.webhook_url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text: msg, device: deviceName, type: 'device_online', timestamp: now }) }).catch(() => {})
+      }
     }
   } catch {}
 }
