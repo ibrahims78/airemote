@@ -567,7 +567,7 @@ export function DevicesPage() {
               </tr>
             </thead>
             <tbody>
-              {sorted.map(d => (
+              {sorted.map((d, i) => (
                 <tr key={d.id} className="border-b border-line/60 hover:bg-surface2 transition-colors group cursor-pointer"
                 onClick={(e) => { if ((e.target as HTMLElement).closest('button,a')) return; navigate(`/devices/${d.id}`) }}>
                   <td className="px-3 py-2.5">
@@ -688,7 +688,9 @@ export function DevicesPage() {
                       {rowMenu === d.id && (
                         <>
                           <div className="fixed inset-0 z-40" onClick={() => setRowMenu(null)} />
-                          <div role="menu" className="absolute end-0 top-full z-50 mt-1 w-52 overflow-hidden rounded-lg border border-line bg-surface py-1 shadow-2xl">
+                          {/* 3.16.7 — the card clips its children, so the last row's menu opens upwards. */}
+                          <div role="menu" className={clsx('absolute end-0 z-50 w-52 overflow-hidden rounded-lg border border-line bg-surface py-1 shadow-2xl',
+                            i === sorted.length - 1 ? 'bottom-full mb-1' : 'top-full mt-1')}>
                             <button type="button" role="menuitem" onClick={() => { setRowMenu(null); navigate(`/devices/${d.id}`) }}
                               className="flex w-full items-center gap-2 px-3 py-1.5 text-start text-[12px] text-ink hover:bg-surface2">
                               <ExternalLink size={12} className="text-muted" /> فتح التفاصيل
