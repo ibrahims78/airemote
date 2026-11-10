@@ -103,7 +103,8 @@ export function AuditPage({ embedded = false }: { embedded?: boolean } = {}) {
     try {
       const params = new URLSearchParams({ page: String(page) })
       if (filterAction) params.set('action', filterAction)
-      if (search) params.set('userId', search)
+      // 3.16.7 — free text is a user search: the server matches it against email and id.
+      if (search) params.set('q', search)
       const res = await api.get(`/api/audit?${params}`)
       setEntries(res.data.entries ?? [])
       setTotal(res.data.total ?? 0)
@@ -119,6 +120,7 @@ export function AuditPage({ embedded = false }: { embedded?: boolean } = {}) {
   async function exportCsv() {
     const params = new URLSearchParams()
     if (filterAction) params.set('action', filterAction)
+    if (search) params.set('q', search)
     try {
       const res = await fetch(`/api/audit/export?${params}`, {
         headers: { Authorization: ('Bea' + 'rer ') + (token || '') },

@@ -6285,6 +6285,9 @@ if ($target -eq $null) { 'name-not-found' } else {
     let where = ' WHERE 1=1'; const args = []
     if (q.action)   { where += ' AND action=?';   args.push(q.action) }
     if (q.userId)   { where += ' AND user_id=?';  args.push(q.userId) }
+    // 3.16.7 — the dashboard labelled this field "search by user" and sent free text in
+    // userId, so any email or name matched nothing. Match the free text where it belongs.
+    if (q.q)        { const like = '%' + String(q.q).slice(0, 120) + '%'; where += ' AND (user_email LIKE ? OR user_id LIKE ?)'; args.push(like, like) }
     if (q.deviceId) { where += ' AND device_id=?'; args.push(q.deviceId) }
     const total   = db.prepare('SELECT COUNT(*) as c FROM audit_log' + where).get(...args).c
     const entries = db.prepare('SELECT * FROM audit_log' + where + ' ORDER BY created_at DESC LIMIT ? OFFSET ?').all(...args, pageSize, (page - 1) * pageSize)
@@ -6297,6 +6300,8 @@ if ($target -eq $null) { 'name-not-found' } else {
     let where = ' WHERE 1=1'; const args = []
     if (q.action) { where += ' AND action=?'; args.push(q.action) }
     if (q.userId) { where += ' AND user_id=?'; args.push(q.userId) }
+    // 3.16.7 — the CSV must be the same filtered set the table shows.
+    if (q.q) { const like = '%' + String(q.q).slice(0, 120) + '%'; where += ' AND (user_email LIKE ? OR user_id LIKE ?)'; args.push(like, like) }
     const rows = db.prepare('SELECT created_at, user_email, action, device_id, ip_address, details FROM audit_log' + where + ' ORDER BY created_at DESC LIMIT 10000').all(...args)
     const esc  = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'
     const csv  = ['"created_at","user_email","action","device_id","ip_address","details"']
