@@ -4071,17 +4071,25 @@ async function start(config) {
   }
 
   // ── v3.4.0 — Scheduled tasks (mini scheduler) ─────────────────────────────
+  // SCHED-FIX 2026-11-10 — created_at يأتي من SQLite كـ"YYYY-MM-DD HH:MM:SS" بتوقيت UTC
+  // وكان غياب last_run_at يجعل الاستحقاق = الآن + الفاصل في كل نبضة، فلا يتحقق الشرط أبدًا.
+  function sqlDateMs (v) {
+    if (!v) return 0
+    const s = String(v)
+    const iso = s.includes('T') ? s : s.replace(' ', 'T') + 'Z'
+    const ms = new Date(iso).getTime()
+    return Number.isFinite(ms) ? ms : 0
+  }
   function taskNextDue(t, now) {
     if (t.daily_at && /^\d{1,2}:\d{2}$/.test(String(t.daily_at))) {
       const parts = String(t.daily_at).split(':')
       const today = new Date(now); today.setHours(parseInt(parts[0], 10) || 0, parseInt(parts[1], 10) || 0, 0, 0)
-      const last = t.last_run_at ? new Date(t.last_run_at) : null
-      if (now >= today && (!last || last < today)) return today.getTime()
+      const last = sqlDateMs(t.last_run_at)
+      if (now >= today && (!last || last < today.getTime())) return today.getTime()
       return today.getTime() + 86400000
     }
     if (Number(t.interval_min) > 0) {
-      const last = t.last_run_at ? new Date(t.last_run_at).getTime() : 0
-      const base = last || now.getTime()
+      const base = sqlDateMs(t.last_run_at) || sqlDateMs(t.created_at) || now.getTime()
       return base + Number(t.interval_min) * 60000
     }
     return null
@@ -4122,7 +4130,7 @@ async function start(config) {
           }
         }
       } catch {}
-    }, 45000)
+    }, 15000)
   }
 
   fastify.get('/api/tasks', async (req, reply) => {
@@ -5990,7 +5998,7 @@ if ($target -eq $null) { 'name-not-found' } else {
       }
       return reply.code(400).send({ error: 'مزود غير معروف: ' + provider })
     } catch (e) {
-      const msg = (e && e.name === 'AbortError') ? 'انتهت المهلة (9 ثوانٍ) — تحقق من العنوان والاتصال' : (e.message || String(e))
+      const msg = (e && e.name === 'AbortError') ? 'انتهت المهلة (30 ثانية) — تحقق من العنوان والاتصال' : (e.message || String(e))
       return reply.code(400).send({ error: msg })
     } finally { clearTimeout(timer) }
   })
