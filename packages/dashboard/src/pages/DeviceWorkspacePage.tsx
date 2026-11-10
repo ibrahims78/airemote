@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useSearchParams, Link } from 'react-router-dom'
 import {
-  Monitor, Terminal, Activity, FolderOpen, ArrowLeft,
+  Monitor, Terminal, Activity, FolderOpen, ArrowLeft, ArrowRight,
   Wifi, WifiOff, Cpu, MemoryStick, HardDrive, Clock,
   Globe, Server, Bot, Command, Tv2, ExternalLink
 } from 'lucide-react'
@@ -17,6 +17,7 @@ import { ScreenViewer } from '../components/ScreenViewer'
 import { ErrorBoundary } from '../components/ErrorBoundary'
 import type { Device } from '@airemote/shared'
 import { useT } from '../lib/i18n'
+import { useUIStore } from '../store/uiStore'
 import { Badge, Card, EmptyState } from '../components/ui'
 
 type Tab = 'overview' | 'terminal' | 'monitor' | 'files' | 'ai' | 'commands' | 'screen'
@@ -36,10 +37,10 @@ function DeviceInfoPanel({ device }: { device: Device }) {
   const infoRows = [
     { label: t('hostname'),  value: device.info?.hostname || '—', icon: Server },
     { label: t('platform'),  value: device.info ? ([device.info.platform, device.info.osVersion].filter(Boolean).join(' ') || '—') : '—', icon: Monitor },
-    { label: 'المعمارية',         value: device.info?.arch || '—', icon: Cpu },
+    { label: t('arch'),         value: device.info?.arch || '—', icon: Cpu },
     { label: t('ip_local'),  value: device.info?.ipLocal || '—', icon: Globe },
     { label: t('ip_public'), value: device.info?.ipPublic || '—', icon: Globe },
-    { label: 'النفق',       value: device.tunnelLayer || '—', icon: Wifi },
+    { label: t('tunnel'),       value: device.tunnelLayer || '—', icon: Wifi },
     { label: t('uptime'),    value: uptime, icon: Clock },
   ]
 
@@ -68,6 +69,8 @@ function DeviceInfoPanel({ device }: { device: Device }) {
 
 export function DeviceWorkspacePage() {
   const t = useT()
+  const lang = useUIStore(s => s.lang)
+  const isRtl = lang === 'ar'
   const { deviceId } = useParams<{ deviceId: string }>()
   const { devices, statsMap, fetchDevices } = useDeviceStore()
   const [searchParams, setSearchParams] = useSearchParams()
@@ -120,8 +123,10 @@ export function DeviceWorkspacePage() {
       {/* Header */}
       <div className="flex-shrink-0 px-6 pt-5 pb-0 border-b border-line bg-canvas">
         <div className="flex items-center gap-3 mb-4">
-          <Link to="/devices" className="p-1.5 text-muted hover:text-ink transition-colors rounded-lg hover:bg-surface2">
-            <ArrowLeft size={16} />
+          <Link to="/devices" aria-label={t('back_to_devices')} title={t('back_to_devices')}
+            className="p-1.5 text-muted hover:text-ink transition-colors rounded-lg hover:bg-surface2">
+            {/* 3.16.7 - the arrow has to point the way the layout flows. */}
+            {isRtl ? <ArrowRight size={16} /> : <ArrowLeft size={16} />}
           </Link>
           <div className={clsx('w-8 h-8 rounded-lg flex items-center justify-center', isOnline ? 'bg-primary/15' : 'bg-surface2')}>
             <Monitor size={14} className={isOnline ? 'text-primary' : 'text-muted'} />
@@ -143,10 +148,13 @@ export function DeviceWorkspacePage() {
           )}
         </div>
 
-        <div className="tabs-scroll flex gap-1 overflow-x-auto">
+        <div className="tabs-scroll flex gap-1 overflow-x-auto" role="tablist">
           {tabs.map(tb => (
             <button
               key={tb.id}
+              role="tab"
+              id={'dev-tab-' + tb.id}
+              aria-selected={tab === tb.id}
               onClick={() => !tb.disabled && setTab(tb.id)}
               disabled={tb.disabled}
               className={clsx(
@@ -165,7 +173,7 @@ export function DeviceWorkspacePage() {
       </div>
 
       {/* Content */}
-      <div className={clsx('flex-1 min-h-0 min-w-0', tab === 'ai' || tab === 'terminal' || tab === 'commands' || tab === 'files' || tab === 'screen' ? 'overflow-hidden' : 'overflow-auto')}>
+      <div role="tabpanel" aria-labelledby={'dev-tab-' + tab} className={clsx('flex-1 min-h-0 min-w-0', tab === 'ai' || tab === 'terminal' || tab === 'commands' || tab === 'files' || tab === 'screen' ? 'overflow-hidden' : 'overflow-auto')}>
         <ErrorBoundary>
 
         {tab === 'overview' && (

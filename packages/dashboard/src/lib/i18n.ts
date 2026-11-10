@@ -90,7 +90,7 @@ const T = {
  inactive_device: 'جهاز غير نشط',
     back_to_devices: 'العودة للأجهزة', device_info: 'معلومات الجهاز',
     last_seen: 'آخر اتصال', uptime: 'وقت التشغيل', ip_local: 'IP المحلي', ip_public: 'IP العام',
-    platform: 'النظام', hostname: 'اسم المضيف',
+    platform: 'النظام', hostname: 'اسم المضيف', arch: 'المعمارية', tunnel: 'النفق',
 
     nav_notifications: 'التنبيهات',
     nav_audit: 'سجل التدقيق',
@@ -733,7 +733,7 @@ const T = {
  inactive_device: 'Inactive device',
     back_to_devices: 'Back to Devices', device_info: 'Device Info',
     last_seen: 'Last seen', uptime: 'Uptime', ip_local: 'Local IP', ip_public: 'Public IP',
-    platform: 'Platform', hostname: 'Hostname',
+    platform: 'Platform', hostname: 'Hostname', arch: 'Architecture', tunnel: 'Tunnel',
 
     nav_notifications: 'Notifications',
     nav_audit: 'Audit Log',
