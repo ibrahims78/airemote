@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useDeviceStore } from '../store/deviceStore'
+import { toast } from '../store/toastStore'
+import { useUIStore } from '../store/uiStore'
 import { api } from '../lib/api'
 import { openScreenWindow } from '../lib/screenWindow'
 import { ControlRoomBody } from '../components/ControlRoomBody'
@@ -16,6 +18,8 @@ interface ActiveScreen {
  */
 export function OverviewPage () {
   const navigate = useNavigate()
+  const lang = useUIStore(s => s.lang)
+  const isRtl = lang === 'ar'
   const { devices, loading, error, fetchDevices, statsMap } = useDeviceStore()
   const [activeScreens, setActiveScreens] = useState<Record<string, ActiveScreen>>({})
 
@@ -45,7 +49,15 @@ export function OverviewPage () {
         activeScreens={activeScreens}
         loading={loading}
         hasError={!!error}
-        onOpen={openScreenWindow}
+        onOpen={(id) => {
+          // 3.16.8 — a blocked pop-up used to leave the button looking dead.
+          if (!openScreenWindow(id)) {
+            toast.error(
+              isRtl ? 'تعذّر فتح نافذة العرض' : 'Could not open the viewer',
+              isRtl ? 'اسمح بالنوافذ المنبثقة لهذا الموقع ثم أعد المحاولة.' : 'Allow pop-ups for this site and try again.'
+            )
+          }
+        }}
         onOpenDevice={(id) => navigate('/devices/' + id)}
         onRetry={() => fetchDevices()}
       />

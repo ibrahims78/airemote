@@ -201,7 +201,9 @@ export function DashboardLayout() {
                   disabled={boardTiles.length >= MAX_TILES}
                   aria-expanded={addMenuOpen}
                   aria-haspopup="menu"
-                  title={isRtl ? 'اختر جهازًا لإضافته إلى الحائط' : 'Pick a device for the wall'}
+                  title={boardTiles.length >= MAX_TILES
+                    ? (isRtl ? 'الحائط ممتلئ — أزل بلاطة أولًا' : 'The wall is full - remove a tile first')
+                    : (isRtl ? 'اختر جهازًا لإضافته إلى الحائط' : 'Pick a device for the wall')}
                   aria-label={isRtl ? 'إضافة بث إلى الحائط' : 'Add a stream to the wall'}
                 >
                   <Plus size={15} />
