@@ -6,12 +6,13 @@ import { Alert, Badge, Button, Card, CardBody, EmptyState, Field, Input, Modal, 
 import { clsx } from 'clsx'
 import { Link, useNavigate } from 'react-router-dom'
 import type { Device } from '@airemote/shared'
-import { useT } from '../lib/i18n'
+import { useT, asUtc } from '../lib/i18n'
+import { toast } from '../store/toastStore'
 import { useAuthStore } from '../store/authStore'
 import { api } from '../lib/api'
 import { openScreenWindow } from '../lib/screenWindow'
 
-function WolModal({ device, token, onClose }: { device: Device; token: string; onClose: () => void }) {
+function WolModal({ device, onClose }: { device: Device; onClose: () => void }) {
   const t = useT()
   // v3.5 — prefill from the agent info (when available) and remember the last MAC
   const [mac, setMac] = useState(() => {
@@ -27,19 +28,16 @@ function WolModal({ device, token, onClose }: { device: Device; token: string; o
     e.preventDefault()
     setSending(true); setResult(null)
     try {
-      const r = await fetch(`/api/devices/${device.id}/wol`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ macAddress: mac.trim(), broadcast: broadcast.trim() || '255.255.255.255' })
+      // 3.16.8 - through api, so an expired token refreshes instead of a silent 401.
+      const r = await api.post(`/api/devices/${device.id}/wol`, {
+        macAddress: mac.trim(),
+        broadcast: broadcast.trim() || '255.255.255.255'
       })
-      const data = await r.json()
-      if (r.ok) {
-        try { localStorage.setItem('wol-mac-' + device.id, mac.trim()) } catch {}
-        setResult({ ok: true, msg: data.message || t('wol_success') })
-      }
-      else       setResult({ ok: false, msg: data.error  || t('wol_fail') })
-    } catch {
-      setResult({ ok: false, msg: t('wol_network_error') })
+      try { localStorage.setItem('wol-mac-' + device.id, mac.trim()) } catch {}
+      setResult({ ok: true, msg: (r.data && r.data.message) || t('wol_success') })
+    } catch (e) {
+      const res = (e as { response?: { data?: { error?: string } } }).response
+      setResult({ ok: false, msg: res?.data?.error || (res ? t('wol_fail') : t('wol_network_error')) })
     } finally {
       setSending(false)
     }
@@ -206,11 +204,17 @@ DEVICE_NAME=${device.name}`
 export function DevicesPage() {
   const navigate = useNavigate()
   const t = useT()
-  const { token, user } = useAuthStore()
+  const { user } = useAuthStore()
   const isAdmin = user?.role === 'admin'
 
   const [connBusyId, setConnBusyId] = useState<string | null>(null)
   const [startupBusyId, setStartupBusyId] = useState<string | null>(null)
+
+  // 3.16.8 — a refusal from the server (role, capability, offline) used to vanish; say it.
+  const fail = (e: unknown) => {
+    const msg = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
+    toast.error(t('devices_action_failed'), msg)
+  }
 
   // 3.14.1 - start-with-Windows, toggled from the server and confirmed by the agent
   async function toggleStartup(id: string, enabled: boolean) {
@@ -220,7 +224,7 @@ export function DevicesPage() {
       await api.post('/api/devices/' + id + '/startup', { enabled })
       await fetchDevices()
       window.setTimeout(() => { fetchDevices().catch(() => {}) }, 1500)
-    } catch { /* offline or forbidden: the row keeps the state the agent reported */ }
+    } catch (e) { fail(e) }
     finally { setStartupBusyId(null) }
   }
 
@@ -228,18 +232,15 @@ export function DevicesPage() {
     if (connBusyId) return
     setConnBusyId(id)
     try {
-      const r = await fetch('/api/devices/' + id + '/' + action, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-        body: '{}'
-      })
-      if (!r.ok) throw new Error('HTTP ' + r.status)
+      // 3.16.8 — go through api so an expired token refreshes instead of failing silently.
+      await api.post('/api/devices/' + id + '/' + action, {})
       // Refresh immediately; the agent re-registers a few seconds after unblock.
       await fetchDevices()
       window.setTimeout(() => { fetchDevices().catch(() => {}) }, 1500)
       window.setTimeout(() => { fetchDevices().catch(() => {}) }, 5000)
-    } catch {
-      // Keep UI responsive; the store refresh reflects the real state.
+    } catch (e) {
+      fail(e)
+      await fetchDevices().catch(() => {})
     } finally {
       setConnBusyId(null)
     }
@@ -291,14 +292,15 @@ export function DevicesPage() {
       setNewName('')
       setShowAdd(false)
       setInstallDevice(device)
-    } finally {
+    } catch (e) { fail(e) }
+    finally {
       setAdding(false)
     }
   }
 
   async function handleDelete(id: string, name: string) {
     if (!confirm(`${t('device_delete_confirm')} "${name}"?`)) return
-    await deleteDevice(id)
+    try { await deleteDevice(id) } catch (e) { fail(e) }
   }
 
   const online = devices.filter(d => d.status === 'online').length
@@ -335,6 +337,7 @@ export function DevicesPage() {
     if (!confirm(`حذف ${chosen.length} جهازًا نهائيًا؟`)) return
     setBulkBusy(true)
     try { for (const id of chosen) await deleteDevice(id) }
+    catch (e) { fail(e) }
     finally { setBulkBusy(false); setSelected({}) }
   }
   // 2026-11-09 — ترتيب بالنقر على العمود (الاسم · الحالة · آخر اتصال).
@@ -351,8 +354,8 @@ export function DevicesPage() {
         if (sortKey === 'name') d = String(a.name).localeCompare(String(b.name), 'ar')
         else if (sortKey === 'status') d = rank(a.status) - rank(b.status)
         else {
-          const ta = a.lastSeen ? new Date(a.lastSeen as unknown as string).getTime() : 0
-          const tb = b.lastSeen ? new Date(b.lastSeen as unknown as string).getTime() : 0
+          const ta = a.lastSeen ? new Date(asUtc(a.lastSeen as unknown as string)).getTime() : 0
+          const tb = b.lastSeen ? new Date(asUtc(b.lastSeen as unknown as string)).getTime() : 0
           d = ta - tb
         }
         return sortDir === 'asc' ? d : -d
@@ -373,7 +376,8 @@ export function DevicesPage() {
   // 2026-11-09 — وقت نسبي لآخر اتصال («قبل 3 د») مع التاريخ الكامل في التلميح.
   const relSeen = (v?: string | Date) => {
     if (!v) return '—'
-    const d0 = new Date(typeof v === 'string' ? v.replace(' ', 'T') : v)
+    // 3.16.8 — the column read a UTC stamp as local time, so every row was off by the zone.
+    const d0 = new Date(asUtc(typeof v === 'string' ? v : v.toISOString()))
     if (isNaN(d0.getTime())) return String(v)
     const mins = Math.floor((Date.now() - d0.getTime()) / 60000)
     if (mins < 1) return 'الآن'
@@ -389,7 +393,7 @@ export function DevicesPage() {
   // الذي يُخرج «AM 10:19:39 ,11/9/2026» (فاصلة في غير موضعها وAM لاتينية).
   const fmtSeen = (v?: string | Date) => {
     if (!v) return '—'
-    const d0 = new Date(typeof v === 'string' ? v.replace(' ', 'T') : v)
+    const d0 = new Date(asUtc(typeof v === 'string' ? v : v.toISOString()))
     if (isNaN(d0.getTime())) return String(v)
     const p2 = (n: number) => String(n).padStart(2, '0')
     return `${d0.getFullYear()}-${p2(d0.getMonth() + 1)}-${p2(d0.getDate())} · ${p2(d0.getHours())}:${p2(d0.getMinutes())}`
@@ -400,8 +404,8 @@ export function DevicesPage() {
       {installDevice && (
         <AgentInstallModal device={installDevice} onClose={() => setInstallDevice(null)} />
       )}
-      {wolDevice && token && (
-        <WolModal device={wolDevice} token={token} onClose={() => setWolDevice(null)} />
+      {wolDevice && (
+        <WolModal device={wolDevice} onClose={() => setWolDevice(null)} />
       )}
 
       <div className="mb-4">
@@ -611,7 +615,7 @@ export function DevicesPage() {
                                   ev.stopPropagation()
                                   const sid = (r as unknown as { sessionId?: string }).sessionId || ''
                                   if (!sid) return
-                                  try { await api.post('/api/relay/' + sid + '/close', { reason: 'admin_force' }); await fetchDevices() } catch {}
+                                  try { await api.post('/api/relay/' + sid + '/close', { reason: 'admin_force' }); await fetchDevices() } catch (e) { fail(e) }
                                 }}
                               >{t('relay_end_short')}</button>
                             </div>

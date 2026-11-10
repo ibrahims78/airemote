@@ -510,6 +510,15 @@ const T = {
     files_ticket_missing: 'تذكرة الجلسة مفقودة',
     files_ticket_hint: 'افتح هذه الصفحة من وكيل الطالب بعد قبول جلسة «ملفات» — الرابط يحمل التذكرة تلقائياً.',
     devices_load_failed: 'تعذّر تحميل الأجهزة',
+    devices_action_failed: 'تعذّر تنفيذ العملية على الجهاز',
+    devices_search_ph: 'ابحث بالاسم أو المضيف أو IP',
+    devices_filter_all: 'الكل',
+    devices_filter_blocked: 'محجوب',
+    devices_no_results: 'لا نتائج مطابقة',
+    devices_no_results_q: 'لا يوجد جهاز يطابق «{q}».',
+    devices_clear_filters: 'مسح البحث والفلترة',
+    devices_selected_n: 'حُدِّد {n} جهاز',
+    devices_showing_n: 'عرض {n} من {total} جهازًا',
     acc_control: 'تحكم',
     acc_files: 'ملفات',
     acc_view: 'عرض',
@@ -1153,6 +1162,15 @@ const T = {
     files_ticket_missing: 'Session ticket is missing',
     files_ticket_hint: 'Open this page from the requesting agent after accepting a files session — the link carries the ticket.',
     devices_load_failed: 'Could not load devices',
+    devices_action_failed: 'That device action failed',
+    devices_search_ph: 'Search by name, host or IP',
+    devices_filter_all: 'All',
+    devices_filter_blocked: 'Blocked',
+    devices_no_results: 'No matching devices',
+    devices_no_results_q: 'No device matches "{q}".',
+    devices_clear_filters: 'Clear search and filters',
+    devices_selected_n: '{n} selected',
+    devices_showing_n: 'Showing {n} of {total}',
     acc_control: 'Control',
     acc_files: 'Files',
     acc_view: 'View',
@@ -1311,6 +1329,14 @@ export function useT(): (key: TKey, vars?: TVars) => string {
 
 export function t(lang: Lang, key: TKey, vars?: TVars): string {
   return interpolate(lookup(lang, key), vars)
+}
+
+/** 3.16.8 — SQLite writes 'YYYY-MM-DD HH:MM:SS' in UTC with no zone; read it as UTC. */
+export function asUtc(value?: string | null): string {
+  if (!value) return ''
+  const s = String(value)
+  if (/[zZ]$|[+-]\d\d:?\d\d$/.test(s)) return s
+  return s.replace(' ', 'T') + 'Z'
 }
 
 export function formatRelativeLang(dateStr: string, lang: Lang): string {
