@@ -346,7 +346,7 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, loading, ha
                 aria-expanded={hiddenOpen}
                 aria-haspopup="menu"
               >
-                <RefIcon name="plus" /> {T('fleet_add')} ({hiddenDevices.length})
+                <RefIcon name="plus" /> {T('fleet_hidden_heading')} ({hiddenDevices.length})
               </button>
               {hiddenOpen && (
                 <div className="fleet-menu" role="menu">
