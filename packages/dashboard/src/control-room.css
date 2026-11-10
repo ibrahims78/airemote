@@ -2512,3 +2512,8 @@ html.light .cr-page .tile .screen:has(canvas[data-orient="portrait"]) {
 /* landscape-fill — 2026-11-09: الإطار الأفقي يملأ البلاطة كالمحاكي بلا أشرطة. */
 .cr-page .tile .screen canvas[data-orient="landscape"] { object-fit: cover; }
 .cr-page .tile .screen:has(canvas[data-orient="landscape"]) { display: block; }
+
+
+/* 2026-11-10 — نقل نمطين سطريين ثابتين من ScreenViewer إلى أصناف (بوابة 51) */
+.sv-more-menu { top: 54px; right: 12px; left: auto; }
+.sv-more-scroll { max-height: calc(100vh - 140px); }

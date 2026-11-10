@@ -2285,8 +2285,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
           </button>
           {showMore && createPortal(
             <div
-              className="fixed z-[130] w-[308px] overflow-hidden rounded-xl border border-line bg-canvas shadow-2xl shadow-black/40"
-              style={{ top: 54, right: 12, left: 'auto' }}
+              className="sv-more-menu fixed z-[130] w-[308px] overflow-hidden rounded-xl border border-line bg-canvas shadow-2xl shadow-black/40"
               onClick={e => e.stopPropagation()}
               role="menu"
               aria-label={tr('viewer_more')}
@@ -2303,7 +2302,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
                 </button>
               </div>
 
-              <div className="overflow-y-auto p-1.5" style={{ maxHeight: 'calc(100vh - 140px)' }}>
+              <div className="sv-more-scroll overflow-y-auto p-1.5">
                 <div className="px-2 pb-1 pt-1 text-[9.5px] font-semibold uppercase tracking-[.08em] text-muted">مشاهدة</div>
                 <button
                   type="button" role="menuitem"
