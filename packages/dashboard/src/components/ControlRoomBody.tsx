@@ -169,9 +169,25 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, loading, ha
 
   useEffect(() => {
     if (!maxKey) return
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMaxKey(null) }
+    // 3.16.8 — a maximised tile behaves like a dialog: focus moves in, Tab cycles inside,
+    // and closing it hands focus back to whatever had it.
+    const previous = document.activeElement as HTMLElement | null
+    const el = document.querySelector<HTMLElement>('.tile.is-max')
+    el?.focus()
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { setMaxKey(null); return }
+      if (e.key !== 'Tab' || !el) return
+      const focusables = Array.from(
+        el.querySelectorAll<HTMLElement>('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')
+      ).filter(n => !n.hasAttribute('disabled'))
+      if (focusables.length === 0) return
+      const first = focusables[0]
+      const last = focusables[focusables.length - 1]
+      if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus() }
+      else if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus() }
+    }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    return () => { window.removeEventListener('keydown', onKey); previous?.focus?.() }
   }, [maxKey])
 
   function addTile () {
@@ -265,7 +281,7 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, loading, ha
           icon={<Monitor size={20} />}
           title={tr('لا أجهزة بعد', 'No devices yet')}
           description={tr('أضف جهازًا من صفحة الأجهزة ليظهر هنا.', 'Add a device from the Devices page to see it here.')}
-          action={<a className="btn primary" href="/devices">{tr('إضافة جهاز', 'Add device')}</a>}
+          action={<button type="button" className="btn primary" onClick={() => navigate('/devices')}>{tr('إضافة جهاز', 'Add device')}</button>}
         />
       )}
 
@@ -282,7 +298,14 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, loading, ha
               : tile.running ? tr('جارٍ التشغيل', 'Starting')
               : tr('متوقف', 'Stopped')
             return (
-              <div key={tile.key} className={clsx('tile', maximized && 'is-max')}>
+              <div
+                key={tile.key}
+                className={clsx('tile', maximized && 'is-max')}
+                role={maximized ? 'dialog' : undefined}
+                aria-modal={maximized ? true : undefined}
+                aria-label={maximized ? name : undefined}
+                tabIndex={maximized ? -1 : undefined}
+              >
                 <div className="screen">
                   {online && device && tile.running ? (
                     <div className="cr-wall-live">
@@ -418,6 +441,15 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, loading, ha
             </div>
           )}
       </div>
+
+      {/* 3.16.8 — hiding every card left the page blank with no way back. */}
+      {visibleDevices.length === 0 && devices.length > 0 && (
+        <EmptyState
+          icon={<Monitor size={20} />}
+          title={tr('كل البطاقات مخفية', 'All cards are hidden')}
+          description={tr('استرجعها من قائمة «أجهزة مخفية» أعلاه.', 'Bring them back from the hidden list above.')}
+        />
+      )}
 
       <div className="fleet">
         {shownDevices.map(device => {
