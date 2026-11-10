@@ -148,6 +148,14 @@ export function SessionsPage({ embedded = false }: { embedded?: boolean } = {}) 
     filter === 'ended'  ? sessions.filter(s => s.endedAt) :
     sessions.filter(s => s.type === filter)
 
+  const PAGE_SIZE = 25
+  const [page, setPage] = useState(1)
+  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const safePage = Math.min(page, pageCount)
+  const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+
+  useEffect(() => { setPage(1) }, [filter, query, fromDate, toDate])
+
   const FILTERS = [
     { key: 'all',    label: T('all_sessions'),    count: sessions.length },
     { key: 'active', label: T('active_sessions'), count: active },
@@ -185,9 +193,11 @@ export function SessionsPage({ embedded = false }: { embedded?: boolean } = {}) 
             className="w-full bg-surface border border-line rounded-lg pl-8 pr-3 py-2 text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-info/40"
           />
         </div>
+        <span className="text-[11px] text-muted">من</span>
         <input type="date" dir="ltr" value={fromDate} onChange={e => setFromDate(e.target.value)} title={T('sessions_from')} aria-label="من تاريخ"
           className="bg-surface border border-line rounded-lg px-2 py-2 text-xs text-ink" />
         <span className="text-muted text-xs">→</span>
+        <span className="text-[11px] text-muted">إلى</span>
         <input type="date" dir="ltr" value={toDate} onChange={e => setToDate(e.target.value)} title={T('sessions_to')} aria-label="إلى تاريخ"
           className="bg-surface border border-line rounded-lg px-2 py-2 text-xs text-ink" />
         <button onClick={exportCsv} disabled={exporting}
@@ -310,7 +320,7 @@ export function SessionsPage({ embedded = false }: { embedded?: boolean } = {}) 
                   </tr>
                 </thead>
                 <tbody>
-                  {filtered.map((s, i) => {
+                  {paged.map((s, i) => {
                     const tc     = typeConfig[s.type] || { label: s.type.toUpperCase(), icon: Monitor, color: 'text-muted', bg: 'bg-surface2' }
                     const Icon   = tc.icon
                     const isActive = !s.endedAt
@@ -332,7 +342,8 @@ export function SessionsPage({ embedded = false }: { embedded?: boolean } = {}) 
                         <td className="px-4 py-3">
                           {isActive ? (
                             <span className="inline-flex items-center gap-1.5 text-xs text-success font-medium">
-                              <Circle size={6} className="fill-current animate-pulse" /> {T('session_active')}
+                              <Circle size={6} className="fill-current animate-pulse" />
+                              <ElapsedTimer since={s.startedAt} />
                             </span>
                           ) : (
                             <span className="text-xs text-muted font-mono">{formatDuration(s.durationSec)}</span>
@@ -349,6 +360,18 @@ export function SessionsPage({ embedded = false }: { embedded?: boolean } = {}) 
                   })}
                 </tbody>
               </table>
+
+              {/* 2026-11-10 — ترقيم صفحات بدل تمرير 100 جلسة في صفحة واحدة */}
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-2.5 text-[11.5px] text-muted">
+                <span>عرض <b className="text-ink">{paged.length}</b> من <b className="text-ink">{filtered.length}</b> جلسة</span>
+                <div className="flex items-center gap-1.5">
+                  <button type="button" disabled={safePage <= 1} onClick={() => setPage(safePage - 1)}
+                    className="rounded-md border border-line px-2.5 py-1 text-ink transition-colors hover:bg-surface2 disabled:opacity-40">السابق</button>
+                  <span className="tabular-nums px-1">{safePage} / {pageCount}</span>
+                  <button type="button" disabled={safePage >= pageCount} onClick={() => setPage(safePage + 1)}
+                    className="rounded-md border border-line px-2.5 py-1 text-ink transition-colors hover:bg-surface2 disabled:opacity-40">التالي</button>
+                </div>
+              </div>
             </div>
           )}
         </div>
