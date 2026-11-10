@@ -2075,6 +2075,16 @@ public class AgentService extends Service {
                     try {
                         int visW = Math.max(1, fullW - cropL - cropR);
                         int visH = Math.max(1, fullH - cropT - cropB);
+                        // GHOST-CROP — 2026-11-10: عند العمودي نقصّ أشرطة pillarbox من الإطار
+                        // المُرسل، فلا تُنقل بقايا المشهد الأفقي إلى العارض إطلاقًا.
+                        int cropX = 0;
+                        android.util.DisplayMetrics pdm = getResources().getDisplayMetrics();
+                        int pmw = Math.min(pdm.widthPixels, pdm.heightPixels);
+                        int pmh = Math.max(pdm.widthPixels, pdm.heightPixels);
+                        if (!sensorLandscape && fullW > fullH && pmh > 0) {
+                            int cw = Math.max(1, Math.round(visH * (pmw / (float) pmh)));
+                            if (cw < visW) { cropX = (visW - cw) / 2; visW = cw; }
+                        }
                         float fscale = Math.min(1f, streamMaxWidth / (float) visW);
                         int fw = Math.max(320, Math.round(visW * fscale));
                         int fh = Math.max(240, Math.round(visH * fscale));
@@ -2111,30 +2121,14 @@ public class AgentService extends Service {
                                 android.util.Log.e("AiRemoteAgent", "frame rotate failed", rotEx);
                             }
                         }
-                        if (!insetChecked) {   // NO-INSET-CROP — 2026-11-10: لا تقصّ حواف الشاشة (كان يقصّ أعلى/أسفل المحتوى)
+                        if (!insetChecked) {
+                            measureCrops(bmp);
                             insetChecked = true;
-
+                        }
                         if (scaleCanvas == null) scaleCanvas = new android.graphics.Canvas(scaled);
-                        android.graphics.Rect src = new android.graphics.Rect(cropL, cropT, fullW - cropR, fullH - cropB);
+                        android.graphics.Rect src = new android.graphics.Rect(cropL + cropX, cropT, cropL + cropX + visW, cropT + visH);
                         android.graphics.Rect dst = new android.graphics.Rect(0, 0, fw, fh);
                         scaleCanvas.drawBitmap(bmp, src, dst, null);
-                        // GHOST-WIPE — 2026-11-10: عند العودة للعمودي لا يُعيد النظام رسم
-                        // أشرطة pillarbox في سطح الالتقاط، فتبقى بكسلات الأفقي السابق (الأثر).
-                        // نمسحها بالأسود لأن هندستها محسوبة بدقة: المحتوى العمودي يملأ الارتفاع
-                        // ويوسّط أفقيًا، فعرض الشريط = (عرض الإطار − عرض المحتوى) / 2.
-                        if (fullW > fullH && !sensorLandscape && mw > 0 && mh > 0 && mh > mw) {
-                            try {
-                                float ms = Math.min(fw / (float) mw, fh / (float) mh);
-                                int cw = Math.round(mw * ms);
-                                int bar = (fw - cw) / 2;
-                                if (bar > 2) {
-                                    android.graphics.Paint gp = new android.graphics.Paint();
-                                    gp.setColor(android.graphics.Color.BLACK);
-                                    scaleCanvas.drawRect(0, 0, bar, fh, gp);
-                                    scaleCanvas.drawRect(fw - bar, 0, fw, fh, gp);
-                                }
-                            } catch (Exception ignore) { }
-                        }
                         // v3.8.3 - send only the changed rectangle when the diff is small.
                         boolean skipFrame = false;
                         boolean delta = false;
