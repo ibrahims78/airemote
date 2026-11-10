@@ -39,18 +39,20 @@ export async function connectWebSocket(userId: string, token: string, onMessage?
   const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
   const wsUrl    = `${protocol}//${window.location.host}/ws?ticket=${encodeURIComponent(ticket)}`
 
-  ws = new WebSocket(wsUrl)
+  const sock = new WebSocket(wsUrl)
+  ws = sock
 
-  ws.onopen = () => {
+  sock.onopen = () => {
     reconnectDelay = 2000
-    ws!.send(JSON.stringify({
+    if (sock.readyState !== WebSocket.OPEN) return
+    sock.send(JSON.stringify({
       type: 'client:subscribe',
       payload: { userId, deviceIds: [] },
       timestamp: Date.now()
     }))
   }
 
-  ws.onmessage = (event) => {
+  sock.onmessage = (event) => {
     try {
       const msg: WsMessage = JSON.parse(event.data)
       const { updateDeviceStatus, updateDeviceStats, updateDeviceInfo } = useDeviceStore.getState()
@@ -81,7 +83,7 @@ export async function connectWebSocket(userId: string, token: string, onMessage?
     } catch {}
   }
 
-  ws.onclose = () => { scheduleReconnect() }
+  sock.onclose = () => { scheduleReconnect() }
   ws.onerror = () => { ws?.close() }
 }
 

@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import {
   Settings, Server, Bot, Bell, Save, Check, Eye, EyeOff,
   Info, Sun, Moon, Globe, Copy, Wifi, WifiOff,
-  History, Shield, Users
+  History, Shield, Users, RotateCcw
 } from 'lucide-react'
 import { api } from '../lib/api'
 import { useUIStore } from '../store/uiStore'
@@ -201,16 +201,24 @@ export function SettingsPage() {
           </p>
         </div>
         {tab === 'general' && isAdmin && (
-          <Button
-            size="md"
-            variant={saved ? 'secondary' : 'primary'}
+          <div className="flex items-center gap-2">
+            {/* RESET-BTN — 2026-11-10: إلغاء التغييرات غير المحفوظة بإعادة تحميل الإعدادات */}
+            <Button size="md" variant="ghost" icon={<RotateCcw size={14} />}
+              title="إلغاء التغييرات غير المحفوظة"
+              onClick={() => window.location.reload()}>
+              إعادة تعيين
+            </Button>
+            <Button
+              size="md"
+              variant={saved ? 'secondary' : 'primary'}
             loading={saving}
             icon={saved ? <Check size={14} /> : <Save size={14} />}
             onClick={handleSave}
             className="flex-shrink-0"
           >
-            {saving ? T('saving') : saved ? T('saved') : T('save_settings')}
-          </Button>
+              {saving ? T('saving') : saved ? T('saved') : T('save_settings')}
+            </Button>
+          </div>
         )}
       </div>
 
