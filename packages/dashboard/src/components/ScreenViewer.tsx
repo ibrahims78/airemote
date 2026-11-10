@@ -211,7 +211,6 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
   const [autoRotate,      setAutoRotate]      = useState(true)
   const [rotateNotice,    setRotateNotice]    = useState<string | null>(null)
   const [brightness,      setBrightness]      = useState(255)
-  const [showBrightness,  setShowBrightness]  = useState(false)
   const [recDuration,     setRecDuration]     = useState(0)
   const [monitors,        setMonitors]        = useState<MonitorInfo[]>([])
   const [selectedMonitor, setSelectedMonitor] = useState(0)
@@ -2469,14 +2468,22 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
                       >
                         <RefreshCw size={11} /> {tr('viewer_auto')}
                       </button>
-                      <button
-                        type="button" role="menuitem"
-                        onClick={() => { setShowMore(false); setShowBrightness(true) }}
-                        title={tr('viewer_brightness_title')}
-                        className="flex items-center justify-center gap-1.5 rounded-lg border border-line/70 px-2 py-1.5 text-[10.5px] text-ink transition-colors hover:bg-surface2"
-                      >
-                        <Sun size={11} /> {tr('viewer_brightness')}
-                      </button>
+                      {/* 3.16.8 — the button opened nothing: the state had no panel. A slider
+                          sends the value the agent already understands. */}
+                      <div className="col-span-3 flex items-center gap-2 rounded-lg border border-line/70 px-2 py-1.5">
+                        <Sun size={11} className="shrink-0 text-muted" />
+                        <input
+                          type="range" min={0} max={255} value={brightness}
+                          aria-label={tr('viewer_brightness_title')}
+                          onChange={e => {
+                            const v = Number(e.target.value)
+                            setBrightness(v)
+                            sendWs({ type: 'screen:brightness', payload: { value: v } })
+                          }}
+                          className="h-1 flex-1 accent-primary"
+                        />
+                        <span className="w-8 text-end text-[10px] tabular-nums text-muted">{brightness}</span>
+                      </div>
                     </div>
                     {rotateNotice && (
                       <div className="mx-1 mb-1 rounded-md bg-warning/10 px-2 py-1 text-[10px] leading-snug text-warning">{rotateNotice}</div>
