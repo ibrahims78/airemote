@@ -246,7 +246,9 @@ export function AuditPage({ embedded = false }: { embedded?: boolean } = {}) {
                 let details: Record<string, unknown> = {}
                 try { details = JSON.parse(entry.details || '{}') } catch {}
                 const isExpanded = expandedRow === entry.id
-                const detailText = Object.entries(details).map(([k, v]) => `${k}: ${v}`).join(' · ')
+                // 3.16.7 — details is JSON: a nested value used to print as [object Object].
+                const showVal = (v: unknown) => (v && typeof v === 'object' ? JSON.stringify(v) : String(v))
+                const detailText = Object.entries(details).map(([k, v]) => `${k}: ${showVal(v)}`).join(' · ')
 
                 return (
                   <Fragment key={entry.id}>
