@@ -1,0 +1,1 @@
+function i(t){return`airemote-stream-${t}`}function E(t,e){if(!t)return null;const n=new URLSearchParams;e!=null&&e.rt&&n.set("rt",e.rt),e!=null&&e.rk&&n.set("rk",e.rk),e!=null&&e.access&&n.set("access",e.access);const o=n.toString(),c=`/view/${encodeURIComponent(t)}${o?"?"+o:""}`;return window.open(c,i(t),"width=1400,height=900")}export{E as o};
