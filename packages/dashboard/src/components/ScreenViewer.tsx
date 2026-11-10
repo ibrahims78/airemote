@@ -1992,10 +1992,13 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
                     className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-start text-xs text-ink hover:bg-surface2">
                     <Video size={12}/> {recording ? tr('viewer_stop_recording_time', { t: fmt(recDuration) }) : tr('viewer_record_webm')}
                   </button>
-                  <button onClick={() => { setShowRecordMenu(false); if (svrRecording) stopServerRecording(); else startServerRecording() }}
-                    className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-start text-xs text-ink hover:bg-surface2">
-                    <Activity size={12}/> {svrRecording ? tr('viewer_stop_recording_av') : tr('viewer_record_mp4_zip')}
-                  </button>
+                  {/* 3.16.7 — server recording writes to the host disk, so a view-only session cannot start it. */}
+                  {!viewOnly && (
+                    <button onClick={() => { setShowRecordMenu(false); if (svrRecording) stopServerRecording(); else startServerRecording() }}
+                      className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-start text-xs text-ink hover:bg-surface2">
+                      <Activity size={12}/> {svrRecording ? tr('viewer_stop_recording_av') : tr('viewer_record_mp4_zip')}
+                    </button>
+                  )}
                   {svrRecMeta && !svrRecording && (
                     <button onClick={() => { setShowRecordMenu(false); downloadServerRecording() }} disabled={mp4State === 'preparing'}
                       className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-start text-xs text-success hover:bg-surface2 disabled:opacity-60">
@@ -2304,14 +2307,17 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
 
               <div className="sv-more-scroll overflow-y-auto p-1.5">
                 <div className="px-2 pb-1 pt-1 text-[9.5px] font-semibold uppercase tracking-[.08em] text-muted">مشاهدة</div>
-                <button
-                  type="button" role="menuitem"
-                  onClick={() => { setShowMore(false); setShowDeviceRes(true) }}
-                  className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-start text-[11.5px] text-ink transition-colors hover:bg-surface2"
-                >
-                  <Monitor size={13} className="shrink-0 text-muted" />
-                  <span className="flex-1 truncate">{tr('viewer_device_resolution')}</span>
-                </button>
+                {/* 3.16.7 — resizing the target is a control action; a view-only session must not reach it. */}
+                {!viewOnly && (
+                  <button
+                    type="button" role="menuitem"
+                    onClick={() => { setShowMore(false); setShowDeviceRes(true) }}
+                    className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-start text-[11.5px] text-ink transition-colors hover:bg-surface2"
+                  >
+                    <Monitor size={13} className="shrink-0 text-muted" />
+                    <span className="flex-1 truncate">{tr('viewer_device_resolution')}</span>
+                  </button>
+                )}
                 {!popout && status === 'streaming' && (
                   <button
                     type="button" role="menuitem"

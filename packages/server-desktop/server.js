@@ -2776,6 +2776,15 @@ function handleScreenWs(socket, request, user) {
       try { socket.send(JSON.stringify({ type: 'screen:error', payload: { message: 'صلاحية تحكم مطلوبة (manager) لهذا الإجراء' } })) } catch {}
       return
     }
+    // 3.16.7 — a view-only session may not record on the server or change the target
+    // resolution: neither type belongs to CONTROL, so both slipped past the checks above
+    // and let a watcher write to the server disk and reshape the device's screen.
+    if ((msg.type === 'screen:record_start' || msg.type === 'screen:set_resolution') &&
+        user && user.sessionId && user.sessionAccess !== 'control') {
+      try { socket.send(JSON.stringify({ type: 'screen:error', payload: { code: 'access_denied', message: 'هذه الجلسة للعرض فقط' } })) } catch {}
+      dbLogAudit({ userId: (user && user.userId) || '', userEmail: (user && user.email) || '', deviceId, action: 'session_view_denied', details: { sessionId: user.sessionId, access: user.sessionAccess, attempted: msg.type }, ipAddress: null })
+      return
+    }
 
     switch (msg.type) {
       case 'screen:mouse_event':
