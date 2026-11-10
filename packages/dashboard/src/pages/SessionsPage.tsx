@@ -185,10 +185,10 @@ export function SessionsPage({ embedded = false }: { embedded?: boolean } = {}) 
             className="w-full bg-surface border border-line rounded-lg pl-8 pr-3 py-2 text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-info/40"
           />
         </div>
-        <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} title={T('sessions_from')}
+        <input type="date" dir="ltr" value={fromDate} onChange={e => setFromDate(e.target.value)} title={T('sessions_from')} aria-label="من تاريخ"
           className="bg-surface border border-line rounded-lg px-2 py-2 text-xs text-ink" />
         <span className="text-muted text-xs">→</span>
-        <input type="date" value={toDate} onChange={e => setToDate(e.target.value)} title={T('sessions_to')}
+        <input type="date" dir="ltr" value={toDate} onChange={e => setToDate(e.target.value)} title={T('sessions_to')} aria-label="إلى تاريخ"
           className="bg-surface border border-line rounded-lg px-2 py-2 text-xs text-ink" />
         <button onClick={exportCsv} disabled={exporting}
           className="flex items-center gap-2 text-sm text-muted hover:text-ink bg-surface2 hover:bg-surface border border-line px-3 py-2 rounded-lg transition-all disabled:opacity-50">
@@ -338,7 +338,7 @@ export function SessionsPage({ embedded = false }: { embedded?: boolean } = {}) 
                             <span className="text-xs text-muted font-mono">{formatDuration(s.durationSec)}</span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-xs text-muted font-mono" dir="ltr">{s.ipAddress || '—'}</td>
+                        <td className="px-4 py-3 text-xs text-muted" dir="ltr">{(s as unknown as { userEmail?: string }).userEmail || '—'}</td>
                         <td className="px-4 py-3">
                           <span className={clsx('text-[10px] px-2 py-0.5 rounded-full', isActive ? 'bg-success/10 text-success' : 'bg-surface2 text-muted')}>
                             {isActive ? '●' : '○'}
