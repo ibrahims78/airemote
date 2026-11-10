@@ -197,9 +197,7 @@ DEVICE_NAME=${device.name}`
           </div>
         ))}
 
-        <Alert tone="info" title={t('device_online')}>
-          {t('tab_commands')}: {t('execute')} · SSH Terminal: {t('connect')}
-        </Alert>
+
       </div>
     </Modal>
   )
@@ -453,7 +451,8 @@ export function DevicesPage() {
         <Button variant="ghost" size="md" aria-label="تحديث" title="تحديث" icon={<RefreshCw size={14} />} onClick={() => fetchDevices()} />
       </div>
 
-      {error && <Alert tone="danger" className="mb-4" title={t('devices_load_failed')}>{error}</Alert>}
+      {/* 3.16.7 - the store only ever sets the code 'load_failed'; the title already says it. */}
+      {error && <Alert tone="danger" className="mb-4" title={t('devices_load_failed')} />}
 
       {showAdd && (
         <Card className="mb-4">
@@ -480,7 +479,7 @@ export function DevicesPage() {
         </Card>
       )}
 
-      {!loading && devices.length === 0 && (
+      {!loading && !error && devices.length === 0 && (
         <Card>
           <EmptyState
             icon={<Monitor size={26} />}
@@ -492,7 +491,7 @@ export function DevicesPage() {
       )}
 
       {/* 2026-11-09 — حالة «لا نتائج»: الفلترة إلى صفر كانت تُفرّغ المساحة بلا رسالة. */}
-      {!loading && devices.length > 0 && visible.length === 0 && (
+      {!loading && !error && devices.length > 0 && visible.length === 0 && (
         <Card>
           <EmptyState
             icon={<Search size={26} />}
