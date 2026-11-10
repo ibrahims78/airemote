@@ -202,12 +202,16 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, loading, ha
               const online = !!device && device.status === 'online'
               const live = !!activeScreens[tile.deviceId]
               const name = device?.name || tile.deviceId.slice(0, 10)
-              const state = !online ? tr('غير متصل', 'Offline') : tile.running ? tr('مباشر', 'Live') : tr('متوقف', 'Stopped')
+              // 3.16.8 — one source of truth: the badge follows the live session, not the wish.
+              const state = !online ? tr('غير متصل', 'Offline')
+                : live ? tr('مباشر', 'Live')
+                : tile.running ? tr('جارٍ التشغيل', 'Starting')
+                : tr('متوقف', 'Stopped')
               return (
                 <div className="ws-item" key={tile.key}>
                   <RefIcon name="monitor" />
                   <span className="ws-name">{name}</span>
-                  <span className={clsx('chip', online && (tile.running || live) ? 'ok' : 'off')}>
+                  <span className={clsx('chip', online && live ? 'ok' : 'off')}>
                     <span className="dot" />{state}
                   </span>
                   <button
@@ -225,6 +229,7 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, loading, ha
                     type="button"
                     className="tool"
                     onClick={() => removeTile(tile.key)}
+                    disabled={tiles.length <= 1}
                     title={tr('إزالة', 'Remove')}
                     aria-label={tr('إزالة', 'Remove')}
                   >
@@ -272,7 +277,10 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, loading, ha
             const live = !!activeScreens[tile.deviceId]
             const maximized = maxKey === tile.key
             const name = device?.name || tile.deviceId.slice(0, 10)
-            const state = !online ? tr('غير متصل', 'Offline') : live ? tr('مباشر', 'Live') : tr('متوقف', 'Stopped')
+            const state = !online ? tr('غير متصل', 'Offline')
+              : live ? tr('مباشر', 'Live')
+              : tile.running ? tr('جارٍ التشغيل', 'Starting')
+              : tr('متوقف', 'Stopped')
             return (
               <div key={tile.key} className={clsx('tile', maximized && 'is-max')}>
                 <div className="screen">
@@ -302,6 +310,7 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, loading, ha
                   <button
                     type="button"
                     onClick={() => toggleRun(tile.key)}
+                    disabled={!online}
                     title={tile.running ? tr('إيقاف البث', 'Stop stream') : tr('تشغيل البث', 'Start stream')}
                     aria-label={tile.running ? tr('إيقاف البث', 'Stop stream') : tr('تشغيل البث', 'Start stream')}
                     aria-pressed={tile.running}
