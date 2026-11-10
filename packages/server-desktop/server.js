@@ -5045,13 +5045,15 @@ async function start(config) {
     if (!canAccessDevice(p, req.params.id)) return reply.code(403).send({ error: 'غير مصرح بالوصول لهذا الجهاز' })
     const d = db.prepare("SELECT * FROM devices WHERE id=?").get(req.params.id)
     if (!d) return reply.code(404).send({ error: 'Not found' })
+    // 3.16.7 — same rule as the list route: the registration token is admin-only.
+    const { token: _token, ...deviceRow } = d
     const online = agentSockets.has(d.id)
     const rm = (agentSockets.get(d.id)?.ws?._socket?.remoteAddress || null)
     const rmClean = rm ? String(rm).replace('::ffff:', '') : null
     const info = parseJson(d.info) || {}
     if (!info.ipPublic && rmClean) info.ipPublic = rmClean
     const tunnelLayer = rmClean ? (/^10\.90\./.test(rmClean) ? 'zerotier' : (/^(192\.168\.|10\.)/.test(rmClean) ? 'lan' : 'wan')) : null
-    return { ...d, info, tags: parseJson(d.tags, []), capabilities: parseJson(d.capabilities, {}), isOnline: online, remoteIp: rmClean, tunnelLayer, status: d.status === 'blocked' ? 'blocked' : (online ? 'online' : 'offline'), stats: agentSockets.get(d.id)?.stats || null }
+    return { ...(p.role === 'admin' ? d : deviceRow), info, tags: parseJson(d.tags, []), capabilities: parseJson(d.capabilities, {}), isOnline: online, remoteIp: rmClean, tunnelLayer, status: d.status === 'blocked' ? 'blocked' : (online ? 'online' : 'offline'), stats: agentSockets.get(d.id)?.stats || null }
   })
 
   fastify.put('/api/devices/:id', async (req, reply) => {
