@@ -26,9 +26,9 @@ const typeConfig: Record<string, { label: string; icon: React.ElementType; color
 
 function formatDuration(sec?: number): string {
   if (!sec) return '—'
-  if (sec < 60) return `${sec}s`
-  if (sec < 3600) return `${Math.floor(sec / 60)}m ${sec % 60}s`
-  return `${Math.floor(sec / 3600)}h ${Math.floor((sec % 3600) / 60)}m`
+  if (sec < 60) return `${sec} ث`
+  if (sec < 3600) return `${Math.floor(sec / 60)} د ${sec % 60} ث`
+  return `${Math.floor(sec / 3600)} س ${Math.floor((sec % 3600) / 60)} د`
 }
 
 function ElapsedTimer({ since }: { since: string }) {
