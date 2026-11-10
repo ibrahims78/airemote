@@ -336,7 +336,11 @@ export function SessionsPage({ embedded = false }: { embedded?: boolean } = {}) 
                         </td>
                         <td className="px-4 py-3 text-ink font-medium text-xs">{s.deviceName}</td>
                         <td className="px-4 py-3 text-xs text-muted whitespace-nowrap" dir="ltr">
-                          {new Date(s.startedAt).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          {(() => {
+                            const d = new Date(s.startedAt)
+                            const p2 = (n: number) => String(n).padStart(2, '0')
+                            return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} · ${p2(d.getHours())}:${p2(d.getMinutes())}`
+                          })()}
                         </td>
                         <td className="px-4 py-3">
                           {isActive ? (
