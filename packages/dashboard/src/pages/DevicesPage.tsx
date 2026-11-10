@@ -304,20 +304,22 @@ export function DevicesPage() {
   }
 
   const online = devices.filter(d => d.status === 'online').length
+  // 3.16.8 — a blocked device was counted as offline and had no filter of its own.
+  const blocked = devices.filter(d => d.status === 'blocked').length
 
   // 2026-11-09 — أدوات الصفحة: بحث وفلتر حالة (كانت الصفحة بلا أي أدوات).
   const [q, setQ] = useState('')
-  const [statusFilter, setStatusFilter] = useState<'all' | 'online' | 'offline'>('all')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'online' | 'offline' | 'blocked'>('all')
   const needle = q.trim().toLowerCase()
   const visible = devices.filter(d => {
-    if (statusFilter !== 'all' && (d.status === 'online') !== (statusFilter === 'online')) return false
+    if (statusFilter !== 'all' && d.status !== statusFilter) return false
     if (!needle) return true
     const info = (d.info || {}) as Record<string, unknown>
     const hay = [d.name, info.hostname, info.ipLocal, info.ipPublic, info.platform]
       .filter(Boolean).map(v => String(v).toLowerCase()).join(' ')
     return hay.includes(needle)
   })
-  const offline = devices.length - online
+  const offline = devices.length - online - blocked
   // 2026-11-09 — تحديد متعدد لأفعال جماعية (حجب/حذف).
   const [selected, setSelected] = useState<Record<string, boolean>>({})
   const [bulkBusy, setBulkBusy] = useState(false)
@@ -413,14 +415,19 @@ export function DevicesPage() {
           <h2 className="text-xl font-bold text-ink">{t('devices_title')}</h2>
           <div className="mt-2 flex flex-wrap items-center gap-2 text-[11.5px]">
             <span className="rounded-full border border-line bg-surface2 px-2.5 py-1 text-muted">
-              الأجهزة <b className="text-ink">{devices.length}</b>
+              {t('devices')} <b className="text-ink">{devices.length}</b>
             </span>
             <span className="rounded-full border border-success/30 bg-success/10 px-2.5 py-1 text-success">
-              متصل <b>{online}</b>
+              {t('device_online')} <b>{online}</b>
             </span>
             <span className="rounded-full border border-line bg-surface2 px-2.5 py-1 text-muted">
-              غير متصل <b>{offline}</b>
+              {t('device_offline')} <b>{offline}</b>
             </span>
+            {blocked > 0 && (
+              <span className="rounded-full border border-danger/30 bg-danger/10 px-2.5 py-1 text-danger">
+                {t('devices_filter_blocked')} <b>{blocked}</b>
+              </span>
+            )}
             <Button variant="primary" size="sm" icon={<Plus size={14} />} onClick={() => setShowAdd(true)}>
               {t('add_device_btn')}
             </Button>
@@ -433,14 +440,14 @@ export function DevicesPage() {
           <Search size={14} className="pointer-events-none absolute inset-y-0 my-auto start-3 text-muted" />
           <input
             type="search" value={q} onChange={e => setQ(e.target.value)}
-            placeholder="ابحث بالاسم أو المضيف أو IP"
-            aria-label="بحث في الأجهزة"
+            placeholder={t('devices_search_ph')}
+            aria-label={t('devices_search_ph')}
             className="h-9 w-full rounded-lg border border-line bg-canvas ps-9 pe-3 text-[12.5px] text-ink outline-none transition-colors focus:border-primary"
           />
         </div>
-        <div className="flex items-center gap-1 rounded-lg border border-line bg-canvas p-0.5" role="group" aria-label="فلتر الحالة">
+        <div className="flex items-center gap-1 rounded-lg border border-line bg-canvas p-0.5" role="group" aria-label={t('devices_filter_all')}>
           {([
-            ['all', 'الكل'], ['online', 'متصل'], ['offline', 'غير متصل'],
+            ['all', t('devices_filter_all')], ['online', t('device_online')], ['offline', t('device_offline')], ['blocked', t('devices_filter_blocked')],
           ] as const).map(([key, label]) => (
             <button key={key} type="button" onClick={() => setStatusFilter(key)}
               aria-pressed={statusFilter === key}
@@ -452,7 +459,7 @@ export function DevicesPage() {
             </button>
           ))}
         </div>
-        <Button variant="ghost" size="md" aria-label="تحديث" title="تحديث" icon={<RefreshCw size={14} />} onClick={() => fetchDevices()} />
+        <Button variant="ghost" size="md" aria-label={t('refresh')} title={t('refresh')} icon={<RefreshCw size={14} />} onClick={() => fetchDevices()} />
       </div>
 
       {/* 3.16.7 - the store only ever sets the code 'load_failed'; the title already says it. */}
@@ -499,16 +506,16 @@ export function DevicesPage() {
         <Card>
           <EmptyState
             icon={<Search size={26} />}
-            title="لا نتائج مطابقة"
+            title={t('devices_no_results')}
             description={
               q.trim()
-                ? `لا يوجد جهاز يطابق «${q.trim()}»${statusFilter !== 'all' ? ' ضمن الفلتر الحالي' : ''}.`
-                : 'لا يوجد جهاز ضمن هذا الفلتر.'
+                ? t('devices_no_results_q', { q: q.trim() })
+                : t('devices_no_results')
             }
             action={(
               <Button variant="primary" size="md" icon={<RefreshCw size={14} />}
                 onClick={() => { setQ(''); setStatusFilter('all') }}>
-                مسح البحث والفلترة
+                {t('devices_clear_filters')}
               </Button>
             )}
           />
@@ -517,7 +524,7 @@ export function DevicesPage() {
 
       {chosen.length > 0 && (
         <div className="mb-3 flex flex-wrap items-center gap-2 rounded-xl border border-primary/30 bg-primary/10 px-3 py-2 text-[12px]">
-          <span className="text-ink">حُدِّد <b>{chosen.length}</b> جهاز</span>
+          <span className="text-ink">{t('devices_selected_n', { n: chosen.length })}</span>
           <span className="flex-1" />
           {isAdmin && (
             <Button variant="ghost" size="sm" disabled={bulkBusy} onClick={() => bulkBlock(true)}>حجب</Button>
@@ -758,15 +765,15 @@ export function DevicesPage() {
 
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-2.5 text-[11.5px] text-muted">
             <span>
-              عرض <b className="text-ink">{visible.length}</b> من أصل <b className="text-ink">{devices.length}</b> أجهزة
+              {t('devices_showing_n', { n: visible.length, total: devices.length })}
               {visible.length !== devices.length && (
                 <span className="ms-2 rounded-full bg-surface2 px-2 py-0.5">
-                  {statusFilter === 'online' ? 'متصل فقط' : statusFilter === 'offline' ? 'غير متصل فقط' : 'نتائج البحث'}
+                  {statusFilter === 'online' ? t('device_online') : statusFilter === 'offline' ? t('device_offline') : statusFilter === 'blocked' ? t('devices_filter_blocked') : ''}
                   {q.trim() ? ` · «${q.trim()}»` : ''}
                 </span>
               )}
             </span>
-            <span className="tabular-nums">متصل الآن: <b className="text-success">{online}</b> · غير متصل: <b>{offline}</b></span>
+            <span className="tabular-nums">{t('device_online')}: <b className="text-success">{online}</b> · {t('device_offline')}: <b>{offline}</b>{blocked > 0 ? ` · ${t('devices_filter_blocked')}: ${blocked}` : ''}</span>
           </div>
         </div>
       )}
