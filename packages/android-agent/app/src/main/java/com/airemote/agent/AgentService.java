@@ -108,8 +108,7 @@ public class AgentService extends Service {
     private static final long KEYFRAME_INTERVAL_MS = 2000;
     private boolean streamDelta = true;
     private long diagAt = 0;
-    private long lastFullMs = 0;
-    private boolean rebuildLand = false;   // آخر اتجاه أُعيد بناء السطح عنده   // FIXED-ORIENT: إطار كامل دوري يمسح بقايا الاتجاه السابق
+    private long lastFullMs = 0;   // FIXED-ORIENT: إطار كامل دوري يمسح بقايا الاتجاه السابق
     // 2026-11-09 — اتجاه الشاشة من الحسّاس: أندرويد يعطي التطبيق شاشة منطقية عمودية
     // (وضع التوافق) فتظل VirtualDisplay عمودية والمحتوى مدارًا. الحسّاس يحسم الاتجاه الحقيقي.
     private volatile boolean sensorLandscape = false;
@@ -2060,29 +2059,7 @@ public class AgentService extends Service {
                         }
                     }
                     // 2026-11-09 — عند تغيّر الاتجاه اطلب إطارًا كاملًا ليعيد العارض ضبط مقاسه.
-                    if (sensorLandscape != rebuildLand) { lastOrientLand = sensorLandscape; forceKeyframe = true; }
-                    // ORIENT-REBUILD — 2026-11-10: عند تبديل الاتجاه يُعاد إنشاء السطح بنفس المقاس،
-                    // لأن النظام لا يُعيد رسم الأشرطة داخل سطح الالتقاط فتبقى صورة الاتجاه السابق.
-                    if (sensorLandscape != lastOrientLand) {
-                        rebuildLand = sensorLandscape;
-                        try {
-                            if (activeProjection != null && vd != null && reader != null) {
-                                ImageReader nr = ImageReader.newInstance(fullW, fullH, PixelFormat.RGBA_8888, 4);
-                                vd.setSurface(nr.getSurface());
-                                ImageReader or = reader;
-                                reader = nr;
-                                activeReader = nr;
-                                if (or != null) or.close();
-                                if (scaled != null) { scaled.recycle(); scaled = null; }
-                                scaleCanvas = null;
-                                prevPixels = null; curPixels = null; deltaRun = 0;
-                                forceKeyframe = true;
-                                android.util.Log.d("AiRemoteAgent", "orient rebuild (same size) " + fullW + "x" + fullH);
-                            }
-                        } catch (Exception re) {
-                            android.util.Log.e("AiRemoteAgent", "orient rebuild failed", re);
-                        }
-                    }
+                    if (sensorLandscape != lastOrientLand) { lastOrientLand = sensorLandscape; forceKeyframe = true; }
                     // FULL-RESCAN — 2026-11-10: كل 8 ثوانٍ إطار كامل، حتى تُمسح أشرطة الاتجاه السابق
                     // التي لا تتغيّر فلا تُرسل ضمن الدلتا (كانت تبقى كصور شبح على الحواف).
                     if (android.os.SystemClock.elapsedRealtime() - lastFullMs > 8000) {
