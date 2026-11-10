@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
   Settings, Server, Bot, Bell, Save, Check, Eye, EyeOff,
@@ -58,6 +58,7 @@ export function SettingsPage() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [showKey, setShowKey] = useState(false)
+  const [showTg, setShowTg] = useState(false)
   const [telegramToken, setTelegramToken] = useState('')
   const [telegramChatId, setTelegramChatId] = useState('')
   const [telegramEnabled, setTelegramEnabled] = useState(false)
@@ -84,6 +85,23 @@ export function SettingsPage() {
   const requestedTab = searchParams.get('tab') || 'general'
   const tab = tabItems.some(item => item.id === requestedTab) ? requestedTab : 'general'
   const selectTab = (id: string) => setSearchParams({ tab: id }, { replace: true })
+
+  const [dirty, setDirty] = useState(false)
+  const baselineRef = useRef('')
+  const snapshot = JSON.stringify({ ai, telegramToken, telegramChatId, telegramEnabled, tgEvents })
+
+  useEffect(() => {
+    if (loading || loadError) return
+    if (!baselineRef.current) baselineRef.current = snapshot
+    else setDirty(snapshot !== baselineRef.current)
+  }, [snapshot, loading, loadError])
+
+  useEffect(() => {
+    if (!dirty) return
+    const onBefore = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = '' }
+    window.addEventListener('beforeunload', onBefore)
+    return () => window.removeEventListener('beforeunload', onBefore)
+  }, [dirty])
 
   function loadSettings () {
     setLoading(true)
@@ -127,6 +145,8 @@ export function SettingsPage() {
       }))
       setCfgMap(prev => ({ ...prev, [ai.aiProvider]: { apiKey: ai.aiApiKey, model: ai.aiModel, baseUrl: ai.ollamaUrl } }))
       setSaved(true)
+      setDirty(false)
+      baselineRef.current = snapshot
       setValidateState('idle')
       toast.success(T('toast_settings_saved'))
       setTimeout(() => setSaved(false), 2500)
@@ -189,7 +209,12 @@ export function SettingsPage() {
     setTimeout(() => setCopiedWs(false), 2000)
   }
 
-  const availableModels = MODELS[ai.aiProvider] || []
+  const availableModels = (() => {
+    const list = MODELS[ai.aiProvider] || []
+    // 3.16.8 — a stored model the list does not know (the server default was gpt-4o) rendered
+    // as the first option while the state kept the old value, so the form lied about itself.
+    return ai.aiModel && !list.includes(ai.aiModel) ? [ai.aiModel, ...list] : list
+  })()
 
   return (
     <div className="cr-page">
@@ -208,12 +233,17 @@ export function SettingsPage() {
               onClick={() => window.location.reload()}>
               إعادة تعيين
             </Button>
+            {dirty && !saved && (
+              <span className="text-[11px] text-warning">{isAr ? 'تغييرات غير محفوظة' : 'Unsaved changes'}</span>
+            )}
             <Button
               size="md"
               variant={saved ? 'secondary' : 'primary'}
             loading={saving}
             icon={saved ? <Check size={14} /> : <Save size={14} />}
             onClick={handleSave}
+            disabled={saving || loadError}
+            title={loadError ? (isAr ? 'تعذّر الحفظ قبل تحميل الإعدادات' : 'Cannot save before the settings load') : undefined}
             className="flex-shrink-0"
           >
               {saving ? T('saving') : saved ? T('saved') : T('save_settings')}
@@ -509,14 +539,21 @@ export function SettingsPage() {
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="block text-xs text-muted mb-1.5">{isAr ? 'توكن البوت (Bot Token)' : 'Bot Token'}</label>
-                  <input
-                    type="password"
-                    value={telegramToken}
-                    onChange={e => setTelegramToken(e.target.value)}
-                    placeholder="1234567890:ABCdefGHI..."
-                    className="h-9 w-full rounded-lg border border-line bg-surface px-3 text-[13px] text-ink placeholder:text-muted outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25 font-mono"
-                    dir="ltr"
-                  />
+                  <div className="relative">
+                    <input
+                      type={showTg ? 'text' : 'password'}
+                      value={telegramToken}
+                      onChange={e => setTelegramToken(e.target.value)}
+                      placeholder="1234567890:ABCdefGHI..."
+                      className="h-9 w-full rounded-lg border border-line bg-surface px-3 pe-10 text-[13px] text-ink placeholder:text-muted outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25 font-mono"
+                      dir="ltr"
+                    />
+                    <button type="button" onClick={() => setShowTg(v => !v)}
+                      aria-label={showTg ? (isAr ? 'إخفاء' : 'Hide') : (isAr ? 'إظهار' : 'Show')}
+                      className="absolute inset-y-0 end-2 my-auto h-6 w-6 rounded text-muted hover:text-ink">
+                      {showTg ? <EyeOff size={14} /> : <Eye size={14} />}
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="block text-xs text-muted mb-1.5">{isAr ? 'معرّف المحادثة (Chat ID)' : 'Chat ID'}</label>
@@ -555,10 +592,10 @@ export function SettingsPage() {
                 </label>
               </div>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-                {([{ key: 'online' as const, label: 'اتصال جهاز' }, { key: 'offline' as const, label: 'انقطاع جهاز' }, { key: 'chat' as const, label: 'رسائل الدردشة' }, { key: 'task' as const, label: 'نتائج المهام' }]).map(ev => (
+                {([{ key: 'online' as const, ar: 'اتصال جهاز', en: 'Device online' }, { key: 'offline' as const, ar: 'انقطاع جهاز', en: 'Device offline' }, { key: 'chat' as const, ar: 'رسائل الدردشة', en: 'Chat messages' }, { key: 'task' as const, ar: 'نتائج المهام', en: 'Task results' }]).map(ev => (
                   <label key={ev.key} className="flex items-center gap-1.5 text-[11px] text-muted bg-surface2/60 rounded-lg px-2 py-1.5 cursor-pointer">
                     <input type="checkbox" checked={!!tgEvents[ev.key]} onChange={e => setTgEvents(p => ({ ...p, [ev.key]: e.target.checked }))} className="accent-primary" />
-                    {isAr ? ev.label : ev.key}
+                    {isAr ? ev.ar : ev.en}
                   </label>
                 ))}
               </div>
