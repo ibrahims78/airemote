@@ -390,7 +390,9 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
   // This prevents the drawId race where 30fps arrivals stack up faster than
   // createImageBitmap resolves, causing every frame to be discarded as stale.
   const decodingRef        = useRef(false)
-  const needKeyRef         = useRef(false)   // بعد تغيّر المقاس: انتظر إطارًا كاملًا قبل لصق أي دلتا
+  const needKeyRef         = useRef(false)
+  // BAR-CROP — مستطيل القصّ المطبّق على الإطار الكامل (يُستخدم لتحويل إحداثيات الدلتا)
+  const cropRef            = useRef<{ x: number; y: number; w: number; h: number } | null>(null)   // بعد تغيّر المقاس: انتظر إطارًا كاملًا قبل لصق أي دلتا
 
   // Keep startedRef in sync so event handlers (visibilitychange) can read it
   useEffect(() => { startedRef.current = started }, [started])
@@ -559,6 +561,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
       decodingRef.current = false
       // BAR-CROP — 2026-11-10: اقصص الأشرطة الداكنة الموحّدة بدل عرضها.
       const cRect = detectDarkBars(bmp)
+      cropRef.current = (cRect.w !== bmp.width || cRect.h !== bmp.height) ? cRect : null
       if (cRect.w !== bmp.width || cRect.h !== bmp.height) {
         ctx.clearRect(0, 0, canvas.width, canvas.height)
         ctx.drawImage(bmp, cRect.x, cRect.y, cRect.w, cRect.h, 0, 0, canvas.width, canvas.height)
@@ -761,6 +764,14 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
             }
             ctx.drawImage(bmp, 0, 0)
           } else if (canvas.width > 0 && canvas.height > 0) {
+            // BAR-CROP-DELTA — 2026-11-10: حوّل إحداثيات الدلتا بنفس نسبة القصّ حتى تتوافق مع الصورة المقصوصة.
+            const cr = cropRef.current
+            if (cr) {
+              const sx = canvas.width / cr.w, sy = canvas.height / cr.h
+              ctx.drawImage(bmp, (dx - cr.x) * sx, (dy - cr.y) * sy, bmp.width * sx, bmp.height * sy)
+              bmp.close(); fpsCountRef.current++
+              return
+            }
             // 2026-11-09 — لا تُغيّر المقاس من إطارات الدلتا: وكلاء أندرويد يضعون مقاس
             // المستطيل المتغيّر في الترويسة (23×21 مثلًا)، فكانت اللوحة تتقلّص وتظهر سوداء.
             ctx.drawImage(bmp, dx, dy)
