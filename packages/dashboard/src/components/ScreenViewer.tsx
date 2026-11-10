@@ -116,53 +116,6 @@ function fmtBytes(bytes: number): string {
   return `${(bytes/1024/1024).toFixed(2)}MB/s`
 }
 
-/**
- * 2026-11-10 — تكتشف أشرطة داكنة موحّدة على حواف الإطار (بقايا اتجاه سابق أو pillarbox)
- * وتعيد المستطيل المرئي فقط. تعمل على نسخة مصغّرة للسرعة، وتعود للإطار كاملًا عند أي شك.
- */
-function detectDarkBars (bmp: ImageBitmap): { x: number; y: number; w: number; h: number } {
-  const full = { x: 0, y: 0, w: bmp.width, h: bmp.height }
-  try {
-    const S = 96
-    const sw = S
-    const sh = Math.max(1, Math.round(bmp.height * (S / bmp.width)))
-    const c = document.createElement('canvas')
-    c.width = sw; c.height = sh
-    const cx = c.getContext('2d', { willReadFrequently: true })
-    if (!cx) return full
-    cx.drawImage(bmp, 0, 0, sw, sh)
-    const px = cx.getImageData(0, 0, sw, sh).data
-    const dark = (i: number) => {
-      const r = px[i], g = px[i + 1], b = px[i + 2]
-      return (r + g + b) / 3 < 46
-    }
-    const colDark = (x: number) => {
-      let n = 0
-      for (let y = 0; y < sh; y++) if (dark((y * sw + x) * 4)) n++
-      return n / sh
-    }
-    const rowDark = (y: number) => {
-      let n = 0
-      for (let x = 0; x < sw; x++) if (dark((y * sw + x) * 4)) n++
-      return n / sw
-    }
-    let left = 0, right = 0, top = 0, bottom = 0
-    while (left < sw * 0.4 && colDark(left) > 0.92) left++
-    while (right < sw * 0.4 && colDark(sw - 1 - right) > 0.92) right++
-    while (top < sh * 0.4 && rowDark(top) > 0.92) top++
-    while (bottom < sh * 0.4 && rowDark(sh - 1 - bottom) > 0.92) bottom++
-    if (left + right + top + bottom === 0) return full
-    const kx = bmp.width / sw, ky = bmp.height / sh
-    const rect = {
-      x: Math.round(left * kx),
-      y: Math.round(top * ky),
-      w: Math.round((sw - left - right) * kx),
-      h: Math.round((sh - top - bottom) * ky),
-    }
-    if (rect.w < bmp.width * 0.35 || rect.h < bmp.height * 0.35) return full
-    return rect
-  } catch { return full }
-}
 export function ScreenViewer({ deviceId, deviceName, popout = false, preview = false, autoStart = false, sessionTicket, sessionResumeKey, sessionAccess }: Props) {
   const tr = useT()
   const { token, user } = useAuthStore()
@@ -390,9 +343,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
   // This prevents the drawId race where 30fps arrivals stack up faster than
   // createImageBitmap resolves, causing every frame to be discarded as stale.
   const decodingRef        = useRef(false)
-  const needKeyRef         = useRef(false)
-  // BAR-CROP — مستطيل القصّ المطبّق على الإطار الكامل (يُستخدم لتحويل إحداثيات الدلتا)
-  const cropRef            = useRef<{ x: number; y: number; w: number; h: number } | null>(null)   // بعد تغيّر المقاس: انتظر إطارًا كاملًا قبل لصق أي دلتا
+  const needKeyRef         = useRef(false)   // بعد تغيّر المقاس: انتظر إطارًا كاملًا قبل لصق أي دلتا
 
   // Keep startedRef in sync so event handlers (visibilitychange) can read it
   useEffect(() => { startedRef.current = started }, [started])
@@ -559,14 +510,6 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
     decodingRef.current = true
     createImageBitmap(blob).then(bmp => {
       decodingRef.current = false
-      // BAR-CROP — 2026-11-10: اقصص الأشرطة الداكنة الموحّدة بدل عرضها.
-      const cRect = detectDarkBars(bmp)
-      cropRef.current = (cRect.w !== bmp.width || cRect.h !== bmp.height) ? cRect : null
-      if (cRect.w !== bmp.width || cRect.h !== bmp.height) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height)
-        ctx.drawImage(bmp, cRect.x, cRect.y, cRect.w, cRect.h, 0, 0, canvas.width, canvas.height)
-        bmp.close(); fpsCountRef.current++; return
-      }
       // CLEAR-ON-FULL — 2026-11-10: امسح اللوحة قبل كل إطار كامل حتى لا تبقى بقايا اتجاه سابق.
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       ctx.drawImage(bmp, 0, 0)
@@ -764,14 +707,6 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
             }
             ctx.drawImage(bmp, 0, 0)
           } else if (canvas.width > 0 && canvas.height > 0) {
-            // BAR-CROP-DELTA — 2026-11-10: حوّل إحداثيات الدلتا بنفس نسبة القصّ حتى تتوافق مع الصورة المقصوصة.
-            const cr = cropRef.current
-            if (cr) {
-              const sx = canvas.width / cr.w, sy = canvas.height / cr.h
-              ctx.drawImage(bmp, (dx - cr.x) * sx, (dy - cr.y) * sy, bmp.width * sx, bmp.height * sy)
-              bmp.close(); fpsCountRef.current++
-              return
-            }
             // 2026-11-09 — لا تُغيّر المقاس من إطارات الدلتا: وكلاء أندرويد يضعون مقاس
             // المستطيل المتغيّر في الترويسة (23×21 مثلًا)، فكانت اللوحة تتقلّص وتظهر سوداء.
             ctx.drawImage(bmp, dx, dy)
