@@ -54,4 +54,28 @@ export async function settingsRoutes(fastify: FastifyInstance) {
     }
     return out
   })
+
+  // 2026-11-10 — المسار كان مفقودًا: زر «اختبار» في الواجهة كان يرمي 404 دائمًا.
+  fastify.post<{ Body: { token?: string; chatId?: string } }>('/telegram/test', async (request, reply) => {
+    const user = request.user as unknown as AuthTokenPayload
+    if (user.role !== 'admin') return reply.code(403).send({ error: 'Admin required' })
+    const { token, chatId } = request.body || {}
+    if (!token || !chatId) return reply.code(400).send({ error: 'token and chatId are required' })
+    try {
+      const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: 'اختبار AiRemote — إشعار تجريبي ✅',
+          disable_notification: false,
+        }),
+      })
+      const j = await res.json() as { ok?: boolean; description?: string; result?: { message_id?: number } }
+      if (!res.ok || !j.ok) return reply.code(400).send({ error: j.description || 'Telegram rejected the message' })
+      return { ok: true, messageId: j.result?.message_id ?? null }
+    } catch (e) {
+      return reply.code(502).send({ error: (e as Error).message })
+    }
+  })
 }
