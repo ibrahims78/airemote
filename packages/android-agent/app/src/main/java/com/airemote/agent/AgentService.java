@@ -2118,6 +2118,23 @@ public class AgentService extends Service {
                         android.graphics.Rect src = new android.graphics.Rect(cropL, cropT, fullW - cropR, fullH - cropB);
                         android.graphics.Rect dst = new android.graphics.Rect(0, 0, fw, fh);
                         scaleCanvas.drawBitmap(bmp, src, dst, null);
+                        // GHOST-WIPE — 2026-11-10: عند العودة للعمودي لا يُعيد النظام رسم
+                        // أشرطة pillarbox في سطح الالتقاط، فتبقى بكسلات الأفقي السابق (الأثر).
+                        // نمسحها بالأسود لأن هندستها محسوبة بدقة: المحتوى العمودي يملأ الارتفاع
+                        // ويوسّط أفقيًا، فعرض الشريط = (عرض الإطار − عرض المحتوى) / 2.
+                        if (fullW > fullH && !sensorLandscape && mw > 0 && mh > 0 && mh > mw) {
+                            try {
+                                float ms = Math.min(fw / (float) mw, fh / (float) mh);
+                                int cw = Math.round(mw * ms);
+                                int bar = (fw - cw) / 2;
+                                if (bar > 2) {
+                                    android.graphics.Paint gp = new android.graphics.Paint();
+                                    gp.setColor(android.graphics.Color.BLACK);
+                                    scaleCanvas.drawRect(0, 0, bar, fh, gp);
+                                    scaleCanvas.drawRect(fw - bar, 0, fw, fh, gp);
+                                }
+                            } catch (Exception ignore) { }
+                        }
                         // v3.8.3 - send only the changed rectangle when the diff is small.
                         boolean skipFrame = false;
                         boolean delta = false;
