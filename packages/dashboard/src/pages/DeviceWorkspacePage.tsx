@@ -3,7 +3,7 @@ import { useParams, useSearchParams, Link } from 'react-router-dom'
 import {
   Monitor, Terminal, Activity, FolderOpen, ArrowLeft, ArrowRight,
   Wifi, WifiOff, Cpu, MemoryStick, HardDrive, Clock,
-  Globe, Server, Bot, Command, Tv2, ExternalLink
+  Globe, Server, Bot, Command, Tv2, ExternalLink, RefreshCw
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { useDeviceStore } from '../store/deviceStore'
@@ -18,19 +18,19 @@ import { ErrorBoundary } from '../components/ErrorBoundary'
 import type { Device } from '@airemote/shared'
 import { useT } from '../lib/i18n'
 import { useUIStore } from '../store/uiStore'
-import { Badge, Card, EmptyState } from '../components/ui'
+import { Badge, Alert, Button, Card, EmptyState, SkeletonRows } from '../components/ui'
 
 type Tab = 'overview' | 'terminal' | 'monitor' | 'files' | 'ai' | 'commands' | 'screen'
 
 /** كل التبويبات — تُستخدم للتحقق من ?tab= قبل التبديل. */
 const TABS: Tab[] = ['overview', 'commands', 'terminal', 'screen', 'monitor', 'files', 'ai']
 
-function DeviceInfoPanel({ device }: { device: Device }) {
+function DeviceInfoPanel({ device, online }: { device: Device; online: boolean }) {
   const t = useT()
   const { statsMap } = useDeviceStore()
   const stats = statsMap[device.id]
 
-  const uptime = stats?.uptime
+  const uptime = online && stats?.uptime
     ? `${Math.floor(stats.uptime / 3600)}h ${Math.floor((stats.uptime % 3600) / 60)}m`
     : '—'
 
@@ -40,7 +40,9 @@ function DeviceInfoPanel({ device }: { device: Device }) {
     { label: t('arch'),         value: device.info?.arch || '—', icon: Cpu },
     { label: t('ip_local'),  value: device.info?.ipLocal || '—', icon: Globe },
     { label: t('ip_public'), value: device.info?.ipPublic || '—', icon: Globe },
-    { label: t('tunnel'),       value: device.tunnelLayer || '—', icon: Wifi },
+    { label: t('tunnel'),       value: device.tunnelLayer
+      ? (String(device.tunnelLayer).toLowerCase() === 'zerotier' ? 'ZeroTier' : String(device.tunnelLayer).toUpperCase())
+      : '—', icon: Wifi },
     { label: t('uptime'),    value: uptime, icon: Clock },
   ]
 
@@ -72,7 +74,7 @@ export function DeviceWorkspacePage() {
   const lang = useUIStore(s => s.lang)
   const isRtl = lang === 'ar'
   const { deviceId } = useParams<{ deviceId: string }>()
-  const { devices, statsMap, fetchDevices } = useDeviceStore()
+  const { devices, statsMap, fetchDevices, loading, error } = useDeviceStore()
   const [searchParams, setSearchParams] = useSearchParams()
   const requestedTab = searchParams.get('tab') as Tab | null
   const [tab, setTabState] = useState<Tab>(requestedTab && TABS.includes(requestedTab) ? requestedTab : 'overview')
@@ -87,26 +89,53 @@ export function DeviceWorkspacePage() {
 
   const device = devices.find(d => d.id === deviceId)
   const stats = deviceId ? statsMap[deviceId] : undefined
+  const isOnline = device?.status === 'online'
 
+  // 3.16.8 — re-read on mount: a deep link may land before the store ever fetched.
+  useEffect(() => { fetchDevices() }, [fetchDevices])
+
+  // 3.16.8 — the tab in the URL has to follow navigation, not only the first render.
   useEffect(() => {
-    if (devices.length === 0) fetchDevices()
-  }, [])
+    const wanted = searchParams.get('tab') as Tab | null
+    if (wanted && TABS.includes(wanted) && wanted !== tab) setTabState(wanted)
+  }, [searchParams, tab])
+
+  // 3.16.8 — a deep link to a tab that needs a live connection falls back instead of
+  // showing a disabled tab's empty pane.
+  const needsConnection = tab !== 'overview' && tab !== 'monitor' && tab !== 'ai'
+  useEffect(() => {
+    if (device && !isOnline && needsConnection) setTab('overview')
+  }, [device, isOnline, needsConnection])
 
   if (!device) {
+    if (loading) {
+      return (
+        <div className="p-5"><Card><div className="p-3"><SkeletonRows rows={4} /></div></Card></div>
+      )
+    }
+    if (error) {
+      return (
+        <div className="p-5">
+          <Card><div className="space-y-3 p-4">
+            <Alert tone="danger" title={t('devices_load_failed')} />
+            <Button variant="primary" onClick={() => fetchDevices()}>{t('refresh')}</Button>
+          </div></Card>
+        </div>
+      )
+    }
     return (
       <div className="p-5">
         <Card>
           <EmptyState
             icon={<Monitor size={26} />}
-            title={t('no_devices_yet')}
-            description={<Link to="/devices" className="text-primary hover:underline">{t('back_to_devices')}</Link>}
+            title={t('device_not_found')}
+            description={t('device_not_found_hint')}
+            action={<Link to="/devices" className="btn primary">{t('back_to_devices')}</Link>}
           />
         </Card>
       </div>
     )
   }
-
-  const isOnline = device.status === 'online'
 
   const tabs: { id: Tab; label: string; icon: React.ElementType; disabled?: boolean }[] = [
     { id: 'overview',  label: t('tab_overview'),  icon: Server },
@@ -139,7 +168,8 @@ export function DeviceWorkspacePage() {
             {isOnline ? <Wifi size={10} /> : <WifiOff size={10} />}
             {isOnline ? t('device_online') : t('device_offline')}
           </Badge>
-          {stats && (
+          <Button variant="ghost" size="sm" aria-label={t('refresh')} title={t('refresh')} icon={<RefreshCw size={13} />} onClick={() => fetchDevices()} />
+          {stats && isOnline && (
             <div className="hidden lg:flex items-center gap-3 text-xs text-muted border-s border-line ps-4 ms-2">
               <span className="flex items-center gap-1"><Cpu size={10} className="text-primary" /><span className="font-mono text-ink">{stats.cpuPercent}%</span></span>
               <span className="flex items-center gap-1"><MemoryStick size={10} className="text-primary" /><span className="font-mono text-ink">{stats.ramPercent}%</span></span>
@@ -174,41 +204,33 @@ export function DeviceWorkspacePage() {
 
       {/* Content */}
       <div role="tabpanel" aria-labelledby={'dev-tab-' + tab} className={clsx('flex-1 min-h-0 min-w-0', tab === 'ai' || tab === 'terminal' || tab === 'commands' || tab === 'files' || tab === 'screen' ? 'overflow-hidden' : 'overflow-auto')}>
-        <ErrorBoundary>
+        <ErrorBoundary key={tab}>
 
         {tab === 'overview' && (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5 p-5">
-            <div className="lg:col-span-1">
-              <DeviceInfoPanel device={device} />
+          <div className="grid grid-cols-1 gap-5 p-5 lg:grid-cols-2">
+            <DeviceInfoPanel device={device} online={isOnline} />
 
-              {/* 2026-11-09 — ملء فراغ العمود الأيمن بإجراءات سريعة بدل مساحة مهدرة. */}
-              <div className="mt-4 rounded-xl border border-line bg-surface p-4">
-                <h3 className="mb-3 text-sm font-medium text-ink">إجراءات سريعة</h3>
-                <div className="grid grid-cols-2 gap-2">
-                  {[
-                    { id: 'screen' as Tab, label: t('tab_screen'), icon: Tv2 },
-                    { id: 'files' as Tab, label: t('tab_files'), icon: FolderOpen },
-                    { id: 'terminal' as Tab, label: t('tab_terminal'), icon: Terminal },
-                    { id: 'ai' as Tab, label: t('tab_ai'), icon: Bot },
-                  ].map(a => (
-                    <button key={a.id} type="button" onClick={() => setTab(a.id)}
-                      disabled={!isOnline && a.id !== 'ai'}
-                      className="flex items-center gap-2 rounded-lg border border-line bg-canvas px-2.5 py-2 text-[12px] text-ink transition-colors hover:border-primary/40 hover:bg-surface2 disabled:opacity-40">
-                      <a.icon size={13} className="text-muted" />
-                      <span className="truncate">{a.label}</span>
-                    </button>
-                  ))}
-                </div>
+            {/* 3.16.8 — the charts lived here and in the monitor tab; one home is enough. */}
+            <div className="rounded-xl border border-line bg-surface p-4">
+              <h3 className="mb-3 text-sm font-medium text-ink">{t('quick_actions')}</h3>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { id: 'screen' as Tab, label: t('tab_screen'), icon: Tv2 },
+                  { id: 'files' as Tab, label: t('tab_files'), icon: FolderOpen },
+                  { id: 'terminal' as Tab, label: t('tab_terminal'), icon: Terminal },
+                  { id: 'ai' as Tab, label: t('tab_ai'), icon: Bot },
+                ].map(a => (
+                  <button key={a.id} type="button" onClick={() => setTab(a.id)}
+                    disabled={!isOnline && a.id !== 'ai'}
+                    className="flex items-center gap-2 rounded-lg border border-line bg-canvas px-2.5 py-2 text-[12px] text-ink transition-colors hover:border-primary/40 hover:bg-surface2 disabled:opacity-40">
+                    <a.icon size={13} className="text-muted" />
+                    <span className="truncate">{a.label}</span>
+                  </button>
+                ))}
               </div>
-            </div>
-            <div className="lg:col-span-2">
-              <div className="rounded-xl border border-line bg-surface p-5">
-                <h3 className="text-sm font-medium text-ink mb-4 flex items-center gap-2">
-                  <Activity size={14} className="text-primary" />
-                  {t('tab_monitor')}
-                </h3>
-                <MonitoringCharts deviceId={device.id} stats={stats} />
-              </div>
+              {!isOnline && (
+                <p className="mt-3 text-[11px] text-muted">{t('device_offline_stats')}</p>
+              )}
             </div>
           </div>
         )}
@@ -238,6 +260,7 @@ export function DeviceWorkspacePage() {
           <div className="space-y-5 p-5">
             <div className="rounded-xl border border-line bg-surface p-5">
               <h3 className="text-sm font-medium text-ink mb-4">{t('tab_monitor')} — {device.name}</h3>
+              {!isOnline && <Alert tone="info" className="mb-4">{t('device_offline_stats')}</Alert>}
               <MonitoringCharts deviceId={device.id} stats={stats} />
             </div>
           </div>
