@@ -890,10 +890,13 @@ export function AiChatPanel({ deviceId, conversationId, initialPrompt }: Props) 
           || (!local.apiKey && serverCfg.apiKey)
           || (!local.model && !!serverCfg.model)
           || (!local.baseUrl && !!serverCfg.baseUrl)
-        if (needsUpdate) {
-          setConfig(serverCfg)
-          localStorage.setItem(CONFIG_KEY, JSON.stringify(serverCfg))
-        }
+        // CONFIG-SYNC 2026-11-10 — اللوحة تُركَّب بمفتاح الجهاز، فقد تُعاد بناؤها قبل
+        // وصول رد السيرفر فتظل شارة المزوّد على الافتراضي (OpenAI · gpt-4o) بينما
+        // localStorage يحمل القيم الصحيحة. لذلك نقارن مع الحالة نفسها لا مع التخزين فقط.
+        setConfig(prev => (prev.provider === serverCfg.provider && prev.model === serverCfg.model && prev.apiKey === serverCfg.apiKey)
+          ? prev
+          : serverCfg)
+        if (needsUpdate) localStorage.setItem(CONFIG_KEY, JSON.stringify(serverCfg))
       }
     }).catch(() => {})
   }, [])
