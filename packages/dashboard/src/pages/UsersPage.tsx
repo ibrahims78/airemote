@@ -252,7 +252,7 @@ export function UsersPage({ embedded = false }: { embedded?: boolean } = {}) {
             <form onSubmit={handleAdd} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <Input required placeholder={t('user_name')} value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />
               <Input required type="email" dir="ltr" placeholder={t('user_email')} value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} />
-              <Input required type="password" placeholder={t('password') + ' (8+)'} value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))} />
+              <Input required type="password" placeholder={t('password') + ' (12+)'} value={form.password} onChange={e => setForm(p => ({ ...p, password: e.target.value }))} />
               <Select className="h-9" value={form.role} onChange={e => setForm(p => ({ ...p, role: e.target.value as UserRole }))}>
                 <option value="viewer">{t('role_viewer')}</option>
                 <option value="manager">{t('role_manager')}</option>
@@ -263,6 +263,8 @@ export function UsersPage({ embedded = false }: { embedded?: boolean } = {}) {
                 <Button type="button" variant="secondary" size="md" onClick={() => setShowAdd(false)}>{t('cancel')}</Button>
               </div>
             </form>
+            {/* PWD-HINT — 2026-11-10: شرط كلمة المرور ظاهر دائمًا بدل Toast عابر */}
+            <p className="mt-2 text-[11px] text-muted">كلمة المرور: 12 حرفًا على الأقل — وإلا لن يُنشأ الحساب.</p>
           </div>
         </Card>
       )}
