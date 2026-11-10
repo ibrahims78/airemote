@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { Device } from '@airemote/shared'
 import { useUIStore } from '../store/uiStore'
+import { useAuthStore } from '../store/authStore'
+import { toast } from '../store/toastStore'
 import { useBoardStore, nextDeviceId, MAX_TILES } from '../store/boardStore'
-import { useT } from '../lib/i18n'
+import { useT, formatRelativeLang } from '../lib/i18n'
 import { clsx } from 'clsx'
 import { api } from '../lib/api'
 import { Monitor, Terminal, FolderOpen, MousePointer2, Sun } from 'lucide-react'
@@ -58,6 +61,14 @@ interface Props {
 
 const PLATFORM_RANK: Record<string, number> = { windows: 0, macos: 1, linux: 1, android: 2 }
 
+/** 3.16.8 — SQLite writes 'YYYY-MM-DD HH:MM:SS' in UTC with no zone; read it as UTC. */
+function asUtc (value?: string | null): string {
+  if (!value) return ''
+  const s = String(value)
+  if (/[zZ]$|[+-]\d\d:?\d\d$/.test(s)) return s
+  return s.replace(' ', 'T') + 'Z'
+}
+
 /**
  * ترتيب المرجع (D53): سطح المكتب أولًا ثم أندرويد — design/server.html
  * يعرض WIN10 · WIN11 · Android من اليمين إلى اليسار. الترتيب مستقر.
@@ -87,6 +98,10 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, loading, ha
   const T = useT()
   const isRtl = lang === 'ar'
   const tr = (ar: string, en: string) => (isRtl ? ar : en)
+  const navigate = useNavigate()
+  const { user } = useAuthStore()
+  // 3.16.8 — waking a phone runs exec on the device; the server requires manager for that.
+  const canManage = user?.role === 'admin' || user?.role === 'manager'
 
   const onlineDevices = useMemo(() => devices.filter(d => d.status === 'online'), [devices])
   const preferred = useMemo(() => (
@@ -110,11 +125,15 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, loading, ha
     try { localStorage.setItem(FLEET_HIDDEN_KEY, JSON.stringify(hidden)) } catch {}
   }, [hidden])
 
-  const visibleDevices = useMemo(() => devices.filter(d => !hidden.includes(d.id)), [devices, hidden])
+  const visibleDevices = useMemo(() => {
+    const list = devices.filter(d => !hidden.includes(d.id))
+    // 3.16.8 — the server sorts by name, so an offline device could take one of the six
+    // card slots and push a live one out. Online first, name order kept inside each group.
+    return [...list].sort((a, b) => (a.status === 'online' ? 0 : 1) - (b.status === 'online' ? 0 : 1))
+  }, [devices, hidden])
   const shownDevices = useMemo(() => visibleDevices.slice(0, FLEET_MAX), [visibleDevices])
   const hiddenDevices = useMemo(() => devices.filter(d => hidden.includes(d.id)), [devices, hidden])
   const fleetMore = visibleDevices.length - shownDevices.length
-  const fleetHead = devices.length > FLEET_MAX || hiddenDevices.length > 0
   function hideDevice (id: string) { setHidden(prev => prev.includes(id) ? prev : [...prev, id]) }
   function showDevice (id: string) { setHidden(prev => prev.filter(x => x !== id)) }
 
@@ -125,8 +144,14 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, loading, ha
   }).length
   // 2026-11-08 — بعد إزالة شريط المؤشرات انتقل عدّاد التنبيهات إلى شارة مستقلة في شريط الأدوات.
   // 2026-11-09 — إيقاظ شاشة الجهاز عن بُعد (أندرويد): يُرسل KEYCODE_WAKEUP عبر الوكيل.
-  const wakeScreen = async (id: string) => {
-    try { await api.post(`/api/devices/${id}/exec`, { command: 'input keyevent KEYCODE_WAKEUP', timeoutMs: 10000 }) } catch {}
+  const wakeScreen = async (id: string, name: string) => {
+    try {
+      await api.post(`/api/devices/${id}/exec`, { command: 'input keyevent KEYCODE_WAKEUP', timeoutMs: 10000 })
+      toast.success(tr('أُرسل أمر الإيقاظ', 'Wake command sent'), name)
+    } catch {
+      // 3.16.8 — a refused wake (no manager role, no control capability) looked like a dead button.
+      toast.error(tr('تعذّر إيقاظ الشاشة', 'Could not wake the screen'), name)
+    }
   }
 
   const runningTiles = useMemo(() => tiles.filter(t => t.running), [tiles])
@@ -284,10 +309,10 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, loading, ha
                   >
                     {tile.running ? <RefIcon name="stop" /> : <RefIcon name="play" />}
                   </button>
-                  {String(device?.info?.platform || '').toLowerCase() === 'android' && (
+                  {online && canManage && String(device?.info?.platform || '').toLowerCase() === 'android' && (
                     <button
                       type="button"
-                      onClick={() => { void wakeScreen(tile.deviceId) }}
+                      onClick={() => { void wakeScreen(tile.deviceId, name) }}
                       title={tr('إيقاظ الشاشة', 'Wake screen')}
                       aria-label={tr('إيقاظ الشاشة', 'Wake screen')}
                       className="tool"
@@ -331,12 +356,24 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, loading, ha
         </div>
       )}
 
-      {fleetHead && (
-        <div className="fleet-head">
-          <span className="fleet-title">{T('fleet_title')}</span>
-          {fleetMore > 0 && (
-            <span className="hint">{T('fleet_showing', { n: shownDevices.length, total: visibleDevices.length, rest: fleetMore })}</span>
-          )}
+      {/* 3.16.8 — the section keeps its title at any fleet size, and the two counters that
+          were computed but never rendered (live sessions, devices under pressure) live here. */}
+      <div className="fleet-head">
+        <span className="fleet-title">{T('fleet_title')}</span>
+        {liveCount > 0 && (
+          <span className="hint">{tr(liveCount + ' بث نشط', liveCount + ' live')}</span>
+        )}
+        {alerts > 0 && (
+          <span className="hint">{tr(alerts + ' أجهزة تحت ضغط', alerts + ' under pressure')}</span>
+        )}
+        {fleetMore > 0 && (
+          <span className="hint">{T('fleet_showing', { n: shownDevices.length, total: visibleDevices.length, rest: fleetMore })}</span>
+        )}
+        {fleetMore > 0 && (
+          <button type="button" className="btn ghost sm" onClick={() => navigate('/devices')}>
+            {tr('عرض كل الأجهزة', 'View all devices')}
+          </button>
+        )}
           {hiddenDevices.length > 0 && (
             <div className="fleet-menu-wrap">
               <button
@@ -371,8 +408,7 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, loading, ha
               )}
             </div>
           )}
-        </div>
-      )}
+      </div>
 
       <div className="fleet">
         {shownDevices.map(device => {
@@ -412,6 +448,10 @@ export function ControlRoomBody ({ devices, statsMap, activeScreens, loading, ha
               <div className="rows">
                 <div><b>{tr('النظام', 'OS')}</b> {device.info?.platform || '—'}{device.info?.arch ? ` · ${device.info.arch}` : ''}</div>
                 <div><b>{tr('المضيف', 'Host')}</b> {device.info?.hostname || device.id.slice(0, 12)}</div>
+                {/* 3.16.8 — the server already sends last_seen; the card ignored it. */}
+                <div><b>{tr('آخر ظهور', 'Last seen')}</b>{(device as unknown as { lastSeen?: string }).lastSeen
+                  ? ' ' + formatRelativeLang(asUtc((device as unknown as { lastSeen?: string }).lastSeen), lang)
+                  : ' —'}</div>
               </div>
 
               {online && (
