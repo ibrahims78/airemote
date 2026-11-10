@@ -4676,9 +4676,13 @@ async function start(config) {
   // v3.2.2 — Live screen sessions (admin)
   fastify.get('/api/sessions/screen/active', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
-    if (p.role !== 'admin') return reply.code(403).send({ error: 'Admin only' })
+    // 3.16.8 — the control room shows a live badge per device. Restricting this route to
+    // admins meant every other role got a silent 403 and saw no badge at all, so scope it
+    // to the devices the caller can already open instead of hiding it entirely.
+    const allowed = p.role === 'admin' ? null : new Set(accessibleDeviceRows(p).map(d => d.id))
     const out = []
     for (const [sid2, s] of screenSessions) {
+      if (allowed && !allowed.has(s.deviceId)) continue
       const rec2 = agentSockets.get(s.deviceId)
       out.push({ sessionId: sid2, deviceId: s.deviceId, deviceName: (rec2 && rec2.deviceName) || s.deviceId, userId: s.userId || null, viewers: s.viewers.size, startedAt: new Date(s.startedAt).toISOString() })
     }
