@@ -193,7 +193,7 @@ export function SettingsPage() {
 
   return (
     <div className="cr-page">
-      <div className="flex items-start justify-between mb-4 flex-wrap gap-3">
+      <div className="flex items-start justify-start mb-4 flex-wrap gap-4">
         <div>
           <h2 className="cr-page-title">{T('settings_title')}</h2>
           <p className="cr-page-subtitle">
@@ -244,11 +244,11 @@ export function SettingsPage() {
       </div>
 
       {tab === 'general' && (loading ? (
-        <div className="mx-auto grid w-full max-w-3xl gap-3 py-3">
+        <div className="mx-auto grid w-full max-w-5xl gap-3 py-3">
           <SkeletonRows rows={6} />
         </div>
       ) : (
-        <div className="grid gap-4 max-w-3xl w-full mx-auto">
+        <div className="grid gap-4 max-w-5xl w-full mx-auto">
 
           {!isAdmin && (
             <Alert tone="info">
@@ -338,6 +338,12 @@ export function SettingsPage() {
                     onClick={copyServerUrl}
                   />
                 </div>
+                  {/* LOCALHOST-HINT — 2026-11-10: تنبيه أن العنوان محلي لا يصل للأجهزة البعيدة */}
+                  {/^(localhost|127\.0\.0\.1|\[::1\])$/.test(window.location.hostname) && (
+                    <p className="mt-1.5 text-[11px] text-warning">
+                      عنوان محلي — الأجهزة البعيدة تحتاج عنوان الشبكة (مثل 192.168.x.x) مع المنفذ الصحيح.
+                    </p>
+                  )}
               </div>
 
               {/* WebSocket URL — for Desktop Agent */}
