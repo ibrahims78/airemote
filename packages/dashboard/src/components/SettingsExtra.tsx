@@ -5,6 +5,7 @@ import { clsx } from 'clsx'
 import { api } from '../lib/api'
 import { useUIStore } from '../store/uiStore'
 import { useDeviceStore } from '../store/deviceStore'
+import { toast } from '../store/toastStore'
 
 function Sec({ icon: Icon, color, title, children }: { icon: ElementType; color: string; title: string; children: ReactNode }) {
   return (
@@ -33,7 +34,11 @@ export function TwoFactorSection() {
   const [err, setErr] = useState('')
 
   const load = useCallback(async () => {
-    try { const r = await api.get('/api/auth/2fa/status'); setEnabled(!!r.data.enabled) } catch { setEnabled(false) }
+    try { const r = await api.get('/api/auth/2fa/status'); setEnabled(!!r.data.enabled); setErr('') } catch {
+    // 3.16.8 — a failed read used to look like "disabled", so an enabled user could start over.
+    setEnabled(null)
+    setErr(isRtl ? 'تعذّر جلب حالة التحقق بخطوتين — أعد المحاولة قبل الاعتماد على ما يظهر.' : 'Could not read the 2FA status - retry before trusting what is shown.')
+  }
   }, [])
   useEffect(() => { load() }, [load])
 
@@ -81,7 +86,14 @@ export function TwoFactorSection() {
   return (
     <Sec icon={ShieldCheck} color="text-success" title={isRtl ? 'التحقق بخطوتين (2FA)' : 'Two-factor authentication'}>
       {enabled === null ? (
-        <div className="h-4 w-40 rounded bg-surface2/70 animate-pulse" />
+        err ? (
+          <div className="space-y-2 text-xs text-danger">
+            <p>{err}</p>
+            <button type="button" onClick={() => { setErr(''); load() }} className="underline">{isRtl ? 'إعادة المحاولة' : 'Retry'}</button>
+          </div>
+        ) : (
+          <div className="h-4 w-40 rounded bg-surface2/70 animate-pulse" />
+        )
       ) : enabled ? (
         <div className="space-y-3">
           <div className="flex items-center gap-2 text-success text-sm font-medium">
@@ -139,6 +151,7 @@ interface TaskRow {
   enabled: number
   last_run_at?: string | null
   last_result?: string | null
+  next_due?: string | null
 }
 
 export function TasksSection() {
@@ -151,16 +164,26 @@ export function TasksSection() {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState('')
   const [err, setErr] = useState('')
+  const [loadErr, setLoadErr] = useState('')
   const [form, setForm] = useState({ name: '', kind: 'ai', deviceId: '', payload: '', mode: 'interval', intervalMin: 30, dailyAt: '09:00' })
 
   const load = useCallback(async () => {
     setLoading(true)
-    try { const r = await api.get('/api/tasks'); setTasks(Array.isArray(r.data) ? r.data : []) } catch { setTasks([]) } finally { setLoading(false) }
-  }, [])
+    setLoadErr('')
+    // 3.16.8 — a failed fetch rendered as "no tasks yet", which reads as an empty list.
+    try { const r = await api.get('/api/tasks'); setTasks(Array.isArray(r.data) ? r.data : []) }
+    catch (e) {
+      const ee = e as { response?: { data?: { error?: string } } }
+      setTasks([])
+      setLoadErr(ee.response?.data?.error || (isRtl ? 'تعذّر تحميل المهام' : 'Could not load tasks'))
+    } finally { setLoading(false) }
+  }, [isRtl])
   useEffect(() => { load() }, [load])
 
   async function create() {
     if (!form.name.trim() || !form.payload.trim()) { setErr(isRtl ? 'الاسم والمحتوى مطلوبان' : 'Name and content required'); return }
+    // 3.16.8 — dailyAt='' becomes interval 0 on the server: a task that never fires.
+    if (form.mode === 'daily' && !form.dailyAt) { setErr(isRtl ? 'حدّد وقتًا للتشغيل اليومي' : 'Pick a time for the daily run'); return }
     setBusy(true); setErr(''); setMsg('')
     try {
       await api.post('/api/tasks', {
@@ -181,13 +204,17 @@ export function TasksSection() {
   }
 
   async function toggle(t: TaskRow) {
-    try { await api.put(`/api/tasks/${t.id}`, { enabled: t.enabled ? 0 : 1 }); load() } catch {}
+    try { await api.put(`/api/tasks/${t.id}`, { enabled: t.enabled ? 0 : 1 }); load() }
+    catch (e) { toast.error(isRtl ? 'تعذّر تغيير حالة المهمة' : 'Could not change the task', (e as { response?: { data?: { error?: string } } }).response?.data?.error) }
   }
   async function runNow(t: TaskRow) {
-    try { await api.post(`/api/tasks/${t.id}/run`, {}); setMsg(isRtl ? 'بدأ التنفيذ — ستصل النتيجة كإشعار' : 'Running — result will arrive as a notification') } catch {}
+    try { await api.post(`/api/tasks/${t.id}/run`, {}); setMsg(isRtl ? 'بدأ التنفيذ — ستصل النتيجة كإشعار' : 'Running — result will arrive as a notification') }
+    catch (e) { toast.error(isRtl ? 'تعذّر تشغيل المهمة' : 'Could not run the task', (e as { response?: { data?: { error?: string } } }).response?.data?.error) }
   }
   async function del(t: TaskRow) {
-    try { await api.delete(`/api/tasks/${t.id}`); load() } catch {}
+    if (!confirm(isRtl ? `حذف المهمة «${t.name}»؟` : `Delete the task "${t.name}"?`)) return
+    try { await api.delete(`/api/tasks/${t.id}`); load() }
+    catch (e) { toast.error(isRtl ? 'تعذّر حذف المهمة' : 'Could not delete the task', (e as { response?: { data?: { error?: string } } }).response?.data?.error) }
   }
 
   function schedText(t: TaskRow) {
@@ -207,6 +234,9 @@ export function TasksSection() {
           {tasks.length === 0 && !showForm && (
             <p className="text-xs text-muted">{isRtl ? 'لا مهام بعد — أنشئ مهمة لفحص دوري أو طلب ذكاء مجدول (مثال: «كل يوم 9 صباحاً افحص القرص وأرسل ملخصاً»).' : 'No tasks yet.'}</p>
           )}
+          {loadErr && (
+            <p className="text-xs text-danger">{loadErr} <button type="button" onClick={() => load()} className="underline">{isRtl ? 'إعادة المحاولة' : 'Retry'}</button></p>
+          )}
           {tasks.map(t => (
             <div key={t.id} className="rounded-lg border border-line bg-canvas/60 px-3 py-2.5">
               <div className="flex items-center gap-2 flex-wrap">
@@ -224,6 +254,11 @@ export function TasksSection() {
               {t.last_result && (
                 <div className="mt-1.5 text-[10px] text-muted whitespace-pre-wrap max-h-16 overflow-hidden">{t.last_result.slice(0, 300)}</div>
               )}
+              {/* 3.16.8 — the server sends both stamps; the card showed neither. */}
+              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[10px] text-muted">
+                {t.next_due && <span>{isRtl ? 'القادم: ' : 'Next: '}{String(t.next_due).replace('T', ' ').slice(0, 16)}</span>}
+                {t.last_run_at && <span>{isRtl ? 'آخر تشغيل: ' : 'Last run: '}{String(t.last_run_at).replace('T', ' ').slice(0, 16)}</span>}
+              </div>
             </div>
           ))}
 
