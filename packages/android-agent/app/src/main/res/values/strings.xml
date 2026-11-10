@@ -82,7 +82,7 @@
     <string name="setup_close">إغلاق</string>
     <string name="setup_open">فتح الإعداد</string>
     <string name="setup_manual">افتح الإعدادات يدوياً لهذه الصلاحية</string>
-    <string name="setup_progress">%1$d من 7 صلاحيات جاهزة</string>
+    <string name="setup_progress">%1$d من 8 صلاحيات جاهزة</string>
     <string name="setup_ready">الوكيل جاهز للتحكم عن بُعد.</string>
     <string name="setup_incomplete">أكمل الصلاحيات الناقصة أعلاه، ثم أعد فتح هذه الشاشة للتأكد.</string>
     <string name="notif_from">رسالة من %1$s</string>
@@ -117,6 +117,10 @@
     <string name="perm_overlay_desc">مطلوب لبعض أدوات الجلسة</string>
     <string name="perm_overlay_ok">مسموح</string>
     <string name="perm_overlay_bad">غير مسموح</string>
+    <string name="perm_files_title">الوصول إلى كل الملفات</string>
+    <string name="perm_files_desc">مطلوب لعرض ملفات التخزين على أندرويد 11 فأعلى</string>
+    <string name="perm_files_ok">مسموح</string>
+    <string name="perm_files_bad">غير مسموح</string>
     <!-- 3.14.0 - the eleven session states (message catalog) -->
     <string name="sess_state_requested">بانتظار الموافقة</string>
     <string name="sess_state_accepted">تم القبول</string>

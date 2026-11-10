@@ -20,6 +20,7 @@ import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
 import android.media.AudioRecord;
 import android.os.Build;
+import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.IBinder;
@@ -1367,7 +1368,13 @@ public class AgentService extends Service {
                             arr.put(fsEntry(k.getName(), k.getAbsolutePath(), k.isDirectory(), k.length(), k.lastModified()));
                         }
                     } else {
-                        out.put("error", "لا يمكن قراءة المسار: " + p);
+                        // 3.16.8 — على أندرويد 11+ السبب غالبًا صلاحية «كل الملفات» لا المسار نفسه.
+                        boolean shared = p.startsWith("/sdcard") || p.startsWith("/storage") || p.startsWith("/mnt");
+                        if (shared && Build.VERSION.SDK_INT >= 30 && !Environment.isExternalStorageManager()) {
+                            out.put("error", "صلاحية «الوصول إلى كل الملفات» غير ممنوحة — افتح معالج التهيئة في تطبيق AiRemote وامنحها.");
+                        } else {
+                            out.put("error", "لا يمكن قراءة المسار: " + p);
+                        }
                     }
                 }
                 out.put("data", arr);

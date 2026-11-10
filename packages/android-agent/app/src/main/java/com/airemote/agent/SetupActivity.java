@@ -8,6 +8,7 @@ import android.graphics.drawable.GradientDrawable;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.PowerManager;
 import android.provider.Settings;
 import android.text.TextUtils;
@@ -88,6 +89,8 @@ public class SetupActivity extends Activity {
         addRow(getString(R.string.perm_record_title), getString(R.string.perm_record_desc), "record");
         addRow(getString(R.string.perm_notify_title), getString(R.string.perm_notify_desc), "notify");
         addRow(getString(R.string.perm_overlay_title), getString(R.string.perm_overlay_desc), "overlay");
+        // 3.16.8 — بدون هذه الصلاحية لا يستطيع الوكيل سرد التخزين المشترك على أندرويد 11+.
+        addRow(getString(R.string.perm_files_title), getString(R.string.perm_files_desc), "files");
 
         Button start = new Button(this);
         start.setText(getString(R.string.setup_start));
@@ -222,6 +225,17 @@ public class SetupActivity extends Activity {
                 Intent i = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
                         Uri.parse("package:" + getPackageName()));
                 startActivity(i);
+            } else if ("files".equals(key)) {
+                if (Build.VERSION.SDK_INT >= 30) {
+                    try {
+                        startActivity(new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION,
+                                Uri.parse("package:" + getPackageName())));
+                    } catch (Exception e) {
+                        startActivity(new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION));
+                    }
+                } else {
+                    Toast.makeText(this, getString(R.string.perm_files_desc), Toast.LENGTH_LONG).show();
+                }
             }
         } catch (Exception e) {
             Toast.makeText(this, getString(R.string.setup_manual), Toast.LENGTH_LONG).show();
@@ -244,6 +258,7 @@ public class SetupActivity extends Activity {
         boolean record = Build.VERSION.SDK_INT < 23 || checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED;
         boolean notify = Build.VERSION.SDK_INT < 33 || checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED;
         boolean overlay = Settings.canDrawOverlays(this);
+        boolean files = Build.VERSION.SDK_INT < 30 || Environment.isExternalStorageManager();
         setStatus("screen", capture, getString(R.string.perm_screen_ok), getString(R.string.perm_screen_bad));
         setStatus("a11y", a11y, getString(R.string.perm_a11y_ok), getString(R.string.perm_a11y_bad));
         setStatus("write", write, getString(R.string.perm_write_ok), getString(R.string.perm_write_bad));
@@ -251,9 +266,10 @@ public class SetupActivity extends Activity {
         setStatus("record", record, getString(R.string.perm_record_ok), getString(R.string.perm_record_bad));
         setStatus("notify", notify, getString(R.string.perm_notify_ok), getString(R.string.perm_notify_bad));
         setStatus("overlay", overlay, getString(R.string.perm_overlay_ok), getString(R.string.perm_overlay_bad));
+        setStatus("files", files, getString(R.string.perm_files_ok), getString(R.string.perm_files_bad));
         int ready = (capture ? 1 : 0) + (a11y ? 1 : 0) + (write ? 1 : 0) + (battery ? 1 : 0)
-                + (record ? 1 : 0) + (notify ? 1 : 0) + (overlay ? 1 : 0);
-        summary.setText(getString(R.string.setup_progress, ready) + "\n" + (ready == 7
+                + (record ? 1 : 0) + (notify ? 1 : 0) + (overlay ? 1 : 0) + (files ? 1 : 0);
+        summary.setText(getString(R.string.setup_progress, ready) + "\n" + (ready == 8
                 ? getString(R.string.setup_ready)
                 : getString(R.string.setup_incomplete)));
     }
