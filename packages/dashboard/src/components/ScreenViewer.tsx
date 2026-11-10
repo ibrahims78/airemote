@@ -122,6 +122,10 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
   // الوضع العادي: بلا تذكرة. وضع الجلسة: التذكرة تأتي من الرابط وتُستخدم بدل JWT.
   const ticketMode = !!(sessionTicket || sessionResumeKey)
   const viewOnly = ticketMode && sessionAccess !== 'control'
+  // 3.16.8 — carry the ticket into any pop-out opened from this window.
+  const popoutParams = ticketMode
+    ? { rt: sessionTicket || undefined, rk: sessionResumeKey || undefined, access: sessionAccess || undefined }
+    : undefined
   // 3.9.3 — جلسة أُنشئت بـaccess=control: الموافقة تمّت عند قبول الجلسة، فلا نطلب
   // موافقة ثانية (كانت البوابة تبقى مغلقة فتُسقط كل نقرة/حركة في نافذة الجلسة).
   useEffect(() => {
@@ -1472,10 +1476,14 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
       if (tag === 'INPUT' || tag === 'TEXTAREA') return
       if (!ev.ctrlKey && !ev.altKey && !ev.metaKey) {
         const k = String(ev.key).toLowerCase()
-        if (k === 'l') { ev.preventDefault(); setAnnoTool(t => t === 'laser' ? 'off' : 'laser'); return }
-        if (k === 'p') { ev.preventDefault(); setAnnoTool(t => t === 'pen' ? 'off' : 'pen'); return }
-        if (k === 'e') { ev.preventDefault(); setAnnoTool(t => t === 'eraser' ? 'off' : 'eraser'); return }
-        if (k === 'c') { ev.preventDefault(); clearAnno(); return }
+        // 3.16.8 — while the remote keyboard is live these letters belong to the device,
+        // not to the annotation layer: typing 'c' cleared every drawing.
+        if (!(controlEnabled && keyboardMode)) {
+          if (k === 'l') { ev.preventDefault(); setAnnoTool(t => t === 'laser' ? 'off' : 'laser'); return }
+          if (k === 'p') { ev.preventDefault(); setAnnoTool(t => t === 'pen' ? 'off' : 'pen'); return }
+          if (k === 'e') { ev.preventDefault(); setAnnoTool(t => t === 'eraser' ? 'off' : 'eraser'); return }
+          if (k === 'c') { ev.preventDefault(); clearAnno(); return }
+        }
       }
       if (ev.key === 'Escape' && annoTool !== 'off') { ev.preventDefault(); setAnnoTool('off'); return }
       if (ev.key === 'Escape' && fullscreen) { ev.preventDefault(); setFullscreen(false) }
@@ -1483,7 +1491,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [fullscreen, annoTool, clearAnno])
+  }, [fullscreen, annoTool, clearAnno, controlEnabled, keyboardMode])
 
   // ── Privacy ───────────────────────────────────────────────────────────────
   const togglePrivacy = () => { const next = !privacyOn; setPrivacyOn(next); sendWs({ type: 'screen:privacy', payload: { enable: next } }) }
@@ -1909,7 +1917,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
           type="button"
           onClick={() => {
             if (popout) setFullscreen(true)
-            else openScreenWindow(deviceId)
+            else openScreenWindow(deviceId, popoutParams)
           }}
           className={clsx(
             'cr-live-signal shrink-0',
@@ -2321,7 +2329,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
                 {!popout && status === 'streaming' && (
                   <button
                     type="button" role="menuitem"
-                    onClick={() => { setShowMore(false); openScreenWindow(deviceId) }}
+                    onClick={() => { setShowMore(false); openScreenWindow(deviceId, popoutParams) }}
                     className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-start text-[11.5px] text-ink transition-colors hover:bg-surface2"
                   >
                     <ExternalLink size={13} className="shrink-0 text-muted" />
@@ -2768,6 +2776,15 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
             {status === 'disconnected' && <><WifiOff size={28} className="text-muted"/><p className="text-muted text-sm">{tr('viewer_disconnected')}</p></>}
             {status === 'error'        && <><WifiOff size={28} className="text-danger"/><p className="text-danger text-sm">{errorMsg}</p></>}
             {status === 'unavailable'  && <><AlertTriangle size={28} className="text-warning"/><p className="text-warning text-sm text-center px-8">{errorMsg}</p></>}
+            {/* 3.16.8 — every non-streaming state was a dead end: the overlay ignored the pointer
+                and the reconnect entry lived inside the streaming-only menu. */}
+            {(status === 'error' || status === 'unavailable' || status === 'disconnected') && (
+              <button type="button"
+                onClick={() => { reconnectCountRef.current = 0; setErrorMsg(''); setStatus('connecting'); connect(presetRef.current, selectedMonRef.current) }}
+                className="pointer-events-auto rounded-lg border border-line bg-surface px-3 py-1.5 text-xs text-ink transition-colors hover:bg-surface2">
+                {tr('viewer_reconnect')}
+              </button>
+            )}
           </div>
         )}
 
