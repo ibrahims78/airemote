@@ -111,29 +111,16 @@ function AgentInstallModal({ device, onClose }: { device: Device; onClose: () =>
   const wsUrl = serverUrl.replace(/^https?:\/\//, m => m === 'https://' ? 'wss://' : 'ws://') + '/ws'
 
   const scripts = {
-    linux: `# Install AiRemote Agent on Linux/macOS
-curl -fsSL ${serverUrl}/agent-install.sh | bash -s -- \\
-  --token "${device.token}" \\
-  --server "${serverUrl}"
+    linux: `# Linux/macOS - run the agent from this repository
+cd packages/agent
+npm install
+npm run build
+SERVER_URL="${serverUrl}" DEVICE_TOKEN="${device.token}" DEVICE_NAME="${device.name}" npm start`,
 
-# Or manually:
-npm install -g @airemote/agent
-airemote-agent start \\
-  --token "${device.token}" \\
-  --server "${serverUrl}"`,
-
-    docker: `# Run Agent in Docker
-docker run -d \\
-  --name airemote-agent \\
-  --restart unless-stopped \\
-  -e AIREMOTE_TOKEN="${device.token}" \\
-  -e AIREMOTE_SERVER="${serverUrl}" \\
-  ghcr.io/airemote/agent:latest`,
-
-    env: `# .env file for Agent
-AIREMOTE_TOKEN=${device.token}
-AIREMOTE_SERVER=${serverUrl}
-AIREMOTE_LOG_LEVEL=info`
+    env: `# .env file for the agent (packages/agent reads these keys)
+SERVER_URL=${serverUrl}
+DEVICE_TOKEN=${device.token}
+DEVICE_NAME=${device.name}`
   }
 
   function copy(key: string, text: string) {
@@ -147,7 +134,6 @@ AIREMOTE_LOG_LEVEL=info`
       open
       onClose={onClose}
       title={`Agent — ${device.name}`}
-      description={t('tab_terminal')}
       size="lg"
       footer={<Button variant="primary" onClick={onClose}>{t('close')}</Button>}
     >
@@ -194,7 +180,6 @@ AIREMOTE_LOG_LEVEL=info`
 
         {[
           { key: 'linux', label: 'Linux / macOS', text: scripts.linux },
-          { key: 'docker', label: 'Docker', text: scripts.docker },
           { key: 'env', label: '.env', text: scripts.env },
         ].map(({ key, label, text }) => (
           <div key={key}>
