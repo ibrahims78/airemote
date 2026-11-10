@@ -74,6 +74,11 @@ export async function connectWebSocket(userId: string, token: string, onMessage?
             (msg.payload as { stats: unknown }).stats as Parameters<typeof updateDeviceStats>[1]
           )
           break
+        case 'broadcast:notification':
+          // 3.16.8 — the server pushed this and nothing listened, so the notifications page
+          // only moved when the bell's thirty-second poll happened to run.
+          try { window.dispatchEvent(new CustomEvent('airemote:notification')) } catch {}
+          break
         default:
           break
       }

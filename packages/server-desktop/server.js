@@ -6347,16 +6347,19 @@ if ($target -eq $null) { 'name-not-found' } else {
   // ── Notifications ─────────────────────────────────────────────────────────
   function notificationsPayload(userId, opts) {
     opts = opts || {}
-    const limit = Math.min(parseInt(opts.limit || '50') || 50, 200)
-    const rows = opts.unread
-      ? db.prepare("SELECT * FROM notifications WHERE user_id=? AND read=0 ORDER BY created_at DESC LIMIT ?").all(userId, limit)
-      : db.prepare("SELECT * FROM notifications WHERE user_id=? ORDER BY created_at DESC LIMIT ?").all(userId, limit)
+    const limit  = Math.min(parseInt(opts.limit || '50') || 50, 200)
+    const offset = Math.max(0, parseInt(opts.offset || '0') || 0)
+    const base = opts.unread ? "FROM notifications WHERE user_id=? AND read=0" : "FROM notifications WHERE user_id=?"
+    // 3.16.8 — the unread count was global while the list stopped at fifty, so the badge
+    // could claim 120 rows above a list of 50 with no way to reach the rest.
+    const rows = db.prepare('SELECT * ' + base + ' ORDER BY created_at DESC LIMIT ? OFFSET ?').all(userId, limit, offset)
     const unread = db.prepare("SELECT COUNT(*) as c FROM notifications WHERE user_id=? AND read=0").get(userId).c
-    return { notifications: rows, unread }
+    const total = db.prepare('SELECT COUNT(*) as c ' + base).get(userId).c
+    return { notifications: rows, unread, total, limit, offset }
   }
   const notifListHandler = async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
-    return notificationsPayload(p.userId, { unread: req.query?.unread === '1', limit: req.query?.limit })
+    return notificationsPayload(p.userId, { unread: req.query?.unread === '1', limit: req.query?.limit, offset: req.query?.offset })
   }
   fastify.get('/api/notifications', notifListHandler)
   fastify.get('/api/alerts/notifications', notifListHandler)

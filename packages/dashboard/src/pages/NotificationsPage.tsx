@@ -9,6 +9,7 @@ import { useT } from '../lib/i18n'
 import type { TKey } from '../lib/i18n'
 import { formatRelativeLang } from '../lib/i18n'
 import { useUIStore } from '../store/uiStore'
+import { useDeviceStore } from '../store/deviceStore'
 import { Alert, Button, Card, CardBody, EmptyState, Field, Input, Select, SkeletonRows } from '../components/ui'
 
 interface Notification {
@@ -135,6 +136,7 @@ function AlertRuleCard({ rule, onDelete, onToggle, T, lang }: {
 export function NotificationsPage({ embedded = false }: { embedded?: boolean } = {}) {
   const T    = useT()
   const lang = useUIStore(s => s.lang)
+  const isRtl = lang === 'ar'
 
   const ALERT_TYPE_LABELS = lang === 'ar' ? ALERT_TYPE_LABELS_AR : ALERT_TYPE_LABELS_EN
 
@@ -147,6 +149,11 @@ export function NotificationsPage({ embedded = false }: { embedded?: boolean } =
   const [ruleErrorKey, setRuleErrorKey]   = useState<TKey | ''>('')
   const [tab, setTab]                     = useState<'notifications' | 'rules'>('notifications')
   const [showAddRule, setShowAddRule]     = useState(false)
+  // 3.16.8 — the server caps the list at fifty while the unread count is global.
+  const PAGE_SIZE = 50
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const { devices } = useDeviceStore()
   const [newRule, setNewRule]             = useState({
     type: 'cpu_high', threshold: 90, cooldownMin: 30, channel: 'in_app', webhookUrl: ''
   })
@@ -155,14 +162,15 @@ export function NotificationsPage({ embedded = false }: { embedded?: boolean } =
     setLoading(true)
     setErrorKey('')
     try {
-      const res = await api.get('/api/alerts/notifications')
+      const res = await api.get('/api/alerts/notifications', { params: { limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE } })
       setNotifications(res.data.notifications ?? [])
       setUnread(res.data.unread ?? 0)
+      setTotal(Number(res.data.total ?? (res.data.notifications ?? []).length))
     } catch {
       setErrorKey('notif_load_failed')
     }
     finally { setLoading(false) }
-  }, [])
+  }, [page])
 
   const loadRules = useCallback(async () => {
     setRulesLoading(true)
@@ -177,6 +185,13 @@ export function NotificationsPage({ embedded = false }: { embedded?: boolean } =
 
   useEffect(() => { loadNotifications(); loadRules() }, [loadNotifications, loadRules])
 
+  // 3.16.8 — reload when the socket reports a new notification instead of waiting for a poll.
+  useEffect(() => {
+    const onNew = () => { void loadNotifications() }
+    window.addEventListener('airemote:notification', onNew)
+    return () => window.removeEventListener('airemote:notification', onNew)
+  }, [loadNotifications])
+
   async function markAllRead() {
     // 3.16.7 — these four used to await without a catch: a failed call left the click
     // looking dead and the list unchanged.
@@ -188,6 +203,7 @@ export function NotificationsPage({ embedded = false }: { embedded?: boolean } =
   }
 
   async function clearRead() {
+    if (!confirm(isRtl ? 'حذف كل الإشعارات المقروءة؟' : 'Delete every read notification?')) return
     try {
       await api.delete('/api/alerts/notifications')
       setNotifications(n => n.filter(x => !x.read))
@@ -195,6 +211,7 @@ export function NotificationsPage({ embedded = false }: { embedded?: boolean } =
   }
 
   async function deleteRule(id: string) {
+    if (!confirm(isRtl ? 'حذف قاعدة التنبيه؟' : 'Delete this alert rule?')) return
     try {
       await api.delete(`/api/alerts/${id}`)
       setRules(r => r.filter(x => x.id !== id))
@@ -208,6 +225,14 @@ export function NotificationsPage({ embedded = false }: { embedded?: boolean } =
     } catch { setRuleErrorKey('notif_action_failed') }
   }
 
+  async function markRead(id: string) {
+    // 3.16.8 — the API accepted ids[]; the page only ever sent {all:true}.
+    try {
+      await api.post('/api/alerts/notifications/read', { ids: [id] })
+      setNotifications(n => n.map(x => x.id === id ? { ...x, read: 1 } : x))
+      setUnread(u => Math.max(0, u - 1))
+    } catch { setErrorKey('notif_action_failed') }
+  }
   async function addRule() {
     // 3.16.7 — a webhook rule without a URL was stored as channel=webhook, url=NULL:
     // it never fired and never complained.
@@ -311,7 +336,12 @@ export function NotificationsPage({ embedded = false }: { embedded?: boolean } =
             return (
               <div
                 key={notif.id}
-                className={clsx('rounded-xl border border-line border-s-2 p-3.5 transition-opacity', sevStyle, notif.read && 'opacity-60')}
+                role={!notif.read ? 'button' : undefined}
+                tabIndex={!notif.read ? 0 : undefined}
+                onClick={() => { if (!notif.read) void markRead(notif.id) }}
+                onKeyDown={e => { if (!notif.read && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); void markRead(notif.id) } }}
+                title={!notif.read ? (lang === 'ar' ? 'اضغط لتعليمه مقروءًا' : 'Click to mark as read') : undefined}
+                className={clsx('rounded-xl border border-line border-s-2 p-3.5 transition-opacity', !notif.read && 'cursor-pointer hover:bg-surface2/60', sevStyle, notif.read && 'opacity-60')}
               >
                 <div className="flex items-start gap-3">
                   <div className={clsx('flex h-8 w-8 shrink-0 items-center justify-center rounded-lg', iconBg)}>
@@ -326,7 +356,7 @@ export function NotificationsPage({ embedded = false }: { embedded?: boolean } =
                     </div>
                     <p className="mt-1 text-xs leading-relaxed text-muted">{notif.message}</p>
                     {notif.device_id && (
-                      <p className="mt-1 font-mono text-[10px] text-muted" dir="ltr">{notif.device_id}</p>
+                      <p className="mt-1 font-mono text-[10px] text-muted" dir="ltr">{devices.find(d => d.id === notif.device_id)?.name || notif.device_id}</p>
                     )}
                   </div>
                   {!notif.read && <div className="mt-1 h-2 w-2 shrink-0 rounded-full bg-primary" />}
@@ -334,6 +364,18 @@ export function NotificationsPage({ embedded = false }: { embedded?: boolean } =
               </div>
             )
           })}
+          {total > PAGE_SIZE && (
+            <div className="flex items-center justify-between gap-2 pt-1 text-[11px] text-muted">
+              <span>{T('sessions_showing', { n: notifications.length, total })}</span>
+              <div className="flex items-center gap-1.5">
+                <button type="button" disabled={page <= 1} onClick={() => setPage(p => p - 1)}
+                  className="rounded-md border border-line px-2.5 py-1 text-ink transition-colors hover:bg-surface2 disabled:opacity-40">{T('sessions_prev')}</button>
+                <span className="tabular-nums px-1">{page} / {Math.max(1, Math.ceil(total / PAGE_SIZE))}</span>
+                <button type="button" disabled={page >= Math.ceil(total / PAGE_SIZE)} onClick={() => setPage(p => p + 1)}
+                  className="rounded-md border border-line px-2.5 py-1 text-ink transition-colors hover:bg-surface2 disabled:opacity-40">{T('sessions_next')}</button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
