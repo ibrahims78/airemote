@@ -92,6 +92,9 @@ export function AuditPage({ embedded = false }: { embedded?: boolean } = {}) {
   const [loading, setLoading]           = useState(false)
   const [error, setError]               = useState('')
   const [search, setSearch]             = useState('')
+  // 3.16.7 — the search fired a COUNT(*)-backed request on every keystroke; debounce it.
+  const [query, setQuery]               = useState('')
+  const [exporting, setExporting]       = useState(false)
   const [filterAction, setFilterAction] = useState('')
   const [expandedRow, setExpandedRow]   = useState<number | null>(null)
 
@@ -104,7 +107,7 @@ export function AuditPage({ embedded = false }: { embedded?: boolean } = {}) {
       const params = new URLSearchParams({ page: String(page) })
       if (filterAction) params.set('action', filterAction)
       // 3.16.7 — free text is a user search: the server matches it against email and id.
-      if (search) params.set('q', search)
+      if (query) params.set('q', query)
       const res = await api.get(`/api/audit?${params}`)
       setEntries(res.data.entries ?? [])
       setTotal(res.data.total ?? 0)
@@ -113,7 +116,12 @@ export function AuditPage({ embedded = false }: { embedded?: boolean } = {}) {
       setError(err.response?.data?.error || err.message || (isRtl ? 'فشل تحميل سجل التدقيق.' : 'Failed to load the audit log.'))
       setEntries([])
     } finally { setLoading(false) }
-  }, [page, filterAction, search, isRtl])
+  }, [page, filterAction, query, isRtl])
+
+  useEffect(() => {
+    const timer = setTimeout(() => setQuery(search), 300)
+    return () => clearTimeout(timer)
+  }, [search])
 
   useEffect(() => { void load() }, [load])
 
@@ -121,6 +129,7 @@ export function AuditPage({ embedded = false }: { embedded?: boolean } = {}) {
     const params = new URLSearchParams()
     if (filterAction) params.set('action', filterAction)
     if (search) params.set('q', search)
+    setExporting(true)
     try {
       const res = await fetch(`/api/audit/export?${params}`, {
         headers: { Authorization: ('Bea' + 'rer ') + (token || '') },
@@ -133,7 +142,10 @@ export function AuditPage({ embedded = false }: { embedded?: boolean } = {}) {
       a.download = 'audit-log.csv'
       a.click()
       setTimeout(() => URL.revokeObjectURL(url), 1000)
-    } catch { /* التنزيل يفشل بصمت كما كان */ }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : ''
+      setError((isRtl ? 'فشل تصدير سجل التدقيق' : 'Could not export the audit log') + (msg ? ` (${msg})` : ''))
+    } finally { setExporting(false) }
   }
 
   const totalPages = Math.ceil(total / perPage)
@@ -163,7 +175,7 @@ export function AuditPage({ embedded = false }: { embedded?: boolean } = {}) {
             icon={<RefreshCw size={14} className={loading ? 'animate-spin' : undefined} />}
             onClick={() => void load()}
           />
-          <Button variant="secondary" icon={<Download size={13} />} onClick={() => void exportCsv()}>
+          <Button variant="secondary" icon={<Download size={13} />} onClick={() => void exportCsv()} loading={exporting} disabled={exporting}>
             {T('audit_export_csv')}
           </Button>
         </div>
