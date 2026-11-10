@@ -28,8 +28,10 @@ function RoleDropdown({ user, onUpdate }: { user: User; onUpdate: (updated: User
       const res = await api.patch(`/api/users/${user.id}`, { role })
       onUpdate(res.data)
       toast.success(t('toast_role_changed'), `${user.name} → ${ROLES.find(r => r.value === role)?.label}`)
-    } catch {
-      toast.error(t('toast_fail_save'))
+    } catch (e: unknown) {
+      // 3.16.7 — the server refuses self-demotion and removing the last admin; show why.
+      const why = (e as { response?: { data?: { error?: string } } })?.response?.data?.error
+      toast.error(t('toast_fail_save'), why)
     } finally {
       setSaving(false)
       setOpen(false)

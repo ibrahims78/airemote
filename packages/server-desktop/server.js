@@ -4546,6 +4546,15 @@ async function start(config) {
     if (!existing) return reply.code(404).send({ error: 'User not found' })
     // 3.9.2 — تحقق من الدور، وأبطل رموز التحديث عند تغيير كلمة المرور أو الدور.
     if (role && !USER_ROLES.includes(role)) return reply.code(400).send({ error: 'Invalid role', allowed: USER_ROLES })
+    // 3.16.7 — an admin must not be able to lock the installation out: no self role
+    // change, and never demote the only remaining admin.
+    if (role && role !== existing.role) {
+      if (req.params.id === p.userId) return reply.code(400).send({ error: 'Cannot change your own role' })
+      if (existing.role === 'admin' && role !== 'admin') {
+        const admins = db.prepare("SELECT COUNT(*) as c FROM users WHERE role='admin'").get().c
+        if (admins <= 1) return reply.code(400).send({ error: 'Cannot demote the last admin' })
+      }
+    }
     if (password) {
       if (password.length < 12) return reply.code(400).send({ error: 'Min 12 characters' })
       db.prepare("UPDATE users SET password_hash=?, updated_at=datetime('now') WHERE id=?").run(await bcrypt.hash(password, 12), req.params.id)
@@ -4567,8 +4576,13 @@ async function start(config) {
   fastify.delete('/api/users/:id', async (req, reply) => {
     const p = adminMiddleware(req, reply); if (!p) return
     if (req.params.id === p.userId) return reply.code(400).send({ error: 'Cannot delete yourself' })
-    const existing = db.prepare("SELECT email FROM users WHERE id=?").get(req.params.id)
+    const existing = db.prepare("SELECT email, role FROM users WHERE id=?").get(req.params.id)
     if (!existing) return reply.code(404).send({ error: 'User not found' })
+    // 3.16.7 — removing the last admin leaves the database with no way back in.
+    if (existing.role === 'admin') {
+      const admins = db.prepare("SELECT COUNT(*) as c FROM users WHERE role='admin'").get().c
+      if (admins <= 1) return reply.code(400).send({ error: 'Cannot delete the last admin' })
+    }
     // 3.9.2 (H2) — لا تترك جلسات حيّة بعد حذف المستخدم.
     const closed = relayCloseForPrincipal({ userId: req.params.id })
     db.prepare("DELETE FROM users WHERE id=?").run(req.params.id)
