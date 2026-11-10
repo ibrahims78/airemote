@@ -26,6 +26,8 @@ interface Props {
   rt?: string
   /** 3.11.1 — مسار البداية: أندرويد يبدأ من /sdcard لأن `/` غير قابل للعرض. */
   initialPath?: string
+  /** 3.16.8 — يُستخدم لشرح فراغ المجلد على أندرويد 13+ (صلاحية كل الملفات). */
+  platform?: string
 }
 
 type SortKey = 'name' | 'size' | 'modified'
@@ -75,7 +77,7 @@ function authToken(): string {
   } catch { return '' }
 }
 
-export function FileManager({ deviceId, rt, initialPath }: Props) {
+export function FileManager({ deviceId, rt, initialPath, platform }: Props) {
   const t = useT()
   // كل نداءات الملفات تحمل التذكرة إن وُجدت (الوكيل بلا حساب لوحة).
   const rq = rt ? `?rt=${encodeURIComponent(rt)}` : ''
@@ -103,7 +105,9 @@ export function FileManager({ deviceId, rt, initialPath }: Props) {
   const pathParts = path.split('/').filter(Boolean)
 
   useEffect(() => {
-    void loadDir('/')
+    // 3.16.8 — the mount effect hardcoded '/', so an Android target never reached /sdcard
+    // even when the caller asked for it.
+    void loadDir(initialPath || '/')
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deviceId])
 
@@ -386,7 +390,14 @@ export function FileManager({ deviceId, rt, initialPath }: Props) {
                     <EmptyState
                       icon={<HardDrive size={26} />}
                       title={query ? t('fm_empty_search_title') : t('fm_empty_folder_title')}
-                      description={query ? t('fm_empty_search_desc') : t('fm_empty_folder_desc')}
+                      description={query ? t('fm_empty_search_desc') : (
+                        <>
+                          {t('fm_empty_folder_desc')}
+                          {platform === 'android' && (
+                            <span className="mt-1 block text-warning">{t('fm_android_all_files_hint')}</span>
+                          )}
+                        </>
+                      )}
                       action={query
                         ? <Button onClick={() => setQuery('')}>{t('fm_clear_search')}</Button>
                         : <Button variant="primary" icon={<Upload size={13} />} onClick={() => uploadRef.current?.click()}>{t('fm_upload')}</Button>}

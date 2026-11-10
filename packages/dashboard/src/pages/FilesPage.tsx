@@ -39,7 +39,7 @@ export function FilesPage() {
             </div>
           </div>
         ) : (
-          <FileManager deviceId={deviceId} deviceName={name || short} rt={rt} initialPath={initialPath} />
+          <FileManager deviceId={deviceId} deviceName={name || short} rt={rt} initialPath={initialPath} platform={platform} />
         )}
       </main>
     </div>

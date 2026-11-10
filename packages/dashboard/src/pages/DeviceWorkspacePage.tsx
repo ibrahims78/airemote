@@ -268,7 +268,12 @@ export function DeviceWorkspacePage() {
 
         {tab === 'files' && deviceId && (
           <div className="h-full p-5">
-            <FileManager deviceId={deviceId} deviceName={device.name} />
+            <FileManager
+              deviceId={deviceId}
+              deviceName={device.name}
+              platform={String(device.info?.platform || '')}
+              initialPath={String(device.info?.platform || '').toLowerCase() === 'android' ? '/sdcard' : '/'}
+            />
           </div>
         )}
 
