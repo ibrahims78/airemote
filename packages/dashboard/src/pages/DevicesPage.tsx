@@ -728,9 +728,11 @@ export function DevicesPage() {
                             {d.status === 'online' && String(d.info?.platform || '').toLowerCase() === 'windows' && (() => {
                               const on = (d as unknown as { runAtStartup?: boolean | null }).runAtStartup
                               return (
-                                <button type="button" role="menuitemcheckbox" aria-checked={!!on} onClick={() => { setRowMenu(null); toggleStartup(d.id, !on) }}
-                                  className="flex w-full items-center gap-2 px-3 py-1.5 text-start text-[12px] text-ink hover:bg-surface2">
-                                  <Power size={12} className="text-muted" /> {on ? 'إيقاف البدء مع ويندوز' : 'البدء مع ويندوز'}
+                                <button type="button" role="menuitemcheckbox" aria-checked={!!on} disabled={startupBusyId === d.id} onClick={() => { setRowMenu(null); toggleStartup(d.id, !on) }}
+                                  className="flex w-full items-center gap-2 px-3 py-1.5 text-start text-[12px] text-ink hover:bg-surface2 disabled:opacity-50">
+                                  {startupBusyId === d.id
+                                    ? <Loader2 size={12} className="animate-spin text-muted" />
+                                    : <Power size={12} className="text-muted" />} {on ? t('dev_startup_on') : t('dev_startup_off')}
                                 </button>
                               )
                             })()}
@@ -743,9 +745,11 @@ export function DevicesPage() {
                             {isAdmin && (
                               <>
                                 <div className="my-1 border-t border-line" />
-                                <button type="button" role="menuitem" onClick={() => { setRowMenu(null); connAction(d.id, d.status === 'blocked' ? 'unblock' : 'block') }}
-                                  className="flex w-full items-center gap-2 px-3 py-1.5 text-start text-[12px] text-ink hover:bg-surface2">
-                                  <Ban size={12} className="text-muted" /> {d.status === 'blocked' ? 'إلغاء الحجب' : 'حجب الجهاز'}
+                                <button type="button" role="menuitem" disabled={connBusyId === d.id} onClick={() => { setRowMenu(null); connAction(d.id, d.status === 'blocked' ? 'unblock' : 'block') }}
+                                  className="flex w-full items-center gap-2 px-3 py-1.5 text-start text-[12px] text-ink hover:bg-surface2 disabled:opacity-50">
+                                  {connBusyId === d.id
+                                    ? <Loader2 size={12} className="animate-spin text-muted" />
+                                    : <Ban size={12} className="text-muted" />} {d.status === 'blocked' ? t('unblock') : t('block')}
                                 </button>
                                 <button type="button" role="menuitem" onClick={() => { setRowMenu(null); handleDelete(d.id, d.name) }}
                                   className="flex w-full items-center gap-2 px-3 py-1.5 text-start text-[12px] text-danger hover:bg-danger/10">
