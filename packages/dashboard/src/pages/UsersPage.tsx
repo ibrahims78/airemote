@@ -5,10 +5,14 @@ import { toast } from '../store/toastStore'
 import type { User, UserRole } from '@airemote/shared'
 import { clsx } from 'clsx'
 import { useT } from '../lib/i18n'
+import { useAuthStore } from '../store/authStore'
+import { useUIStore } from '../store/uiStore'
 import { Alert, Button, Card, EmptyState, Input, Modal, Select, SkeletonRows } from '../components/ui'
 
-function RoleDropdown({ user, onUpdate }: { user: User; onUpdate: (updated: User) => void }) {
+function RoleDropdown({ user, onUpdate, locked }: { user: User; onUpdate: (updated: User) => void; locked?: boolean }) {
   const t = useT()
+  const { lang } = useUIStore()
+  const isRtl = lang === 'ar'
   const [open, setOpen] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -22,6 +26,7 @@ function RoleDropdown({ user, onUpdate }: { user: User; onUpdate: (updated: User
   const Icon = current.icon
 
   async function changeRole(role: UserRole) {
+    if (locked) return
     if (role === user.role) { setOpen(false); return }
     setSaving(true)
     try {
@@ -42,7 +47,8 @@ function RoleDropdown({ user, onUpdate }: { user: User; onUpdate: (updated: User
     <div className="relative">
       <button
         onClick={() => setOpen(o => !o)}
-        disabled={saving}
+        disabled={saving || locked}
+        title={locked ? (isRtl ? 'لا يمكنك تغيير دورك' : 'You cannot change your own role') : undefined}
         className={clsx(
           'inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border transition-all disabled:opacity-60',
           current.color
@@ -161,6 +167,11 @@ export function UsersPage({ embedded = false }: { embedded?: boolean } = {}) {
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'viewer' as UserRole })
   const [adding, setAdding] = useState(false)
   const [pwModal, setPwModal] = useState<User | null>(null)
+  const { user: me } = useAuthStore()
+  const { lang } = useUIStore()
+  const isRtl = lang === 'ar'
+  const [q, setQ] = useState('')
+  const [roleFilter, setRoleFilter] = useState<'all' | UserRole>('all')
 
   function load () {
     setLoading(true)
@@ -178,10 +189,11 @@ export function UsersPage({ embedded = false }: { embedded?: boolean } = {}) {
     if (form.password.length < 12) { toast.error(t('password_min')); return }
     setAdding(true)
     try {
-      const res = await api.post('/api/users', form)
-      setUsers(p => [...p, res.data])
+      await api.post('/api/users', form)
       setShowAdd(false)
       setForm({ name: '', email: '', password: '', role: 'viewer' })
+      // 3.16.8 — POST returns no createdAt, so appending the response invented one.
+      load()
       toast.success(t('toast_user_added'), form.name)
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: string } } }
@@ -195,7 +207,8 @@ export function UsersPage({ embedded = false }: { embedded?: boolean } = {}) {
     if (!confirm(`${t('user_delete_confirm')} "${name}"?`)) return
     try {
       await api.delete(`/api/users/${id}`)
-      setUsers(p => p.filter(u => u.id !== id))
+      // 3.16.8 — reload so the table always shows what the server actually holds.
+      load()
       toast.success(t('toast_user_deleted'), name)
     } catch {
       toast.error(t('toast_fail_save'))
@@ -205,6 +218,12 @@ export function UsersPage({ embedded = false }: { embedded?: boolean } = {}) {
   const adminCount = users.filter(u => u.role === 'admin').length
   const managerCount = users.filter(u => u.role === 'manager').length
   const viewerCount = users.filter(u => u.role === 'viewer').length
+  const needle = q.trim().toLowerCase()
+  const visible = users.filter(u => {
+    if (roleFilter !== 'all' && u.role !== roleFilter) return false
+    if (!needle) return true
+    return (u.name + ' ' + u.email).toLowerCase().includes(needle)
+  })
 
   return (
     <div className={embedded ? '' : 'cr-page'}>
@@ -221,6 +240,24 @@ export function UsersPage({ embedded = false }: { embedded?: boolean } = {}) {
         >
           <Plus size={15} /> {t('add_user')}
         </button>
+      </div>
+
+      {/* 3.16.8 — with more than a handful of accounts the table had no way to narrow down. */}
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <Input
+          type="search" value={q} onChange={e => setQ(e.target.value)}
+          placeholder={isRtl ? 'ابحث بالاسم أو البريد' : 'Search by name or email'}
+          aria-label={isRtl ? 'بحث في المستخدمين' : 'Search users'}
+          className="h-9 min-w-[200px] flex-1"
+        />
+        <div className="flex gap-1 rounded-lg border border-line bg-canvas p-0.5" role="group">
+          {([['all', isRtl ? 'الكل' : 'All'], ['admin', t('role_admin')], ['manager', t('role_manager')], ['viewer', t('role_viewer')]] as const).map(([k, label]) => (
+            <button key={k} type="button" onClick={() => setRoleFilter(k)} aria-pressed={roleFilter === k}
+              className={'h-8 rounded-md px-3 text-[11.5px] transition-colors ' + (roleFilter === k ? 'bg-primary text-primary-fg font-medium' : 'text-muted hover:text-ink')}>
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {users.length > 0 && (
@@ -289,19 +326,20 @@ export function UsersPage({ embedded = false }: { embedded?: boolean } = {}) {
               <tr className="border-b border-line">
                 <th className="text-start text-xs text-muted font-medium px-4 py-3">{t('user_name')}</th>
                 <th className="text-start text-xs text-muted font-medium px-4 py-3">{t('user_role')}</th>
+                <th className="text-start text-xs text-muted font-medium px-4 py-3">2FA</th>
                 <th className="text-start text-xs text-muted font-medium px-4 py-3">{t('user_created')}</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
             <tbody>
-              {users.length === 0 && !loadError && (
+              {visible.length === 0 && !loadError && (
                 <tr>
-                  <td colSpan={4}>
-                    <EmptyState icon={<Users size={26} />} title={t('no_users_yet')} />
+                  <td colSpan={5}>
+                    <EmptyState icon={<Users size={26} />} title={users.length ? (isRtl ? 'لا نتائج مطابقة' : 'No matching users') : t('no_users_yet')} />
                   </td>
                 </tr>
               )}
-              {users.map(u => (
+              {visible.map(u => (
                 <tr key={u.id} className="border-b border-line/60 hover:bg-surface2 group transition-colors">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2.5">
@@ -315,7 +353,17 @@ export function UsersPage({ embedded = false }: { embedded?: boolean } = {}) {
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <RoleDropdown user={u} onUpdate={(updated) => setUsers(p => p.map(x => x.id === u.id ? updated : x))} />
+                    <RoleDropdown user={u} locked={u.id === me?.id} onUpdate={() => load()} />
+                  </td>
+                  <td className="px-4 py-3">
+                    {(() => {
+                      // 3.16.8 — the server sends totp_enabled; nothing displayed it.
+                      const totp = (u as unknown as { totpEnabled?: boolean; totp_enabled?: number }).totpEnabled
+                        || (u as unknown as { totp_enabled?: number }).totp_enabled
+                      return totp
+                        ? <span className="rounded-full border border-success/20 bg-success/10 px-1.5 py-0.5 text-[10px] text-success">2FA</span>
+                        : <span className="text-[11px] text-muted">—</span>
+                    })()}
                   </td>
                   <td className="px-4 py-3 text-xs text-muted">
                     {new Date(u.createdAt || (u as unknown as { created_at?: string }).created_at || Date.now()).toLocaleDateString()}
@@ -329,13 +377,15 @@ export function UsersPage({ embedded = false }: { embedded?: boolean } = {}) {
                       >
                         <KeyRound size={13} />
                       </button>
-                      <button
-                        onClick={() => handleDelete(u.id, u.name)}
-                        className="p-1.5 text-muted/70 hover:text-danger transition-colors rounded"
-                        title={t('delete')}
-                      >
-                        <Trash2 size={13} />
-                      </button>
+                      {u.id !== me?.id && (
+                        <button
+                          onClick={() => handleDelete(u.id, u.name)}
+                          className="p-1.5 text-muted/70 hover:text-danger transition-colors rounded"
+                          title={t('delete')}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>
