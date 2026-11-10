@@ -178,27 +178,40 @@ export function NotificationsPage({ embedded = false }: { embedded?: boolean } =
   useEffect(() => { loadNotifications(); loadRules() }, [loadNotifications, loadRules])
 
   async function markAllRead() {
-    await api.post('/api/alerts/notifications/read', { all: true })
-    setNotifications(n => n.map(x => ({ ...x, read: 1 })))
-    setUnread(0)
+    // 3.16.7 — these four used to await without a catch: a failed call left the click
+    // looking dead and the list unchanged.
+    try {
+      await api.post('/api/alerts/notifications/read', { all: true })
+      setNotifications(n => n.map(x => ({ ...x, read: 1 })))
+      setUnread(0)
+    } catch { setErrorKey('notif_action_failed') }
   }
 
   async function clearRead() {
-    await api.delete('/api/alerts/notifications')
-    setNotifications(n => n.filter(x => !x.read))
+    try {
+      await api.delete('/api/alerts/notifications')
+      setNotifications(n => n.filter(x => !x.read))
+    } catch { setErrorKey('notif_action_failed') }
   }
 
   async function deleteRule(id: string) {
-    await api.delete(`/api/alerts/${id}`)
-    setRules(r => r.filter(x => x.id !== id))
+    try {
+      await api.delete(`/api/alerts/${id}`)
+      setRules(r => r.filter(x => x.id !== id))
+    } catch { setRuleErrorKey('notif_action_failed') }
   }
 
   async function toggleRule(id: string, enabled: boolean) {
-    await api.patch(`/api/alerts/${id}`, { enabled })
-    setRules(r => r.map(x => x.id === id ? { ...x, enabled: enabled ? 1 : 0 } : x))
+    try {
+      await api.patch(`/api/alerts/${id}`, { enabled })
+      setRules(r => r.map(x => x.id === id ? { ...x, enabled: enabled ? 1 : 0 } : x))
+    } catch { setRuleErrorKey('notif_action_failed') }
   }
 
   async function addRule() {
+    // 3.16.7 — a webhook rule without a URL was stored as channel=webhook, url=NULL:
+    // it never fired and never complained.
+    if (newRule.channel === 'webhook' && !newRule.webhookUrl.trim()) { setRuleErrorKey('notif_webhook_required'); return }
     try {
       await api.post('/api/alerts', {
         type: newRule.type,
@@ -208,8 +221,9 @@ export function NotificationsPage({ embedded = false }: { embedded?: boolean } =
         webhookUrl: newRule.webhookUrl || undefined
       })
       setShowAddRule(false)
+      setRuleErrorKey('')
       loadRules()
-    } catch {}
+    } catch { setRuleErrorKey('notif_action_failed') }
   }
 
   return (
