@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { History, Terminal, Monitor, FolderOpen, Bot, RefreshCw, Circle, Tv2, Square, AlertTriangle, Search, Download } from 'lucide-react'
 import { api } from '../lib/api'
 import { useT } from '../lib/i18n'
+import { useAuthStore } from '../store/authStore'
 import { clsx } from 'clsx'
 import { toast } from '../store/toastStore'
 import { Alert, Button, Card, EmptyState, SkeletonRows } from '../components/ui'
@@ -21,6 +22,7 @@ const typeConfig: Record<string, { label: string; icon: React.ElementType; color
   ai:     { label: 'AI Chat',     icon: Bot,         color: 'text-warning',  bg: 'bg-warning/10'  },
   screen: { label: 'Screen',      icon: Tv2,         color: 'text-info',  bg: 'bg-info/10'  },
   vnc:    { label: 'VNC',         icon: Monitor,     color: 'text-info',  bg: 'bg-info/10'  },
+  shell:  { label: 'Shell',       icon: Terminal,    color: 'text-primary', bg: 'bg-primary/10' },
   rdp:    { label: 'RDP',         icon: Monitor,     color: 'text-warning',  bg: 'bg-warning/10'  },
 }
 
@@ -58,31 +60,58 @@ export function SessionsPage({ embedded = false }: { embedded?: boolean } = {}) 
   const filtersRef = useRef({ q: '', from: '', to: '' })
   filtersRef.current = { q: query, from: fromDate, to: toDate }
   const T = useT()
+  const { user } = useAuthStore()
+  // 3.16.8 — the server export needs manager or higher; the button was shown to everyone.
+  const canExport = user?.role === 'admin' || user?.role === 'manager'
 
-  const listParams = useCallback(() => {
+  const PAGE_SIZE = 25
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [counts, setCounts] = useState<{ total: number; active: number; ended: number; byType: Record<string, number> }>({ total: 0, active: 0, ended: 0, byType: {} })
+
+  const listParams = useCallback((pageArg: number) => {
     const f = filtersRef.current
-    const params: Record<string, string> = {}
+    const params: Record<string, string> = {
+      limit: String(PAGE_SIZE),
+      offset: String((Math.max(1, pageArg) - 1) * PAGE_SIZE)
+    }
     if (f.q.trim()) params.q = f.q.trim()
     if (f.from) params.from = f.from
     if (f.to) params.to = f.to + 'T23:59:59'
-    return params
-  }, [])
-
-  const exportParams = useCallback(() => {
-    const params = listParams()
     if (filter === 'active' || filter === 'ended') params.status = filter
     else if (filter !== 'all') params.type = filter
     return params
-  }, [filter, listParams])
+  }, [filter])
+
+  const exportParams = useCallback(() => {
+    const params = listParams(1)
+    delete params.limit
+    delete params.offset
+    return params
+  }, [listParams])
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
       const [sessRes, liveRes] = await Promise.allSettled([
-        api.get('/api/sessions', { params: listParams() }),
+        api.get('/api/sessions', { params: listParams(page) }),
         api.get('/api/sessions/screen/active')
       ])
-      if (sessRes.status === 'fulfilled') setSessions(sessRes.value.data)
+      if (sessRes.status === 'fulfilled') {
+        const data = sessRes.value.data
+        if (Array.isArray(data)) {
+          // Older server (before 3.16.8) returns a bare array: keep the page usable.
+          setSessions(data)
+          setTotal(data.length)
+          const byType: Record<string, number> = {}
+          for (const s of data) byType[s.type || 'unknown'] = (byType[s.type || 'unknown'] || 0) + 1
+          setCounts({ total: data.length, active: data.filter(s => !s.endedAt).length, ended: data.filter(s => s.endedAt).length, byType })
+        } else {
+          setSessions(data?.sessions || [])
+          setTotal(Number(data?.total || 0))
+          if (data?.counts) setCounts(data.counts)
+        }
+      }
       if (liveRes.status === 'fulfilled') {
         setLiveStreams(liveRes.value.data)
         setIsAdmin(true)
@@ -91,7 +120,7 @@ export function SessionsPage({ embedded = false }: { embedded?: boolean } = {}) 
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [listParams, page])
 
   useEffect(() => { load() }, [load])
 
@@ -101,7 +130,7 @@ export function SessionsPage({ embedded = false }: { embedded?: boolean } = {}) 
     if (firstRun.current) { firstRun.current = false; return }
     const t = setTimeout(() => { load() }, 350)
     return () => clearTimeout(t)
-  }, [query, fromDate, toDate, load])
+  }, [query, fromDate, toDate])
 
   async function exportCsv() {
     setExporting(true)
@@ -139,28 +168,19 @@ export function SessionsPage({ embedded = false }: { embedded?: boolean } = {}) 
     }
   }
 
-  const active = sessions.filter(s => !s.endedAt).length
-  const types  = [...new Set(sessions.map(s => s.type))]
-
-  const filtered =
-    filter === 'all'    ? sessions :
-    filter === 'active' ? sessions.filter(s => !s.endedAt) :
-    filter === 'ended'  ? sessions.filter(s => s.endedAt) :
-    sessions.filter(s => s.type === filter)
-
-  const PAGE_SIZE = 25
-  const [page, setPage] = useState(1)
-  const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  // 3.16.8 — the counts and the page come from the server now: paginating the window the
+  // client already had made "25 of 100" mean "25 of the first hundred that exist".
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const safePage = Math.min(page, pageCount)
-  const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
+  const paged = sessions
 
   useEffect(() => { setPage(1) }, [filter, query, fromDate, toDate])
 
   const FILTERS = [
-    { key: 'all',    label: T('all_sessions'),    count: sessions.length },
-    { key: 'active', label: T('active_sessions'), count: active },
-    { key: 'ended',  label: T('ended_sessions'),  count: sessions.length - active },
-    ...types.map(t => ({ key: t, label: typeConfig[t]?.label || t.toUpperCase(), count: sessions.filter(s => s.type === t).length }))
+    { key: 'all',    label: T('all_sessions'),    count: counts.total },
+    { key: 'active', label: T('active_sessions'), count: counts.active },
+    { key: 'ended',  label: T('ended_sessions'),  count: counts.ended },
+    ...Object.keys(counts.byType).map(k => ({ key: k, label: typeConfig[k]?.label || k.toUpperCase(), count: counts.byType[k] }))
   ]
 
   return (
@@ -200,11 +220,13 @@ export function SessionsPage({ embedded = false }: { embedded?: boolean } = {}) 
         <span className="text-[11px] text-muted">{T('sessions_to')}</span>
         <input type="date" dir="ltr" value={toDate} onChange={e => setToDate(e.target.value)} title={T('sessions_to')} aria-label={T('sessions_to')}
           className="bg-surface border border-line rounded-lg px-2 py-2 text-xs text-ink" />
-        <button onClick={exportCsv} disabled={exporting}
-          className="flex items-center gap-2 text-sm text-muted hover:text-ink bg-surface2 hover:bg-surface border border-line px-3 py-2 rounded-lg transition-all disabled:opacity-50">
-          <Download size={13} className={exporting ? 'animate-pulse' : ''} />
-          {T('sessions_export')}
-        </button>
+        {canExport && (
+          <button onClick={exportCsv} disabled={exporting}
+            className="flex items-center gap-2 text-sm text-muted hover:text-ink bg-surface2 hover:bg-surface border border-line px-3 py-2 rounded-lg transition-all disabled:opacity-50">
+            <Download size={13} className={exporting ? 'animate-pulse' : ''} />
+            {T('sessions_export')}
+          </button>
+        )}
       </div>
 
       {/* ── Live Streams Panel (admin only) ─────────────────────────────── */}
@@ -306,10 +328,10 @@ export function SessionsPage({ embedded = false }: { embedded?: boolean } = {}) 
         <Card><div className="p-3"><SkeletonRows rows={6} /></div></Card>
       ) : (
         <div className="rounded-xl border border-line bg-surface overflow-hidden">
-          {filtered.length === 0 && !error && (
+          {paged.length === 0 && !error && (
             <EmptyState icon={<History size={26} />} title={T('no_sessions_yet')} />
           )}
-          {filtered.length > 0 && (
+          {paged.length > 0 && (
             <div className="overflow-x-auto">
               <table className="w-full text-sm min-w-[550px]">
                 <thead>
@@ -325,7 +347,7 @@ export function SessionsPage({ embedded = false }: { embedded?: boolean } = {}) 
                     const Icon   = tc.icon
                     const isActive = !s.endedAt
                     return (
-                      <tr key={s.id} className={clsx('border-b border-line/60 hover:bg-surface2 transition-colors', i === filtered.length - 1 && 'border-b-0')}>
+                      <tr key={s.id} className={clsx('border-b border-line/60 hover:bg-surface2 transition-colors', i === paged.length - 1 && 'border-b-0')}>
                         <td className="px-4 py-3">
                           <div className={clsx('inline-flex items-center gap-2 px-2.5 py-1 rounded-lg text-xs font-medium', tc.bg, tc.color)}>
                             <Icon size={11} /> {tc.label}
@@ -363,7 +385,7 @@ export function SessionsPage({ embedded = false }: { embedded?: boolean } = {}) 
 
               {/* 2026-11-10 — ترقيم صفحات بدل تمرير 100 جلسة في صفحة واحدة */}
               <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-2.5 text-[11.5px] text-muted">
-                <span>{T('sessions_showing', { n: paged.length, total: filtered.length })}</span>
+                <span>{T('sessions_showing', { n: paged.length, total })}</span>
                 <div className="flex items-center gap-1.5">
                   <button type="button" disabled={safePage <= 1} onClick={() => setPage(safePage - 1)}
                     className="rounded-md border border-line px-2.5 py-1 text-ink transition-colors hover:bg-surface2 disabled:opacity-40">{T('sessions_prev')}</button>

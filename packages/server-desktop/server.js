@@ -4633,7 +4633,20 @@ async function start(config) {
     const offset = Math.max(0, parseInt(q.offset || '0') || 0)
     const { clause, args } = sessionWhere(p, q)
     const rows = db.prepare(SESSION_BASE + clause + ' ORDER BY s.started_at DESC LIMIT ? OFFSET ?').all(...args, limit, offset)
-    return rows.map(mapSessionRow)
+    // 3.16.8 — the page paginated the truncated window it already had, so "showing 25 of 100"
+    // was really "25 of the first 100 that exist". Return the real total, and the chip counts
+    // scoped to the user but not to the filter the user is looking at.
+    const total = db.prepare('SELECT COUNT(*) as c FROM sessions s LEFT JOIN devices d ON s.device_id=d.id LEFT JOIN users u ON s.user_id=u.id' + clause).get(...args).c
+    const scope = sessionWhere(p, {})
+    const groups = db.prepare('SELECT s.type as type, (s.ended_at IS NULL) as active, COUNT(*) as c FROM sessions s' + scope.clause + ' GROUP BY s.type, s.ended_at IS NULL').all(...scope.args)
+    const counts = { total: 0, active: 0, ended: 0, byType: {} }
+    for (const g of groups) {
+      counts.total += g.c
+      if (g.active) counts.active += g.c
+      counts.byType[g.type || 'unknown'] = (counts.byType[g.type || 'unknown'] || 0) + g.c
+    }
+    counts.ended = counts.total - counts.active
+    return { sessions: rows.map(mapSessionRow), total, limit, offset, counts }
   })
 
   fastify.get('/api/sessions/export', { config: { rateLimit: { max: 12, timeWindow: '1 minute' } } }, async (req, reply) => {
