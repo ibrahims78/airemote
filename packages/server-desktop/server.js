@@ -5737,6 +5737,18 @@ if ($target -eq $null) { 'name-not-found' } else {
     } catch (e) { return reply.code(500).send({ error: e.message }) }
   })
 
+  // 2026-11-10 — إطلاق إشعار من نوع محدد لاختبار كل حدث عبر نفس دالة telegramEvent
+  fastify.post('/api/settings/telegram/notify', async (req, reply) => {
+    const p = adminMiddleware(req, reply); if (!p) return
+    const kind = (req.body && req.body.kind) || 'chat'
+    const subject = (req.body && req.body.subject) || 'اختبار'
+    const detail = (req.body && req.body.detail) || ''
+    const text = 'اختبار إشعار: ' + kind + ' — ' + subject + (detail ? '\n' + detail : '')
+    const ok = await telegramEvent(kind, text)
+    if (!ok) return reply.code(400).send({ ok: false, kind, error: 'not sent — check enabled / event toggle / token / chat id' })
+    return { ok: true, kind }
+  })
+
   // ── AI ────────────────────────────────────────────────────────────────────
   fastify.get('/api/ai/settings', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return

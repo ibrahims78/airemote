@@ -1,4 +1,5 @@
 import type { WebSocket } from 'ws'
+import { notifyTelegram } from '../services/telegramNotifier'
 import { v4 as uuidv4 } from 'uuid'
 import { deviceRegistry } from './registry'
 import { getDeviceByToken, updateDeviceStatus, updateDeviceInfo, updateDeviceSeen } from '../db/devices'
@@ -186,6 +187,7 @@ export async function handleAgentMessage(
       deviceRegistry.broadcastDeviceStatus(device.id, 'online', payload.tunnelLayer, caps, payload.info)
       fireDeviceOnlineAlert(device.id).catch(() => {})
 
+      void notifyTelegram('online', device.name, `الجهاز متصل الآن · ${device.info?.platform || ''}`)
       console.log(`[${ts()}] ✅ [agent] Registered: "${device.name}" id=${device.id} v${payload.info?.agentVersion || '?'} from=${clientIp} pty=${caps.pty} screen=${caps.screenControl} docker=${caps.docker} monitors=${caps.monitors?.length ?? 0}`)
       return { deviceId: device.id }
     }
@@ -658,6 +660,7 @@ export async function handleAgentMessage(
 
     case 'agent:screen_chat': {
       const p = message.payload as { sessionId?: string; text: string; sender: string; ts: number }
+      void notifyTelegram('chat', p.sender || 'جهاز', String(p.text || '').slice(0, 300))
       const chatOwnerId = deviceRegistry.getDeviceIdBySocket(socket)
       if (!chatOwnerId) return null
       // Resolve sessionId: use explicit value, or fall back to the device's active session
@@ -835,6 +838,7 @@ export function sendFsDownload(
  */
 export function cleanupDevice(deviceId: string): void {
   heartbeatCount.delete(deviceId)
+  void notifyTelegram('offline', deviceId.slice(0, 8), 'انقطع الاتصال بالجهاز')
   console.log(`[${ts()}] 🗑️ [agent] cleanup deviceId=${deviceId.slice(0,8)}`)
   void deviceId
 }

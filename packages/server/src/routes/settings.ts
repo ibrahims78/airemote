@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify'
 import { requireAuth } from '../middleware/auth'
+import { notifyTelegram, invalidateTelegramCache, getTelegramConfig } from '../services/telegramNotifier'
 import { getDb } from '../db/database'
 import type { AuthTokenPayload } from '@airemote/shared'
 import { sealSecret, unsealSecret } from '../services/crypto'
@@ -39,6 +40,7 @@ export async function settingsRoutes(fastify: FastifyInstance) {
             ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
       args: [`user:${user.userId}`, valueJson, now]
     })
+    invalidateTelegramCache()
     return reply.send({ ok: true })
   })
 
@@ -76,6 +78,29 @@ export async function settingsRoutes(fastify: FastifyInstance) {
       return { ok: true, messageId: j.result?.message_id ?? null }
     } catch (e) {
       return reply.code(502).send({ error: (e as Error).message })
+    }
+  })
+
+  // 2026-11-10 — إطلاق إشعار من نوع محدد لاختبار كل الأحداث (مدير فقط).
+  fastify.post<{ Body: { kind?: 'online' | 'offline' | 'chat'; subject?: string; detail?: string } }>('/telegram/notify', async (request, reply) => {
+    const user = request.user as unknown as AuthTokenPayload
+    if (user.role !== 'admin') return reply.code(403).send({ error: 'Admin required' })
+    const kind = request.body?.kind || 'chat'
+    const ok = await notifyTelegram(kind, request.body?.subject || 'اختبار', request.body?.detail || '')
+    return ok ? { ok: true, kind } : reply.code(400).send({ ok: false, kind, error: 'not sent (check enabled/events/token/chat)' })
+  })
+
+  // 2026-11-10 — تشخيص: هل المُرسِل يرى إعدادات صالحة؟ (لا يكشف الرمز)
+  fastify.get('/telegram/status', async (request, reply) => {
+    const user = request.user as unknown as AuthTokenPayload
+    if (user.role !== 'admin') return reply.code(403).send({ error: 'Admin required' })
+    const cfg = await getTelegramConfig()
+    return {
+      enabled: cfg.enabled,
+      hasToken: cfg.token.length > 0,
+      tokenLength: cfg.token.length,
+      chatId: cfg.chatId,
+      events: cfg.events,
     }
   })
 }
