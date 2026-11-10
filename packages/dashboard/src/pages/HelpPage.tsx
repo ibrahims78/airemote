@@ -16,16 +16,28 @@ function splitSections(md: string): Section[] {
   const lines = md.split('\n')
   const sections: Section[] = []
   let current: Section | null = null
+  // 3.16.7 — everything before the first "##" (the guide title and its intro) was dropped,
+  // so the page never showed the heading the document is built around.
+  const preamble: string[] = []
+  let heading = ''
   for (const line of lines) {
+    if (!current) {
+      const h1 = /^#\s+(.+)$/.exec(line)
+      if (h1 && !heading) { heading = h1[1].trim(); continue }
+    }
     const m = /^##\s+(.+)$/.exec(line)
     if (m) {
       if (current) sections.push(current)
       current = { id: `help-${sections.length + 1}`, title: m[1].trim(), body: '' }
     } else if (current) {
       current.body += line + '\n'
+    } else if (line.trim()) {
+      preamble.push(line)
     }
   }
   if (current) sections.push(current)
+  const intro = preamble.join('\n').trim()
+  if (intro) sections.unshift({ id: 'help-intro', title: heading, body: intro })
   return sections
 }
 
@@ -278,7 +290,7 @@ export function HelpPage() {
             <nav className="space-y-0.5 max-h-[70vh] overflow-y-auto">
               {sections.map((s, i) => (
                 <button key={s.id} onClick={() => go(s.id)}
-                  className={clsx('w-full flex items-start gap-2 text-start px-2 py-1.5 rounded-lg text-[11.5px] leading-5 transition-colors',
+                  className={clsx('group w-full flex items-start gap-2 text-start px-2 py-1.5 rounded-lg text-[11.5px] leading-5 transition-colors',
                     'text-muted hover:bg-surface2 hover:text-ink')}>
                   <span className={clsx('font-mono text-[9px] mt-0.5 flex-shrink-0', 'text-muted')}>{String(i + 1).padStart(2, '0')}</span>
                   <span className="flex-1">{s.title}</span>
