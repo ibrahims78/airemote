@@ -2340,7 +2340,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
                       wmOn ? 'text-info' : 'text-ink')}
                   >
                     <Fingerprint size={13} className="shrink-0 text-muted" />
-                    <span className="flex-1 truncate">{wmOn ? tr('viewer_watermark_off') : tr('viewer_watermark_on')}</span>
+                    <span className="flex-1 truncate">{wmOn ? tr('viewer_watermark_on') : tr('viewer_watermark_off')}</span>
                     {wmOn && <CheckCircle2 size={12} className="shrink-0 text-info" />}
                   </button>
                 )}
