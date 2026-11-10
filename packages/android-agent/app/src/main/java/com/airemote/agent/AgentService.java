@@ -2111,10 +2111,9 @@ public class AgentService extends Service {
                                 android.util.Log.e("AiRemoteAgent", "frame rotate failed", rotEx);
                             }
                         }
-                        if (!insetChecked) {
-                            measureCrops(bmp);
+                        if (!insetChecked) {   // NO-INSET-CROP — 2026-11-10: لا تقصّ حواف الشاشة (كان يقصّ أعلى/أسفل المحتوى)
                             insetChecked = true;
-                        }
+
                         if (scaleCanvas == null) scaleCanvas = new android.graphics.Canvas(scaled);
                         android.graphics.Rect src = new android.graphics.Rect(cropL, cropT, fullW - cropR, fullH - cropB);
                         android.graphics.Rect dst = new android.graphics.Rect(0, 0, fw, fh);
