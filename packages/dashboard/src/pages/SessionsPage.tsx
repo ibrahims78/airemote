@@ -304,7 +304,7 @@ export function SessionsPage({ embedded = false }: { embedded?: boolean } = {}) 
               <table className="w-full text-sm min-w-[550px]">
                 <thead>
                   <tr className="border-b border-line">
-                    {[T('session_type'), T('session_device'), T('session_start'), T('session_duration'), 'IP', ''].map((h, i) => (
+                    {[T('session_type'), T('session_device'), T('session_start'), T('session_duration'), 'المستخدم', ''].map((h, i) => (
                       <th key={i} className="text-xs text-muted font-medium px-4 py-3 text-start">{h}</th>
                     ))}
                   </tr>
