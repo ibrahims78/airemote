@@ -721,10 +721,13 @@ export function DevicesPage() {
                                 </button>
                               </>
                             )}
-                            <button type="button" role="menuitem" onClick={() => { setRowMenu(null); setInstallDevice(d) }}
-                              className="flex w-full items-center gap-2 px-3 py-1.5 text-start text-[12px] text-ink hover:bg-surface2">
-                              <Terminal size={12} className="text-muted" /> تثبيت الوكيل
-                            </button>
+                            {/* 3.16.7 — the modal needs device.token, and the token is now admin-only. */}
+                            {isAdmin && (
+                              <button type="button" role="menuitem" onClick={() => { setRowMenu(null); setInstallDevice(d) }}
+                                className="flex w-full items-center gap-2 px-3 py-1.5 text-start text-[12px] text-ink hover:bg-surface2">
+                                <Terminal size={12} className="text-muted" /> تثبيت الوكيل
+                              </button>
+                            )}
                             {d.status === 'online' && String(d.info?.platform || '').toLowerCase() === 'windows' && (() => {
                               const on = (d as unknown as { runAtStartup?: boolean | null }).runAtStartup
                               return (

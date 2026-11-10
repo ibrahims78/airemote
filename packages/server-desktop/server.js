@@ -4675,7 +4675,12 @@ async function start(config) {
   fastify.get('/api/devices', async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
     const rows = accessibleDeviceRows(p)
+    // 3.16.7 — the token is the agent's registration credential, not device metadata:
+    // only an admin keeps it (the install modal needs it). Everyone else gets the row
+    // without it, so a viewer/permitted user can no longer register as that device.
+    const keepToken = p.role === 'admin'
     return rows.map(d => {
+      const { token: _token, ...publicRow } = d
       const online = agentSockets.has(d.id)
       const rm = (agentSockets.get(d.id)?.ws?._socket?.remoteAddress || null)
       const rmClean = rm ? String(rm).replace('::ffff:', '') : null
@@ -4683,7 +4688,7 @@ async function start(config) {
       if (!info.ipPublic && rmClean) info.ipPublic = rmClean
       const tunnelLayer = rmClean ? (/^10\.90\./.test(rmClean) ? 'zerotier' : (/^(192\.168\.|10\.)/.test(rmClean) ? 'lan' : 'wan')) : null
       return {
-        ...d, code: d.code || ensureDeviceCode(d.id) || null, info, tags: parseJson(d.tags, []),
+        ...(keepToken ? d : publicRow), code: d.code || ensureDeviceCode(d.id) || null, info, tags: parseJson(d.tags, []),
         capabilities: parseJson(d.capabilities, {}), isOnline: online,
         status: d.status === 'blocked' ? 'blocked' : (online ? 'online' : 'offline'),
         remoteIp: rmClean, tunnelLayer,
