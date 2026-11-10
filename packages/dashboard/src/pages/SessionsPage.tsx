@@ -193,12 +193,12 @@ export function SessionsPage({ embedded = false }: { embedded?: boolean } = {}) 
             className="w-full bg-surface border border-line rounded-lg pl-8 pr-3 py-2 text-sm text-ink placeholder:text-muted focus:outline-none focus:ring-1 focus:ring-info/40"
           />
         </div>
-        <span className="text-[11px] text-muted">من</span>
-        <input type="date" dir="ltr" value={fromDate} onChange={e => setFromDate(e.target.value)} title={T('sessions_from')} aria-label="من تاريخ"
+        <span className="text-[11px] text-muted">{T('sessions_from')}</span>
+        <input type="date" dir="ltr" value={fromDate} onChange={e => setFromDate(e.target.value)} title={T('sessions_from')} aria-label={T('sessions_from')}
           className="bg-surface border border-line rounded-lg px-2 py-2 text-xs text-ink" />
         <span className="text-muted text-xs">→</span>
-        <span className="text-[11px] text-muted">إلى</span>
-        <input type="date" dir="ltr" value={toDate} onChange={e => setToDate(e.target.value)} title={T('sessions_to')} aria-label="إلى تاريخ"
+        <span className="text-[11px] text-muted">{T('sessions_to')}</span>
+        <input type="date" dir="ltr" value={toDate} onChange={e => setToDate(e.target.value)} title={T('sessions_to')} aria-label={T('sessions_to')}
           className="bg-surface border border-line rounded-lg px-2 py-2 text-xs text-ink" />
         <button onClick={exportCsv} disabled={exporting}
           className="flex items-center gap-2 text-sm text-muted hover:text-ink bg-surface2 hover:bg-surface border border-line px-3 py-2 rounded-lg transition-all disabled:opacity-50">
@@ -314,7 +314,7 @@ export function SessionsPage({ embedded = false }: { embedded?: boolean } = {}) 
               <table className="w-full text-sm min-w-[550px]">
                 <thead>
                   <tr className="border-b border-line">
-                    {[T('session_type'), T('session_device'), T('session_start'), T('session_duration'), 'المستخدم', ''].map((h, i) => (
+                    {[T('session_type'), T('session_device'), T('session_start'), T('session_duration'), T('user_email'), ''].map((h, i) => (
                       <th key={i} className="text-xs text-muted font-medium px-4 py-3 text-start">{h}</th>
                     ))}
                   </tr>
@@ -363,13 +363,13 @@ export function SessionsPage({ embedded = false }: { embedded?: boolean } = {}) 
 
               {/* 2026-11-10 — ترقيم صفحات بدل تمرير 100 جلسة في صفحة واحدة */}
               <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-2.5 text-[11.5px] text-muted">
-                <span>عرض <b className="text-ink">{paged.length}</b> من <b className="text-ink">{filtered.length}</b> جلسة</span>
+                <span>{T('sessions_showing', { n: paged.length, total: filtered.length })}</span>
                 <div className="flex items-center gap-1.5">
                   <button type="button" disabled={safePage <= 1} onClick={() => setPage(safePage - 1)}
-                    className="rounded-md border border-line px-2.5 py-1 text-ink transition-colors hover:bg-surface2 disabled:opacity-40">السابق</button>
+                    className="rounded-md border border-line px-2.5 py-1 text-ink transition-colors hover:bg-surface2 disabled:opacity-40">{T('sessions_prev')}</button>
                   <span className="tabular-nums px-1">{safePage} / {pageCount}</span>
                   <button type="button" disabled={safePage >= pageCount} onClick={() => setPage(safePage + 1)}
-                    className="rounded-md border border-line px-2.5 py-1 text-ink transition-colors hover:bg-surface2 disabled:opacity-40">التالي</button>
+                    className="rounded-md border border-line px-2.5 py-1 text-ink transition-colors hover:bg-surface2 disabled:opacity-40">{T('sessions_next')}</button>
                 </div>
               </div>
             </div>
