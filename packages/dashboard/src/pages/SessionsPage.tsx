@@ -160,16 +160,18 @@ export function SessionsPage({ embedded = false }: { embedded?: boolean } = {}) 
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
-          <h2 className="text-xl font-bold text-ink">{T('sessions_title')}</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-xl font-bold text-ink">{T('sessions_title')}</h2>
+          <button
+            onClick={load} disabled={loading}
+            className="flex items-center gap-2 text-sm text-muted hover:text-ink bg-surface2 hover:bg-surface border border-line px-3 py-2 rounded-lg transition-all disabled:opacity-50"
+          >
+            <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
+            {T('refresh')}
+          </button>
+          </div>
           <p className="text-muted text-sm mt-1">{T('sessions_subtitle')}</p>
         </div>
-        <button
-          onClick={load} disabled={loading}
-          className="flex items-center gap-2 text-sm text-muted hover:text-ink bg-surface2 hover:bg-surface border border-line px-3 py-2 rounded-lg transition-all disabled:opacity-50"
-        >
-          <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
-          {T('refresh')}
-        </button>
       </div>
 
       {/* ── Search / range / export (R8.3) ───────────────────────────────── */}
@@ -261,21 +263,6 @@ export function SessionsPage({ embedded = false }: { embedded?: boolean } = {}) 
         </div>
       )}
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="rounded-xl border border-line bg-surface p-4 text-center">
-          <div className="text-2xl font-bold text-ink">{sessions.length}</div>
-          <div className="text-xs text-muted mt-1">{T('all_sessions')}</div>
-        </div>
-        <div className="rounded-xl border border-line bg-surface p-4 text-center">
-          <div className={clsx('text-2xl font-bold', active > 0 ? 'text-success' : 'text-muted')}>{active}</div>
-          <div className="text-xs text-muted mt-1">{T('active_sessions')}</div>
-        </div>
-        <div className="rounded-xl border border-line bg-surface p-4 text-center">
-          <div className="text-2xl font-bold text-muted">{sessions.length - active}</div>
-          <div className="text-xs text-muted mt-1">{T('ended_sessions')}</div>
-        </div>
-      </div>
 
       {/* Filter bar */}
       <div className="flex flex-wrap gap-2">
