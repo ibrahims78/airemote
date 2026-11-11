@@ -15,9 +15,12 @@ export function AiPage() {
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | undefined>(() => {
     try { return localStorage.getItem('airemote-ai-device-v1') || undefined } catch { return undefined }
   })
-  const [searchParams] = useSearchParams()
-  const initialPrompt = searchParams.get('prompt') || undefined
+  const [searchParams, setSearchParams] = useSearchParams()
+  // 2026-11-11 — page 10: ?prompt must fire once per visit, not per device switch.
+  const [firstPrompt, setFirstPrompt] = useState<string | undefined>(() => searchParams.get('prompt') || undefined)
   const autoPickedRef = useRef(false)
+  // 2026-11-11 — "connecting" used to spin forever when a device never sent stats.
+  const [statsGraceOver, setStatsGraceOver] = useState(false)
 
   const onlineDevices = devices.filter(d => d.status === 'online')
   // 3.14.1 - device list states (PLAN 2.2 rule 5): the empty one already existed below
@@ -32,6 +35,30 @@ export function AiPage() {
   }, [selectedDeviceId])
 
   useEffect(() => { fetchDevices() }, [fetchDevices])
+
+  useEffect(() => {
+    const timer = setTimeout(() => setStatsGraceOver(true), 8000)
+    return () => clearTimeout(timer)
+  }, [])
+
+  // 2026-11-11 — drop ?prompt from the URL and clear the prop after the panel has
+  // consumed it; otherwise every remount (device switch) would resend the same prompt.
+  useEffect(() => {
+    if (!firstPrompt) return
+    if (searchParams.get('prompt')) {
+      const next = new URLSearchParams(searchParams)
+      next.delete('prompt')
+      setSearchParams(next, { replace: true })
+    }
+    const timer = setTimeout(() => setFirstPrompt(undefined), 2500)
+    return () => clearTimeout(timer)
+  }, [firstPrompt, searchParams, setSearchParams])
+
+  // 2026-11-11 — a saved device id could point at a device that no longer exists.
+  useEffect(() => {
+    if (!devices.length || !selectedDeviceId) return
+    if (!devices.some(d => d.id === selectedDeviceId)) setSelectedDeviceId(undefined)
+  }, [devices, selectedDeviceId])
 
   // v3.3.4 — auto-attach to the first online device so device questions get real
   // context out of the box (the user can switch back to global manually).
@@ -74,7 +101,7 @@ export function AiPage() {
         </div>
 
         <div className="min-h-0 flex-1">
-          <AiChatPanel deviceId={selectedDeviceId} key={selectedDeviceId || 'global'} initialPrompt={initialPrompt} />
+          <AiChatPanel deviceId={selectedDeviceId} key={selectedDeviceId || 'global'} initialPrompt={firstPrompt} />
         </div>
       </div>
 
@@ -82,7 +109,7 @@ export function AiPage() {
       <div className="flex w-64 flex-shrink-0 flex-col border-s border-line bg-surface/50">
         <div className="flex-shrink-0 border-b border-line px-4 py-3">
           <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted">
-            {t('ai_connected_devices')}
+            {t('devices')}
           </h3>
           {onlineDevices.length > 0 && (
             <p className="mt-0.5 text-[10px] text-muted">{t('ai_select_device_hint')}</p>
@@ -119,24 +146,28 @@ export function AiPage() {
             </Alert>
           )}
 
-          {!listLoading && !listError && onlineDevices.length === 0 && (
+          {!listLoading && !listError && devices.length === 0 && (
             <div className="py-6 text-center">
               <Monitor size={22} className="mx-auto mb-2 text-muted/70" />
               <p className="text-xs text-muted">{t('no_devices_yet')}</p>
             </div>
           )}
 
-          {onlineDevices.map(d => {
+          {devices.map(d => {
             const stats      = statsMap[d.id]
             const isSelected = selectedDeviceId === d.id
+            const isOnline   = d.status === 'online'
             return (
               <button
                 key={d.id}
                 type="button"
+                disabled={!isOnline}
+                title={!isOnline ? t('offline') : undefined}
                 onClick={() => setSelectedDeviceId(d.id)}
                 aria-pressed={isSelected}
                 className={clsx(
                   'w-full rounded-xl border p-3 text-start transition-colors',
+                  !isOnline && 'cursor-not-allowed opacity-55',
                   isSelected
                     ? 'border-primary/30 bg-primary/10'
                     : 'border-transparent hover:border-line hover:bg-surface2'
@@ -155,8 +186,10 @@ export function AiPage() {
                       {d.name}
                     </p>
                     <div className="flex items-center gap-1">
-                      <Circle size={5} className="fill-current text-success" />
-                      <span className="text-[10px] text-success">{t('online')}</span>
+                      <Circle size={5} className={clsx('fill-current', isOnline ? 'text-success' : 'text-muted')} />
+                      <span className={clsx('text-[10px]', isOnline ? 'text-success' : 'text-muted')}>
+                        {isOnline ? t('online') : t('offline')}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -184,7 +217,7 @@ export function AiPage() {
                 ) : (
                   <div className="flex items-center gap-1 text-[10px] text-muted">
                     <Wifi size={9} />
-                    {t('connecting')}
+                    {isOnline ? (statsGraceOver ? '—' : t('connecting')) : '—'}
                   </div>
                 )}
               </button>
