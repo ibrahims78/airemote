@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { ElementType, ReactNode } from 'react'
-import { ShieldCheck, CalendarClock, Plus, Trash2, Play, X } from 'lucide-react'
+import { ShieldCheck, CalendarClock, Plus, Trash2, Play, Pencil, X } from 'lucide-react'
 import { clsx } from 'clsx'
 import { api } from '../lib/api'
 import { useUIStore } from '../store/uiStore'
@@ -166,6 +166,9 @@ export function TasksSection() {
   const [err, setErr] = useState('')
   const [loadErr, setLoadErr] = useState('')
   const [form, setForm] = useState({ name: '', kind: 'ai', deviceId: '', payload: '', mode: 'interval', intervalMin: 30, dailyAt: '09:00' })
+  // 2026-11-11 — the server accepted a full task update all along; the page only offered
+  // the enabled toggle, so a typo in a prompt could not be repaired.
+  const [editingId, setEditingId] = useState<string | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -186,21 +189,44 @@ export function TasksSection() {
     if (form.mode === 'daily' && !form.dailyAt) { setErr(isRtl ? 'حدّد وقتًا للتشغيل اليومي' : 'Pick a time for the daily run'); return }
     setBusy(true); setErr(''); setMsg('')
     try {
-      await api.post('/api/tasks', {
+      const body = {
         name: form.name.trim(), kind: form.kind,
         deviceId: form.deviceId || null,
         payload: form.payload,
         intervalMin: form.mode === 'interval' ? Number(form.intervalMin) || 30 : 0,
         dailyAt: form.mode === 'daily' ? form.dailyAt : null,
-      })
-      setMsg(isRtl ? 'أُنشئت المهمة' : 'Task created')
+      }
+      if (editingId) {
+        await api.put(`/api/tasks/${editingId}`, body)
+        setMsg(isRtl ? 'حُدِّثت المهمة' : 'Task updated')
+      } else {
+        await api.post('/api/tasks', body)
+        setMsg(isRtl ? 'أُنشئت المهمة' : 'Task created')
+      }
       setShowForm(false)
+      setEditingId(null)
       setForm({ name: '', kind: 'ai', deviceId: '', payload: '', mode: 'interval', intervalMin: 30, dailyAt: '09:00' })
       load()
     } catch (e) {
       const ee = e as { response?: { data?: { error?: string } } }
       setErr(ee.response?.data?.error || 'Error')
     } finally { setBusy(false) }
+  }
+
+  function editTask(t: TaskRow) {
+    setForm({
+      name: t.name,
+      kind: t.kind,
+      deviceId: t.device_id || '',
+      payload: t.payload || '',
+      mode: t.daily_at ? 'daily' : 'interval',
+      intervalMin: t.interval_min || 30,
+      dailyAt: t.daily_at || '09:00',
+    })
+    setEditingId(t.id)
+    setErr('')
+    setMsg('')
+    setShowForm(true)
   }
 
   async function toggle(t: TaskRow) {
@@ -249,6 +275,7 @@ export function TasksSection() {
                   <span className={clsx('absolute top-0.5 w-4 h-4 rounded-full bg-primary-fg transition-all', t.enabled ? (isRtl ? 'left-0.5' : 'right-0.5') : (isRtl ? 'left-[18px]' : 'left-0.5'))} />
                 </button>
                 <button onClick={() => runNow(t)} className="p-1.5 rounded text-muted hover:text-success hover:bg-surface2 transition-colors" title={isRtl ? 'تشغيل الآن' : 'Run now'}><Play size={13} /></button>
+                <button onClick={() => editTask(t)} className="p-1.5 rounded text-muted hover:text-info hover:bg-surface2 transition-colors" title={isRtl ? 'تعديل' : 'Edit'}><Pencil size={13} /></button>
                 <button onClick={() => del(t)} className="p-1.5 rounded text-muted hover:text-danger hover:bg-surface2 transition-colors" title={isRtl ? 'حذف' : 'Delete'}><Trash2 size={13} /></button>
               </div>
               {t.last_result && (
@@ -295,15 +322,15 @@ export function TasksSection() {
               </div>
               <div className="flex items-center gap-2">
                 <button onClick={create} disabled={busy} className="px-3.5 py-2 rounded-lg bg-primary hover:brightness-110 disabled:opacity-50 text-primary-fg text-xs font-semibold transition-colors">
-                  {isRtl ? 'إنشاء' : 'Create'}
+                  {editingId ? (isRtl ? 'حفظ التعديلات' : 'Save changes') : (isRtl ? 'إنشاء' : 'Create')}
                 </button>
-                <button onClick={() => setShowForm(false)} className="px-3 py-2 rounded-lg bg-surface2 text-muted hover:bg-surface2/70 text-xs transition-colors">
+                <button onClick={() => { setShowForm(false); setEditingId(null) }} className="px-3 py-2 rounded-lg bg-surface2 text-muted hover:bg-surface2/70 text-xs transition-colors">
                   {isRtl ? 'إلغاء' : 'Cancel'}
                 </button>
               </div>
             </div>
           ) : (
-            <button onClick={() => setShowForm(true)} className="flex items-center gap-1.5 text-xs text-info hover:text-info transition-colors">
+            <button onClick={() => { setEditingId(null); setForm({ name: '', kind: 'ai', deviceId: '', payload: '', mode: 'interval', intervalMin: 30, dailyAt: '09:00' }); setShowForm(true) }} className="flex items-center gap-1.5 text-xs text-info hover:text-info transition-colors">
               <Plus size={13} /> {isRtl ? 'مهمة جديدة' : 'New task'}
             </button>
           )}
