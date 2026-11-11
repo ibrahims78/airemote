@@ -509,6 +509,9 @@ const T = {
     files_session_title: 'الملفات — جلسة وكيل↔وكيل',
     files_ticket_missing: 'تذكرة الجلسة مفقودة',
     files_ticket_hint: 'افتح هذه الصفحة من وكيل الطالب بعد قبول جلسة «ملفات» — الرابط يحمل التذكرة تلقائياً.',
+    // 2026-11-11 — the bare "ticket missing" line left admins guessing; explain the lifetime.
+    files_ticket_expired: 'التذكرة تُصدَر عند قبول جلسة «ملفات» وتنتهي بانتهاء الجلسة — أعد فتح الرابط من وكيل الطالب.',
+    files_open_workspace: 'فتح مساحة الجهاز',
     devices_load_failed: 'تعذّر تحميل الأجهزة',
     device_not_found: 'الجهاز غير موجود',
     device_not_found_hint: 'ربما حُذف أو أن الرابط لا يخصّ جهازًا تملك صلاحيته.',
@@ -1166,6 +1169,8 @@ const T = {
     files_session_title: 'Files — agent session',
     files_ticket_missing: 'Session ticket is missing',
     files_ticket_hint: 'Open this page from the requesting agent after accepting a files session — the link carries the ticket.',
+    files_ticket_expired: 'The ticket is issued when a files session is accepted and expires with it — reopen the link from the requesting agent.',
+    files_open_workspace: 'Open device workspace',
     devices_load_failed: 'Could not load devices',
     device_not_found: 'Device not found',
     device_not_found_hint: 'It may have been deleted, or the link points to a device you cannot access.',

@@ -1,7 +1,8 @@
-import { useParams, useSearchParams } from 'react-router-dom'
+import { Link, useParams, useSearchParams } from 'react-router-dom'
 import { FolderOpen, ShieldAlert } from 'lucide-react'
 import { FileManager } from '../components/FileManager'
 import { useT } from '../lib/i18n'
+import { useAuthStore } from '../store/authStore'
 
 /**
  * 3.11 — صفحة ملفات جلسة وكيل↔وكيل.
@@ -10,6 +11,7 @@ import { useT } from '../lib/i18n'
  */
 export function FilesPage() {
   const t = useT()
+  const token = useAuthStore(s => s.token)
   const { deviceId = '' } = useParams()
   const [params] = useSearchParams()
   const rt = params.get('rt') || ''
@@ -36,6 +38,15 @@ export function FilesPage() {
             <div>
               <div className="font-medium">{t('files_ticket_missing')}</div>
               <div className="text-muted">{t('files_ticket_hint')}</div>
+              <div className="mt-1 text-[11px] text-muted">{t('files_ticket_expired')}</div>
+              {token && deviceId && (
+                <Link
+                  to={`/devices/${deviceId}?tab=files`}
+                  className="mt-2 inline-flex h-8 items-center rounded-lg bg-primary px-3 text-xs font-medium text-primary-fg transition-opacity hover:opacity-90"
+                >
+                  {t('files_open_workspace')}
+                </Link>
+              )}
             </div>
           </div>
         ) : (
