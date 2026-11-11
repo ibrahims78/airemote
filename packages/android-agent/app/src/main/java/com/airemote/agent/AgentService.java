@@ -109,7 +109,9 @@ public class AgentService extends Service {
     private static final long KEYFRAME_INTERVAL_MS = 2000;
     private boolean streamDelta = true;
     private long diagAt = 0;
-    private long lastFullMs = 0;   // FIXED-ORIENT: إطار كامل دوري يمسح بقايا الاتجاه السابق
+    private long lastFullMs = 0;   // ORIENT-FOLLOW: إطار كامل دوري كنظافة عامة
+    // ORIENT-FOLLOW — بعد إعادة بناء المسرح نتخطى إطارات الانتقال حتى يستقر المؤلف
+    private volatile long settleUntil = 0;
     // 2026-11-09 — اتجاه الشاشة من الحسّاس: أندرويد يعطي التطبيق شاشة منطقية عمودية
     // (وضع التوافق) فتظل VirtualDisplay عمودية والمحتوى مدارًا. الحسّاس يحسم الاتجاه الحقيقي.
     private volatile boolean sensorLandscape = false;
@@ -1933,12 +1935,19 @@ public class AgentService extends Service {
                     ensureProjectionForeground();
                     projection = mgr.getMediaProjection(CaptureHolder.resultCode, CaptureHolder.data);
                     if (projection == null) throw new Exception("projection null");
-                    // FIXED-ORIENT — 2026-11-10: مقاس ثابت أفقي لكل الجلسة، فلا إعادة بناء
-                    // ولا تبديل مقاس ⇒ لا تراكب ولا سواد ولا تأخير عند تدوير الهاتف.
+                    // ORIENT-FOLLOW — 2026-11-11: ابدأ بشكل الشاشة الحالي، ثم اتبع الدوران.
+                    // لا تثبيت أفقي ولا قصّ لاحق — الوكيل يرسل ما يراه الهاتف كما هو.
                     {
-                        int lw = Math.max(fullW, fullH), lh = Math.min(fullW, fullH);
-                        fullW = lw; fullH = lh;
+                        int rot0 = displayRotation();
+                        boolean land0 = rot0 == android.view.Surface.ROTATION_90
+                                || rot0 == android.view.Surface.ROTATION_270;
+                        int longSide = Math.max(fullW, fullH), shortSide = Math.min(fullW, fullH);
+                        fullW = land0 ? longSide : shortSide;
+                        fullH = land0 ? shortSide : longSide;
                         if (dpi <= 0) dpi = 320;
+                        appliedLand = land0;
+                        lastOrientLand = land0;
+                        pendingSince = 0;
                     }
                     reader = ImageReader.newInstance(fullW, fullH, PixelFormat.RGBA_8888, 4);
                     vd = projection.createVirtualDisplay("airemote-stream", fullW, fullH, dpi,
@@ -2003,7 +2012,8 @@ public class AgentService extends Service {
                                 if (pendingSince == 0 || pendingLand != wantLand) {
                                     pendingLand = wantLand;
                                     pendingSince = nowMs;
-                                } else if (nowMs - pendingSince > 3000) {
+                                } else if (nowMs - pendingSince > 350) {
+                                    // 350ms تكفي لكبح jitter الحسّاس ولا يشعر بها الإنسان كبطء.
                                     appliedLand = wantLand;
                                     pendingSince = 0;
                                     forceKeyframe = true;
@@ -2012,35 +2022,45 @@ public class AgentService extends Service {
                             } else {
                                 pendingSince = 0;
                             }
-                            // FIXED-ORIENT — الأبعاد ثابتة، والحسّاس للتشخيص فقط.
-                            curW = fullW;
-                            curH = fullH;
+                            // ORIENT-FOLLOW — الأبعاد من الشاشة الفعلية الحالية (طويل×قصير حسب الاتجاه).
+                            int longSide = Math.max(physW, physH);
+                            int shortSide = Math.min(physW, physH);
+                            if (longSide <= 0 || shortSide <= 0) {
+                                longSide = Math.max(fullW, fullH);
+                                shortSide = Math.min(fullW, fullH);
+                            }
+                            curW = appliedLand ? longSide : shortSide;
+                            curH = appliedLand ? shortSide : longSide;
                             curDpi = metrics.densityDpi;
                             if (android.os.SystemClock.elapsedRealtime() - diagAt > 2000) {
                                 diagAt = android.os.SystemClock.elapsedRealtime();
                                 android.util.Log.d("AiRemoteAgent", "diag rot=" + currentRotation
                                         + " land=" + appliedLand + " phys=" + physW + "x" + physH + " cur=" + curW + "x" + curH + " vd=" + fullW + "x" + fullH);
                             }
-                            // 2026-11-09 — getRealMetrics يعيد المقاس الطبيعي (عمودي) مهما كان الدوران،
-                            // فيبقى VirtualDisplay عموديًا والمحتوى مدارًا 90° داخله (مقيس على TECNO).
-                            // نبدّل الأبعاد عند 90/270 ليطابق المخزن اتجاه الشاشة الفعلي.
-                            if (currentRotation == android.view.Surface.ROTATION_90
-                                    || currentRotation == android.view.Surface.ROTATION_270) {
-                                int swap = curW; curW = curH; curH = swap;
-                            }
                         }
                     } catch (Exception ignore) { }
 
-                    // 2026-11-09 — تشخيص الفرع + إعادة إنشاء VirtualDisplay بدل resize فقط.
-                    if (false && curW > 0 && curH > 0) {   // FIXED-ORIENT: لا تحجيم أثناء الجلسة
-                        android.util.Log.d("AiRemoteAgent", "branch cur=" + curW + "x" + curH
-                                + " full=" + fullW + "x" + fullH
-                                + " rot=" + currentRotation + "/" + lastRotation);
+                    // ORIENT-FOLLOW — أعِد بناء المسرح بمقاس الاتجاه الجديد فورًا.
+                    if (curW > 0 && curH > 0 && (curW != fullW || curH != fullH)) {
+                        android.util.Log.d("AiRemoteAgent", "orient-follow " + fullW + "x" + fullH + " -> " + curW + "x" + curH
+                                + " rot=" + currentRotation + " land=" + appliedLand);
                         try {
                             ImageReader nextReader = ImageReader.newInstance(curW, curH, PixelFormat.RGBA_8888, 4);
+                            boolean resized = false;
                             if (vd != null) {
-                                vd.setSurface(nextReader.getSurface());
-                                vd.resize(curW, curH, curDpi);
+                                try {
+                                    vd.setSurface(nextReader.getSurface());
+                                    vd.resize(curW, curH, curDpi);
+                                    resized = true;
+                                } catch (Exception ignore) { }
+                            }
+                            if (!resized) {
+                                // بعض OEM لا يكمل resize — ابنِ مسرحًا جديدًا من نفس الإذن.
+                                VirtualDisplay nv = projection.createVirtualDisplay("airemote-stream", curW, curH, curDpi,
+                                        DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, nextReader.getSurface(), null, null);
+                                if (vd != null) { try { vd.release(); } catch (Exception ignore) { } }
+                                vd = nv;
+                                activeVd = vd;
                             }
                             ImageReader oldReader = reader;
                             reader = nextReader;
@@ -2048,7 +2068,8 @@ public class AgentService extends Service {
                             fullW = curW; fullH = curH; dpi = curDpi;
                             activeW = fullW; activeH = fullH; activeDpi = dpi;
                             capW = fullW; capH = fullH;
-                            insetChecked = false;
+                            cropL = 0; cropT = 0; cropR = 0; cropB = 0;
+                            insetChecked = true;
                             if (oldReader != null) oldReader.close();
                             if (scaled != null) { scaled.recycle(); scaled = null; }
                             // The Canvas is bound to one Bitmap. After a rotation it still
@@ -2056,13 +2077,15 @@ public class AgentService extends Service {
                             // used to kill the capture loop (black screen after rotating).
                             scaleCanvas = null;
                             prevPixels = null; curPixels = null; deltaRun = 0;
-                            forceKeyframe = true;   // v3.9.4 — first frame after a rotation is whole
-                            android.util.Log.d("AiRemoteAgent", "resized vd to " + fullW + "x" + fullH);
-                            android.util.Log.d("AiRemoteAgent", "orientation changed " + fullW + "x" + fullH + " - forcing keyframe");
-                            MainActivity.log("screen orientation changed: " + fullW + "x" + fullH);
+                            forceKeyframe = true;
+                            // قطع حاد: نتخطى إطارات انتقال المؤلف حتى لا يظهر الاتجاه القديم فوق الجديد.
+                            settleUntil = android.os.SystemClock.elapsedRealtime() + 180;
+                            lastOrientLand = appliedLand;
+                            android.util.Log.d("AiRemoteAgent", "oriented " + fullW + "x" + fullH + " - forcing keyframe");
+                            MainActivity.log("screen orientation: " + fullW + "x" + fullH);
                         } catch (Exception re) {
-                            android.util.Log.e("AiRemoteAgent", "rotation resize failed", re);
-                            MainActivity.log("screen rotation resize failed: " + re.getMessage());
+                            android.util.Log.e("AiRemoteAgent", "orient resize failed", re);
+                            MainActivity.log("screen orientation resize failed: " + re.getMessage());
                         }
                     }
                     // 2026-11-09 — عند تغيّر الاتجاه اطلب إطارًا كاملًا ليعيد العارض ضبط مقاسه.
@@ -2079,19 +2102,17 @@ public class AgentService extends Service {
 
                     Image image = reader.acquireLatestImage();
                     if (image == null) { Thread.sleep(30); continue; }
+                    // ORIENT-FOLLOW — إطارات الانتقال بعد تدوير المسرح تُهمَل (بلا تراكب).
+                    if (android.os.SystemClock.elapsedRealtime() < settleUntil) {
+                        try { image.close(); } catch (Exception ignore) { }
+                        Thread.sleep(12);
+                        continue;
+                    }
                     try {
+                        // ORIENT-FOLLOW — بلا قصّ: الإطار كامل كما يرسمه النظام.
                         int visW = Math.max(1, fullW - cropL - cropR);
                         int visH = Math.max(1, fullH - cropT - cropB);
-                        // GHOST-CROP — 2026-11-10: عند العمودي نقصّ أشرطة pillarbox من الإطار
-                        // المُرسل، فلا تُنقل بقايا المشهد الأفقي إلى العارض إطلاقًا.
                         int cropX = 0;
-                        android.util.DisplayMetrics pdm = getResources().getDisplayMetrics();
-                        int pmw = Math.min(pdm.widthPixels, pdm.heightPixels);
-                        int pmh = Math.max(pdm.widthPixels, pdm.heightPixels);
-                        if (!sensorLandscape && fullW > fullH && pmh > 0) {
-                            int cw = Math.max(1, Math.round(visH * (pmw / (float) pmh)));
-                            if (cw < visW) { cropX = (visW - cw) / 2; visW = cw; }
-                        }
                         float fscale = Math.min(1f, streamMaxWidth / (float) visW);
                         int fw = Math.max(320, Math.round(visW * fscale));
                         int fh = Math.max(240, Math.round(visH * fscale));
@@ -2108,28 +2129,10 @@ public class AgentService extends Service {
                         Bitmap bmp = frameBitmap(fullW, fullH, rowPadding, pixelStride);
                         buffer.rewind();
                         bmp.copyPixelsFromBuffer(buffer);
-                        // 2026-11-09 — أندرويد يعطي المخزن عموديًا دائمًا على هذه النسخة،
-                        // فنُدوّر الإطار نفسه عند كون الجهاز أفقيًا (بلا لمس VirtualDisplay).
-                        if (sensorLandscape && fullH > fullW) {
-                            try {
-                                android.graphics.Matrix mtx = new android.graphics.Matrix();
-                                mtx.postRotate(90f);
-                                Bitmap rotatedFrame = Bitmap.createBitmap(bmp, 0, 0, fullW, fullH, mtx, true);
-                                if (rotatedFrame != null && rotatedFrame != bmp) {
-                                    bmp.recycle();
-                                    bmp = rotatedFrame;
-                                    int swapDim = fullW; fullW = fullH; fullH = swapDim;
-                                    insetChecked = true;
-                                    scaleCanvas = null;
-                                    prevPixels = null; curPixels = null; deltaRun = 0;
-                                    forceKeyframe = true;
-                                }
-                            } catch (Exception rotEx) {
-                                android.util.Log.e("AiRemoteAgent", "frame rotate failed", rotEx);
-                            }
-                        }
+                        // ORIENT-FOLLOW — بلا دوران برمجي: المسرح نفسه باتجاه الشاشة.
                         if (!insetChecked) {
-                            measureCrops(bmp);
+                            // ORIENT-FOLLOW — لا قصّ شريط الحالة: الشاشة كاملة.
+                            cropL = 0; cropT = 0; cropR = 0; cropB = 0;
                             insetChecked = true;
                         }
                         if (scaleCanvas == null) scaleCanvas = new android.graphics.Canvas(scaled);
