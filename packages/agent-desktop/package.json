@@ -7,9 +7,9 @@
   "scripts": {
     "start": "electron .",
     "build:gdi": "node ../../scripts/build-gdi-worker.cjs",
-    "build": "node ../../scripts/build-gdi-worker.cjs && CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win --x64",
-    "build:portable": "CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win --x64 --config.win.target=portable",
-    "build:dir": "CSC_IDENTITY_AUTO_DISCOVERY=false electron-builder --win --x64 --dir"
+    "build": "node ../../scripts/build-gdi-worker.cjs && node ../../scripts/run-electron-builder.cjs --win --x64",
+    "build:portable": "node ../../scripts/run-electron-builder.cjs --win --x64 --config.win.target=portable",
+    "build:dir": "node ../../scripts/run-electron-builder.cjs --win --x64 --dir"
   },
   "dependencies": {
     "ws": "^8.21.0"
