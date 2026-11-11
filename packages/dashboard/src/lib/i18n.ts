@@ -1342,15 +1342,20 @@ export function t(lang: Lang, key: TKey, vars?: TVars): string {
 }
 
 /** 3.16.8 — SQLite writes 'YYYY-MM-DD HH:MM:SS' in UTC with no zone; read it as UTC. */
-export function asUtc(value?: string | null): string {
+export function asUtc(value?: string | Date | null): string {
   if (!value) return ''
+  // 2026-11-11 — deviceStore maps last_seen to a Date; String(Date) ended in " (timezone)"
+  // so appending "Z" produced an invalid timestamp and the control-room tile showed "Invalid Date".
+  if (value instanceof Date) return isNaN(value.getTime()) ? '' : value.toISOString()
   const s = String(value)
   if (/[zZ]$|[+-]\d\d:?\d\d$/.test(s)) return s
   return s.replace(' ', 'T') + 'Z'
 }
 
 export function formatRelativeLang(dateStr: string, lang: Lang): string {
-  const diff = (Date.now() - new Date(dateStr).getTime()) / 1000
+  const ms = new Date(dateStr).getTime()
+  if (!dateStr || isNaN(ms)) return '—'
+  const diff = (Date.now() - ms) / 1000
   if (lang === 'en') {
     if (diff < 60)    return 'Just now'
     if (diff < 3600)  return `${Math.floor(diff / 60)}m ago`

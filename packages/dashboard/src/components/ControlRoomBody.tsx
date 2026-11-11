@@ -6,7 +6,7 @@ import { useUIStore } from '../store/uiStore'
 import { useAuthStore } from '../store/authStore'
 import { toast } from '../store/toastStore'
 import { useBoardStore, nextDeviceId, MAX_TILES } from '../store/boardStore'
-import { useT, formatRelativeLang } from '../lib/i18n'
+import { useT, formatRelativeLang, asUtc } from '../lib/i18n'
 import { clsx } from 'clsx'
 import { api } from '../lib/api'
 import { Monitor, Terminal, FolderOpen, MousePointer2, Sun } from 'lucide-react'
@@ -62,13 +62,6 @@ interface Props {
 const PLATFORM_RANK: Record<string, number> = { windows: 0, macos: 1, linux: 1, android: 2 }
 
 /** 3.16.8 — SQLite writes 'YYYY-MM-DD HH:MM:SS' in UTC with no zone; read it as UTC. */
-function asUtc (value?: string | null): string {
-  if (!value) return ''
-  const s = String(value)
-  if (/[zZ]$|[+-]\d\d:?\d\d$/.test(s)) return s
-  return s.replace(' ', 'T') + 'Z'
-}
-
 /**
  * ترتيب المرجع (D53): سطح المكتب أولًا ثم أندرويد — design/server.html
  * يعرض WIN10 · WIN11 · Android من اليمين إلى اليسار. الترتيب مستقر.
