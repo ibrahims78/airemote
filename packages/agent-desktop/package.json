@@ -1,6 +1,6 @@
 {
   "name": "airemote-agent-desktop",
-  "version": "3.16.9",
+  "version": "3.16.10",
   "description": "AiRemote Agent — Windows Desktop Application",
   "author": "AiRemote <support@airemote.io>",
   "main": "main.js",
