@@ -14,7 +14,9 @@ export function FilesPage() {
   const token = useAuthStore(s => s.token)
   const { deviceId = '' } = useParams()
   const [params] = useSearchParams()
-  const rt = params.get('rt') || ''
+  // 2026-11-11 — an agent link can carry the long-lived resume key (rk) instead of rt;
+  // the server accepts either, but this page only read rt and claimed the ticket was missing.
+  const rt = params.get('rt') || params.get('rk') || ''
   const name = params.get('name') || ''
   // 3.11.1 — هدف أندرويد لا يعرض `/` (جذر نظام فارغ)؛ نبدأ من /sdcard.
   const platform = (params.get('platform') || '').toLowerCase()

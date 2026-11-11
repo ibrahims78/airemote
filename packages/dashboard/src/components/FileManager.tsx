@@ -160,8 +160,36 @@ export function FileManager({ deviceId, rt, initialPath, platform }: Props) {
       }
       const total = entry.size || Number(res.headers.get('content-length')) || 0
       const reader = res.body.getReader()
-      const chunks: Uint8Array[] = []
       let received = 0
+      // 2026-11-11 — write straight to disk when the browser supports it; the old path
+      // buffered the whole file in RAM before saving.
+      const picker = (window as unknown as { showSaveFilePicker?: (o: { suggestedName: string }) => Promise<{ createWritable: () => Promise<{ write: (c: BufferSource) => Promise<void>; close: () => Promise<void>; abort: () => Promise<void> }> }> }).showSaveFilePicker
+      if (picker && window.isSecureContext) {
+        let writer: { write: (c: BufferSource) => Promise<void>; close: () => Promise<void>; abort: () => Promise<void> } | null = null
+        try {
+          const handle = await picker({ suggestedName: entry.name })
+          writer = await handle.createWritable()
+          const w = writer
+          for (;;) {
+            const { done, value } = await reader.read()
+            if (done) break
+            if (value) {
+              await w.write(value)
+              received += value.length
+              setDownloadProgress({ name: entry.name, percent: total ? Math.min(99, Math.round((received / total) * 100)) : 0, received, total })
+            }
+          }
+          await w.close()
+          setDownloadProgress({ name: entry.name, percent: 100, received, total: total || received })
+          setTimeout(() => setDownloadProgress(null), 2500)
+          return
+        } catch (streamErr) {
+          if ((streamErr as { name?: string }).name === 'AbortError') { setDownloadProgress(null); return }
+          if (writer) { try { await writer.abort() } catch {} }
+          // fall through to the in-memory path for browsers without a writable stream
+        }
+      }
+      const chunks: Uint8Array[] = []
       for (;;) {
         const { done, value } = await reader.read()
         if (done) break
@@ -220,16 +248,21 @@ export function FileManager({ deviceId, rt, initialPath, platform }: Props) {
     }
   }
 
-  async function uploadFile(file: File) {
+  // 2026-11-11 — the picker and the drop zone only ever took one file; queue them instead.
+  async function uploadFiles(list: File[]) {
+    if (!list.length) return
     setUploading(true)
-    setUploadName(file.name)
     setError('')
-    const destPath = path === '/' ? `/${file.name}` : `${path}/${file.name}`
     try {
-      await api.post(`/api/devices/${deviceId}/fs/upload?path=${encodeURIComponent(destPath)}${rqJoin('&')}`, file, {
-        headers: { 'Content-Type': 'application/octet-stream' },
-        timeout: 600000
-      })
+      for (let i = 0; i < list.length; i++) {
+        const file = list[i]
+        setUploadName(list.length > 1 ? `${file.name} (${i + 1}/${list.length})` : file.name)
+        const destPath = path === '/' ? `/${file.name}` : `${path}/${file.name}`
+        await api.post(`/api/devices/${deviceId}/fs/upload?path=${encodeURIComponent(destPath)}${rqJoin('&')}`, file, {
+          headers: { 'Content-Type': 'application/octet-stream' },
+          timeout: 600000
+        })
+      }
       await loadDir(path)
     } catch (e: unknown) {
       const err = e as { response?: { data?: { error?: string } }; message?: string }
@@ -280,8 +313,8 @@ export function FileManager({ deviceId, rt, initialPath, platform }: Props) {
       onDrop={e => {
         e.preventDefault()
         setDragOver(false)
-        const f = e.dataTransfer.files?.[0]
-        if (f) void uploadFile(f)
+        const list = Array.from(e.dataTransfer.files || [])
+        if (list.length) void uploadFiles(list)
       }}
     >
       {/* Breadcrumb + navigation */}
@@ -348,10 +381,16 @@ export function FileManager({ deviceId, rt, initialPath, platform }: Props) {
         <Button variant="primary" loading={uploading} icon={<Upload size={13} />} onClick={() => uploadRef.current?.click()}>
           {uploading ? t('fm_uploading') : t('fm_upload')}
         </Button>
-        <input ref={uploadRef} type="file" className="hidden" onChange={e => { const f = e.target.files?.[0]; if (f) void uploadFile(f) }} />
+        <input ref={uploadRef} type="file" multiple className="hidden" onChange={e => { const list = Array.from(e.target.files || []); if (list.length) void uploadFiles(list) }} />
       </div>
 
-      <TransferQueue deviceId={deviceId} currentPath={path} onFinished={() => { void loadDir(path) }} />
+      {/* 2026-11-11 — the chunked queue authenticates with the dashboard JWT only; inside an
+          agent ticket session every call 401'd without a word. Hide it there and explain why. */}
+      {(!rt || authToken()) ? (
+        <TransferQueue deviceId={deviceId} currentPath={path} onFinished={() => { void loadDir(path) }} />
+      ) : (
+        <Alert tone="info">{t('fm_queue_needs_account')}</Alert>
+      )}
 
       {uploading && (
         <Alert tone="info">
