@@ -47,7 +47,70 @@ const ACTION_LABELS_AR: Record<string, { label: string; tone: Tone }> = {
   credential_saved:  { label: 'حفظ بيانات',     tone: 'success' },
   credential_deleted:{ label: 'حذف بيانات',     tone: 'danger' },
   alert_created:     { label: 'قاعدة تنبيه',    tone: 'warning' },
-  alert_deleted:     { label: 'حذف قاعدة',      tone: 'danger' }
+  alert_deleted:     { label: 'حذف قاعدة',      tone: 'danger' },
+  // 2026-11-11 — the server writes ~60 actions; unmapped keys used to render as raw
+  // identifiers (device_offline_long) inside an otherwise Arabic table.
+  device_offline_long:       { label: 'جهاز غير متصل',        tone: 'warning' },
+  device_blocked:            { label: 'حجب جهاز',             tone: 'danger' },
+  device_unblocked:          { label: 'إلغاء الحجب',           tone: 'success' },
+  device_disconnected:       { label: 'انقطاع جهاز',          tone: 'neutral' },
+  device_exec:               { label: 'تنفيذ على جهاز',        tone: 'info' },
+  device_control:            { label: 'تحكم بجهاز',            tone: 'info' },
+  device_wol:                { label: 'إيقاظ جهاز',            tone: 'info' },
+  sessions_export:           { label: 'تصدير جلسات',          tone: 'info' },
+  session_requested:         { label: 'طلب جلسة',             tone: 'info' },
+  session_accepted:          { label: 'قبول جلسة',            tone: 'success' },
+  session_closed:            { label: 'إغلاق جلسة',           tone: 'neutral' },
+  session_denied:            { label: 'رفض جلسة',             tone: 'warning' },
+  session_expired:           { label: 'انتهاء جلسة',          tone: 'neutral' },
+  session_conflict:          { label: 'تعارض جلسة',           tone: 'warning' },
+  session_capacity_rejected: { label: 'سعة ممتلئة',           tone: 'warning' },
+  session_policy_denied:     { label: 'رفض سياسة',            tone: 'warning' },
+  session_password_failed:   { label: 'كلمة مرور خاطئة',      tone: 'danger' },
+  session_password_locked:   { label: 'قفل المحاولات',        tone: 'danger' },
+  session_token_rejected:    { label: 'تذكرة مرفوضة',         tone: 'danger' },
+  session_suspended:         { label: 'تعليق جلسة',           tone: 'neutral' },
+  session_resumed:           { label: 'استئناف جلسة',         tone: 'info' },
+  session_restored:          { label: 'استعادة جلسة',         tone: 'info' },
+  session_view_denied:       { label: 'رفض عرض',              tone: 'warning' },
+  session_view_ticket_issued:{ label: 'تذكرة عرض',            tone: 'info' },
+  session_view_ticket_failed:{ label: 'فشل تذكرة عرض',        tone: 'danger' },
+  session_view_key_issued:   { label: 'مفتاح عرض',            tone: 'info' },
+  screen_denied:             { label: 'رفض بث',               tone: 'warning' },
+  relay_control_no_capability:{ label: 'تحكم بلا قدرة',       tone: 'warning' },
+  capability_denied:         { label: 'قدرة مرفوضة',          tone: 'warning' },
+  command_blocked:           { label: 'أمر محجوب',            tone: 'danger' },
+  clipboard_sync_set:        { label: 'مزامنة حافظة',         tone: 'info' },
+  clipboard_sync_direction:  { label: 'اتجاه الحافظة',        tone: 'info' },
+  clipboard_sync_reverse:    { label: 'عكس الحافظة',          tone: 'info' },
+  contact_created:           { label: 'جهة اتصال',            tone: 'success' },
+  contact_deleted:           { label: 'حذف جهة اتصال',        tone: 'danger' },
+  credential_create:         { label: 'حفظ بيانات',           tone: 'success' },
+  credential_delete:         { label: 'حذف بيانات',           tone: 'danger' },
+  credentials_list:          { label: 'عرض بيانات',           tone: 'info' },
+  fs_abort:                  { label: 'إلغاء نقل ملف',        tone: 'warning' },
+  read_chunked:              { label: 'قراءة ملف',            tone: 'info' },
+  backup_created:            { label: 'نسخة احتياطية',        tone: 'success' },
+  retention_run:             { label: 'سياسة احتفاظ',         tone: 'info' },
+  scheduled_task_run:        { label: 'مهمة مجدولة',          tone: 'info' },
+  task_created:              { label: 'مهمة جديدة',           tone: 'success' },
+  task_deleted:              { label: 'حذف مهمة',             tone: 'danger' },
+  update_started:            { label: 'بدء تحديث',            tone: 'info' },
+  password_changed:          { label: 'تغيير كلمة المرور',    tone: 'warning' },
+  user_role_changed:         { label: 'تغيير دور',            tone: 'warning' },
+  permission_granted:        { label: 'منح صلاحية',           tone: 'success' },
+  permission_revoked:        { label: 'سحب صلاحية',           tone: 'danger' },
+  unattended_set:            { label: 'وصول غير مراقب',       tone: 'info' },
+  unattended_cleared:        { label: 'إلغاء وصول غير مراقب', tone: 'neutral' },
+  unattended_locked:         { label: 'قفل وصول غير مراقب',   tone: 'warning' },
+  unattended_denied:         { label: 'رفض وصول غير مراقب',   tone: 'warning' },
+  unattended_login:          { label: 'دخول غير مراقب',       tone: 'success' },
+  unattended_login_failed:   { label: 'فشل دخول غير مراقب',   tone: 'danger' },
+  sftp_connect:              { label: 'اتصال SFTP',           tone: 'info' },
+  sftp_denied_host:          { label: 'رفض مضيف SFTP',        tone: 'danger' },
+  sftp_denied_role:          { label: 'رفض دور SFTP',         tone: 'warning' },
+  github_config_saved:       { label: 'إعداد GitHub',         tone: 'info' },
+  apply:                     { label: 'تطبيق إعداد',          tone: 'info' }
 }
 
 const ACTION_LABELS_EN: Record<string, { label: string; tone: Tone }> = {
@@ -75,8 +138,73 @@ const ACTION_LABELS_EN: Record<string, { label: string; tone: Tone }> = {
   credential_saved:  { label: 'Credential Saved', tone: 'success' },
   credential_deleted:{ label: 'Credential Del.',  tone: 'danger' },
   alert_created:     { label: 'Alert Rule',       tone: 'warning' },
-  alert_deleted:     { label: 'Alert Deleted',    tone: 'danger' }
+  alert_deleted:     { label: 'Alert Deleted',    tone: 'danger' },
+  device_offline_long:       { label: 'Device Offline',        tone: 'warning' },
+  device_blocked:            { label: 'Device Blocked',        tone: 'danger' },
+  device_unblocked:          { label: 'Device Unblocked',      tone: 'success' },
+  device_disconnected:       { label: 'Device Disconnected',   tone: 'neutral' },
+  device_exec:               { label: 'Device Command',        tone: 'info' },
+  device_control:            { label: 'Device Control',        tone: 'info' },
+  device_wol:                { label: 'Wake Device',           tone: 'info' },
+  sessions_export:           { label: 'Sessions Export',       tone: 'info' },
+  session_requested:         { label: 'Session Requested',     tone: 'info' },
+  session_accepted:          { label: 'Session Accepted',      tone: 'success' },
+  session_closed:            { label: 'Session Closed',        tone: 'neutral' },
+  session_denied:            { label: 'Session Denied',        tone: 'warning' },
+  session_expired:           { label: 'Session Expired',       tone: 'neutral' },
+  session_conflict:          { label: 'Session Conflict',      tone: 'warning' },
+  session_capacity_rejected: { label: 'Capacity Rejected',     tone: 'warning' },
+  session_policy_denied:     { label: 'Policy Denied',         tone: 'warning' },
+  session_password_failed:   { label: 'Session Bad Password',  tone: 'danger' },
+  session_password_locked:   { label: 'Session Locked',        tone: 'danger' },
+  session_token_rejected:    { label: 'Ticket Rejected',       tone: 'danger' },
+  session_suspended:         { label: 'Session Suspended',     tone: 'neutral' },
+  session_resumed:           { label: 'Session Resumed',       tone: 'info' },
+  session_restored:          { label: 'Session Restored',      tone: 'info' },
+  session_view_denied:       { label: 'View Denied',           tone: 'warning' },
+  session_view_ticket_issued:{ label: 'View Ticket',           tone: 'info' },
+  session_view_ticket_failed:{ label: 'View Ticket Failed',    tone: 'danger' },
+  session_view_key_issued:   { label: 'View Key',              tone: 'info' },
+  screen_denied:             { label: 'Screen Denied',         tone: 'warning' },
+  relay_control_no_capability:{ label: 'Control No Capability', tone: 'warning' },
+  capability_denied:         { label: 'Capability Denied',     tone: 'warning' },
+  command_blocked:           { label: 'Command Blocked',       tone: 'danger' },
+  clipboard_sync_set:        { label: 'Clipboard Sync',        tone: 'info' },
+  clipboard_sync_direction:  { label: 'Clipboard Direction',   tone: 'info' },
+  clipboard_sync_reverse:    { label: 'Clipboard Reverse',     tone: 'info' },
+  contact_created:           { label: 'Contact Added',         tone: 'success' },
+  contact_deleted:           { label: 'Contact Deleted',       tone: 'danger' },
+  credential_create:         { label: 'Credential Saved',      tone: 'success' },
+  credential_delete:         { label: 'Credential Deleted',    tone: 'danger' },
+  credentials_list:          { label: 'Credentials Listed',    tone: 'info' },
+  fs_abort:                  { label: 'Transfer Aborted',      tone: 'warning' },
+  read_chunked:              { label: 'File Read',             tone: 'info' },
+  backup_created:            { label: 'Backup Created',        tone: 'success' },
+  retention_run:             { label: 'Retention Run',         tone: 'info' },
+  scheduled_task_run:        { label: 'Scheduled Task',        tone: 'info' },
+  task_created:              { label: 'Task Created',          tone: 'success' },
+  task_deleted:              { label: 'Task Deleted',          tone: 'danger' },
+  update_started:            { label: 'Update Started',        tone: 'info' },
+  password_changed:          { label: 'Password Changed',      tone: 'warning' },
+  user_role_changed:         { label: 'Role Changed',          tone: 'warning' },
+  permission_granted:        { label: 'Permission Granted',    tone: 'success' },
+  permission_revoked:        { label: 'Permission Revoked',    tone: 'danger' },
+  unattended_set:            { label: 'Unattended Set',        tone: 'info' },
+  unattended_cleared:        { label: 'Unattended Cleared',    tone: 'neutral' },
+  unattended_locked:         { label: 'Unattended Locked',     tone: 'warning' },
+  unattended_denied:         { label: 'Unattended Denied',     tone: 'warning' },
+  unattended_login:          { label: 'Unattended Login',      tone: 'success' },
+  unattended_login_failed:   { label: 'Unattended Fail',       tone: 'danger' },
+  sftp_connect:              { label: 'SFTP Connect',          tone: 'info' },
+  sftp_denied_host:          { label: 'SFTP Host Denied',      tone: 'danger' },
+  sftp_denied_role:          { label: 'SFTP Role Denied',      tone: 'warning' },
+  github_config_saved:       { label: 'GitHub Config',         tone: 'info' },
+  apply:                     { label: 'Apply Setting',         tone: 'info' }
 }
+
+// 2026-11-11 — last-resort label for an action the maps do not know yet: readable,
+// never a raw underscore identifier.
+const humanizeAction = (key: string) => key.replace(/_/g, ' ')
 
 export function AuditPage({ embedded = false }: { embedded?: boolean } = {}) {
   const T     = useT()
@@ -203,7 +331,7 @@ export function AuditPage({ embedded = false }: { embedded?: boolean } = {}) {
           >
             <option value="">{T('audit_all_actions')}</option>
             {actions.map(a => (
-              <option key={a} value={a}>{ACTION_LABELS[a]?.label || a}</option>
+              <option key={a} value={a}>{ACTION_LABELS[a]?.label || humanizeAction(a)}</option>
             ))}
           </select>
         </div>
@@ -254,7 +382,7 @@ export function AuditPage({ embedded = false }: { embedded?: boolean } = {}) {
               )}
 
               {entries.map(entry => {
-                const action = ACTION_LABELS[entry.action] ?? { label: entry.action, tone: 'neutral' as Tone }
+                const action = ACTION_LABELS[entry.action] ?? { label: humanizeAction(entry.action), tone: 'neutral' as Tone }
                 let details: Record<string, unknown> = {}
                 try { details = JSON.parse(entry.details || '{}') } catch {}
                 const isExpanded = expandedRow === entry.id
