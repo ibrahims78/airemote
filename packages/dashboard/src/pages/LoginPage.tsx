@@ -17,7 +17,7 @@ export function LoginPage() {
   const [totpCode, setTotpCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const { setAuth } = useAuthStore()
+  const { setAuth, token } = useAuthStore()
   const { theme, toggleTheme, lang, toggleLang } = useUIStore()
   const navigate = useNavigate()
   const T = useT()
@@ -28,6 +28,12 @@ export function LoginPage() {
       .then(d => { if (d && d.version) setSrvVer(String(d.version)) })
       .catch(() => {})
   }, [])
+
+  // 2026-11-11 — a signed-in user who opened /login was shown the form again;
+  // send them straight to the dashboard instead.
+  useEffect(() => {
+    if (token) navigate('/', { replace: true })
+  }, [token, navigate])
 
   async function verifyTotp(e: React.FormEvent) {
     e.preventDefault()
