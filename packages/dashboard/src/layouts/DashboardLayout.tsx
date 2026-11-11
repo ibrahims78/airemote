@@ -163,14 +163,39 @@ export function DashboardLayout() {
         }}
       >
         <div className="app-titlebar-left">
-          <button type="button" className="app-titlebar-brand" onClick={() => navigate('/')} title="AiRemote">
-            <span className="app-brand-mark"><LayoutDashboard size={15} /></span>
-            <span className="app-brand-copy">
-              <strong>AiRemote</strong>
-              <small dir="ltr">v{serverVersion || APP_VERSION}</small>
-            </span>
-          </button>
-
+          {/* 3.16.13 — الهوية أقصى اليسار بطلب المالك، ثم التنقل، والشعار في الوسط تمامًا. */}
+          <div className="app-user-wrap">
+            {/* 2026-11-08 (D5) — الاسم الكامل يُبنى من الأبناء بلا فواصل فيصير «UUI Auditمسؤول»؛ aria-label يعطي قارئ الشاشة عبارة مفصولة. */}
+            <button type="button" className="app-user-btn" onClick={() => setUserMenuOpen(v => !v)}
+              aria-label={(user?.name || 'Admin') + ' — ' + roleLabel}
+              title={(user?.name || 'Admin') + ' — ' + roleLabel}>
+              <span className="app-user-avatar" aria-hidden="true">{user?.name?.charAt(0)?.toUpperCase() || 'A'}</span>
+              <span className="app-user-copy">
+                <strong>{user?.name || 'Admin'}</strong>
+                <small>{roleLabel}</small>
+              </span>
+              <ChevronDown size={12} />
+            </button>
+            {userMenuOpen && (
+              <>
+                <div className="app-menu-backdrop" onClick={() => setUserMenuOpen(false)} />
+                <div className="app-user-pop" role="menu">
+                  <div className="app-user-pop-head">
+                    <strong>{user?.name || 'Admin'}</strong>
+                    <span dir="ltr">{user?.email || ''}</span>
+                    <em>{roleLabel} · v{serverVersion || APP_VERSION}</em>
+                  </div>
+                  <button type="button" onClick={() => { setUserMenuOpen(false); navigate('/settings') }}>
+                    <Settings size={13} /> {T('settings')}
+                  </button>
+                  <button type="button" onClick={() => { setUserMenuOpen(false); handleLogout() }}>
+                    <LogOut size={13} /> {T('logout')}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+          <span className="app-titlebar-sep" aria-hidden="true" />
           {navItems.map(item => {
             const Icon = item.icon
             const active = isPath(item.to)
@@ -187,6 +212,16 @@ export function DashboardLayout() {
               </button>
             )
           })}
+        </div>
+
+        <div className="app-titlebar-center">
+          <button type="button" className="app-titlebar-brand" onClick={() => navigate('/')} title="AiRemote">
+            <span className="app-brand-mark"><LayoutDashboard size={15} /></span>
+            <span className="app-brand-copy">
+              <strong>AiRemote</strong>
+              <small dir="ltr">v{serverVersion || APP_VERSION}</small>
+            </span>
+          </button>
         </div>
 
         <div className="app-titlebar-actions">
@@ -283,42 +318,10 @@ export function DashboardLayout() {
           )}
           <span className="app-titlebar-sep" aria-hidden="true" />
 
-          <div className="app-user-wrap">
-            {/* 2026-11-08 (D5) — الاسم الكامل يُبنى من الأبناء بلا فواصل فيصير «UUI Auditمسؤول»؛ aria-label يعطي قارئ الشاشة عبارة مفصولة. */}
-            <button type="button" className="app-user-btn" onClick={() => setUserMenuOpen(v => !v)}
-              aria-label={(user?.name || 'Admin') + ' — ' + roleLabel}
-              title={(user?.name || 'Admin') + ' — ' + roleLabel}>
-              <span className="app-user-avatar" aria-hidden="true">{user?.name?.charAt(0)?.toUpperCase() || 'A'}</span>
-              <span className="app-user-copy">
-                <strong>{user?.name || 'Admin'}</strong>
-                <small>{roleLabel}</small>
-              </span>
-              <ChevronDown size={12} />
-            </button>
-            {userMenuOpen && (
-              <>
-                <div className="app-menu-backdrop" onClick={() => setUserMenuOpen(false)} />
-                <div className="app-user-pop" role="menu">
-                  <div className="app-user-pop-head">
-                    <strong>{user?.name || 'Admin'}</strong>
-                    <span dir="ltr">{user?.email || ''}</span>
-                    <em>{roleLabel} · v{serverVersion || APP_VERSION}</em>
-                  </div>
-                  <button type="button" onClick={() => { setUserMenuOpen(false); navigate('/settings') }}>
-                    <Settings size={13} /> {T('settings')}
-                  </button>
-                  <button type="button" onClick={() => { setUserMenuOpen(false); handleLogout() }}>
-                    <LogOut size={13} /> {T('logout')}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
         </div>
 
-        <div className="app-titlebar-spacer" />
-
-        <div className="app-window-controls">
+        <div className="app-titlebar-right">
+          <div className="app-window-controls">
           {windowCtl && (
             <>
               <button type="button" className="app-window-btn" onClick={() => windowCtl.minimize?.()} title={isRtl ? 'تصغير' : 'Minimize'}>
@@ -332,6 +335,7 @@ export function DashboardLayout() {
               </button>
             </>
           )}
+          </div>
         </div>
       </header>
 
