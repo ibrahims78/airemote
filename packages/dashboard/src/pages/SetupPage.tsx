@@ -9,17 +9,32 @@ import { APP_VERSION } from '../lib/version'
 import { WindowChrome } from '../components/WindowChrome'
 import { Alert, Button, Field, Input } from '../components/ui'
 
+// 2026-11-11 — page 14: the form demanded an uppercase letter and a digit while the
+// server only enforces twelve characters, so it rejected passwords the server accepts.
+// The checklist now mirrors the server rule exactly.
 const REQUIREMENTS = [
   { label: '12 حرفاً على الأقل', labelEn: 'At least 12 characters', test: (p: string) => p.length >= 12 },
-  { label: 'حرف كبير (A-Z)', labelEn: 'Uppercase letter (A-Z)', test: (p: string) => /[A-Z]/.test(p) },
-  { label: 'رقم (0-9)', labelEn: 'Number (0-9)', test: (p: string) => /[0-9]/.test(p) },
 ]
+
+function setupErrorText(err: unknown, isAr: boolean): string {
+  const e = err as { response?: { status?: number; data?: { error?: string } }; message?: string }
+  if (!e.response) return isAr ? 'تعذّر الوصول إلى الخادم — تحقّق من الاتصال ثم أعد المحاولة.' : 'Cannot reach the server — check the connection and try again.'
+  const status = e.response.status
+  const raw = e.response.data?.error || ''
+  if (status === 429) return isAr ? 'محاولات كثيرة جدًا — انتظر دقيقة ثم أعد المحاولة.' : 'Too many attempts — wait a minute, then try again.'
+  if (/already initialized/i.test(raw)) return isAr ? 'الخادم مُهيَّأ بالفعل — سجّل الدخول بحسابك.' : 'This server is already set up — sign in instead.'
+  if (/at least 12/i.test(raw)) return isAr ? 'كلمة المرور يجب أن تكون 12 حرفًا على الأقل.' : 'The password must be at least 12 characters.'
+  if (/required/i.test(raw)) return isAr ? 'أدخل البريد الإلكتروني وكلمة المرور.' : 'Enter both email and password.'
+  if (status && status >= 500) return isAr ? 'خطأ في الخادم — حاول بعد قليل.' : 'Server error — try again shortly.'
+  return raw || (isAr ? 'تعذّر إنشاء الحساب.' : 'Could not create the account.')
+}
 
 export function SetupPage({ onComplete }: { onComplete: () => void }) {
   const [form, setForm] = useState({ name: '', email: '', password: '', confirm: '' })
   const [showPass, setShowPass] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [created, setCreated] = useState(false)
   const { setAuth } = useAuthStore()
   const { theme, toggleTheme, lang, toggleLang } = useUIStore()
   const navigate = useNavigate()
@@ -43,17 +58,43 @@ export function SetupPage({ onComplete }: { onComplete: () => void }) {
     try {
       const res = await api.post('/api/auth/setup', { name: form.name, email: form.email, password: form.password })
       setAuth(res.data.token, res.data.user, res.data.refreshToken)
-      onComplete()
-      navigate('/')
+      // 2026-11-11 — page 14: recommend 2FA before leaving the wizard.
+      setCreated(true)
     } catch (err: unknown) {
-      const e = err as { response?: { data?: { error?: string } } }
-      setError(e.response?.data?.error || (isAr ? 'حدث خطأ، يرجى المحاولة مجدداً' : 'An error occurred. Please try again.'))
+      setError(setupErrorText(err, isAr))
     } finally {
       setLoading(false)
     }
   }
 
-  const strengthColor = metCount === 3 ? 'bg-success' : metCount >= 2 ? 'bg-warning' : 'bg-warning'
+  const strengthColor = form.password.length >= 12 ? 'bg-success' : 'bg-warning'
+
+  if (created) {
+    return (
+      <div className="min-h-screen bg-canvas flex flex-col">
+        <WindowChrome />
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="w-full max-w-md glass rounded-2xl p-6 shadow-2xl text-center animate-fade-in">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-success/15 text-success">
+              <Check size={22} />
+            </div>
+            <h1 className="text-xl font-bold text-ink">{isAr ? 'تم إنشاء حساب المسؤول' : 'Admin account created'}</h1>
+            <p className="mt-2 text-sm text-muted">
+              {isAr ? 'خطوة أخيرة موصى بها: فعّل التحقق بخطوتين لحماية اللوحة.' : 'One recommended step: enable two-factor authentication for the dashboard.'}
+            </p>
+            <div className="mt-5 space-y-2">
+              <Button variant="primary" className="w-full justify-center" onClick={() => { onComplete(); navigate('/settings') }}>
+                {isAr ? 'تفعيل التحقق بخطوتين' : 'Enable two-factor'}
+              </Button>
+              <Button variant="ghost" className="w-full justify-center" onClick={() => { onComplete(); navigate('/') }}>
+                {isAr ? 'ابدأ الآن' : 'Start now'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-canvas flex flex-col">
@@ -144,10 +185,11 @@ export function SetupPage({ onComplete }: { onComplete: () => void }) {
                 </div>
                 {form.password && (
                   <>
-                    <div className="mt-2 flex gap-1">
-                      {[...Array(3)].map((_, i) => (
-                        <div key={i} className={clsx('h-1 flex-1 rounded-full transition-all duration-300', i < metCount ? strengthColor : 'bg-surface2')} />
-                      ))}
+                    <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-surface2">
+                      <div
+                        className={clsx('h-full rounded-full transition-all duration-300', strengthColor)}
+                        style={{ width: Math.min(100, Math.round((form.password.length / 12) * 100)) + '%' }}
+                      />
                     </div>
                     <div className="mt-2 grid grid-cols-1 gap-1">
                       {REQUIREMENTS.map((r, i) => (
