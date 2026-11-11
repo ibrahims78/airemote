@@ -6308,6 +6308,11 @@ if ($target -eq $null) { 'name-not-found' } else {
   })
 
   // ── Audit Log ─────────────────────────────────────────────────────────────
+  // 2026-11-11 — accept a plain YYYY-MM-DD day and expand it to the full UTC day.
+  const auditDay = (value, endOfDay) => {
+    const s = String(value).slice(0, 10)
+    return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s + (endOfDay ? ' 23:59:59' : ' 00:00:00') : String(value)
+  }
   fastify.get('/api/audit', async (req, reply) => {
     if (!adminMiddleware(req, reply)) return
     const q = req.query || {}
@@ -6320,6 +6325,9 @@ if ($target -eq $null) { 'name-not-found' } else {
     // userId, so any email or name matched nothing. Match the free text where it belongs.
     if (q.q)        { const like = '%' + String(q.q).slice(0, 120) + '%'; where += ' AND (user_email LIKE ? OR user_id LIKE ?)'; args.push(like, like) }
     if (q.deviceId) { where += ' AND device_id=?'; args.push(q.deviceId) }
+    // 2026-11-11 — page 9: a date range narrows the same filtered set (created_at is UTC text).
+    if (q.from)     { where += ' AND created_at >= ?'; args.push(auditDay(q.from, false)) }
+    if (q.to)       { where += ' AND created_at <= ?'; args.push(auditDay(q.to, true)) }
     const total   = db.prepare('SELECT COUNT(*) as c FROM audit_log' + where).get(...args).c
     const entries = db.prepare('SELECT * FROM audit_log' + where + ' ORDER BY created_at DESC LIMIT ? OFFSET ?').all(...args, pageSize, (page - 1) * pageSize)
     return { entries, total, page, pageSize, totalPages: Math.max(1, Math.ceil(total / pageSize)) }
@@ -6333,6 +6341,10 @@ if ($target -eq $null) { 'name-not-found' } else {
     if (q.userId) { where += ' AND user_id=?'; args.push(q.userId) }
     // 3.16.7 — the CSV must be the same filtered set the table shows.
     if (q.q) { const like = '%' + String(q.q).slice(0, 120) + '%'; where += ' AND (user_email LIKE ? OR user_id LIKE ?)'; args.push(like, like) }
+    // 2026-11-11 — the CSV must match the table: same device and date filters.
+    if (q.deviceId) { where += ' AND device_id=?'; args.push(q.deviceId) }
+    if (q.from)     { where += ' AND created_at >= ?'; args.push(auditDay(q.from, false)) }
+    if (q.to)       { where += ' AND created_at <= ?'; args.push(auditDay(q.to, true)) }
     const rows = db.prepare('SELECT created_at, user_email, action, device_id, ip_address, details FROM audit_log' + where + ' ORDER BY created_at DESC LIMIT 10000').all(...args)
     const esc  = (v) => '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'
     const csv  = ['"created_at","user_email","action","device_id","ip_address","details"']
