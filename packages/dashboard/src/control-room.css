@@ -2344,22 +2344,26 @@ html.light .app-add-tag { color: #64748b; }
 .fcard .cap-chip.is-relay { border-color: rgba(180,83,9,.4); color: var(--b-warn); background: rgba(180,83,9,.08); }
 .fcard .cap-chip .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
 
-/* ── 2026-11-09 — مسرح موحّد: كل بلاطة بنفس العرض ونفس ارتفاع المسرح (16:9)،
-   والإطار العمودي يُعرض بحجمه داخل المسرح على خلفية متدرّجة لا أشرطة سوداء. ── */
-.cr-page .tile .screen { position: relative; }
-.cr-page .tile .screen:has(canvas[data-orient="portrait"]) {
-  background:
-    radial-gradient(115% 85% at 50% 0%, rgba(56,214,196,.10), transparent 62%),
-    radial-gradient(95% 70% at 50% 100%, rgba(96,165,250,.09), transparent 68%),
-    #09121a;
+/* ── ORIENT-STAGE — 2026-11-11: مسرح واحد لكل الجهاز والاتجاهين ──
+   contain دائمًا (بلا قصّ) · بلا إعادة تشكيل الحائط · بلا خلفية تترك أثر الاتجاه السابق.
+   التبديل = قطع حاد لإطار جديد على نفس المسرح. */
+.cr-page .tile .screen {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: #060b10;
+  overflow: hidden;
 }
-.cr-page .tile .screen canvas[data-orient="portrait"] {
-  width: auto; height: 100%; margin-inline: auto;
-  border-radius: 8px;
-  box-shadow: 0 12px 32px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.07);
+html.light .cr-page .tile .screen { background: #0b1420; }
+.cr-page .tile .screen canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  transition: none !important;
 }
-.cr-page .tile.is-max { width: auto; max-width: none; }
-.cr-page .tile.is-max .screen canvas[data-orient="portrait"] { border-radius: 10px; }
 
 /* ── 2026-11-09 — طبقات الشريط العلوي: القوائم كانت تُرسم تحت شريط البلاطات،
    فتُغطّى صفوفها السفلية ولا تُنقر. الشريط فوق المحتوى، والقوائم فوق الشريط. ── */
@@ -2392,17 +2396,6 @@ html.light .app-add-tag { color: #64748b; }
 .fcard .acts { margin-top: 4px; padding-top: 9px; border-top: 1px solid var(--b-line); }
 .fcard .top .nm { font-weight: 600; letter-spacing: .1px; }
 
-/* ── 2026-11-09 — مسرح العمودي: خلفية داكنة تعلو قاعدة الثيم الفاتح ── */
-html.light .cr-page .tile .screen:has(canvas[data-orient="portrait"]) {
-  background:
-    radial-gradient(115% 85% at 50% 0%, rgba(56,214,196,.16), transparent 62%),
-    radial-gradient(95% 70% at 50% 100%, rgba(96,165,250,.14), transparent 68%),
-    #0b1620;
-}
-.cr-page .tile .screen canvas[data-orient="portrait"] {
-  box-shadow: 0 14px 34px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.10);
-}
-
 /* 2026-11-09 — غلاف العارض كان يرسم خلفية الثيم فوق مسرح العمودي؛ نُلغيه ليظهر المسرح. */
 .cr-page .tile .screen .cr-wall-live > div { background: transparent; }
 
@@ -2426,93 +2419,7 @@ html.light .cr-page .tile .screen:has(canvas[data-orient="portrait"]) {
 @media (max-width: 1180px) { .cr-page .fleet.fleet { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 820px)  { .cr-page .fleet.fleet { grid-template-columns: minmax(0, 1fr); } }
 
-/* fit-v3 — 2026-11-09: إطارات الهاتف 20:9 كانت تُحبس في مسرح 16:9 بأشرطة سوداء،
-   والإطار العمودي كان كبيرًا وداكنًا. الحل: «تغطية» للأفقي ومسرح محايد أصغر للعمودي. */
-.cr-page .tile .screen canvas[data-orient="landscape"] {
-  object-fit: contain;
-}
-.cr-page .tile .screen:has(canvas[data-orient="portrait"]) {
-  background: var(--b-surface2, #eef3f7);
-}
-html.light .cr-page .tile .screen:has(canvas[data-orient="portrait"]) {
-  background: var(--b-surface2, #eef3f7);
-}
-.cr-page .tile .screen canvas[data-orient="portrait"] {
-  height: 82%;
-  width: auto;
-}
-
-/* tile-shape-v4 — 2026-11-09: البلاطة تأخذ شكل إطارها بدل حبسه داخل 16:9.
-   العمودي = بطاقة هاتف ضيقة بعرض 9/16 من الارتفاع، والأفقي يملأ باقي الصف. */
-.cr-page .wall:has(.tile:has(canvas[data-orient="portrait"])) {
-  grid-template-columns: auto minmax(0, 1fr);
-  justify-content: center;
-  align-items: stretch;
-}
-.cr-page .wall:has(.tile:has(canvas[data-orient="portrait"])) .tile {
-  width: auto;
-}
-.cr-page .tile .screen:has(canvas[data-orient="portrait"]) {
-  aspect-ratio: auto;
-  height: 505px;
-  width: auto;
-  background: transparent;
-}
-html.light .cr-page .tile .screen:has(canvas[data-orient="portrait"]) {
-  background: transparent;
-}
-.cr-page .tile .screen canvas[data-orient="portrait"] {
-  height: 100%;
-  width: auto;
-  border-radius: 10px;
-}
-.cr-page .wall.wall-1 .screen:has(canvas[data-orient="portrait"]) {
-  height: auto;
-}
-
-.cr-page .tile:has(canvas[data-orient="portrait"]) { width: auto; }
-.cr-page .tile .screen:has(canvas[data-orient="portrait"]) { display: grid; place-items: center; }
-
-/* unified-wall-v5 — 2026-11-09: إلغاء كل تجارب شكل البلاطة والعودة للقاعدة الصحيحة:
-   بلاطات موحّدة 16:9، وكل إطار (عمودي أو أفقي) يُعرض كاملًا في وسطها. */
-.cr-page .wall,
-.cr-page .wall:has(.tile:has(canvas[data-orient="portrait"])) {
-  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
-  justify-content: normal;
-  align-items: start;
-}
-.cr-page .tile,
-.cr-page .tile:has(canvas[data-orient="portrait"]) {
-  width: auto;
-  max-width: none;
-  justify-self: stretch;
-}
-.cr-page .tile .screen,
-.cr-page .tile .screen:has(canvas[data-orient="portrait"]) {
-  aspect-ratio: 16 / 9;
-  height: auto;
-  width: 100%;
-  display: block;
-  background: #0a1218;
-}
-html.light .cr-page .tile .screen:has(canvas[data-orient="portrait"]) {
-  background: #0f1a24;
-}
-.cr-page .tile .screen canvas,
-.cr-page .tile .screen canvas[data-orient="portrait"] {
-  height: 100%;
-  width: 100%;
-  object-fit: contain;
-  border-radius: 0;
-}
-.cr-page .wall.wall-1 .screen:has(canvas[data-orient="portrait"]) {
-  height: auto;
-}
-
-/* landscape-fill — 2026-11-09: الإطار الأفقي يملأ البلاطة كالمحاكي بلا أشرطة. */
-.cr-page .tile .screen canvas[data-orient="landscape"] { object-fit: cover; }
-.cr-page .tile .screen:has(canvas[data-orient="landscape"]) { display: block; }
-
+/* fit-v3 / tile-shape-v4 / unified-wall-v5 / landscape-fill أُلغيت — ORIENT-STAGE أعلاه هو القاعدة الوحيدة. */
 
 /* 2026-11-10 — نقل نمطين سطريين ثابتين من ScreenViewer إلى أصناف (بوابة 51) */
 .sv-more-menu { top: 54px; right: 12px; left: auto; }

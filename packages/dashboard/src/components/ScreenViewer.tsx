@@ -726,6 +726,8 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
               canvas.width = width; canvas.height = height
               // 2026-11-08 — نفس الإعلان في مسار البث الحيّ (لا الإطار الأول فقط).
               canvas.dataset.orient = height > width ? 'portrait' : 'landscape'
+              // ORIENT-STAGE — مسح صريح بعد تغيير الشكل حتى لا يبقى أثر الاتجاه السابق.
+              ctx.clearRect(0, 0, width, height)
               setResolution({ w: width, h: height })
             }
             ctx.drawImage(bmp, 0, 0)
