@@ -190,6 +190,10 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
   const [deviceRes,      setDeviceRes]      = useState('')
   const [resBusy,        setResBusy]        = useState(false)
   const [popoutHint,     setPopoutHint]     = useState(!!popout)
+  // 2026-11-11 — the standalone window announced 'popout' / 'popout-closed' on a
+  // BroadcastChannel that had no listener, so this viewer could not tell whether a
+  // separate window was already showing the device.
+  const [popoutOpen,     setPopoutOpen]     = useState(false)
 
   // ── Control ───────────────────────────────────────────────────────────────
   const [preset,          setPreset]          = useState<QualityPreset>(() => preview ? QUALITY_PRESETS[0] : QUALITY_PRESETS[1])
@@ -442,6 +446,22 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
     const timer = window.setTimeout(() => setPopoutHint(false), 4200)
     return () => window.clearTimeout(timer)
   }, [popout, popoutHint])
+
+  useEffect(() => {
+    if (popout || typeof BroadcastChannel === 'undefined') return
+    let ch: BroadcastChannel | null = null
+    try {
+      ch = new BroadcastChannel('airemote-screen')
+      ch.onmessage = (e) => {
+        const d = e.data as { type?: string; deviceId?: string } | null
+        if (!d || d.deviceId !== deviceId) return
+        if (d.type === 'popout') setPopoutOpen(true)
+        else if (d.type === 'popout-closed') setPopoutOpen(false)
+      }
+      ch.postMessage({ type: 'popout-query', deviceId })
+    } catch {}
+    return () => { try { ch?.close() } catch {} }
+  }, [deviceId, popout])
 
   useEffect(() => { presetRef.current     = preset        }, [preset])
   useEffect(() => { selectedMonRef.current = selectedMonitor }, [selectedMonitor])
@@ -1849,7 +1869,9 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
   }
 
   return (
-    <div ref={containerRef} className={clsx(
+    <div ref={containerRef}
+      data-popout-open={popoutOpen ? '1' : '0'}
+      className={clsx(
       'flex flex-col bg-code overflow-hidden',
       (fullscreen || popout) ? 'fixed inset-0 z-[100] rounded-none' : 'relative h-full rounded-xl'
     )}>
@@ -1923,7 +1945,11 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
             status === 'streaming' && 'is-live',
             status === 'connecting' && 'is-buffering'
           )}
-          data-tb="1" title={status === 'streaming' ? tr('viewer_live_open_popout') : tr('viewer_offline')}
+          data-tb="1"
+          data-popout-open={popoutOpen ? '1' : '0'}
+          title={!popout && popoutOpen
+            ? tr('viewer_popout_open')
+            : (status === 'streaming' ? tr('viewer_live_open_popout') : tr('viewer_offline'))}
         >
           <i className="cr-live-signal-dot" />
         </button>
