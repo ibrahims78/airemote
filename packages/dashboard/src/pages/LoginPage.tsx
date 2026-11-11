@@ -8,6 +8,21 @@ import { useT } from '../lib/i18n'
 import { WindowChrome } from '../components/WindowChrome'
 import { APP_VERSION } from '../lib/version'
 
+// 2026-11-11 — every failure used to read "invalid credentials", including a dead network,
+// a rate limit and a server error. Name the actual cause instead.
+function authErrorText(err: unknown, lang: string): string {
+  const e = err as { response?: { status?: number; data?: { error?: string } }; message?: string }
+  const ar = lang === 'ar'
+  if (!e.response) return ar ? 'تعذّر الوصول إلى الخادم — تحقّق من الاتصال ثم أعد المحاولة.' : 'Cannot reach the server — check the connection and try again.'
+  const status = e.response.status
+  const raw = e.response.data?.error || ''
+  if (status === 429) return ar ? 'محاولات كثيرة جدًا — انتظر دقيقة ثم أعد المحاولة.' : 'Too many attempts — wait a minute, then try again.'
+  if (status && status >= 500) return ar ? 'خطأ في الخادم — حاول بعد قليل.' : 'Server error — try again shortly.'
+  if (status === 400) return ar ? 'أدخل البريد الإلكتروني وكلمة المرور.' : 'Enter both email and password.'
+  if (status === 401) return ar ? 'بيانات الدخول غير صحيحة.' : 'Invalid email or password.'
+  return raw || (ar ? 'تعذّر تسجيل الدخول.' : 'Sign-in failed.')
+}
+
 export function LoginPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -17,6 +32,7 @@ export function LoginPage() {
   const [totpCode, setTotpCode] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [resetHelp, setResetHelp] = useState(false)
   const { setAuth, token } = useAuthStore()
   const { theme, toggleTheme, lang, toggleLang } = useUIStore()
   const navigate = useNavigate()
@@ -44,11 +60,10 @@ export function LoginPage() {
       setAuth(res.data.token, res.data.user, res.data.refreshToken)
       navigate('/')
     } catch (err: unknown) {
-      const e2 = err as { response?: { data?: { error?: string } } }
-      const code2 = e2.response?.data?.error
+      const code2 = (err as { response?: { data?: { error?: string } } }).response?.data?.error
       setError(code2 === 'Invalid TOTP code'
         ? (lang === 'ar' ? 'رمز التحقق غير صحيح' : 'Invalid verification code')
-        : (code2 || T('invalid_credentials')))
+        : authErrorText(err, lang))
     } finally {
       setLoading(false)
     }
@@ -68,17 +83,16 @@ export function LoginPage() {
       setAuth(res.data.token, res.data.user, res.data.refreshToken)
       navigate('/')
     } catch (err: unknown) {
-      const e2 = err as { response?: { data?: { error?: string } } }
-      setError(e2.response?.data?.error || T('invalid_credentials'))
+      setError(authErrorText(err, lang))
     } finally {
       setLoading(false)
     }
   }
 
+  // 2026-11-11 — the link dropped a red error; show short recovery steps instead.
   function requestReset() {
-    setError(lang === 'ar'
-      ? 'لإعادة تعيين كلمة المرور، تواصل مع مدير النظام.'
-      : 'Contact your administrator to reset your password.')
+    setError('')
+    setResetHelp(v => !v)
   }
 
   const version = srvVer || APP_VERSION
@@ -128,7 +142,8 @@ export function LoginPage() {
                   />
                 </label>
                 {error && <div className="login-error" role="alert">{error}</div>}
-                <button type="submit" disabled={loading} className="login-submit">
+                <button type="submit" disabled={loading || totpCode.length !== 6} className="login-submit"
+                  title={totpCode.length !== 6 ? (lang === 'ar' ? 'أدخل الأرقام الستة كاملة' : 'Enter all six digits') : undefined}>
                   {loading && <span className="login-spinner" />}
                   {lang === 'ar' ? 'تأكيد الرمز' : 'Verify code'}
                 </button>
@@ -176,8 +191,27 @@ export function LoginPage() {
 
                 <div className="login-form-meta">
                   <span><ShieldCheck size={12} /> {lang === 'ar' ? 'اتصال مشفّر' : 'Encrypted connection'}</span>
-                  <button type="button" onClick={requestReset}>{lang === 'ar' ? 'نسيت كلمة المرور؟' : 'Forgot password?'}</button>
+                  <button type="button" onClick={requestReset} aria-expanded={resetHelp}>{lang === 'ar' ? 'نسيت كلمة المرور؟' : 'Forgot password?'}</button>
                 </div>
+
+                {resetHelp && (
+                  <div className="rounded-xl border border-line bg-surface2/70 px-3.5 py-3 text-[12px] leading-6 text-muted" role="note">
+                    <b className="mb-1 block text-ink">{lang === 'ar' ? 'استعادة كلمة المرور' : 'Password recovery'}</b>
+                    {lang === 'ar' ? (
+                      <ol className="list-decimal space-y-1 ps-4">
+                        <li>لا توجد استعادة تلقائية بالبريد في النسخة ذاتية الاستضافة.</li>
+                        <li>اطلب من مسؤول النظام إعادة تعيين كلمة المرور من صفحة «المستخدمون».</li>
+                        <li>إن لم يوجد مسؤول آخر، تُعاد التهيئة من أداة الخادم على الجهاز المستضيف.</li>
+                      </ol>
+                    ) : (
+                      <ol className="list-decimal space-y-1 ps-4">
+                        <li>Self-hosted AiRemote has no e-mail reset.</li>
+                        <li>Ask the system administrator to reset it from the Users page.</li>
+                        <li>If no admin is reachable, recover it from the server tooling on the host.</li>
+                      </ol>
+                    )}
+                  </div>
+                )}
 
                 <button type="submit" disabled={loading} className="login-submit">
                   {loading && <span className="login-spinner" />}

@@ -33,7 +33,11 @@ api.interceptors.response.use(
   r => r,
   async err => {
     const original = err.config
-    if (err.response?.status === 401 && !original._retry) {
+    // 2026-11-11 — a 401 from the login endpoints means a wrong password, not an expired
+    // session: the redirect below reloaded /login and wiped the message the form was about
+    // to show, so every failed sign-in looked like an unexplained refresh.
+    const authAttempt = /\/api\/auth\/(login|login\/verify-totp)/.test(String(original?.url || ''))
+    if (err.response?.status === 401 && !original._retry && !authAttempt) {
       original._retry = true
 
       const auth = getStoredAuth()
