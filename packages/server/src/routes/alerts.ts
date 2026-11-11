@@ -89,8 +89,10 @@ export async function alertRoutes(fastify: FastifyInstance) {
   fastify.get('/notifications', async (request) => {
     const user = request.user as unknown as AuthTokenPayload
     const db   = getDb()
+    // 2026-11-11 — server failures are stored with user_id NULL; admins read them too.
+    const scope = user.role === 'admin' ? '(user_id = ? OR user_id IS NULL)' : 'user_id = ?'
     const result = await db.execute({
-      sql: `SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 50`,
+      sql: `SELECT * FROM notifications WHERE ${scope} ORDER BY created_at DESC LIMIT 50`,
       args: [user.userId]
     })
     const unread = (result.rows as unknown as { read: number }[]).filter(r => r.read === 0).length
@@ -102,11 +104,12 @@ export async function alertRoutes(fastify: FastifyInstance) {
     const user = request.user as unknown as AuthTokenPayload
     const db   = getDb()
     const { ids, all } = request.body
+    const scope = user.role === 'admin' ? '(user_id = ? OR user_id IS NULL)' : 'user_id = ?'
     if (all) {
-      await db.execute({ sql: 'UPDATE notifications SET read = 1 WHERE user_id = ?', args: [user.userId] })
+      await db.execute({ sql: `UPDATE notifications SET read = 1 WHERE ${scope}`, args: [user.userId] })
     } else if (ids?.length) {
       for (const id of ids) {
-        await db.execute({ sql: 'UPDATE notifications SET read = 1 WHERE id = ? AND user_id = ?', args: [id, user.userId] })
+        await db.execute({ sql: `UPDATE notifications SET read = 1 WHERE id = ? AND ${scope}`, args: [id, user.userId] })
       }
     }
     return { ok: true }
@@ -116,7 +119,8 @@ export async function alertRoutes(fastify: FastifyInstance) {
   fastify.delete('/notifications', async (request) => {
     const user = request.user as unknown as AuthTokenPayload
     const db   = getDb()
-    await db.execute({ sql: 'DELETE FROM notifications WHERE user_id = ? AND read = 1', args: [user.userId] })
+    const scope = user.role === 'admin' ? '(user_id = ? OR user_id IS NULL)' : 'user_id = ?'
+    await db.execute({ sql: `DELETE FROM notifications WHERE ${scope} AND read = 1`, args: [user.userId] })
     return { ok: true }
   })
 }
