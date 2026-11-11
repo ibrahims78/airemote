@@ -54,6 +54,7 @@ const steps = [
   { name: 'typecheck dashboard',         cmd: PNPM + ' --filter @airemote/dashboard typecheck' },
   { name: 'contrast AA tokens (R6)',     cmd: NODE + ' scripts/check-contrast.cjs' },
   { name: 'unit: registry race',         cmd: NODE + ' packages/server/test/registry-race.test.cjs' },
+  { name: 'unit: task schedule (3.16.10)', cmd: NODE + ' packages/server-desktop/test/task-schedule.test.cjs' },
   { name: 'e2e: web-server connection',  cmd: NODE + ' packages/server/test/e2e-connection.test.cjs' },
   { name: 'e2e: device authorization',   cmd: NODE + ' packages/server/test/e2e-authz.test.cjs' },
   { name: 'e2e: desktop-server control', cmd: electronStep() },
