@@ -1,5 +1,5 @@
 import { Fragment, useState, useEffect, useCallback } from 'react'
-import { Shield, Download, Filter, ChevronLeft, ChevronRight, RefreshCw, Search } from 'lucide-react'
+import { Shield, Download, Filter, ChevronLeft, ChevronRight, RefreshCw, Search, Monitor } from 'lucide-react'
 import { api } from '../lib/api'
 import { clsx } from 'clsx'
 import { useT } from '../lib/i18n'
@@ -224,6 +224,11 @@ export function AuditPage({ embedded = false }: { embedded?: boolean } = {}) {
   const [query, setQuery]               = useState('')
   const [exporting, setExporting]       = useState(false)
   const [filterAction, setFilterAction] = useState('')
+  // 2026-11-11 — page 9: narrow by device and by a date range, like the sessions page.
+  const [deviceId, setDeviceId] = useState('')
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
+  const [devices, setDevices] = useState<Array<{ id: string; name: string }>>([])
   const [expandedRow, setExpandedRow]   = useState<number | null>(null)
 
   const perPage = 50
@@ -236,6 +241,9 @@ export function AuditPage({ embedded = false }: { embedded?: boolean } = {}) {
       if (filterAction) params.set('action', filterAction)
       // 3.16.7 — free text is a user search: the server matches it against email and id.
       if (query) params.set('q', query)
+      if (deviceId) params.set('deviceId', deviceId)
+      if (from) params.set('from', from)
+      if (to) params.set('to', to)
       const res = await api.get(`/api/audit?${params}`)
       setEntries(res.data.entries ?? [])
       setTotal(res.data.total ?? 0)
@@ -244,7 +252,7 @@ export function AuditPage({ embedded = false }: { embedded?: boolean } = {}) {
       setError(err.response?.data?.error || err.message || (isRtl ? 'فشل تحميل سجل التدقيق.' : 'Failed to load the audit log.'))
       setEntries([])
     } finally { setLoading(false) }
-  }, [page, filterAction, query, isRtl])
+  }, [page, filterAction, query, deviceId, from, to, isRtl])
 
   useEffect(() => {
     const timer = setTimeout(() => setQuery(search), 300)
@@ -253,10 +261,23 @@ export function AuditPage({ embedded = false }: { embedded?: boolean } = {}) {
 
   useEffect(() => { void load() }, [load])
 
+  // 2026-11-11 — the device filter needs names, not raw UUIDs.
+  useEffect(() => {
+    api.get('/api/devices')
+      .then(r => {
+        const list = Array.isArray(r.data) ? r.data : (r.data?.devices || [])
+        setDevices(list.map((d: { id: string; name: string }) => ({ id: d.id, name: d.name })))
+      })
+      .catch(() => {})
+  }, [])
+
   async function exportCsv() {
     const params = new URLSearchParams()
     if (filterAction) params.set('action', filterAction)
     if (search) params.set('q', search)
+    if (deviceId) params.set('deviceId', deviceId)
+    if (from) params.set('from', from)
+    if (to) params.set('to', to)
     setExporting(true)
     try {
       const res = await fetch(`/api/audit/export?${params}`, {
@@ -310,7 +331,7 @@ export function AuditPage({ embedded = false }: { embedded?: boolean } = {}) {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <div className="relative min-w-[180px] flex-1">
           <Search size={13} className="pointer-events-none absolute top-1/2 start-2.5 -translate-y-1/2 text-muted" aria-hidden />
           <Input
@@ -321,7 +342,7 @@ export function AuditPage({ embedded = false }: { embedded?: boolean } = {}) {
             onChange={e => { setSearch(e.target.value); setPage(1) }}
           />
         </div>
-        <div className="relative">
+        <div className="relative shrink-0">
           <Filter size={13} className="pointer-events-none absolute top-1/2 start-2.5 -translate-y-1/2 text-muted" aria-hidden />
           <select
             className="h-9 min-w-[150px] appearance-none rounded-lg border border-line bg-surface ps-8 pe-3 text-[13px] text-ink outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25"
@@ -334,6 +355,41 @@ export function AuditPage({ embedded = false }: { embedded?: boolean } = {}) {
               <option key={a} value={a}>{ACTION_LABELS[a]?.label || humanizeAction(a)}</option>
             ))}
           </select>
+        </div>
+        <div className="relative shrink-0">
+          <Monitor size={13} className="pointer-events-none absolute top-1/2 start-2.5 -translate-y-1/2 text-muted" aria-hidden />
+          <select
+            className="h-9 min-w-[150px] max-w-[200px] appearance-none rounded-lg border border-line bg-surface ps-8 pe-3 text-[13px] text-ink outline-none transition-colors focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/25"
+            value={deviceId}
+            aria-label={T('audit_col_device')}
+            onChange={e => { setDeviceId(e.target.value); setPage(1) }}
+          >
+            <option value="">{T('notif_all_devices')}</option>
+            {devices.map(d => (
+              <option key={d.id} value={d.id}>{d.name}</option>
+            ))}
+          </select>
+        </div>
+        {/* Input forces w-full; the wrapper owns the width so the bar stays on one row. */}
+        <div className="w-[150px] shrink-0">
+          <Input
+            type="date"
+            className="h-9"
+            aria-label={T('sessions_from')}
+            title={T('sessions_from')}
+            value={from}
+            onChange={e => { setFrom(e.target.value); setPage(1) }}
+          />
+        </div>
+        <div className="w-[150px] shrink-0">
+          <Input
+            type="date"
+            className="h-9"
+            aria-label={T('sessions_to')}
+            title={T('sessions_to')}
+            value={to}
+            onChange={e => { setTo(e.target.value); setPage(1) }}
+          />
         </div>
       </div>
 
@@ -372,7 +428,7 @@ export function AuditPage({ embedded = false }: { embedded?: boolean } = {}) {
                         ? (isRtl ? 'جرّب مسح البحث أو تغيير نوع الإجراء.' : 'Clear the search or pick another action.')
                         : (isRtl ? 'ستظهر هنا كل عملية حساسة تُنفَّذ على النظام.' : 'Sensitive operations will appear here.')}
                       action={(search || filterAction) ? (
-                        <Button onClick={() => { setSearch(''); setFilterAction(''); setPage(1) }}>
+                        <Button onClick={() => { setSearch(''); setFilterAction(''); setDeviceId(''); setFrom(''); setTo(''); setPage(1) }}>
                           {isRtl ? 'مسح عوامل التصفية' : 'Clear filters'}
                         </Button>
                       ) : undefined}
@@ -394,8 +450,17 @@ export function AuditPage({ embedded = false }: { embedded?: boolean } = {}) {
                   <Fragment key={entry.id}>
                     <tr
                       key={entry.id}
-                      className={clsx('cursor-pointer border-b border-line/50 transition-colors hover:bg-surface2/60', isExpanded && 'bg-surface2/60')}
+                      tabIndex={0}
+                      role="button"
+                      aria-expanded={isExpanded}
+                      className={clsx('cursor-pointer border-b border-line/50 outline-none transition-colors hover:bg-surface2/60 focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary/40', isExpanded && 'bg-surface2/60')}
                       onClick={() => setExpandedRow(isExpanded ? null : entry.id)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault()
+                          setExpandedRow(isExpanded ? null : entry.id)
+                        }
+                      }}
                     >
                       <td className="whitespace-nowrap px-4 py-2 text-[11px] text-muted" title={entry.created_at}>
                         {formatRelativeLang(entry.created_at, lang)}
