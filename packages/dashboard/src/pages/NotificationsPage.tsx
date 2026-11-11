@@ -155,7 +155,7 @@ export function NotificationsPage({ embedded = false }: { embedded?: boolean } =
   const [total, setTotal] = useState(0)
   const { devices } = useDeviceStore()
   const [newRule, setNewRule]             = useState({
-    type: 'cpu_high', threshold: 90, cooldownMin: 30, channel: 'in_app', webhookUrl: ''
+    type: 'cpu_high', deviceId: '', threshold: 90, cooldownMin: 30, channel: 'in_app', webhookUrl: ''
   })
 
   const loadNotifications = useCallback(async () => {
@@ -240,6 +240,7 @@ export function NotificationsPage({ embedded = false }: { embedded?: boolean } =
     try {
       await api.post('/api/alerts', {
         type: newRule.type,
+        deviceId: newRule.deviceId || undefined,
         threshold: ['cpu_high', 'ram_high', 'disk_high'].includes(newRule.type) ? newRule.threshold : undefined,
         cooldownMin: newRule.cooldownMin,
         channel: newRule.channel,
@@ -409,6 +410,19 @@ export function NotificationsPage({ embedded = false }: { embedded?: boolean } =
                       {Object.entries(ALERT_TYPE_LABELS).map(([v, l]) => (
                         <option key={v} value={v}>{l}</option>
                       ))}
+                    </Select>
+                  </Field>
+
+                  {/* 2026-11-11 — the engine always honoured a per-device rule; the form never
+                      let anyone pick one, so every rule was fleet-wide. */}
+                  <Field label={T('notif_rule_device')} htmlFor="rule-device">
+                    <Select
+                      id="rule-device"
+                      value={newRule.deviceId}
+                      onChange={e => setNewRule(r => ({ ...r, deviceId: e.target.value }))}
+                    >
+                      <option value="">{T('notif_all_devices')}</option>
+                      {devices.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                     </Select>
                   </Field>
 
