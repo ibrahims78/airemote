@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import {
   BookOpen, Search, HelpCircle, Info, Monitor, Bot,
-  Server, Smartphone, ChevronLeft, Power, CheckCircle2
+  Server, Smartphone, ChevronLeft, Power, CheckCircle2, Printer
 } from 'lucide-react'
 import { clsx } from 'clsx'
 import { useUIStore } from '../store/uiStore'
@@ -169,13 +169,15 @@ function Markdown({ text }: { text: string }) {
   return <div>{blocks}</div>
 }
 
+// 2026-11-11 — page 11: quick links used a loose title match and quietly did nothing
+// when a heading was reworded; they now point at the section number in the guide.
 const QUICK_LINKS = [
-  { key: 'نظرة عامة', icon: BookOpen, color: 'from-primary to-primary' },
-  { key: 'تثبيت', icon: Server, color: 'from-primary to-primary' },
-  { key: 'ربط الوكيل', icon: Smartphone, color: 'from-primary to-primary' },
-  { key: 'البث', icon: Monitor, color: 'from-primary to-primary' },
-  { key: 'المساعد الذكي', icon: Bot, color: 'from-primary to-primary' },
-  { key: 'Wake-on-LAN', icon: Power, color: 'from-primary to-primary' },
+  { key: 'نظرة عامة', n: 1, icon: BookOpen, color: 'from-primary to-primary' },
+  { key: 'تثبيت', n: 3, icon: Server, color: 'from-primary to-primary' },
+  { key: 'ربط الوكيل', n: 4, icon: Smartphone, color: 'from-primary to-primary' },
+  { key: 'البث', n: 6, icon: Monitor, color: 'from-primary to-primary' },
+  { key: 'المساعد الذكي', n: 8, icon: Bot, color: 'from-primary to-primary' },
+  { key: 'Wake-on-LAN', n: 9, icon: Power, color: 'from-primary to-primary' },
 ]
 
 export function HelpPage() {
@@ -201,18 +203,35 @@ export function HelpPage() {
     api.get('/api/health').then(r => setServerVersion(r.data?.version || '')).catch(() => {})
   }, [aboutOpen])
 
+  // 2026-11-11 — every jump now writes a shareable #hash and clears the query filter,
+  // so a section can be linked from elsewhere and survive a reload.
   const go = (id: string) => {
-    document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    const el = document.getElementById(id)
+    if (!el) return
+    setQuery('')
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    try { history.replaceState(null, '', '#' + id) } catch {}
   }
-  const quickTarget = (keyword: string) => {
-    const s = sections.find(x => x.title.includes(keyword))
+  const quickTarget = (n: number) => {
+    const s = sections.find(x => x.title.trim().startsWith(n + '.'))
     if (s) go(s.id)
   }
 
+  // open a deep link on first render (after the guide is mounted)
+  useEffect(() => {
+    const id = decodeURIComponent((window.location.hash || '').replace(/^#/, ''))
+    if (!id) return
+    const timer = setTimeout(() => {
+      const el = document.getElementById(id)
+      if (el) el.scrollIntoView({ block: 'start' })
+    }, 350)
+    return () => clearTimeout(timer)
+  }, [])
+
   return (
-    <div className="h-full overflow-y-auto" dir={isAr ? 'rtl' : 'ltr'}>
+    <div className="h-full overflow-y-auto print:h-auto print:overflow-visible" dir={isAr ? 'rtl' : 'ltr'}>
       {/* Hero */}
-      <div className={clsx('relative overflow-hidden border-b', 'border-line bg-gradient-to-br from-primary/[0.07] via-surface to-canvas')}>
+      <div className={clsx('relative overflow-hidden border-b print:hidden', 'border-line bg-gradient-to-br from-primary/[0.07] via-surface to-canvas')}>
         <div className="absolute -top-24 -end-16 w-72 h-72 rounded-full bg-primary/10 blur-3xl" />
         <div className="absolute -bottom-24 start-1/4 w-72 h-72 rounded-full bg-primary/10 blur-3xl" />
         <div className="relative max-w-6xl mx-auto px-6 py-8">
@@ -233,14 +252,25 @@ export function HelpPage() {
                   : 'A complete guide to installing, configuring, linking agents, and using every AiRemote feature with practical examples.'}
               </p>
             </div>
-            <Button
-              variant="secondary"
-              className="inline-flex h-9 rounded-xl border-line bg-surface/80 px-3.5"
-              icon={<Info size={14} />}
-              onClick={() => setAboutOpen(true)}
-            >
-              {isAr ? 'حول AiRemote' : 'About AiRemote'}
-            </Button>
+            <div className="flex items-center gap-1.5 print:hidden">
+              <Button
+                variant="secondary"
+                className="inline-flex h-9 rounded-xl border-line bg-surface/80 px-3.5"
+                icon={<Printer size={14} />}
+                onClick={() => window.print()}
+                title={isAr ? 'طباعة الدليل' : 'Print the guide'}
+              >
+                {isAr ? 'طباعة' : 'Print'}
+              </Button>
+              <Button
+                variant="secondary"
+                className="inline-flex h-9 rounded-xl border-line bg-surface/80 px-3.5"
+                icon={<Info size={14} />}
+                onClick={() => setAboutOpen(true)}
+              >
+                {isAr ? 'حول AiRemote' : 'About AiRemote'}
+              </Button>
+            </div>
           </div>
 
           {/* Search */}
@@ -267,7 +297,7 @@ export function HelpPage() {
             {QUICK_LINKS.map(q => {
               const Icon = q.icon
               return (
-                <button key={q.key} onClick={() => quickTarget(q.key)}
+                <button key={q.key} onClick={() => quickTarget(q.n)}
                   className={clsx('group flex items-center gap-2 px-3 py-2.5 rounded-xl border text-start transition-all',
                     'bg-surface border-line hover:border-primary/40 hover:bg-surface2')}>
                   <span className={clsx('w-7 h-7 rounded-lg bg-gradient-to-br flex items-center justify-center flex-shrink-0 text-primary-fg shadow-sm', q.color)}>
@@ -282,17 +312,22 @@ export function HelpPage() {
       </div>
 
       {/* Body */}
-      <div className="max-w-6xl mx-auto px-6 py-6 grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-8">
+      <div className="max-w-6xl mx-auto px-6 py-6 grid grid-cols-1 lg:grid-cols-[240px_1fr] gap-8 print:block print:p-0">
         {/* TOC */}
-        <aside className="hidden lg:block">
+        <aside className="hidden lg:block print:hidden">
           <div className={clsx('sticky top-4 rounded-2xl border p-3', 'bg-surface border-line')}>
             <p className={clsx('text-[10px] font-semibold uppercase tracking-wider px-2 mb-2', 'text-muted')}>{isAr ? 'محتويات الدليل' : 'Contents'}</p>
             <nav className="space-y-0.5 max-h-[70vh] overflow-y-auto">
-              {sections.map((s, i) => (
+              {filtered.length === 0 && (
+                <p className={clsx('px-2 py-1.5 text-[11px]', 'text-muted')}>
+                  {isAr ? 'لا عناوين مطابقة' : 'No matching sections'}
+                </p>
+              )}
+              {filtered.map(s => (
                 <button key={s.id} onClick={() => go(s.id)}
                   className={clsx('group w-full flex items-start gap-2 text-start px-2 py-1.5 rounded-lg text-[11.5px] leading-5 transition-colors',
                     'text-muted hover:bg-surface2 hover:text-ink')}>
-                  <span className={clsx('font-mono text-[9px] mt-0.5 flex-shrink-0', 'text-muted')}>{String(i + 1).padStart(2, '0')}</span>
+                  <span className={clsx('font-mono text-[9px] mt-0.5 flex-shrink-0', 'text-muted')}>{String(sections.indexOf(s) + 1).padStart(2, '0')}</span>
                   <span className="flex-1">{s.title}</span>
                   <ChevronLeft size={11} className={clsx('mt-1 opacity-0 group-hover:opacity-100', isAr ? '' : 'rotate-180')} />
                 </button>
@@ -333,7 +368,7 @@ export function HelpPage() {
             ))}
           </div>
 
-          <div className={clsx('mt-6 rounded-2xl border p-5 flex items-start gap-3', 'bg-primary/10 border-primary/20')}>
+          <div className={clsx('mt-6 rounded-2xl border p-5 flex items-start gap-3 print:hidden', 'bg-primary/10 border-primary/20')}>
             <CheckCircle2 size={18} className={clsx('flex-shrink-0 mt-0.5', 'text-primary')} />
             <div>
               <p className={clsx('text-sm font-semibold', 'text-ink')}>{isAr ? 'هل تحتاج المزيد؟' : 'Need more help?'}</p>
