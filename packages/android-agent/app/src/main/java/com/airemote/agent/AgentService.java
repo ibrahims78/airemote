@@ -118,6 +118,16 @@ public class AgentService extends Service {
     private boolean lastOrientLand = false;
     // 2026-11-09 — تثبيت الاتجاه: لا نبدّل المقاس إلا بعد ثباته 3 ثوانٍ (كان يتذبذب).
     private boolean appliedLand = false;
+    // 2026-11-12 — على TECNO تعيد Display.getRotation() القيمة 0 دائمًا داخل العملية التي تملك
+    // MediaProjection، بينما الشاشة تدور فعلًا (أي عملية أخرى على الجهاز تقرأ 1). لذلك نأخذ
+    // الاتجاه من مصدر يصف المحتوى الملتقط نفسه: MediaProjection.Callback.onCapturedContentResize،
+    // ثم WindowManager.getCurrentWindowMetrics()، ثم دوران Display كخيار أخير.
+    private volatile int rotatedContentLand = -1;   // 1 = أفقي · 0 = عمودي · -1 = غير معروف
+    private volatile int rotatedContentW = 0, rotatedContentH = 0;
+    private volatile int wmBoundsLand = -1;
+    private volatile int wmBoundsW = 0, wmBoundsH = 0;
+    private volatile String orientSource = "none";
+    private MediaProjection.Callback projectionCb = null;
     private boolean pendingLand = false;
     private long pendingSince = 0;
     private android.hardware.SensorManager sensorMgr = null;
@@ -1935,12 +1945,16 @@ public class AgentService extends Service {
                     ensureProjectionForeground();
                     projection = mgr.getMediaProjection(CaptureHolder.resultCode, CaptureHolder.data);
                     if (projection == null) throw new Exception("projection null");
+                    attachOrientationCallback(projection);
                     // ORIENT-FOLLOW — 2026-11-11: ابدأ بشكل الشاشة الحالي، ثم اتبع الدوران.
                     // لا تثبيت أفقي ولا قصّ لاحق — الوكيل يرسل ما يراه الهاتف كما هو.
                     {
+                        updateWindowBoundsLand();
                         int rot0 = displayRotation();
-                        boolean land0 = rot0 == android.view.Surface.ROTATION_90
-                                || rot0 == android.view.Surface.ROTATION_270;
+                        boolean land0 = wmBoundsLand >= 0
+                                ? wmBoundsLand == 1
+                                : (rot0 == android.view.Surface.ROTATION_90
+                                    || rot0 == android.view.Surface.ROTATION_270);
                         int longSide = Math.max(fullW, fullH), shortSide = Math.min(fullW, fullH);
                         fullW = land0 ? longSide : shortSide;
                         fullH = land0 ? shortSide : longSide;
@@ -1992,6 +2006,8 @@ public class AgentService extends Service {
                             display.getRealMetrics(metrics);
                             int mw = metrics.widthPixels, mh = metrics.heightPixels;
                             currentRotation = display.getRotation();
+                            // 2026-11-12 — قياس موازٍ من WindowManager (لا يعتمد على إسقاط الشاشة).
+                            updateWindowBoundsLand();
                             // 2026-11-09 — المقاس الفيزيائي للوضع الحالي: يعمل حتى عندما
                             // يمنح النظام التطبيق شاشة منطقية عمودية (وضع التوافق على TECNO).
                             int physW = mw, physH = mh;
@@ -2007,13 +2023,35 @@ public class AgentService extends Service {
                             // ORIENT-FOLLOW — نثق بدوران النافذة (محتوى الشاشة) لا بالحسّاس.
                             // الحسّاس يكذب على TECNO وهو مستلقٍ/مائل فيُظهر عموديًا كأفقي.
                             boolean wantLand;
-                            if (currentRotation == android.view.Surface.ROTATION_90
-                                    || currentRotation == android.view.Surface.ROTATION_270) wantLand = true;
-                            else if (currentRotation == android.view.Surface.ROTATION_0
-                                    || currentRotation == android.view.Surface.ROTATION_180) wantLand = false;
-                            else wantLand = sensorLandscape;
+                            if (rotatedContentLand >= 0) {
+                                wantLand = rotatedContentLand == 1;
+                                orientSource = "mp";
+                            } else if (wmBoundsLand >= 0) {
+                                wantLand = wmBoundsLand == 1;
+                                orientSource = "wm";
+                            } else if (currentRotation == android.view.Surface.ROTATION_90
+                                    || currentRotation == android.view.Surface.ROTATION_270) {
+                                wantLand = true;
+                                orientSource = "rot";
+                            } else if (currentRotation == android.view.Surface.ROTATION_0
+                                    || currentRotation == android.view.Surface.ROTATION_180) {
+                                wantLand = false;
+                                orientSource = "rot";
+                            } else {
+                                wantLand = sensorLandscape;
+                                orientSource = "sensor";
+                            }
                             long nowMs = android.os.SystemClock.elapsedRealtime();
-                            if (wantLand != appliedLand) {
+                            if (rotatedContentLand >= 0) {
+                                // 2026-11-12 — مقاس المحتوى الملتقط حقيقة يبلّغ بها النظام نفسه،
+                                // فلا معنى لانتظار ثبات 350ms: طبّقها في نفس الدورة (كانت 2.1s).
+                                pendingSince = 0;
+                                if (wantLand != appliedLand) {
+                                    appliedLand = wantLand;
+                                    forceKeyframe = true;
+                                    prevPixels = null; curPixels = null; deltaRun = 0;
+                                }
+                            } else if (wantLand != appliedLand) {
                                 if (pendingSince == 0 || pendingLand != wantLand) {
                                     pendingLand = wantLand;
                                     pendingSince = nowMs;
@@ -2040,7 +2078,10 @@ public class AgentService extends Service {
                             if (android.os.SystemClock.elapsedRealtime() - diagAt > 2000) {
                                 diagAt = android.os.SystemClock.elapsedRealtime();
                                 android.util.Log.d("AiRemoteAgent", "diag rot=" + currentRotation
-                                        + " land=" + appliedLand + " phys=" + physW + "x" + physH + " cur=" + curW + "x" + curH + " vd=" + fullW + "x" + fullH);
+                                        + " land=" + appliedLand + " src=" + orientSource
+                                        + " mp=" + rotatedContentW + "x" + rotatedContentH
+                                        + " wm=" + wmBoundsW + "x" + wmBoundsH
+                                        + " phys=" + physW + "x" + physH + " cur=" + curW + "x" + curH + " vd=" + fullW + "x" + fullH);
                             }
                         }
                     } catch (Exception ignore) { }
@@ -2531,6 +2572,39 @@ public class AgentService extends Service {
 
     private void stopScreenStream(String sid) {
         if (sid.isEmpty() || sid.equals(streamSessionId)) stopScreenStreamRaw();
+    }
+
+    /** 2026-11-12 — the captured content tells us the true shape, even when Display lies. */
+    private void attachOrientationCallback(MediaProjection projection) {
+        try {
+            if (projectionCb != null) {
+                try { projection.unregisterCallback(projectionCb); } catch (Throwable ignore) { }
+            }
+            projectionCb = new MediaProjection.Callback() {
+                @Override public void onCapturedContentResize(int width, int height) {
+                    if (width <= 0 || height <= 0) return;
+                    rotatedContentW = width;
+                    rotatedContentH = height;
+                    rotatedContentLand = width > height ? 1 : 0;
+                    forceKeyframe = true;
+                }
+            };
+            projection.registerCallback(projectionCb, new android.os.Handler(android.os.Looper.getMainLooper()));
+        } catch (Throwable ignore) { }
+    }
+
+    /** 2026-11-12 — window bounds stay truthful inside the projecting process. */
+    private void updateWindowBoundsLand() {
+        if (android.os.Build.VERSION.SDK_INT < 30) return;
+        try {
+            android.view.WindowManager wm = (android.view.WindowManager) getSystemService(WINDOW_SERVICE);
+            if (wm == null) return;
+            android.graphics.Rect b = wm.getCurrentWindowMetrics().getBounds();
+            if (b.width() <= 0 || b.height() <= 0) return;
+            wmBoundsW = b.width();
+            wmBoundsH = b.height();
+            wmBoundsLand = b.width() >= b.height() ? 1 : 0;
+        } catch (Throwable ignore) { }
     }
 
     /** Rotation of the default display. */
