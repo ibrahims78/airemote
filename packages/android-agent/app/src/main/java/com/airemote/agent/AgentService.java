@@ -2004,9 +2004,14 @@ public class AgentService extends Service {
                             } catch (Exception ignore) { }
                             // الاتجاه الحقيقي = الحسّاس (أو الدوران إن توفّر)
                             // 2026-11-09 — اتجاه مثبَّت (hysteresis) لتفادي تذبذب المقاس.
-                            boolean wantLand = sensorLandscape
-                                    || currentRotation == android.view.Surface.ROTATION_90
-                                    || currentRotation == android.view.Surface.ROTATION_270;
+                            // ORIENT-FOLLOW — نثق بدوران النافذة (محتوى الشاشة) لا بالحسّاس.
+                            // الحسّاس يكذب على TECNO وهو مستلقٍ/مائل فيُظهر عموديًا كأفقي.
+                            boolean wantLand;
+                            if (currentRotation == android.view.Surface.ROTATION_90
+                                    || currentRotation == android.view.Surface.ROTATION_270) wantLand = true;
+                            else if (currentRotation == android.view.Surface.ROTATION_0
+                                    || currentRotation == android.view.Surface.ROTATION_180) wantLand = false;
+                            else wantLand = sensorLandscape;
                             long nowMs = android.os.SystemClock.elapsedRealtime();
                             if (wantLand != appliedLand) {
                                 if (pendingSince == 0 || pendingLand != wantLand) {
