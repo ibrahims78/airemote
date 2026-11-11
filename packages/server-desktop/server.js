@@ -4094,27 +4094,9 @@ async function start(config) {
   // ── v3.4.0 — Scheduled tasks (mini scheduler) ─────────────────────────────
   // SCHED-FIX 2026-11-10 — created_at يأتي من SQLite كـ"YYYY-MM-DD HH:MM:SS" بتوقيت UTC
   // وكان غياب last_run_at يجعل الاستحقاق = الآن + الفاصل في كل نبضة، فلا يتحقق الشرط أبدًا.
-  function sqlDateMs (v) {
-    if (!v) return 0
-    const s = String(v)
-    const iso = s.includes('T') ? s : s.replace(' ', 'T') + 'Z'
-    const ms = new Date(iso).getTime()
-    return Number.isFinite(ms) ? ms : 0
-  }
-  function taskNextDue(t, now) {
-    if (t.daily_at && /^\d{1,2}:\d{2}$/.test(String(t.daily_at))) {
-      const parts = String(t.daily_at).split(':')
-      const today = new Date(now); today.setHours(parseInt(parts[0], 10) || 0, parseInt(parts[1], 10) || 0, 0, 0)
-      const last = sqlDateMs(t.last_run_at)
-      if (now >= today && (!last || last < today.getTime())) return today.getTime()
-      return today.getTime() + 86400000
-    }
-    if (Number(t.interval_min) > 0) {
-      const base = sqlDateMs(t.last_run_at) || sqlDateMs(t.created_at) || now.getTime()
-      return base + Number(t.interval_min) * 60000
-    }
-    return null
-  }
+  // 2026-11-11 — the scheduling rules moved to lib/task-schedule.js so they can be
+  // unit-tested; behaviour is unchanged (daily_at wins, else interval from last run).
+  const { taskNextDue } = require('./lib/task-schedule')
   async function runTask(t) {
     const startedAt = new Date().toISOString()
     let result = ''
@@ -6361,26 +6343,30 @@ if ($target -eq $null) { 'name-not-found' } else {
     opts = opts || {}
     const limit  = Math.min(parseInt(opts.limit || '50') || 50, 200)
     const offset = Math.max(0, parseInt(opts.offset || '0') || 0)
-    const base = opts.unread ? "FROM notifications WHERE user_id=? AND read=0" : "FROM notifications WHERE user_id=?"
+    // 2026-11-11 — server failures are logged by lib/alerts.js with user_id NULL, so they
+    // never matched the per-user query and nobody saw them. Admins read them as broadcast.
+    const cond = opts.broadcast ? '(user_id=? OR user_id IS NULL)' : 'user_id=?'
+    const base = opts.unread ? ("FROM notifications WHERE " + cond + " AND read=0") : ("FROM notifications WHERE " + cond)
     // 3.16.8 — the unread count was global while the list stopped at fifty, so the badge
     // could claim 120 rows above a list of 50 with no way to reach the rest.
     const rows = db.prepare('SELECT * ' + base + ' ORDER BY created_at DESC LIMIT ? OFFSET ?').all(userId, limit, offset)
-    const unread = db.prepare("SELECT COUNT(*) as c FROM notifications WHERE user_id=? AND read=0").get(userId).c
+    const unread = db.prepare("SELECT COUNT(*) as c FROM notifications WHERE " + cond + " AND read=0").get(userId).c
     const total = db.prepare('SELECT COUNT(*) as c ' + base).get(userId).c
     return { notifications: rows, unread, total, limit, offset }
   }
   const notifListHandler = async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
-    return notificationsPayload(p.userId, { unread: req.query?.unread === '1', limit: req.query?.limit, offset: req.query?.offset })
+    return notificationsPayload(p.userId, { unread: req.query?.unread === '1', limit: req.query?.limit, offset: req.query?.offset, broadcast: p.role === 'admin' })
   }
   fastify.get('/api/notifications', notifListHandler)
   fastify.get('/api/alerts/notifications', notifListHandler)
   const notifReadHandler = async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
     const { all, ids } = req.body || {}
-    if (all) { db.prepare("UPDATE notifications SET read=1 WHERE user_id=?").run(p.userId); return { ok: true } }
+    const scope = p.role === 'admin' ? '(user_id=? OR user_id IS NULL)' : 'user_id=?'
+    if (all) { db.prepare("UPDATE notifications SET read=1 WHERE " + scope).run(p.userId); return { ok: true } }
     if (Array.isArray(ids) && ids.length) {
-      const stmt = db.prepare("UPDATE notifications SET read=1 WHERE user_id=? AND id=?")
+      const stmt = db.prepare("UPDATE notifications SET read=1 WHERE " + scope + " AND id=?")
       for (const id of ids.slice(0, 500)) stmt.run(p.userId, String(id))
       return { ok: true, count: ids.length }
     }
@@ -6389,7 +6375,8 @@ if ($target -eq $null) { 'name-not-found' } else {
   fastify.post('/api/alerts/notifications/read', notifReadHandler)
   const notifClearHandler = async (req, reply) => {
     const p = authMiddleware(req, reply); if (!p) return
-    db.prepare("DELETE FROM notifications WHERE user_id=? AND read=1").run(p.userId)
+    const scope = p.role === 'admin' ? '(user_id=? OR user_id IS NULL)' : 'user_id=?'
+    db.prepare("DELETE FROM notifications WHERE " + scope + " AND read=1").run(p.userId)
     return { ok: true }
   }
   fastify.delete('/api/alerts/notifications', notifClearHandler)
