@@ -104,7 +104,7 @@ body {
 .toast {
   padding: 8px 14px;
   border-radius: 8px;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 600;
   border: 1px solid transparent;
   backdrop-filter: blur(12px);
@@ -276,6 +276,7 @@ html[dir="rtl"] .title-status { direction: rtl; }
   display: flex; align-items: center; justify-content: center;
   transition: background .15s, color .15s;
 }
+.win-btn svg { width: 10px; height: 10px; fill: none; stroke: currentColor; stroke-width: 1.3; stroke-linecap: round; }
 [data-theme="light"] .win-btn { background: rgba(0,0,0,.05); }
 .win-btn:hover       { background: rgba(255,255,255,.14); color: var(--text); }
 .win-btn.close:hover { background: var(--red); color: #fff; }
@@ -411,7 +412,7 @@ html[dir="rtl"] .title-status { direction: rtl; }
   min-width: 76px; height: 34px;
   padding: 0 12px;
   border: none; border-radius: 7px;
-  font-size: 11.5px; font-weight: 600;
+  font-size: 12px; font-weight: 600;
   cursor: pointer;
   font-family: var(--font);
   display: flex; align-items: center; justify-content: center; gap: 5px;
@@ -630,7 +631,7 @@ html[dir="rtl"] .title-status { direction: rtl; }
   margin-bottom: 2px;
 }
 .info-val {
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -866,7 +867,7 @@ html[dir="rtl"] .title-status { direction: rtl; }
   accent-color: var(--blue);
   cursor: pointer; flex-shrink: 0;
 }
-.check-row span { font-size: 11.5px; }
+.check-row span { font-size: 12px; }
 
 /* ── Radio ─────────────────────────────────────────────── */
 .radio-group {
@@ -882,7 +883,7 @@ html[dir="rtl"] .title-status { direction: rtl; }
   padding: 5px 8px;
   cursor: pointer;
   border-radius: 5px;
-  font-size: 11.5px;
+  font-size: 12px;
   transition: background .15s;
 }
 .radio-row:has(input:checked) {
@@ -901,7 +902,7 @@ html[dir="rtl"] .title-status { direction: rtl; }
   flex: 1;
   height: 34px;
   border: none; border-radius: 7px;
-  font-size: 11.5px; font-weight: 600;
+  font-size: 12px; font-weight: 600;
   font-family: var(--font);
   cursor: pointer;
   display: flex; align-items: center; justify-content: center; gap: 6px;
@@ -1617,7 +1618,7 @@ html[dir="rtl"] .title-status { direction: rtl; }
 .ai-hist-row { display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 7px; cursor: pointer; }
 .ai-hist-row:hover { background: rgba(100,116,139,.18); }
 .ai-hist-main { flex: 1; min-width: 0; }
-.ai-hist-title { font-size: 11.5px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ai-hist-title { font-size: 12px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ai-hist-date { font-size: 9.5px; color: var(--muted); margin-top: 1px; }
 .ai-hist-empty { font-size: 11px; color: var(--muted); text-align: center; padding: 14px 6px; }
 .ai-hist-del { flex-shrink: 0; }
@@ -1660,7 +1661,7 @@ html[dir="rtl"] .title-status { direction: rtl; }
 .sess-card .row2 select { flex: 1; min-width: 0; }
 .sess-card .hint { font-size: 10px; color: var(--muted); }
 .sess-card select.input,
-.sess-card input.input { width: 100%; height: 32px; border-radius: 7px; border: 1px solid var(--border2); background: var(--bg); color: var(--text); font-size: 11.5px; padding: 0 9px; font-family: inherit; outline: none; }
+.sess-card input.input { width: 100%; height: 32px; border-radius: 7px; border: 1px solid var(--border2); background: var(--bg); color: var(--text); font-size: 12px; padding: 0 9px; font-family: inherit; outline: none; }
 .sess-card input.input.mono { font-family: var(--mono); }
 .sess-card select.input:focus,
 .sess-card input.input:focus { border-color: var(--accent); }

@@ -120,28 +120,17 @@
     try { window.airemote.aiSend(text) } catch (e) { onError({ error: String((e && e.message) || e) }) }
   }
 
-  async function autoRunBlocks(m) {
+  // 3.16.16 — لا تنفيذ تلقائي لأوامر المساعد: الأمان أولًا. تُبقى الكتل بزر «تنفيذ»
+  // مع تأكيد صريح للأوامر الخطرة، ويظهر تلميح أن الرد يحوي كتلة قابلة للتنفيذ.
+  function hintRunnable(m) {
     try {
-      const idx = msgs.indexOf(m)
-      if (idx < 0) return
       const parts = parseParts(m.text)
-      const todo = []
-      for (let k = 0; k < parts.length; k++) {
-        const p = parts[k]
+      const runnable = parts.some(function (p) {
         const pl = (p.lang || '').toLowerCase()
-        if (!EXEC_LANGS.includes(pl)) continue
-        if (pl === 'record') continue
-        if (isDangerous(p.content)) continue
-        todo.push({ k, pl })
-      }
-      if (!todo.length) return
-      setStatus(t('aiAutoRun'))
-      for (const t of todo) {
-        await runBlock('b' + idx + '_' + t.k, t.k, idx, null)
-        await new Promise(r => setTimeout(r, 400))
-      }
-      setStatus('')
-    } catch (e) { setStatus('') }
+        return p.type === 'code' && EXEC_LANGS.includes(pl) && pl !== 'record'
+      })
+      if (runnable) setStatus(t('aiRunHint'))
+    } catch (e) { }
   }
 
   async function runBlock(bid, k, mIdx, btn) {
@@ -273,7 +262,7 @@
         updateComposer()
         if (liveReply && done && done.text && done.text.trim()) {
           liveReply = false
-          autoRunBlocks(done)
+          hintRunnable(done)
         } else { liveReply = false }
       })
       window.airemote.onAiError(onError)
