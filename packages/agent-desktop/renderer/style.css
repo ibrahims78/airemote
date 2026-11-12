@@ -1,5 +1,11 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* 3.16.16 — visible keyboard focus on every interactive element */
+button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
 /* ── Variables ─────────────────────────────────────────── */
 /* --b-theme: D49 — رموز محايدة/حالات من design/server.html (التمييز مؤجّل) */
 :root {
@@ -118,6 +124,9 @@ body {
 /* ── Titlebar ──────────────────────────────────────────── */
 #titlebar {
   display: flex;
+  /* 3.16.16 — a Windows titlebar keeps its caption buttons on the physical
+     right; the old RTL flow pushed them to the far left. */
+  direction: ltr;
   align-items: center;
   gap: 8px;
   padding: 0 8px 0 12px;
@@ -179,6 +188,7 @@ body {
   transition: border-color .3s, background .3s;
 }
 [data-theme="light"] .title-status { background: rgba(0,0,0,.04); }
+html[dir="rtl"] .title-status { direction: rtl; }
 
 /* Connected state: highlight the pill */
 #titlebar:has(.title-dot.connected) .title-status {

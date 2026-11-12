@@ -155,6 +155,33 @@ const LANG = {
     collapseLog: 'تصغير / توسيع السجل',
     ctrlHashNote: '🔒 تُحفظ بصمة فقط (salt + hash) داخل الوكيل، ولا تُرسل إلى السيرفر ولا تُسجَّل في أي سجل.',
     ctrlAppliesNote: 'تنطبق على: التحكم من اللوحة (السيرفر) · التحكم من وكيل آخر (وكيل↔وكيل).',
+    langSwitch: 'تبديل اللغة',
+    minWin: 'تصغير',
+    trayWin: 'إخفاء إلى شريط الإشعارات',
+    closeWin: 'إغلاق',
+    aiCopy: 'نسخ',
+    aiCopied: 'تم النسخ',
+    aiRun: 'تنفيذ',
+    aiResend: 'إعادة إرسال',
+    aiRunning: 'جارٍ التنفيذ…',
+    aiDone: 'تم التنفيذ',
+    aiFailed: 'فشل التنفيذ',
+    aiErrorPrefix: 'خطأ: ',
+    aiDanger: 'أمر خطير — يتطلب تأكيدًا صريحًا قبل التنفيذ.',
+    aiConfirm: 'تأكيد التنفيذ',
+    aiAutoRun: 'تنفيذ تلقائي…',
+    aiHistLoading: 'جارٍ التحميل…',
+    aiHistNone: 'لا محادثات سابقة',
+    aiHistFail: 'فشل التحميل',
+    aiHistTitle: 'محادثة',
+    aiHistDelete: 'حذف',
+    aiConvFail: 'فشل تحميل المحادثة',
+    aiUnknown: 'خطأ غير معروف',
+    aiErrLimit: 'المزود المجاني يسمح برد واحد كل ~30 ثانية. انتظر قليلًا ثم أعد الإرسال.',
+    aiErrAuth: 'تعذر التحقق من الجهاز — تأكد من رمز الجهاز في إعدادات الوكيل.',
+    aiErr404: 'مسار الخادم غير صحيح — تحقق من عنوان الخادم (يجب أن ينتهي بـ /ws فقط).',
+    aiErrNetwork: 'تعذر الوصول إلى الخادم — تحقق من الاتصال وعنوان الخادم.',
+    aiErrServer: 'خطأ في الخادم أثناء معالجة الطلب. راجع سجل الخادم.',
   },
   en: {
     stopped:        'Stopped',
@@ -284,6 +311,33 @@ const LANG = {
     collapseLog: 'Collapse / expand the log',
     ctrlHashNote: '🔒 Only a fingerprint (salt + hash) is kept in the agent — never sent to the server or written to a log.',
     ctrlAppliesNote: 'Applies to: control from the dashboard (server) and control from another agent (agent to agent).',
+    langSwitch: 'Switch language',
+    minWin: 'Minimize',
+    trayWin: 'Hide to tray',
+    closeWin: 'Close',
+    aiCopy: 'Copy',
+    aiCopied: 'Copied',
+    aiRun: 'Run',
+    aiResend: 'Resend',
+    aiRunning: 'Running…',
+    aiDone: 'Done',
+    aiFailed: 'Failed',
+    aiErrorPrefix: 'Error: ',
+    aiDanger: 'Dangerous command — explicit confirmation is required before running it.',
+    aiConfirm: 'Confirm run',
+    aiAutoRun: 'Auto-running…',
+    aiHistLoading: 'Loading…',
+    aiHistNone: 'No conversations yet',
+    aiHistFail: 'Load failed',
+    aiHistTitle: 'Conversation',
+    aiHistDelete: 'Delete',
+    aiConvFail: 'Could not load the conversation',
+    aiUnknown: 'Unknown error',
+    aiErrLimit: 'The free provider allows one reply about every 30 seconds. Wait a moment and resend.',
+    aiErrAuth: 'Device verification failed — check the device token in the agent settings.',
+    aiErr404: 'Wrong server path — check the server URL (it must end with /ws only).',
+    aiErrNetwork: 'Could not reach the server — check the connection and the server URL.',
+    aiErrServer: 'The server failed while handling the request. Check the server log.',
   }
 }
 
@@ -292,6 +346,15 @@ function $(id) { return document.getElementById(id) }
 let currentLang  = localStorage.getItem('lang')  || 'ar'
 let currentTheme = localStorage.getItem('theme') || 'light'
 const html = document.documentElement
+
+// 3.16.16 — shared translator for the secondary renderer scripts (ai.js) and a
+// single place to re-render dynamic surfaces after a language switch.
+window.__t = function (key, fallback) {
+  const pack = LANG[currentLang] || LANG.ar
+  if (pack && pack[key] !== undefined) return pack[key]
+  if (LANG.ar[key] !== undefined) return LANG.ar[key]
+  return fallback !== undefined ? fallback : key
+}
 
 // ─── Toast ─────────────────────────────────────────────────────────────────
 function showToast(msg, type = 'info', duration = 2200) {
@@ -344,6 +407,10 @@ function applyLang(lang) {
   $('inp-server').placeholder = 'wss://your-server.replit.app/ws'
   $('inp-token').placeholder  = lang === 'ar' ? 'أدخل الـ Token الخاص بهذا الجهاز' : 'Paste device token here'
   if (currentState) applyStateLabels(currentState, lastDeviceId, lastServerUrl)
+  // 3.16.16 — dynamic surfaces hold generated text, not data-i18n attributes
+  if (typeof window.__aiRelocalize === 'function') window.__aiRelocalize()
+  if (typeof window.__chatRelocalize === 'function') window.__chatRelocalize()
+  if (typeof window.__sessionsRelocalize === 'function') window.__sessionsRelocalize()
 }
 
 // ─── Theme ─────────────────────────────────────────────────────────────────
@@ -775,6 +842,7 @@ setTimeout(() => {
 
 // ─── State Management ───────────────────────────────────────────────────────
 function applyState(state, deviceId, serverUrl, uptime) {
+  const prevState = currentState
   currentState  = state
   lastDeviceId  = deviceId
   lastServerUrl = serverUrl || lastServerUrl
@@ -803,8 +871,8 @@ function applyState(state, deviceId, serverUrl, uptime) {
   }
 
   const t = LANG[currentLang]
-  if (state === 'connected') showToast(`✅ ${t.connectedToast}`, 'success')
-  if (state === 'error')     showToast(`❌ ${t.error}`, 'error')
+  if (state === 'connected' && prevState !== 'connected') showToast(`✅ ${t.connectedToast}`, 'success')
+  if (state === 'error'     && prevState !== 'error')     showToast(`❌ ${t.error}`, 'error')
 }
 
 function applyStateLabels(state, deviceId, serverUrl) {
@@ -1099,12 +1167,20 @@ if (chatSendBtn) {
   chatSendBtn.addEventListener('click', doSendChat)
 }
 
+function chatEmptyMarkup() {
+  return '<div class="chat-empty" id="chat-empty">' + esc(LANG[currentLang].chatEmpty) + '</div>'
+}
+window.__chatRelocalize = function () {
+  const empty = $('chat-empty')
+  if (empty) empty.textContent = LANG[currentLang].chatEmpty
+}
+
 const chatClearBtn = $('chat-clear-btn')
 if (chatClearBtn) {
   chatClearBtn.addEventListener('click', () => {
     const box = $('chat-messages')
     if (!box) return
-    box.innerHTML = '<div class="chat-empty" id="chat-empty">لا توجد رسائل بعد...</div>'
+    box.innerHTML = chatEmptyMarkup()
     updateChatUnread(-chatUnread)
   })
 }
@@ -1183,6 +1259,11 @@ document.addEventListener('keydown', e => {
 })
 
 // ─── Init ────────────────────────────────────────────────────────────────────
+// 3.16.16 — theme/lang were only applied inside onInit, so a slow or failed
+// init left the hardcoded dark/Arabic defaults on screen (with a visible flash).
+applyTheme(currentTheme)
+applyLang(currentLang)
+
 bridge.onInit(data => {
   const { config, logs, state, deviceId, serverUrl, hostname, ipLocal, ipPublic, platform } = data
 
@@ -1246,7 +1327,7 @@ bridge.onInit(data => {
         seg.querySelectorAll('[data-access]').forEach((b) => { b.classList.remove('on'); b.setAttribute('aria-pressed', 'false') })
         btn.classList.add('on')
         btn.setAttribute('aria-pressed', 'true')
-        if (btn.getAttribute('data-access') === 'control') showPw(true)
+        showPw(btn.getAttribute('data-access') === 'control')
       })
     })
   }

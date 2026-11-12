@@ -2,6 +2,8 @@
 // AiRemote Agent — on-device AI assistant (v3.4.0)
 (function () {
   const $ = (id) => document.getElementById(id)
+  // 3.16.16 — every generated label goes through the shared translator
+  const t = (k, f) => (window.__t ? window.__t(k, f) : (f !== undefined ? f : k))
   let msgs = []          // {role:'user'|'bot', text, streaming?, error?}
   let streaming = false
   let curBot = null
@@ -46,7 +48,7 @@
   function buildMsgHtml(m, idx) {
     const role = m.role === 'user' ? 'user' : 'bot'
     let inner = ''
-    if (m.error) inner += '<div class="ai-error-text">خطأ: ' + esc(m.error) + '</div>'
+    if (m.error) inner += '<div class="ai-error-text">' + t('aiErrorPrefix') + esc(m.error) + '</div>'
     const parts = parseParts(m.text)
     for (let k = 0; k < parts.length; k++) {
       const p = parts[k]
@@ -58,8 +60,8 @@
         const bid = 'b' + idx + '_' + k
         inner += '<div class="ai-block" data-lang="' + esc(pl) + '" id="' + bid + '">' +
           '<div class="ai-block-header"><span class="ai-block-lang">' + esc(pl || 'code') + '</span><div class="ai-block-btns">' +
-          '<button class="ai-mini" data-act="copy" data-bid="' + bid + '" data-k="' + k + '">نسخ</button>' +
-          (execable ? '<button class="ai-mini ai-mini-run" data-act="run" data-bid="' + bid + '" data-k="' + k + '">تنفيذ</button>' : '') +
+          '<button class="ai-mini" data-act="copy" data-bid="' + bid + '" data-k="' + k + '">' + t('aiCopy') + '</button>' +
+          (execable ? '<button class="ai-mini ai-mini-run" data-act="run" data-bid="' + bid + '" data-k="' + k + '">' + t('aiRun') + '</button>' : '') +
           '</div></div>' +
           '<pre class="ai-block-pre">' + esc(p.content) + '</pre>' +
           '<div class="ai-block-result" id="' + bid + '_r"></div>' +
@@ -68,8 +70,8 @@
     }
     if (role === 'user') {
       inner += '<div class="ai-msg-actions">' +
-        '<button class="ai-mini" data-act="copy-msg" data-midx="' + idx + '">نسخ</button>' +
-        '<button class="ai-mini" data-act="resend-msg" data-midx="' + idx + '">إعادة إرسال</button>' +
+        '<button class="ai-mini" data-act="copy-msg" data-midx="' + idx + '">' + t('aiCopy') + '</button>' +
+        '<button class="ai-mini" data-act="resend-msg" data-midx="' + idx + '">' + t('aiResend') + '</button>' +
         '</div>'
     }
     return '<div class="ai-msg ai-msg--' + role + '"><div class="ai-bubble">' + inner + (m.streaming ? '<span class="ai-cursor"></span>' : '') + '</div></div>'
@@ -83,6 +85,9 @@
     const empty = $('ai-empty')
     if (empty) empty.style.display = msgs.length ? 'none' : 'block'
   }
+
+  // 3.16.16 — re-render the bubbles with the new language after the header switch
+  window.__aiRelocalize = render
 
   function setStatus(txt) {
     const el = $('ai-status')
@@ -130,7 +135,7 @@
         todo.push({ k, pl })
       }
       if (!todo.length) return
-      setStatus('تنفيذ تلقائي...')
+      setStatus(t('aiAutoRun'))
       for (const t of todo) {
         await runBlock('b' + idx + '_' + t.k, t.k, idx, null)
         await new Promise(r => setTimeout(r, 400))
@@ -146,19 +151,19 @@
     const res = $(bid + '_r')
     if (!part || !res) return
     if (isDangerous(part.content) && !(btn && btn.dataset.confirmed)) {
-      res.innerHTML = '<div class="ai-danger">أمر خطير — يتطلب تأكيداً صريحاً قبل التنفيذ. ' +
-        '<button class="ai-mini ai-mini-danger" data-act="run" data-bid="' + bid + '" data-k="' + k + '" data-confirmed="1">تأكيد التنفيذ</button></div>'
+      res.innerHTML = '<div class="ai-danger">' + t('aiDanger') + ' ' +
+        '<button class="ai-mini ai-mini-danger" data-act="run" data-bid="' + bid + '" data-k="' + k + '" data-confirmed="1">' + t('aiConfirm') + '</button></div>'
       return
     }
     const mIdx2 = parseInt((bid.match(/^b(\d+)_/) || [])[1] || '0', 10)
-    res.innerHTML = '<div class="ai-running">جاري التنفيذ…</div>'
+    res.innerHTML = '<div class="ai-running">' + t('aiRunning') + '</div>'
     try {
       const r = await window.airemote.aiRunBlock(part.lang, part.content)
       let html = ''
       if (r && r.image) html += '<img class="ai-shot" src="' + r.image + '" alt="screenshot">'
       const out = String((r && r.out) || '').trim()
       const err = String((r && r.err) || '').trim()
-      html += '<div class="ai-res-head ' + (r && r.ok ? 'ok' : 'bad') + '">' + (r && r.ok ? 'تم التنفيذ' : 'فشل التنفيذ') + (r && r.code != null ? ' (exit ' + r.code + ')' : '') + '</div>'
+      html += '<div class="ai-res-head ' + (r && r.ok ? 'ok' : 'bad') + '">' + (r && r.ok ? t('aiDone') : t('aiFailed')) + (r && r.code != null ? ' (exit ' + r.code + ')' : '') + '</div>'
       if (out) html += '<pre class="ai-res-pre">' + esc(out.slice(0, 2500)) + '</pre>'
       if (err) html += '<pre class="ai-res-pre bad">' + esc(err.slice(0, 1200)) + '</pre>'
       const resNow = $(bid + '_r') || res
@@ -171,12 +176,12 @@
 
   function translateError(raw) {
     const e = String(raw || '')
-    if (/FREE_LIMIT|1 reply every 30 seconds|Retry after/i.test(e)) return 'المزود المجاني يسمح برد واحد كل ~30 ثانية. انتظر قليلاً ثم أعد الإرسال.'
-    if (/HTTP 401|Unauthorized/i.test(e)) return 'تعذر التحقق من الجهاز — تأكد من رمز الجهاز في إعدادات الوكيل.'
-    if (/HTTP 404/.test(e)) return 'مسار الخادم غير صحيح — تحقق من عنوان الخادم (يجب أن ينتهي بـ /ws فقط).'
-    if (/fetch failed|ECONN|ENOTFOUND|ETIMEDOUT|network|Failed to fetch/i.test(e)) return 'تعذر الوصول إلى الخادم — تحقق من الاتصال وعنوان الخادم.'
-    if (/HTTP 5\d\d/.test(e)) return 'خطأ في الخادم أثناء معالجة الطلب. راجع سجل الخادم.'
-    return e || 'خطأ غير معروف'
+    if (/FREE_LIMIT|1 reply every 30 seconds|Retry after/i.test(e)) return t('aiErrLimit')
+    if (/HTTP 401|Unauthorized/i.test(e)) return t('aiErrAuth')
+    if (/HTTP 404/.test(e)) return t('aiErr404')
+    if (/fetch failed|ECONN|ENOTFOUND|ETIMEDOUT|network|Failed to fetch/i.test(e)) return t('aiErrNetwork')
+    if (/HTTP 5\d\d/.test(e)) return t('aiErrServer')
+    return e || t('aiUnknown')
   }
 
   function onError(d) {
@@ -199,19 +204,25 @@
   }
 
   function escA(s) { return esc(s).replace(/"/g, '&quot;') }
-  function fmtDate(s) { try { const d = new Date(s); return d.toLocaleDateString('ar', { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString('ar', { hour: '2-digit', minute: '2-digit' }) } catch (e) { return '' } }
+  function fmtDate(s) {
+    try {
+      const loc = (typeof currentLang !== 'undefined' && currentLang === 'en') ? 'en' : 'ar'
+      const d = new Date(s)
+      return d.toLocaleDateString(loc, { month: 'short', day: 'numeric' }) + ' ' + d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' })
+    } catch (e) { return '' }
+  }
   async function refreshHist() {
     const box = $('ai-hist')
     if (!box) return
-    box.innerHTML = '<div class="ai-hist-empty">جارٍ التحميل…</div>'
+    box.innerHTML = '<div class="ai-hist-empty">' + t('aiHistLoading') + '</div>'
     try {
       const r = await window.airemote.aiListConversations()
       const list = (r && r.ok && Array.isArray(r.conversations)) ? r.conversations : []
-      if (!list.length) { box.innerHTML = '<div class="ai-hist-empty">لا محادثات سابقة</div>'; return }
+      if (!list.length) { box.innerHTML = '<div class="ai-hist-empty">' + t('aiHistNone') + '</div>'; return }
       box.innerHTML = list.map(function (c) {
-        return '<div class="ai-hist-row" data-id="' + escA(c.id) + '"><div class="ai-hist-main"><div class="ai-hist-title">' + escA(c.title || 'محادثة') + '</div><div class="ai-hist-date">' + escA(fmtDate(c.updated_at)) + '</div></div><button class="ai-mini ai-hist-del" data-del="' + escA(c.id) + '">حذف</button></div>'
+        return '<div class="ai-hist-row" data-id="' + escA(c.id) + '"><div class="ai-hist-main"><div class="ai-hist-title">' + escA(c.title || t('aiHistTitle')) + '</div><div class="ai-hist-date">' + escA(fmtDate(c.updated_at)) + '</div></div><button class="ai-mini ai-hist-del" data-del="' + escA(c.id) + '">' + t('aiHistDelete') + '</button></div>'
       }).join('')
-    } catch (e) { box.innerHTML = '<div class="ai-hist-empty">فشل التحميل</div>' }
+    } catch (e) { box.innerHTML = '<div class="ai-hist-empty">' + t('aiHistFail') + '</div>' }
   }
   function toggleHist() {
     const box = $('ai-hist')
@@ -223,7 +234,7 @@
   async function loadConversation(id) {
     try {
       const r = await window.airemote.aiLoadConversation(id)
-      if (!r || !r.ok) { setStatus('فشل تحميل المحادثة'); return }
+      if (!r || !r.ok) { setStatus(t('aiConvFail')); return }
       msgs = (r.messages || []).filter(function (m) { return m && (m.role === 'user' || m.role === 'assistant') && m.content })
         .map(function (m) { return { role: m.role === 'user' ? 'user' : 'bot', text: String(m.content) } })
       curBot = null
@@ -234,7 +245,7 @@
       render()
       updateComposer()
       setStatus('')
-    } catch (e) { setStatus('فشل التحميل') }
+    } catch (e) { setStatus(t('aiHistFail')) }
   }
   async function deleteConversation(id) {
     try { await window.airemote.aiDeleteConversation(id); refreshHist() } catch (e) {}
@@ -321,8 +332,8 @@
         if (!mm) return
         if (act === 'copy-msg') {
           try { navigator.clipboard.writeText(mm.text) } catch {}
-          btn.textContent = 'تم النسخ'
-          setTimeout(() => { btn.textContent = 'نسخ' }, 1500)
+          btn.textContent = t('aiCopied')
+          setTimeout(() => { btn.textContent = t('aiCopy') }, 1500)
         } else {
           const inp2 = $('ai-input')
           if (inp2) { inp2.value = mm.text; inp2.focus() }
@@ -339,8 +350,8 @@
       if (!part) return
       if (act === 'copy') {
         try { navigator.clipboard.writeText(part.content) } catch {}
-        btn.textContent = 'تم النسخ'
-        setTimeout(() => { btn.textContent = 'نسخ' }, 1500)
+        btn.textContent = t('aiCopied')
+        setTimeout(() => { btn.textContent = t('aiCopy') }, 1500)
       } else if (act === 'run') {
         runBlock(bid, k, mIdx, btn)
       }
