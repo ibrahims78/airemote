@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 3.16.16 — خلفية عنصر المقطع: تمييز عند التحديد، شفاف خلاف ذلك -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_checked="true" android:drawable="@drawable/seg_item_on" />
+    <item android:drawable="@android:color/transparent" />
+</selector>

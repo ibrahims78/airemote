@@ -115,6 +115,7 @@ public class MainActivity extends Activity {
     private TextView connDevinfo;
     private TextView connUptime;
     private TextView footerTarget;
+    private TextView setupStatus;
     private TextView logView;
     private TextView aiList;
     private TextView aiStatus;
@@ -236,6 +237,7 @@ public class MainActivity extends Activity {
         findViewById(R.id.btn_save).setOnClickListener(v -> saveSettings());
         findViewById(R.id.btn_del_pw).setOnClickListener(v -> deleteControlPassword());
         findViewById(R.id.btn_setup).setOnClickListener(v -> startActivity(new Intent(this, SetupActivity.class)));
+        setupStatus = findViewById(R.id.setup_status);
         // 3.16.16 — log search + copy (parity with the Windows agent log toolbar)
         logSearch = findViewById(R.id.log_search);
         if (logSearch != null) logSearch.addTextChangedListener(new android.text.TextWatcher() {
@@ -369,11 +371,20 @@ public class MainActivity extends Activity {
         } catch (Exception ignore) { }
     }
 
+    /** 3.16.16 — «n من 8» داخل بطاقة التهيئة، من نفس مصدر رقم المعالج. */
+    private void refreshSetupStatus() {
+        if (setupStatus == null) return;
+        int ready = Perms.readyCount(this);
+        setupStatus.setText(getString(R.string.setup_progress, ready));
+        setupStatus.setTextColor(getResources().getColor(ready == 8 ? R.color.app_ok : R.color.app_muted));
+    }
+
     @Override
     protected void onResume() {
         super.onResume();
         foreground = true;
         refreshConnectionStatus();
+        refreshSetupStatus();
         if (AgentService.isRunning() && !AgentService.isConnected()) {
             AgentService.restartNow();
         }
@@ -720,28 +731,33 @@ public class MainActivity extends Activity {
 
             devAccess = new android.widget.RadioGroup(this);
             devAccess.setOrientation(LinearLayout.HORIZONTAL);
+            // 3.16.16 — مقطع (segmented) مثل وكيل ويندوز بدل راديو النظام
+            devAccess.setBackgroundResource(R.drawable.seg_group_bg);
+            devAccess.setPadding(dp(3), dp(3), dp(3), dp(3));
             String[][] opts = {{"view", getString(R.string.access_view)}, {"control", getString(R.string.access_control)}, {"files", getString(R.string.access_files)}};
             for (int i = 0; i < opts.length; i++) {
                 android.widget.RadioButton rb = new android.widget.RadioButton(this);
                 rb.setId(1000 + i);
                 rb.setText(opts[i][1]);
                 rb.setTextSize(12);
-                rb.setTextColor(getResources().getColor(R.color.app_ink));
-                rb.setPadding(dp(10), dp(7), dp(10), dp(7));
+                rb.setTextColor(getResources().getColorStateList(R.color.seg_item_text));
+                rb.setButtonDrawable(null);
+                rb.setBackgroundResource(R.drawable.seg_item_bg);
+                rb.setPadding(dp(6), 0, dp(6), 0);
                 rb.setGravity(android.view.Gravity.CENTER);
-                // 3.16.16 — كان كل راديو يبدو كبطاقة ميتة؛ الآن تلوين انتخابي موحّد
-                rb.setButtonTintList(android.content.res.ColorStateList.valueOf(getResources().getColor(R.color.app_accent)));
-                rb.setMinHeight(dp(44));
-                rb.setMinimumHeight(dp(44));
-                LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(0,
-                        LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
-                rlp.setMargins(dp(2), dp(6), dp(2), dp(6));
+                rb.setMinHeight(dp(40));
+                rb.setMinimumHeight(dp(40));
+                LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(0, dp(40), 1f);
+                rlp.setMargins(dp(1), 0, dp(1), 0);
                 rb.setLayoutParams(rlp);
                 rb.setTag(opts[i][0]);
                 devAccess.addView(rb);
                 if (i == 1) rb.setChecked(true);
             }
-            card.addView(devAccess);
+            LinearLayout.LayoutParams alp = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+            alp.setMargins(0, dp(6), 0, 0);
+            card.addView(devAccess, alp);
 
             devPw = new android.widget.EditText(this);
             devPw.setHint(getString(R.string.card_pw_field));

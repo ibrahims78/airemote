@@ -171,7 +171,7 @@ public class SetupActivity extends Activity {
     private void addRow(String title, String desc, String key) {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
-        card.setPadding(dp(16), dp(14), dp(16), dp(14));
+        card.setPadding(dp(16), dp(12), dp(16), dp(12));
         card.setBackgroundResource(R.drawable.card_bg);
 
         TextView t = new TextView(this);
@@ -185,13 +185,13 @@ public class SetupActivity extends Activity {
         d.setText(desc);
         d.setTextColor(getResources().getColor(R.color.app_muted));
         d.setTextSize(12);
-        d.setPadding(0, dp(3), 0, dp(10));
+        d.setPadding(0, dp(3), 0, dp(8));
         card.addView(d);
 
         TextView status = new TextView(this);
         status.setTextColor(getResources().getColor(R.color.app_warn));
         status.setTextSize(13);
-        status.setPadding(0, 0, 0, dp(8));
+        status.setPadding(0, 0, 0, dp(6));
         status.setTag("status_" + key);
         card.addView(status);
 
@@ -200,8 +200,11 @@ public class SetupActivity extends Activity {
         b.setText(getString(R.string.setup_open));
         b.setTextColor(getResources().getColor(R.color.app_ink2));
         b.setBackgroundResource(R.drawable.btn_ghost);
+        b.setMinHeight(dp(38));
+        b.setMinimumHeight(dp(38));
+        b.setPadding(dp(12), 0, dp(12), 0);
         b.setOnClickListener(v -> open(key));
-        card.addView(b, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        card.addView(b, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, dp(38)));
 
         list.addView(card, marginParams(0, dp(6), 0, 0));
     }
@@ -269,8 +272,7 @@ public class SetupActivity extends Activity {
         setStatus("notify", notify, getString(R.string.perm_notify_ok), getString(R.string.perm_notify_bad));
         setStatus("overlay", overlay, getString(R.string.perm_overlay_ok), getString(R.string.perm_overlay_bad));
         setStatus("files", files, getString(R.string.perm_files_ok), getString(R.string.perm_files_bad));
-        int ready = (capture ? 1 : 0) + (a11y ? 1 : 0) + (write ? 1 : 0) + (battery ? 1 : 0)
-                + (record ? 1 : 0) + (notify ? 1 : 0) + (overlay ? 1 : 0) + (files ? 1 : 0);
+        int ready = Perms.readyCount(this);
         summary.setText(getString(R.string.setup_progress, ready) + "\n" + (ready == 8
                 ? getString(R.string.setup_ready)
                 : getString(R.string.setup_incomplete)));

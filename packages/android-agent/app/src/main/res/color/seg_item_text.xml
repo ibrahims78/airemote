@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 3.16.16 — لون نص عنصر المقطع يتبع حالة التحديد -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_checked="true" android:color="@color/app_on_accent" />
+    <item android:color="@color/app_muted" />
+</selector>

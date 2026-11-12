@@ -10,6 +10,7 @@
     <string name="theme_light">فاتح</string>
     <string name="theme_dark">داكن</string>
     <string name="setup_wizard">معالج التهيئة (كل الصلاحيات)</string>
+    <string name="setup_check">فحص الصلاحيات…</string>
     <string name="state_stopped">متوقف</string>
     <string name="state_online">متصل</string>
     <string name="state_offline">غير متصل</string>

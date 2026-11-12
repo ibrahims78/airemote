@@ -10,6 +10,7 @@
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
     <string name="setup_wizard">Setup wizard (all permissions)</string>
+    <string name="setup_check">Checking permissions…</string>
     <string name="state_stopped">Stopped</string>
     <string name="state_online">Online</string>
     <string name="state_offline">Offline</string>
