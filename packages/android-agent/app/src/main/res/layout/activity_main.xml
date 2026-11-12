@@ -417,9 +417,11 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
                         android:background="@drawable/input_bg"
+                        android:hint="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
                         android:inputType="textPassword"
                         android:padding="9dp"
                         android:textColor="@color/app_ink"
+                        android:textColorHint="@color/app_hint"
                         android:textSize="12sp" />
 
                                         <TextView
@@ -439,9 +441,9 @@
                         <Button
                             android:id="@+id/btn_auth_consent"
                             android:layout_width="0dp"
-                            android:layout_height="38dp"
+                            android:layout_height="40dp"
                             android:layout_weight="1"
-                            android:background="@drawable/btn_ghost"
+                            android:background="@drawable/btn_soft"
                             android:text="@string/btn_auth_consent"
                             android:textColor="@color/app_ink2"
                             android:textSize="12sp" />
@@ -449,10 +451,10 @@
                         <Button
                             android:id="@+id/btn_auth_password"
                             android:layout_width="0dp"
-                            android:layout_height="38dp"
+                            android:layout_height="40dp"
                             android:layout_marginStart="6dp"
                             android:layout_weight="1"
-                            android:background="@drawable/btn_ghost"
+                            android:background="@drawable/btn_soft"
                             android:text="@string/btn_auth_password"
                             android:textColor="@color/app_ink2"
                             android:textSize="12sp" />
@@ -471,9 +473,11 @@
                         android:layout_height="wrap_content"
                         android:layout_marginTop="2dp"
                         android:background="@drawable/input_bg"
+                        android:hint="••••••"
                         android:inputType="textPassword"
                         android:padding="9dp"
                         android:textColor="@color/app_ink"
+                        android:textColorHint="@color/app_hint"
                         android:textSize="12sp" />
 
                     <LinearLayout
@@ -498,7 +502,7 @@
                             android:layout_height="40dp"
                             android:layout_marginStart="6dp"
                             android:layout_weight="1"
-                            android:background="@drawable/btn_ghost"
+                            android:background="@drawable/btn_soft"
                             android:text="@string/btn_clear_pw"
                             android:textColor="@color/app_ink2"
                             android:textSize="12sp" />
@@ -544,7 +548,8 @@
                             android:layout_width="0dp"
                             android:layout_height="8dp"
                             android:layout_weight="1"
-                            android:progressDrawable="@android:drawable/progress_horizontal" />
+                            android:progressBackgroundTint="@color/app_line"
+                            android:progressTint="@color/app_accent" />
 
                         <TextView
                             android:id="@+id/pct_cpu"
@@ -576,7 +581,8 @@
                             android:layout_width="0dp"
                             android:layout_height="8dp"
                             android:layout_weight="1"
-                            android:progressDrawable="@android:drawable/progress_horizontal" />
+                            android:progressBackgroundTint="@color/app_line"
+                            android:progressTint="@color/app_accent" />
 
                         <TextView
                             android:id="@+id/pct_ram"
@@ -608,7 +614,8 @@
                             android:layout_width="0dp"
                             android:layout_height="8dp"
                             android:layout_weight="1"
-                            android:progressDrawable="@android:drawable/progress_horizontal" />
+                            android:progressBackgroundTint="@color/app_line"
+                            android:progressTint="@color/app_accent" />
 
                         <TextView
                             android:id="@+id/pct_disk"
@@ -641,8 +648,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/ai_hint"
-                android:textColor="@color/app_subtle"
-                android:textSize="10sp" />
+                android:textColor="@color/app_muted"
+                android:textSize="11sp" />
 
             <ScrollView
                 android:id="@+id/ai_scroll"
@@ -656,8 +663,8 @@
                     android:id="@+id/ai_list"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:padding="10dp"
-                    android:text=""
+                    android:padding="12dp"
+                    android:text="@string/ai_empty"
                     android:textColor="@color/app_ink"
                     android:textSize="12sp" />
             </ScrollView>
@@ -706,8 +713,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/chat_hint"
-                android:textColor="@color/app_subtle"
-                android:textSize="10sp" />
+                android:textColor="@color/app_muted"
+                android:textSize="11sp" />
 
             <ScrollView
                 android:id="@+id/chat_scroll"
@@ -721,8 +728,8 @@
                     android:id="@+id/chat_list"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:padding="10dp"
-                    android:text=""
+                    android:padding="12dp"
+                    android:text="@string/chat_empty"
                     android:textColor="@color/app_ink"
                     android:textSize="12sp" />
             </ScrollView>

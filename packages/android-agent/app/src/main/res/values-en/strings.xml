@@ -37,6 +37,8 @@
     <string name="btn_clear_pw">Delete password</string>
     <string name="sec_resources">Resources</string>
     <string name="ai_hint">Ask the assistant — it can run tasks on this device</string>
+    <string name="ai_empty">No messages yet — type your question below to start.</string>
+    <string name="chat_empty">No messages yet — messages from whoever watches your screen appear here.</string>
     <string name="ai_ph">Message the assistant…</string>
     <string name="chat_hint">Viewer chat — shown while the screen is being watched</string>
     <string name="chat_ph">Message the viewers…</string>

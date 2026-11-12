@@ -37,6 +37,8 @@
     <string name="btn_clear_pw">حذف كلمة المرور</string>
     <string name="sec_resources">الموارد</string>
     <string name="ai_hint">اسأل المساعد الذكي — يمكنه تنفيذ المهام على هذا الجهاز</string>
+    <string name="ai_empty">لا توجد رسائل بعد — اكتب سؤالك أدناه ليبدأ المساعد.</string>
+    <string name="chat_empty">لا توجد رسائل بعد — تظهر هنا رسائل من يشاهد شاشتك.</string>
     <string name="ai_ph">اكتب رسالتك للمساعد…</string>
     <string name="chat_hint">دردشة المشاهدين — تظهر أثناء مشاهدة الشاشة</string>
     <string name="chat_ph">اكتب رسالة للمشاهدين…</string>

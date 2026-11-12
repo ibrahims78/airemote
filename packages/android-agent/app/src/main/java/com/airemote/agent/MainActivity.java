@@ -206,8 +206,8 @@ public class MainActivity extends Activity {
 
         // 3.16.16 — recreate() (theme/lang switch or rotation) must not wipe history
         if (logView != null && LOG.length() > 0) logView.setText(LOG.toString());
-        if (aiList != null && AI_CHAT.length() > 0) aiList.setText(AI_CHAT.toString());
-        if (chatList != null && VIEWER_CHAT.length() > 0) chatList.setText(VIEWER_CHAT.toString());
+        if (aiList != null) aiList.setText(AI_CHAT.length() > 0 ? AI_CHAT.toString() : getString(R.string.ai_empty));
+        if (chatList != null) chatList.setText(VIEWER_CHAT.length() > 0 ? VIEWER_CHAT.toString() : getString(R.string.chat_empty));
 
         // 3.9.4 — بطاقة «الأجهزة» لبدء جلسة وكيل↔وكيل من الهاتف نفسه.
         buildDevicesCard();
@@ -470,9 +470,10 @@ public class MainActivity extends Activity {
     private void refreshAuthUi() {
         boolean pw = "password".equals(Prefs.getAuthMode(this));
         try {
-            btnAuthConsent.setBackgroundResource(pw ? R.drawable.btn_ghost : R.drawable.btn_primary);
+            // 3.16.16 — btn_ghost كان بلون البطاقة نفسها فيختفي الزر غير المحدد
+            btnAuthConsent.setBackgroundResource(pw ? R.drawable.btn_soft : R.drawable.btn_primary);
             btnAuthConsent.setTextColor(getResources().getColor(pw ? R.color.app_ink2 : R.color.app_on_accent));
-            btnAuthPassword.setBackgroundResource(pw ? R.drawable.btn_primary : R.drawable.btn_ghost);
+            btnAuthPassword.setBackgroundResource(pw ? R.drawable.btn_primary : R.drawable.btn_soft);
             btnAuthPassword.setTextColor(getResources().getColor(pw ? R.color.app_on_accent : R.color.app_ink2));
             inpCtrlPw.setEnabled(pw);
             inpCtrlPw.setHint(pw ? getString(R.string.fld_ctrl_pw) : getString(R.string.fld_auth_consent_hint));
@@ -767,7 +768,7 @@ public class MainActivity extends Activity {
             Button refresh = new Button(this);
             refresh.setText(getString(R.string.btn_refresh));
             refresh.setAllCaps(false);
-            refresh.setBackgroundResource(R.drawable.btn_ghost);
+            refresh.setBackgroundResource(R.drawable.btn_soft);
             refresh.setTextColor(getResources().getColor(R.color.app_ink2));
             refresh.setOnClickListener(v -> loadDevices());
             btns.addView(refresh);
@@ -810,7 +811,7 @@ public class MainActivity extends Activity {
             Button sRefresh = new Button(this);
             sRefresh.setText(getString(R.string.btn_refresh_ses));
             sRefresh.setAllCaps(false);
-            sRefresh.setBackgroundResource(R.drawable.btn_ghost);
+            sRefresh.setBackgroundResource(R.drawable.btn_soft);
             sRefresh.setTextColor(getResources().getColor(R.color.app_ink2));
             sRefresh.setOnClickListener(v -> loadSessions());
             sesCard.addView(sRefresh);
@@ -928,7 +929,7 @@ public class MainActivity extends Activity {
             cut.setText(getString(R.string.btn_cut));
             cut.setAllCaps(false);
             cut.setTextSize(11);
-            cut.setBackgroundResource(R.drawable.btn_ghost);
+            cut.setBackgroundResource(R.drawable.btn_soft);
             cut.setTextColor(getResources().getColor(R.color.app_warn));
             cut.setOnClickListener(v -> closeSessionById(rowSid));
             row.addView(cut);
