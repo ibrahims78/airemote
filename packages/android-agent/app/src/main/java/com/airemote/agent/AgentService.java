@@ -2023,12 +2023,17 @@ public class AgentService extends Service {
                             // ORIENT-FOLLOW — نثق بدوران النافذة (محتوى الشاشة) لا بالحسّاس.
                             // الحسّاس يكذب على TECNO وهو مستلقٍ/مائل فيُظهر عموديًا كأفقي.
                             boolean wantLand;
+                            boolean metricsLandscape = physW > physH;
                             if (rotatedContentLand >= 0) {
                                 wantLand = rotatedContentLand == 1;
                                 orientSource = "mp";
                             } else if (wmBoundsLand >= 0) {
                                 wantLand = wmBoundsLand == 1;
                                 orientSource = "wm";
+                            } else if (metricsLandscape) {
+                                // 3.16.15 — المحاكي وأندرويد 9-13: المقاييس نفسها أفقية مع rot=0.
+                                wantLand = true;
+                                orientSource = "phys";
                             } else if (currentRotation == android.view.Surface.ROTATION_90
                                     || currentRotation == android.view.Surface.ROTATION_270) {
                                 wantLand = true;
@@ -2072,8 +2077,13 @@ public class AgentService extends Service {
                                 longSide = Math.max(fullW, fullH);
                                 shortSide = Math.min(fullW, fullH);
                             }
-                            curW = appliedLand ? longSide : shortSide;
-                            curH = appliedLand ? shortSide : longSide;
+                            if (metricsLandscape) {
+                                // 3.16.15 — المقاييس نفسها أفقية: لا تُقلب (كانت تُقلب فتعود القصة العمودية).
+                                curW = physW; curH = physH;
+                            } else {
+                                curW = appliedLand ? longSide : shortSide;
+                                curH = appliedLand ? shortSide : longSide;
+                            }
                             curDpi = metrics.densityDpi;
                             if (android.os.SystemClock.elapsedRealtime() - diagAt > 2000) {
                                 diagAt = android.os.SystemClock.elapsedRealtime();

@@ -731,7 +731,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
               setResolution({ w: width, h: height })
             }
             ctx.drawImage(bmp, 0, 0)
-          } else if (canvas.width > 0 && canvas.height > 0) {
+          } else if (canvas.width > 0 && canvas.height > 0 && !needKeyRef.current) {
             // 2026-11-09 — لا تُغيّر المقاس من إطارات الدلتا: وكلاء أندرويد يضعون مقاس
             // المستطيل المتغيّر في الترويسة (23×21 مثلًا)، فكانت اللوحة تتقلّص وتظهر سوداء.
             ctx.drawImage(bmp, dx, dy)
@@ -1410,6 +1410,12 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
 
   // تغيير وضع الملاءمة يعيد التكبير/الإزاحة (وإلا بقي المشهد مقصوصاً بلا سبب).
   useEffect(() => { setViewZoom(1); setViewPan({ x: 0, y: 0 }) }, [fitMode])
+  // 3.16.15 — التكبير/التصغير يمسح اللوحة ويطلب إطارًا كاملًا حتى لا يعود تراكب الاتجاه.
+  useEffect(() => {
+    needKeyRef.current = true
+    const c = canvasRef.current
+    if (c) { const x = c.getContext("2d"); if (x) x.clearRect(0, 0, c.width, c.height) }
+  }, [viewZoom])
 
   // ── Monitor selection ─────────────────────────────────────────────────────
   const selectMonitor = (id: number) => {
