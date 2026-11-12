@@ -50,11 +50,13 @@ public class SetupActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        getWindow().setStatusBarColor(Color.rgb(9, 16, 30));
-        getWindow().setNavigationBarColor(Color.rgb(9, 16, 30));
+        // 3.16.16 — المعالج كان داكنًا جامدًا حتى في الثيم الفاتح
+        int chrome = getResources().getColor(R.color.app_surface2);
+        getWindow().setStatusBarColor(chrome);
+        getWindow().setNavigationBarColor(chrome);
 
         ScrollView scroll = new ScrollView(this);
-        scroll.setBackgroundColor(Color.rgb(9, 16, 30));
+        scroll.setBackgroundColor(getResources().getColor(R.color.app_bg));
         list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
         list.setPadding(dp(20), dp(22), dp(20), dp(32));
@@ -63,23 +65,23 @@ public class SetupActivity extends Activity {
 
         TextView title = new TextView(this);
         title.setText(getString(R.string.setup_title));
-        title.setTextColor(Color.WHITE);
+        title.setTextColor(getResources().getColor(R.color.app_ink));
         title.setTextSize(24);
         title.setTypeface(Typeface.DEFAULT_BOLD);
         list.addView(title);
 
         TextView sub = new TextView(this);
         sub.setText(getString(R.string.setup_desc));
-        sub.setTextColor(Color.rgb(148, 163, 184));
+        sub.setTextColor(getResources().getColor(R.color.app_muted));
         sub.setTextSize(13);
         sub.setPadding(0, dp(8), 0, dp(18));
         list.addView(sub);
 
         summary = new TextView(this);
-        summary.setTextColor(Color.rgb(203, 213, 225));
+        summary.setTextColor(getResources().getColor(R.color.app_ink2));
         summary.setTextSize(13);
         summary.setPadding(dp(14), dp(12), dp(14), dp(12));
-        summary.setBackground(round(Color.rgb(30, 41, 59), 14));
+        summary.setBackgroundResource(R.drawable.card_bg);
         list.addView(summary, marginParams(0, 0, 0, dp(14)));
 
         addRow(getString(R.string.perm_screen_title), getString(R.string.perm_screen_desc), "screen");
@@ -95,10 +97,10 @@ public class SetupActivity extends Activity {
         Button start = new Button(this);
         start.setText(getString(R.string.setup_start));
         start.setAllCaps(false);
-        start.setTextColor(Color.rgb(9, 16, 30));
+        start.setTextColor(getResources().getColor(R.color.app_on_accent));
         start.setTextSize(15);
         start.setTypeface(Typeface.DEFAULT_BOLD);
-        start.setBackground(round(Color.rgb(45, 212, 191), 14));
+        start.setBackgroundResource(R.drawable.btn_primary);
         start.setOnClickListener(v -> {
             startActivity(new Intent(this, MainActivity.class).putExtra("autostart", true).putExtra("requestCapture", true));
             finish();
@@ -108,8 +110,8 @@ public class SetupActivity extends Activity {
         Button close = new Button(this);
         close.setText(getString(R.string.setup_close));
         close.setAllCaps(false);
-        close.setTextColor(Color.rgb(203, 213, 225));
-        close.setBackground(round(Color.rgb(30, 41, 59), 14));
+        close.setTextColor(getResources().getColor(R.color.app_ink2));
+        close.setBackgroundResource(R.drawable.btn_ghost);
         close.setOnClickListener(v -> finish());
         list.addView(close, marginParams(0, dp(8), 0, 0));
 
@@ -170,24 +172,24 @@ public class SetupActivity extends Activity {
         LinearLayout card = new LinearLayout(this);
         card.setOrientation(LinearLayout.VERTICAL);
         card.setPadding(dp(16), dp(14), dp(16), dp(14));
-        card.setBackground(round(Color.rgb(17, 28, 48), 14));
+        card.setBackgroundResource(R.drawable.card_bg);
 
         TextView t = new TextView(this);
         t.setText(title);
-        t.setTextColor(Color.WHITE);
+        t.setTextColor(getResources().getColor(R.color.app_ink));
         t.setTextSize(16);
         t.setTypeface(Typeface.DEFAULT_BOLD);
         card.addView(t);
 
         TextView d = new TextView(this);
         d.setText(desc);
-        d.setTextColor(Color.rgb(148, 163, 184));
+        d.setTextColor(getResources().getColor(R.color.app_muted));
         d.setTextSize(12);
         d.setPadding(0, dp(3), 0, dp(10));
         card.addView(d);
 
         TextView status = new TextView(this);
-        status.setTextColor(Color.rgb(251, 191, 36));
+        status.setTextColor(getResources().getColor(R.color.app_warn));
         status.setTextSize(13);
         status.setPadding(0, 0, 0, dp(8));
         status.setTag("status_" + key);
@@ -196,8 +198,8 @@ public class SetupActivity extends Activity {
         Button b = new Button(this);
         b.setAllCaps(false);
         b.setText(getString(R.string.setup_open));
-        b.setTextColor(Color.rgb(203, 213, 225));
-        b.setBackground(round(Color.rgb(30, 41, 59), 10));
+        b.setTextColor(getResources().getColor(R.color.app_ink2));
+        b.setBackgroundResource(R.drawable.btn_ghost);
         b.setOnClickListener(v -> open(key));
         card.addView(b, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
@@ -246,7 +248,7 @@ public class SetupActivity extends Activity {
         View v = list.findViewWithTag("status_" + key);
         if (v instanceof TextView) {
             ((TextView) v).setText(ok ? "✓ " + okText : "✗ " + badText);
-            ((TextView) v).setTextColor(ok ? Color.rgb(52, 211, 153) : Color.rgb(251, 191, 36));
+            ((TextView) v).setTextColor(ok ? getResources().getColor(R.color.app_ok) : getResources().getColor(R.color.app_warn));
         }
     }
 

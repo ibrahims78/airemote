@@ -1,0 +1,10 @@
+<resources>
+    <item name="status_card" type="id"/>
+    <item name="conn_strip_card" type="id"/>
+    <item name="devices_card" type="id"/>
+    <item name="sessions_card" type="id"/>
+    <item name="setup_card" type="id"/>
+    <item name="note_card" type="id"/>
+    <item name="settings_card" type="id"/>
+    <item name="resources_card" type="id"/>
+</resources>

@@ -218,8 +218,8 @@ public class AgentService extends Service {
         boolean manual = intent != null && intent.getBooleanExtra("manual", false);
         if (manual) Prefs.sp(this).edit().putBoolean("kicked", false).apply();
         if (Prefs.sp(this).getBoolean("kicked", false) && !manual) {
-            MainActivity.setStatus("متوقف by server", false);
-            MainActivity.log("Server متوقف the connection - manual start required");
+            MainActivity.setStatus(getString(R.string.state_stopped_by_server), false);
+            MainActivity.log(getString(R.string.log_stopped_by_server));
             return START_STICKY;
         }
         String action = intent != null ? intent.getAction() : null;

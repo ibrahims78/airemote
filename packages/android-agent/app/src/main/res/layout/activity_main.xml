@@ -7,12 +7,16 @@
 
     <!-- ══ Titlebar ══ -->
     <LinearLayout
+        android:id="@+id/titlebar"
         android:layout_width="match_parent"
-        android:layout_height="54dp"
+        android:layout_height="wrap_content"
+        android:minHeight="56dp"
         android:orientation="horizontal"
         android:gravity="center_vertical"
         android:paddingStart="14dp"
         android:paddingEnd="14dp"
+        android:paddingTop="6dp"
+        android:paddingBottom="6dp"
         android:background="@color/app_surface2">
 
         <TextView
@@ -26,15 +30,7 @@
             android:textStyle="bold" />
 
         <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="9dp"
-            android:text="AiRemote Agent"
-            android:textColor="@color/app_ink"
-            android:textSize="14sp"
-            android:textStyle="bold" />
-
-        <TextView
+            android:id="@+id/tv_ver_top"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="6dp"
@@ -43,15 +39,22 @@
             android:paddingEnd="6dp"
             android:paddingTop="2dp"
             android:paddingBottom="2dp"
-            android:id="@+id/tv_ver_top"
-                        android:text="v3.8.1"
+            android:text="v3.8.1"
             android:textColor="@color/app_muted"
             android:textSize="9sp" />
-
-        <View
+        <TextView
             android:layout_width="0dp"
-            android:layout_height="1dp"
-            android:layout_weight="1" />
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="9dp"
+            android:text="AiRemote Agent"
+            android:textColor="@color/app_ink"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:maxLines="1"
+            android:ellipsize="end" />
+
+
 
         <View
             android:id="@+id/status_dot"
@@ -72,51 +75,42 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
-            android:paddingStart="7dp"
-            android:paddingEnd="7dp"
-            android:paddingTop="3dp"
-            android:paddingBottom="3dp"
+            android:gravity="center"
+            android:minWidth="32dp"
+            android:minHeight="32dp"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
             android:text="ع"
             android:textColor="@color/app_accent"
-            android:textSize="10sp" />
+            android:textSize="12sp" />
 
         <TextView
             android:id="@+id/tb_lang_en"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:paddingStart="7dp"
-            android:paddingEnd="7dp"
-            android:paddingTop="3dp"
-            android:paddingBottom="3dp"
+            android:gravity="center"
+            android:minWidth="32dp"
+            android:minHeight="32dp"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
             android:text="EN"
             android:textColor="@color/app_muted"
-            android:textSize="10sp" />
+            android:textSize="12sp" />
 
-        <!-- 3.14.0 — مبدّل الثيم (المرجع: شريحة فاتح/داكن في الرأس) -->
+        <!-- 3.16.16 — one theme chip; it always shows the mode you would switch to -->
         <TextView
-            android:id="@+id/tb_theme_light"
+            android:id="@+id/tb_theme"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
-            android:paddingStart="7dp"
-            android:paddingEnd="7dp"
-            android:paddingTop="3dp"
-            android:paddingBottom="3dp"
-            android:text="@string/theme_light"
-            android:textColor="@color/app_accent"
-            android:textSize="10sp" />
-
-        <TextView
-            android:id="@+id/tb_theme_dark"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:paddingStart="7dp"
-            android:paddingEnd="7dp"
-            android:paddingTop="3dp"
-            android:paddingBottom="3dp"
+            android:gravity="center"
+            android:minWidth="36dp"
+            android:minHeight="32dp"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
             android:text="@string/theme_dark"
-            android:textColor="@color/app_muted"
-            android:textSize="10sp" />
+            android:textColor="@color/app_accent"
+            android:textSize="12sp" />
         </LinearLayout>
 
     <!-- ══ Tabs ══ -->
@@ -140,7 +134,8 @@
             android:text="@string/app_state"
             android:textColor="@color/app_muted"
             android:textSize="11sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            android:maxLines="1" />
 
         <TextView
             android:id="@+id/tab_ai"
@@ -153,7 +148,8 @@
             android:text="@string/app_ai"
             android:textColor="@color/app_muted"
             android:textSize="11sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            android:maxLines="1" />
 
         <TextView
             android:id="@+id/tab_chat"
@@ -166,7 +162,8 @@
             android:text="@string/app_chat"
             android:textColor="@color/app_muted"
             android:textSize="11sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            android:maxLines="1" />
 
         <TextView
             android:id="@+id/tab_log"
@@ -178,7 +175,8 @@
             android:text="@string/app_log"
             android:textColor="@color/app_muted"
             android:textSize="11sp"
-            android:textStyle="bold" />
+            android:textStyle="bold"
+            android:maxLines="1" />
     </LinearLayout>
 
     <FrameLayout
@@ -201,6 +199,7 @@
 
                 <!-- Setup card -->
                 <LinearLayout
+                    android:id="@+id/setup_card"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginBottom="8dp"
@@ -221,6 +220,7 @@
 
                 <!-- Status card -->
                 <LinearLayout
+                    android:id="@+id/status_card"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:background="@drawable/card_bg"
@@ -283,6 +283,7 @@
 
                 <!-- Connection strip -->
                 <LinearLayout
+                    android:id="@+id/conn_strip_card"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
@@ -309,6 +310,17 @@
                         android:textSize="11sp" />
 
                     <TextView
+                        android:id="@+id/conn_devid"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:fontFamily="monospace"
+                        android:maxLines="1"
+                        android:ellipsize="middle"
+                        android:textColor="@color/app_subtle"
+                        android:textSize="10sp" />
+
+                    <TextView
                         android:id="@+id/conn_uptime"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -320,6 +332,7 @@
 
                                 <!-- 3.14.1 — PLAN §4: what Windows does and Android does not is declared, not hidden -->
                 <LinearLayout
+                    android:id="@+id/note_card"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
@@ -353,6 +366,7 @@
 
 <!-- Settings -->
                 <LinearLayout
+                    android:id="@+id/settings_card"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
@@ -494,6 +508,7 @@
 
                 <!-- Resources -->
                 <LinearLayout
+                    android:id="@+id/resources_card"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
@@ -750,6 +765,39 @@
             android:orientation="vertical"
             android:visibility="gone"
             android:padding="10dp">
+
+            <!-- 3.16.16 — search + copy, parity with the Windows agent log -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <EditText
+                    android:id="@+id/log_search"
+                    android:layout_width="0dp"
+                    android:layout_height="42dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/input_bg"
+                    android:hint="@string/log_search_hint"
+                    android:paddingStart="9dp"
+                    android:paddingEnd="9dp"
+                    android:singleLine="true"
+                    android:textColor="@color/app_ink"
+                    android:textColorHint="@color/app_hint"
+                    android:textSize="12sp" />
+
+                <Button
+                    android:id="@+id/btn_copy_log"
+                    android:layout_width="wrap_content"
+                    android:layout_height="42dp"
+                    android:layout_marginStart="6dp"
+                    android:background="@drawable/btn_ghost"
+                    android:text="@string/log_copy"
+                    android:textAllCaps="false"
+                    android:textColor="@color/app_ink2"
+                    android:textSize="12sp" />
+            </LinearLayout>
 
             <ScrollView
                 android:id="@+id/log_scroll"

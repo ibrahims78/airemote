@@ -5,7 +5,7 @@
     <string name="notif_channel">AiRemote Agent</string>
     <string name="app_state">الحالة</string>
     <string name="app_ai">المساعد الذكي</string>
-    <string name="app_chat">دردشة المشاهدين</string>
+    <string name="app_chat">الدردشة</string>
     <string name="app_log">السجل</string>
     <string name="theme_light">فاتح</string>
     <string name="theme_dark">داكن</string>
@@ -16,7 +16,7 @@
     <string name="btn_start">بدء</string>
     <string name="btn_stop">إيقاف</string>
     <string name="hint_press_start">اضغط «بدء» للاتصال بالخادم</string>
-    <string name="hint_press_start2">اضغط «بدء» لالتصال بالخادم</string>
+    <string name="hint_press_start2">اضغط «بدء» للاتصال بالخادم</string>
     <string name="lbl_server_dash">الخادم: —</string>
     <string name="lbl_device_dash">الجهاز: —</string>
     <string name="lbl_uptime_dash">مدة الجلسة: —</string>
@@ -158,4 +158,21 @@
     <string name="offer_someone">جهاز</string>
     <string name="android_only_tag">أندرويد</string>
     <string name="android_only_note">الطرفية والأوامر والإيقاظ (WOL) غير متاحة على أندرويد — تُنفَّذ من وكيل ويندوز.</string>
+    <!-- 3.16.16 — dynamic strings that were hardcoded Arabic in MainActivity -->
+    <string name="dev_none">لا توجد أجهزة أخرى في حسابك.</string>
+    <string name="dev_in_session">  · في جلسة</string>
+    <string name="dev_pending">  · طلب معلّق</string>
+    <string name="req_pending">بانتظار موافقة الطرف الآخر (60 ثانية)…</string>
+    <string name="req_pw_mode">هذا الجهاز في وضع كلمة المرور.</string>
+    <string name="req_exists">تعذّر الطلب: توجد جلسة قائمة بالفعل</string>
+    <string name="req_offline">تعذّر الطلب: الجهاز الهدف غير متصل</string>
+    <string name="req_forbidden">تعذّر الطلب: مرفوض</string>
+    <string name="req_fail">تعذّر الطلب: %1$s</string>
+    <string name="ses_error">تعذّر جلب الجلسات: %1$s</string>
+    <string name="lbl_devid">المعرّف: </string>
+    <string name="log_search_hint">بحث في السجل…</string>
+    <string name="log_copy">نسخ</string>
+    <string name="log_copied">تم نسخ السجل</string>
+    <string name="state_stopped_by_server">أوقفه الخادم — البدء يدوي مطلوب</string>
+    <string name="log_stopped_by_server">أوقف الخادم الاتصال — البدء يدوي مطلوب</string>
 </resources>

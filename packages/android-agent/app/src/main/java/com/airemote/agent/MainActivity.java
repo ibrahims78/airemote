@@ -126,6 +126,11 @@ public class MainActivity extends Activity {
     private EditText inpToken;
     private EditText inpCtrlPw;
     private Button btnAuthConsent, btnAuthPassword;
+    // 3.16.16 — contextual start/stop + separate device-id line + log search
+    private Button btnStart, btnStop;
+    private TextView connDevid;
+    private EditText logSearch;
+    private String logFilterQ = "";
     private EditText aiInput;
     private EditText chatInput;
     private ProgressBar barCpu, barRam, barDisk;
@@ -150,6 +155,7 @@ public class MainActivity extends Activity {
         TextView verBottom = findViewById(R.id.tv_ver_bottom);
         if (verBottom != null) verBottom.setText("v" + com.airemote.agent.BuildConfig.VERSION_NAME + " · AiRemote Agent");
         hideSystemUi();
+        applyTitlebarInsets();
 
         // v3.5 — file manager needs storage access on Android 9 and below
         try {
@@ -170,6 +176,7 @@ public class MainActivity extends Activity {
         connServer = findViewById(R.id.conn_server);
         connDevinfo = findViewById(R.id.conn_devinfo);
         connUptime = findViewById(R.id.conn_uptime);
+        connDevid = findViewById(R.id.conn_devid);
         footerTarget = findViewById(R.id.footer_target);
         logView = findViewById(R.id.log_view);
         aiList = findViewById(R.id.ai_list);
@@ -181,6 +188,8 @@ public class MainActivity extends Activity {
         inpServer = findViewById(R.id.inp_server);
         inpToken = findViewById(R.id.inp_token);
         inpCtrlPw = findViewById(R.id.inp_ctrl_pw);
+        btnStart = findViewById(R.id.btn_start);
+        btnStop = findViewById(R.id.btn_stop);
         btnAuthConsent = findViewById(R.id.btn_auth_consent);
         btnAuthPassword = findViewById(R.id.btn_auth_password);
         if (btnAuthConsent != null) btnAuthConsent.setOnClickListener(v -> setAuthMode("consent"));
@@ -194,6 +203,11 @@ public class MainActivity extends Activity {
         pctCpu = findViewById(R.id.pct_cpu);
         pctRam = findViewById(R.id.pct_ram);
         pctDisk = findViewById(R.id.pct_disk);
+
+        // 3.16.16 — recreate() (theme/lang switch or rotation) must not wipe history
+        if (logView != null && LOG.length() > 0) logView.setText(LOG.toString());
+        if (aiList != null && AI_CHAT.length() > 0) aiList.setText(AI_CHAT.toString());
+        if (chatList != null && VIEWER_CHAT.length() > 0) chatList.setText(VIEWER_CHAT.toString());
 
         // 3.9.4 — بطاقة «الأجهزة» لبدء جلسة وكيل↔وكيل من الهاتف نفسه.
         buildDevicesCard();
@@ -222,7 +236,20 @@ public class MainActivity extends Activity {
         findViewById(R.id.btn_save).setOnClickListener(v -> saveSettings());
         findViewById(R.id.btn_del_pw).setOnClickListener(v -> deleteControlPassword());
         findViewById(R.id.btn_setup).setOnClickListener(v -> startActivity(new Intent(this, SetupActivity.class)));
-        findViewById(R.id.btn_clear_log).setOnClickListener(v -> { LOG.setLength(0); logView.setText("—"); });
+        // 3.16.16 — log search + copy (parity with the Windows agent log toolbar)
+        logSearch = findViewById(R.id.log_search);
+        if (logSearch != null) logSearch.addTextChangedListener(new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) { }
+            @Override public void onTextChanged(CharSequence s, int a, int b, int c) { }
+            @Override public void afterTextChanged(android.text.Editable s) { logFilterQ = s.toString(); renderLog(); }
+        });
+        findViewById(R.id.btn_copy_log).setOnClickListener(v -> copyLog());
+        findViewById(R.id.btn_clear_log).setOnClickListener(v -> {
+            LOG.setLength(0);
+            logFilterQ = "";
+            if (logSearch != null) logSearch.setText("");
+            logView.setText("—");
+        });
 
         aiInput.setOnEditorActionListener((v, actionId, event) -> { sendAiMessage(); return true; });
         findViewById(R.id.ai_send).setOnClickListener(v -> sendAiMessage());
@@ -301,6 +328,23 @@ public class MainActivity extends Activity {
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
         if (hasFocus) hideSystemUi();
+    }
+
+    /** 3.16.16 — keep the header chips below the status bar / camera cutout;
+     *  on cutout devices the hidden status-bar window still eats taps in that strip. */
+    private void applyTitlebarInsets() {
+        try {
+            View content = findViewById(android.R.id.content);
+            content.setOnApplyWindowInsetsListener((v, insets) -> {
+                int top = insets.getSystemWindowInsetTop();
+                View tb = findViewById(R.id.titlebar);
+                if (tb != null && top > 0) {
+                    tb.setPadding(tb.getPaddingLeft(), top + dp(4), tb.getPaddingRight(), tb.getPaddingBottom());
+                }
+                return insets.consumeSystemWindowInsets();
+            });
+            content.requestApplyInsets();
+        } catch (Exception ignore) { }
     }
 
     /** v3.5 — full-screen agent UI like the Windows viewer (swipe to reveal bars). */
@@ -383,7 +427,7 @@ public class MainActivity extends Activity {
         for (int i = 0; i < 4; i++) {
             boolean on = i == idx;
             tabs[i].setBackgroundResource(on ? R.drawable.tab_active : R.drawable.btn_ghost);
-            tabs[i].setTextColor(on ? 0xFFF1F5F9 : 0xFF94A3B8);
+            tabs[i].setTextColor(on ? getResources().getColor(R.color.app_ink) : getResources().getColor(R.color.app_muted));
             panes[i].setVisibility(on ? View.VISIBLE : View.GONE);
         }
         if (idx == 3) logScroll.post(() -> logScroll.fullScroll(View.FOCUS_DOWN));
@@ -644,29 +688,30 @@ public class MainActivity extends Activity {
             TextView title = new TextView(this);
             // 3.14.0 — D64 رأس البطاقة (يسبق كل الحقول)
             title.setText(getString(R.string.card_connect));
-            title.setTextColor(0xFFE2E8F0);
+            title.setTextColor(getResources().getColor(R.color.app_ink));
             title.setTextSize(14);
             title.setTypeface(null, android.graphics.Typeface.BOLD);
             card.addView(title);
 
             devState = new TextView(this);
             devState.setText(getString(R.string.dev_hint));
-            devState.setTextColor(0xFF94A3B8);
+            devState.setTextColor(getResources().getColor(R.color.app_muted));
             devState.setTextSize(12);
             devState.setPadding(0, dp(4), 0, dp(6));
             card.addView(devState);
 
             TextView devLbl = new TextView(this);
             devLbl.setText(getString(R.string.dev_title));
-            devLbl.setTextColor(0xFF93C5FD);
+            devLbl.setTextColor(getResources().getColor(R.color.app_accent));
             devLbl.setTextSize(12);
             devLbl.setPadding(0, dp(8), 0, dp(2));
             card.addView(devLbl);
 
             devSpinner = new android.widget.Spinner(this);
-            devSpinner.setBackgroundResource(R.drawable.card_bg);
-            devAdapter = new android.widget.ArrayAdapter<>(this, android.R.layout.simple_spinner_item, devLabels);
-            devAdapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);
+            devSpinner.setBackgroundResource(R.drawable.input_bg);
+            // 3.16.16 — نص السبينر كان يتبع ثيم النظام (أسود على داكن) — الآن مواردي
+            devAdapter = new android.widget.ArrayAdapter<>(this, R.layout.spinner_item, devLabels);
+            devAdapter.setDropDownViewResource(R.layout.spinner_dropdown_item);
             devSpinner.setAdapter(devAdapter);
             devSpinner.setMinimumHeight(dp(44));
             devSpinner.setPadding(dp(4), dp(10), dp(4), dp(10));
@@ -680,10 +725,11 @@ public class MainActivity extends Activity {
                 rb.setId(1000 + i);
                 rb.setText(opts[i][1]);
                 rb.setTextSize(12);
-                rb.setTextColor(0xFFE2E8F0);
+                rb.setTextColor(getResources().getColor(R.color.app_ink));
                 rb.setPadding(dp(10), dp(7), dp(10), dp(7));
                 rb.setGravity(android.view.Gravity.CENTER);
-                rb.setBackgroundResource(R.drawable.card_bg);
+                // 3.16.16 — كان كل راديو يبدو كبطاقة ميتة؛ الآن تلوين انتخابي موحّد
+                rb.setButtonTintList(android.content.res.ColorStateList.valueOf(getResources().getColor(R.color.app_accent)));
                 rb.setMinHeight(dp(44));
                 rb.setMinimumHeight(dp(44));
                 LinearLayout.LayoutParams rlp = new LinearLayout.LayoutParams(0,
@@ -698,6 +744,9 @@ public class MainActivity extends Activity {
 
             devPw = new android.widget.EditText(this);
             devPw.setHint(getString(R.string.card_pw_field));
+            devPw.setBackgroundResource(R.drawable.input_bg);
+            devPw.setTextColor(getResources().getColor(R.color.app_ink));
+            devPw.setHintTextColor(getResources().getColor(R.color.app_hint));
             devPw.setMinHeight(dp(44));
             devPw.setPadding(dp(8), dp(10), dp(8), dp(10));
             devPw.setLayoutParams(new LinearLayout.LayoutParams(
@@ -708,7 +757,7 @@ public class MainActivity extends Activity {
             card.addView(devPw);
             TextView devPwHint = new TextView(this);
             devPwHint.setText(getString(R.string.card_pw_hint));
-            devPwHint.setTextColor(0xFF94A3B8);
+            devPwHint.setTextColor(getResources().getColor(R.color.app_muted));
             devPwHint.setTextSize(10);
             devPwHint.setPadding(0, dp(3), 0, dp(6));
             card.addView(devPwHint);
@@ -718,11 +767,15 @@ public class MainActivity extends Activity {
             Button refresh = new Button(this);
             refresh.setText(getString(R.string.btn_refresh));
             refresh.setAllCaps(false);
+            refresh.setBackgroundResource(R.drawable.btn_ghost);
+            refresh.setTextColor(getResources().getColor(R.color.app_ink2));
             refresh.setOnClickListener(v -> loadDevices());
             btns.addView(refresh);
             Button send = new Button(this);
             send.setText(getString(R.string.btn_request));
             send.setAllCaps(false);
+            send.setBackgroundResource(R.drawable.btn_primary);
+            send.setTextColor(getResources().getColor(R.color.app_on_accent));
             send.setOnClickListener(v -> sendRequest());
             btns.addView(send);
             card.addView(btns);
@@ -738,14 +791,14 @@ public class MainActivity extends Activity {
 
             TextView sTitle = new TextView(this);
             sTitle.setText(getString(R.string.ses_title));
-            sTitle.setTextColor(0xFF93C5FD);
+            sTitle.setTextColor(getResources().getColor(R.color.app_accent));
             sTitle.setTextSize(13);
             sTitle.setTypeface(null, android.graphics.Typeface.BOLD);
             sesCard.addView(sTitle);
 
             sesState = new TextView(this);
             sesState.setText(getString(R.string.ses_loading));
-            sesState.setTextColor(0xFF94A3B8);
+            sesState.setTextColor(getResources().getColor(R.color.app_muted));
             sesState.setTextSize(12);
             sesState.setPadding(0, dp(4), 0, dp(6));
             sesCard.addView(sesState);
@@ -757,11 +810,23 @@ public class MainActivity extends Activity {
             Button sRefresh = new Button(this);
             sRefresh.setText(getString(R.string.btn_refresh_ses));
             sRefresh.setAllCaps(false);
+            sRefresh.setBackgroundResource(R.drawable.btn_ghost);
+            sRefresh.setTextColor(getResources().getColor(R.color.app_ink2));
             sRefresh.setOnClickListener(v -> loadSessions());
             sesCard.addView(sRefresh);
 
-            root.addView(sesCard, 1);
-            root.addView(card, 0);
+            // 3.16.16 — البطاقتان تُلحقان ثم يُعاد ترتيب اللوحة: الحالة والاتصال أولًا
+            // (كانت بطاقة «الاتصال بجهاز آخر» تدفع زر البدء/الإيقاف أسفل الشاشة).
+            card.setId(R.id.devices_card);
+            sesCard.setId(R.id.sessions_card);
+            root.addView(sesCard);
+            root.addView(card);
+            int[] order = {R.id.status_card, R.id.conn_strip_card, R.id.devices_card, R.id.sessions_card,
+                    R.id.setup_card, R.id.note_card, R.id.settings_card, R.id.resources_card};
+            for (int id : order) {
+                View v = root.findViewById(id);
+                if (v != null && v.getParent() == root) { root.removeView(v); root.addView(v); }
+            }
             loadDevices();
             loadSessions();
         } catch (Exception ignore) { }
@@ -826,7 +891,7 @@ public class MainActivity extends Activity {
                 final JSONArray arr = j.optJSONArray("sessions");
                 UI.post(() -> renderSessions(arr));
             } catch (Exception e) {
-                final String m = "تعذّر جلب الجلسات: " + e.getMessage();
+                final String m = getString(R.string.ses_error, e.getMessage());
                 UI.post(() -> { if (sesState != null) sesState.setText(m); });
             }
         }).start();
@@ -843,11 +908,11 @@ public class MainActivity extends Activity {
             String state = s.optString("state", "");
             if (!("requested".equals(state) || "active".equals(state) || "suspended".equals(state))) continue;
             // السيرفر يعيد حقولاً مسطّحة (requesterName/targetName) لا كائناً متداخلاً.
-            String who = s.optString("requesterName", "جهاز");
+            String who = s.optString("requesterName", getString(R.string.offer_someone));
             String to = s.optString("targetName", s.optString("targetDeviceId", ""));
             String acc = s.optString("access", "");
-            String accLabel = "view".equals(acc) ? "عرض" : ("control".equals(acc) ? "تحكم" : ("files".equals(acc) ? "ملفات" : acc));
-            String stLabel = "requested".equals(state) ? "بانتظار الموافقة" : ("active".equals(state) ? "نشطة" : "معلّقة");
+            String accLabel = "view".equals(acc) ? getString(R.string.access_view) : ("control".equals(acc) ? getString(R.string.access_control) : ("files".equals(acc) ? getString(R.string.access_files) : acc));
+            String stLabel = "requested".equals(state) ? getString(R.string.sess_state_requested) : ("active".equals(state) ? getString(R.string.sess_state_active) : getString(R.string.sess_state_suspended));
             final String rowSid = s.optString("id", "");
             LinearLayout row = new LinearLayout(this);
             row.setOrientation(LinearLayout.HORIZONTAL);
@@ -855,7 +920,7 @@ public class MainActivity extends Activity {
             TextView tv = new TextView(this);
             tv.setText(who + " ← " + to + " · " + accLabel + " · " + stLabel);
             tv.setTextSize(12);
-            tv.setTextColor(0xFFE2E8F0);
+            tv.setTextColor(getResources().getColor(R.color.app_ink2));
             tv.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
             row.addView(tv);
             // 3.11.4 — قطع قسري للجلسة من الوكيل (كانت تعلق فتمنع إنشاء جلسة جديدة).
@@ -863,6 +928,8 @@ public class MainActivity extends Activity {
             cut.setText(getString(R.string.btn_cut));
             cut.setAllCaps(false);
             cut.setTextSize(11);
+            cut.setBackgroundResource(R.drawable.btn_ghost);
+            cut.setTextColor(getResources().getColor(R.color.app_warn));
             cut.setOnClickListener(v -> closeSessionById(rowSid));
             row.addView(cut);
             sesRows.addView(row);
@@ -907,15 +974,15 @@ public class MainActivity extends Activity {
             String platform = d.optString("platform", "");
             String kind = "android".equals(platform) ? "أندرويد" : ("windows".equals(platform) ? "ويندوز" : "");
             // P5-fix — أظهر أن الجهاز داخل جلسة وكيل↔وكيل الآن.
-            String ses = "active".equals(d.optString("session")) ? "  · في جلسة"
-                    : ("requested".equals(d.optString("session")) ? "  · طلب معلّق" : "");
+            String ses = "active".equals(d.optString("session")) ? getString(R.string.dev_in_session)
+                    : ("requested".equals(d.optString("session")) ? getString(R.string.dev_pending) : "");
             devLabels.add(name + (kind.isEmpty() ? "" : " · " + kind) + (online ? "  ● " + getString(R.string.state_online) : "  ○ " + getString(R.string.state_offline)) + ses);
             devIds.add(id);
         }
         if (devAdapter != null) devAdapter.notifyDataSetChanged();
         if (devState != null) {
             devState.setText(n == 0
-                    ? "لا توجد أجهزة أخرى في حسابك."
+                    ? getString(R.string.dev_none)
                     : (getString(R.string.dev_pick_hint, n)));
         }
     }
@@ -967,18 +1034,18 @@ public class MainActivity extends Activity {
                 String msg;
                 boolean askPw = false;
                 if (code == 201) {
-                    msg = "بانتظار موافقة الطرف الآخر (60 ثانية)…";
+                    msg = getString(R.string.req_pending);
                 } else if (code == 403 && ("password_required".equals(errCode) || errCode.isEmpty())) {
-                    msg = "هذا الجهاز في وضع كلمة المرور.";
+                    msg = getString(R.string.req_pw_mode);
                     askPw = true;
                 } else if (code == 409) {
-                    msg = "تعذّر الطلب: session_exists";
+                    msg = getString(R.string.req_exists);
                 } else if (code == 503) {
-                    msg = "تعذّر الطلب: device_offline";
+                    msg = getString(R.string.req_offline);
                 } else if (code == 403) {
-                    msg = "تعذّر الطلب: forbidden";
+                    msg = getString(R.string.req_forbidden);
                 } else {
-                    msg = "تعذّر الطلب: " + (errCode.isEmpty() ? ("HTTP " + code) : errCode);
+                    msg = getString(R.string.req_fail, errCode.isEmpty() ? ("HTTP " + code) : errCode);
                 }
                 final String out = msg;
                 final boolean showPw = askPw;
@@ -1062,7 +1129,7 @@ public class MainActivity extends Activity {
             LOG.append(ts).append("  ").append(line).append('\n');
             if (LOG.length() > 12000) LOG.delete(0, LOG.length() - 12000);
             MainActivity a = instance;
-            if (a != null && a.logView != null) a.logView.setText(LOG.toString());
+            if (a != null) a.renderLog();
         });
     }
 
@@ -1070,13 +1137,20 @@ public class MainActivity extends Activity {
         UI.post(() -> {
             MainActivity a = instance;
             if (a != null) {
-                if (a.tbState != null) { a.tbState.setText(ok ? a.getString(R.string.state_online) : s); a.tbState.setTextColor(ok ? 0xFF34D399 : 0xFF94A3B8); }
-                if (a.statusTitle != null) { a.statusTitle.setText(s); a.statusTitle.setTextColor(ok ? 0xFF34D399 : 0xFFF1F5F9); }
+                int okC = a.getResources().getColor(R.color.app_ok);
+                int mutC = a.getResources().getColor(R.color.app_muted);
+                if (a.tbState != null) { a.tbState.setText(ok ? a.getString(R.string.state_online) : s); a.tbState.setTextColor(ok ? okC : mutC); }
+                if (a.statusTitle != null) { a.statusTitle.setText(s); a.statusTitle.setTextColor(ok ? okC : a.getResources().getColor(R.color.app_ink)); }
                 if (a.statusSub != null) a.statusSub.setText(ok ? a.getString(R.string.agent_active) : a.getString(R.string.hint_press_start));
                 // 3.15.0 (P1-2) — النقطتان كانتا @drawable/btn_ghost ثابتة ولا تعكسان الحالة.
-                android.content.res.ColorStateList tint = android.content.res.ColorStateList.valueOf(ok ? 0xFF34D399 : 0xFF94A3B8);
+                // 3.16.16 — الثيم الفاتح كان يجعل العنوان أبيض شبه شفاف (ألوان ثابتة).
+                android.content.res.ColorStateList tint = android.content.res.ColorStateList.valueOf(ok ? okC : mutC);
                 if (a.statusDot != null) a.statusDot.setBackgroundTintList(tint);
                 if (a.cardDot != null) a.cardDot.setBackgroundTintList(tint);
+                // 3.16.16 — زر سياقي واحد مثل وكيل ويندوز: بدء عند التوقف، إيقاف أثناء التشغيل.
+                boolean running = AgentService.isRunning();
+                if (a.btnStart != null) a.btnStart.setVisibility(running ? View.GONE : View.VISIBLE);
+                if (a.btnStop != null) a.btnStop.setVisibility(running ? View.VISIBLE : View.GONE);
             }
         });
     }
@@ -1086,7 +1160,15 @@ public class MainActivity extends Activity {
             MainActivity a = instance;
             if (a == null) return;
             if (a.connServer != null && server != null) a.connServer.setText(a.getString(R.string.lbl_server) + server);
-            if (a.connDevinfo != null && device != null) a.connDevinfo.setText(a.getString(R.string.lbl_device) + device);
+            if (device != null) {
+                // 3.16.16 — الخدمة ترسل "name — id" كسلسلة واحدة؛ نعرض الاسم عاديًا
+                // والمعرّف في سطر mono خاص به (كان يتكسّر السطر ويصعب نسخه).
+                String name = device, id = "";
+                int ix = device.indexOf(" — ");
+                if (ix > 0) { name = device.substring(0, ix); id = device.substring(ix + 3); }
+                if (a.connDevinfo != null) a.connDevinfo.setText(a.getString(R.string.lbl_device) + name);
+                if (a.connDevid != null) a.connDevid.setText(id.isEmpty() ? "" : a.getString(R.string.lbl_devid) + id);
+            }
             if (a.connUptime != null && uptime != null) a.connUptime.setText(a.getString(R.string.lbl_uptime) + uptime);
         });
     }
@@ -1108,6 +1190,31 @@ public class MainActivity extends Activity {
         });
     }
 
+    /** 3.16.16 — substring filter over the in-memory log (Windows-parity search). */
+    private void renderLog() {
+        if (logView == null) return;
+        String q = logFilterQ == null ? "" : logFilterQ.trim();
+        if (q.isEmpty()) {
+            logView.setText(LOG.length() == 0 ? "—" : LOG.toString());
+        } else {
+            StringBuilder sb = new StringBuilder();
+            for (String line : LOG.toString().split("\n")) {
+                if (line.contains(q)) sb.append(line).append('\n');
+            }
+            logView.setText(sb.length() == 0 ? "—" : sb.toString());
+        }
+    }
+
+    private void copyLog() {
+        try {
+            android.content.ClipboardManager cm = (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+            if (cm != null) {
+                cm.setPrimaryClip(android.content.ClipData.newPlainText("airemote-log", LOG.toString()));
+                toast(getString(R.string.log_copied));
+            }
+        } catch (Exception ignore) { }
+    }
+
     private void toast(String s) {
         try { Toast.makeText(this, s, Toast.LENGTH_SHORT).show(); } catch (Exception e) { }
     }
@@ -1116,20 +1223,19 @@ public class MainActivity extends Activity {
     private static final String PREF_THEME_DARK = "theme_dark";
 
     private void setupThemeToggle() {
-        final TextView light = findViewById(R.id.tb_theme_light);
-        final TextView dark  = findViewById(R.id.tb_theme_dark);
-        if (light == null || dark == null) return;
+        // 3.16.16 — شريحة واحدة تكفي (كانت شريحتا «فاتح/داكن» تدفعان الشريط خارج الشاشة
+        // على هواتف 360dp). الشريحة تعرض الوضع الذي ستتحول إليه، مثل زر الشمس/القمر.
+        final TextView btn = findViewById(R.id.tb_theme);
+        if (btn == null) return;
         boolean isDark = Prefs.sp(this).getBoolean(PREF_THEME_DARK, false);
-        paintThemeToggle(light, dark, isDark);
-        light.setOnClickListener(v -> applyNightMode(false));
-        dark.setOnClickListener(v -> applyNightMode(true));
+        paintThemeToggle(btn, isDark);
+        btn.setOnClickListener(v -> applyNightMode(!Prefs.sp(this).getBoolean(PREF_THEME_DARK, false)));
     }
 
-    private void paintThemeToggle(TextView light, TextView dark, boolean isDark) {
-        light.setTextColor(getColor(isDark ? R.color.app_muted : R.color.app_accent));
-        dark.setTextColor(getColor(isDark ? R.color.app_accent : R.color.app_muted));
-        light.setBackgroundResource(isDark ? 0 : R.drawable.tab_active);
-        dark.setBackgroundResource(isDark ? R.drawable.tab_active : 0);
+    private void paintThemeToggle(TextView btn, boolean isDark) {
+        btn.setText(getString(isDark ? R.string.theme_light : R.string.theme_dark));
+        btn.setTextColor(getColor(isDark ? R.color.app_muted : R.color.app_accent));
+        btn.setBackgroundResource(isDark ? 0 : R.drawable.tab_active);
     }
 
 

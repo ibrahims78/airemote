@@ -5,7 +5,7 @@
     <string name="notif_channel">AiRemote Agent</string>
     <string name="app_state">Status</string>
     <string name="app_ai">Assistant</string>
-    <string name="app_chat">Viewer chat</string>
+    <string name="app_chat">Chat</string>
     <string name="app_log">Log</string>
     <string name="theme_light">Light</string>
     <string name="theme_dark">Dark</string>
@@ -82,7 +82,7 @@
     <string name="setup_close">Close</string>
     <string name="setup_open">Open settings</string>
     <string name="setup_manual">Open the settings for this permission manually</string>
-    <string name="setup_progress">%1$d of 7 permissions ready</string>
+    <string name="setup_progress">%1$d of 8 permissions ready</string>
     <string name="setup_ready">The agent is ready for remote control.</string>
     <string name="setup_incomplete">Finish the missing permissions above, then reopen this screen to confirm.</string>
     <string name="notif_from">Message from %1$s</string>
@@ -117,6 +117,10 @@
     <string name="perm_overlay_desc">Required for some session tools</string>
     <string name="perm_overlay_ok">Allowed</string>
     <string name="perm_overlay_bad">Not allowed</string>
+    <string name="perm_files_title">All files access</string>
+    <string name="perm_files_desc">Required to list shared storage on Android 11+</string>
+    <string name="perm_files_ok">Allowed</string>
+    <string name="perm_files_bad">Not allowed</string>
     <!-- 3.14.0 - the eleven session states (message catalog) -->
     <string name="sess_state_requested">Waiting for approval</string>
     <string name="sess_state_accepted">Accepted</string>
@@ -154,4 +158,21 @@
     <string name="offer_someone">a device</string>
     <string name="android_only_tag">Android</string>
     <string name="android_only_note">Terminal, commands and Wake-on-LAN are not available on Android — run them from a Windows agent.</string>
+    <!-- 3.16.16 — dynamic strings that were hardcoded Arabic in MainActivity -->
+    <string name="dev_none">No other devices in your account.</string>
+    <string name="dev_in_session">  · in session</string>
+    <string name="dev_pending">  · pending request</string>
+    <string name="req_pending">Waiting for the other side to approve (60 s)…</string>
+    <string name="req_pw_mode">This device is in password mode.</string>
+    <string name="req_exists">Could not request: a session already exists</string>
+    <string name="req_offline">Could not request: the target device is offline</string>
+    <string name="req_forbidden">Could not request: forbidden</string>
+    <string name="req_fail">Could not request: %1$s</string>
+    <string name="ses_error">Could not load sessions: %1$s</string>
+    <string name="lbl_devid">ID: </string>
+    <string name="log_search_hint">Search the log…</string>
+    <string name="log_copy">Copy</string>
+    <string name="log_copied">Log copied</string>
+    <string name="state_stopped_by_server">Stopped by the server — manual start required</string>
+    <string name="log_stopped_by_server">The server closed the connection — manual start required</string>
 </resources>
