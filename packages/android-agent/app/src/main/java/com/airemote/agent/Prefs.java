@@ -60,6 +60,15 @@ public class Prefs {
         sp(c).edit().putString("server", server).putString("token", token).apply();
     }
 
+    // 3.16.17 — معرّف محادثة المساعد (مقابل airemote-ai-conv.json في ويندوز)
+    public static String aiConv(Context c) {
+        return sp(c).getString("aiConvId", "");
+    }
+
+    public static void setAiConv(Context c, String id) {
+        sp(c).edit().putString("aiConvId", id == null ? "" : id).apply();
+    }
+
     // ── v1.2.0 — control password (same model as the Windows agent) ──
     public static void saveControlPassword(Context c, String pw) {
         if (pw == null || pw.trim().isEmpty()) {

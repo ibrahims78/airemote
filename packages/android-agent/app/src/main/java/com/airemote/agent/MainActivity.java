@@ -103,8 +103,23 @@ public class MainActivity extends Activity {
     }
     private static final Handler UI = new Handler(Looper.getMainLooper());
     private static final StringBuilder LOG = new StringBuilder();
-    private static final StringBuilder AI_CHAT = new StringBuilder();
-    private static final StringBuilder VIEWER_CHAT = new StringBuilder();
+
+    /** 3.16.17 — رسائل المساعد/الدردشة كفقاعات (static لتنجو من recreate). */
+    private static class AiMsg {
+        final String role;   // user | bot
+        String text;
+        boolean err;
+        AiMsg(String role, String text, boolean err) { this.role = role; this.text = text; this.err = err; }
+    }
+    private static class ChatMsg {
+        final String from;
+        final String text;
+        final boolean mine;
+        ChatMsg(String from, String text, boolean mine) { this.from = from; this.text = text; this.mine = mine; }
+    }
+    private static final java.util.List<AiMsg> AI = new java.util.ArrayList<>();
+    private static final java.util.List<ChatMsg> CHAT = new java.util.ArrayList<>();
+    private static final int MAX_MSGS = 200;
 
     private TextView tbState;
     private TextView statusTitle;
@@ -117,12 +132,19 @@ public class MainActivity extends Activity {
     private TextView footerTarget;
     private TextView setupStatus;
     private TextView logView;
-    private TextView aiList;
     private TextView aiStatus;
-    private TextView chatList;
     private ScrollView aiScroll;
     private ScrollView chatScroll;
     private ScrollView logScroll;
+    private LinearLayout aiRows, chatRows;
+    private TextView aiEmpty, chatEmpty;
+    private Button aiStop, aiHist;
+    private ProgressBar pwBar;
+    private TextView pwLabel;
+    private TextView connIpLocal, connIpPublic, badgeLive, badgeCap;
+    private Button lvlAll, lvlInfo, lvlWarn, lvlErr;
+    private String logLevel = "all";
+    private TextView streamingText;
     private EditText inpServer;
     private EditText inpToken;
     private EditText inpCtrlPw;
@@ -180,12 +202,22 @@ public class MainActivity extends Activity {
         connDevid = findViewById(R.id.conn_devid);
         footerTarget = findViewById(R.id.footer_target);
         logView = findViewById(R.id.log_view);
-        aiList = findViewById(R.id.ai_list);
         aiStatus = findViewById(R.id.ai_status);
-        chatList = findViewById(R.id.chat_list);
         aiScroll = findViewById(R.id.ai_scroll);
         chatScroll = findViewById(R.id.chat_scroll);
         logScroll = findViewById(R.id.log_scroll);
+        aiRows = findViewById(R.id.ai_rows);
+        chatRows = findViewById(R.id.chat_rows);
+        aiEmpty = findViewById(R.id.ai_empty);
+        chatEmpty = findViewById(R.id.chat_empty);
+        aiStop = findViewById(R.id.ai_stop);
+        aiHist = findViewById(R.id.ai_hist);
+        pwBar = findViewById(R.id.pw_bar);
+        pwLabel = findViewById(R.id.pw_label);
+        connIpLocal = findViewById(R.id.conn_ip_local);
+        connIpPublic = findViewById(R.id.conn_ip_public);
+        badgeLive = findViewById(R.id.badge_live);
+        badgeCap = findViewById(R.id.badge_cap);
         inpServer = findViewById(R.id.inp_server);
         inpToken = findViewById(R.id.inp_token);
         inpCtrlPw = findViewById(R.id.inp_ctrl_pw);
@@ -205,10 +237,9 @@ public class MainActivity extends Activity {
         pctRam = findViewById(R.id.pct_ram);
         pctDisk = findViewById(R.id.pct_disk);
 
-        // 3.16.16 — recreate() (theme/lang switch or rotation) must not wipe history
-        if (logView != null && LOG.length() > 0) logView.setText(LOG.toString());
-        if (aiList != null) aiList.setText(AI_CHAT.length() > 0 ? AI_CHAT.toString() : getString(R.string.ai_empty));
-        if (chatList != null) chatList.setText(VIEWER_CHAT.length() > 0 ? VIEWER_CHAT.toString() : getString(R.string.chat_empty));
+        // 3.16.17 — recreate() لا يمسح الفقاعات (المخازن static) ويعيد رسمها
+        renderAi();
+        renderChat();
 
         // 3.9.4 — بطاقة «الأجهزة» لبدء جلسة وكيل↔وكيل من الهاتف نفسه.
         buildDevicesCard();
@@ -246,15 +277,44 @@ public class MainActivity extends Activity {
             @Override public void afterTextChanged(android.text.Editable s) { logFilterQ = s.toString(); renderLog(); }
         });
         findViewById(R.id.btn_copy_log).setOnClickListener(v -> copyLog());
+        findViewById(R.id.btn_export_log).setOnClickListener(v -> exportLog());
         findViewById(R.id.btn_clear_log).setOnClickListener(v -> {
             LOG.setLength(0);
             logFilterQ = "";
             if (logSearch != null) logSearch.setText("");
             logView.setText("—");
         });
+        lvlAll = findViewById(R.id.lvl_all);
+        lvlInfo = findViewById(R.id.lvl_info);
+        lvlWarn = findViewById(R.id.lvl_warn);
+        lvlErr = findViewById(R.id.lvl_err);
+        if (lvlAll != null) lvlAll.setOnClickListener(v -> setLogLevel("all"));
+        if (lvlInfo != null) lvlInfo.setOnClickListener(v -> setLogLevel("info"));
+        if (lvlWarn != null) lvlWarn.setOnClickListener(v -> setLogLevel("warn"));
+        if (lvlErr != null) lvlErr.setOnClickListener(v -> setLogLevel("error"));
+        paintLogLevels();
+
+        // 3.16.17 — نسخ IP المحلي/العام ومعرّف الجهاز (P2)
+        findViewById(R.id.btn_copy_ip_local).setOnClickListener(v ->
+                copyText("ip-local", connIpLocal == null ? "" : connIpLocal.getText().toString()));
+        findViewById(R.id.btn_copy_ip_public).setOnClickListener(v ->
+                copyText("ip-public", connIpPublic == null ? "" : connIpPublic.getText().toString()));
+        if (connDevid != null) connDevid.setOnLongClickListener(v -> {
+            copyText("device-id", connDevid.getText().toString().replace(getString(R.string.lbl_devid), ""));
+            return true;
+        });
+
+        // 3.16.17 — شريط قوة كلمة السر (P3)
+        if (inpCtrlPw != null) inpCtrlPw.addTextChangedListener(new android.text.TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) { }
+            @Override public void onTextChanged(CharSequence s, int a, int b, int c) { }
+            @Override public void afterTextChanged(android.text.Editable s) { updatePwStrength(s.toString()); }
+        });
 
         aiInput.setOnEditorActionListener((v, actionId, event) -> { sendAiMessage(); return true; });
         findViewById(R.id.ai_send).setOnClickListener(v -> sendAiMessage());
+        if (aiStop != null) aiStop.setOnClickListener(v -> { AiClient.stop(); });
+        if (aiHist != null) aiHist.setOnClickListener(v -> showHistory());
         chatInput.setOnEditorActionListener((v, actionId, event) -> { sendViewerMessage(); return true; });
         findViewById(R.id.chat_send).setOnClickListener(v -> sendViewerMessage());
 
@@ -385,11 +445,39 @@ public class MainActivity extends Activity {
         foreground = true;
         refreshConnectionStatus();
         refreshSetupStatus();
+        refreshBadges();
+        MainActivity.updateIps(AgentService.currentLocalIp(), AgentService.publicIp());
         if (AgentService.isRunning() && !AgentService.isConnected()) {
             AgentService.restartNow();
         }
+        if (AgentService.isConnected() && AI.isEmpty() && Prefs.aiConv(this).isEmpty()) {
+            restoreLatestConversation();
+        }
     }
 
+    private void restoreLatestConversation() {
+        AiClient.listConversations(this, r -> UI.post(() -> {
+            if (!AI.isEmpty()) return;
+            org.json.JSONArray arr = r.optJSONArray("conversations");
+            if (arr != null && arr.length() > 0) {
+                String id = arr.optJSONObject(0).optString("id", "");
+                if (!id.isEmpty()) {
+                    AiClient.loadConversation(this, id, h -> UI.post(() -> {
+                        org.json.JSONArray msgs = h.optJSONArray("messages");
+                        if (msgs != null) {
+                            for (int k = 0; k < msgs.length(); k++) {
+                                JSONObject mm = msgs.optJSONObject(k);
+                                if (mm == null) continue;
+                                String role = "user".equals(mm.optString("role")) ? "user" : "bot";
+                                String ct = mm.optString("content", "");
+                                if (!ct.isEmpty()) addAiMsg(role, ct, false);
+                            }
+                        }
+                    }));
+                }
+            }
+        }));
+    }
     /** إشعار دائم «التحكّم معطّل» يفتح إعدادات خدمة الوصول مباشرة. */
     private void notifyA11yMissing() {
         try {
@@ -489,6 +577,32 @@ public class MainActivity extends Activity {
             inpCtrlPw.setEnabled(pw);
             inpCtrlPw.setHint(pw ? getString(R.string.fld_ctrl_pw) : getString(R.string.fld_auth_consent_hint));
         } catch (Exception ignore) { }
+    }
+
+    /** 3.16.17 — شريط قوة كلمة السر (P3): طول + تنوع المحارف. */
+    private void updatePwStrength(String pw) {
+        if (pwBar == null || pwLabel == null) return;
+        if (pw == null || pw.isEmpty()) {
+            pwBar.setProgress(0);
+            pwLabel.setText("");
+            return;
+        }
+        int score = 0;
+        if (pw.length() >= 8) score += 25;
+        if (pw.length() >= 12) score += 15;
+        if (pw.matches(".*[a-z].*") && pw.matches(".*[A-Z].*")) score += 20;
+        if (pw.matches(".*\\d.*")) score += 20;
+        if (pw.matches(".*[^a-zA-Z0-9].*")) score += 20;
+        if (pw.length() < 6) score = Math.min(score, 20);
+        int label, color;
+        if (score < 40) { label = R.string.pw_weak; color = R.color.app_warn; }
+        else if (score < 60) { label = R.string.pw_medium; color = R.color.app_warn; }
+        else if (score < 80) { label = R.string.pw_good; color = R.color.app_accent; }
+        else { label = R.string.pw_strong; color = R.color.app_ok; }
+        pwBar.setProgress(score);
+        pwLabel.setText(getString(label));
+        pwLabel.setTextColor(getResources().getColor(color));
+        pwBar.setProgressTintList(android.content.res.ColorStateList.valueOf(getResources().getColor(color)));
     }
 
     private void deleteControlPassword() {
@@ -595,7 +709,7 @@ public class MainActivity extends Activity {
         try {
             MediaProjectionManager mgr = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
             startActivityForResult(mgr.createScreenCaptureIntent(), REQ_CAPTURE);
-        } catch (Exception e) { log("تعذر طلب إذن الالتقاط: " + e.getMessage()); }
+        } catch (Exception e) { logE("تعذر طلب إذن الالتقاط: " + e.getMessage()); }
     }
 
     @Override
@@ -608,51 +722,329 @@ public class MainActivity extends Activity {
                 log("منح إذن التقاط الشاشة ✓");
                 try { if (AgentService.INSTANCE != null) AgentService.INSTANCE.sendCapabilities(); } catch (Exception ignore) { }
             } else {
-                log("رُفض إذن التقاط الشاشة");
+                logW("رُفض إذن التقاط الشاشة");
             }
         }
     }
 
-    // ── AI chat (server-backed, device token) ───────────────────────────────
+    // ── AI chat (SSE + conversations + block exec) — Windows agent contract ─
     private void sendAiMessage() {
         final String text = aiInput.getText().toString().trim();
         if (text.isEmpty()) return;
+        if (AiClient.isBusy()) { toast(getString(R.string.ai_busy)); return; }
         aiInput.setText("");
-        appendAi("\nأنت: " + text + "\n");
+        addAiMsg("user", text, false);
         aiStatus.setText(getString(R.string.ai_thinking));
-        new Thread(() -> {
-            String reply = "";
-            try {
-                String base = Prefs.server(this).replace("wss://", "https://").replace("ws://", "http://").replaceAll("/+$", "").replaceAll("/ws(\\?.*)?$", "");
-                String tok = Prefs.token(this);
-                JSONObject body = new JSONObject();
-                body.put("message", text);
-                URL u = new URL(base + "/api/ai/chat");
-                HttpURLConnection c = (HttpURLConnection) u.openConnection();
-                c.setRequestMethod("POST");
-                c.setRequestProperty("Content-Type", "application/json");
-                c.setRequestProperty("X-Device-Token", tok);
-                c.setConnectTimeout(15000);
-                c.setReadTimeout(120000);
-                c.setDoOutput(true);
-                OutputStream os = c.getOutputStream();
-                os.write(body.toString().getBytes("UTF-8"));
-                os.close();
-                int code = c.getResponseCode();
-                BufferedReader r = new BufferedReader(new InputStreamReader(code >= 400 ? c.getErrorStream() : c.getInputStream(), "UTF-8"));
-                StringBuilder sb = new StringBuilder();
-                String line;
-                while ((line = r.readLine()) != null) sb.append(line);
-                r.close();
-                try {
-                    JSONObject j = new JSONObject(sb.toString());
-                    reply = j.optString("response", j.optString("error", "خطأ غير معروف"));
-                } catch (Exception e) { reply = sb.length() > 0 ? sb.toString() : ("HTTP " + code); }
-            } catch (Exception e) { reply = "تعذر الاتصال: " + e.getMessage(); }
-            final String out = reply;
-            UI.post(() -> { appendAi(getString(R.string.ai_prefix) + out + "\n"); aiStatus.setText(""); });
-        }).start();
+        setAiBusy(true);
+        streamingText = null;
+        final String[] acc = { "" };
+        final boolean[] errored = { false };
+        AiClient.send(this, text, new AiClient.Listener() {
+            @Override public void onConversation(String id) { }
+            @Override public void onDelta(String d) {
+                if (errored[0]) return;
+                acc[0] += d;
+                UI.post(() -> {
+                    if (errored[0]) return;
+                    if (AI.isEmpty() || !"bot".equals(AI.get(AI.size() - 1).role)) {
+                        addAiMsg("bot", acc[0], false);
+                    } else {
+                        AI.get(AI.size() - 1).text = acc[0];
+                    }
+                    if (streamingText != null) {
+                        streamingText.setText(acc[0]);
+                        aiScroll.post(() -> aiScroll.fullScroll(View.FOCUS_DOWN));
+                    } else {
+                        renderAi();
+                    }
+                });
+            }
+            @Override public void onDone(boolean aborted) {
+                UI.post(() -> {
+                    setAiBusy(false);
+                    aiStatus.setText("");
+                    if (errored[0]) return;
+                    if (AI.isEmpty() || !"bot".equals(AI.get(AI.size() - 1).role)) {
+                        addAiMsg("bot", acc[0].isEmpty() ? (aborted ? "أُوقِف البث" : "") : acc[0], false);
+                    } else {
+                        AI.get(AI.size() - 1).text = acc[0];
+                    }
+                    streamingText = null;
+                    renderAi();
+                });
+            }
+            @Override public void onError(String e) {
+                errored[0] = true;
+                UI.post(() -> {
+                    setAiBusy(false);
+                    aiStatus.setText("");
+                    streamingText = null;
+                    addAiMsg("bot", e == null ? "خطأ" : e, true);
+                });
+            }
+        });
     }
+
+    private void setAiBusy(boolean busy) {
+        if (aiStop != null) aiStop.setVisibility(busy ? View.VISIBLE : View.GONE);
+        if (aiHist != null) aiHist.setEnabled(!busy);
+        findViewById(R.id.ai_send).setEnabled(!busy);
+    }
+
+    private void addAiMsg(String role, String text, boolean err) {
+        AI.add(new AiMsg(role, text, err));
+        if (AI.size() > MAX_MSGS) AI.remove(0);
+        renderAi();
+    }
+
+    private void renderAi() {
+        if (aiRows == null) return;
+        aiRows.removeAllViews();
+        streamingText = null;
+        if (aiEmpty != null) aiEmpty.setVisibility(AI.isEmpty() ? View.VISIBLE : View.GONE);
+        for (AiMsg m : AI) aiRows.addView(buildAiBubble(m));
+        aiScroll.post(() -> aiScroll.fullScroll(View.FOCUS_DOWN));
+    }
+
+    private View buildAiBubble(AiMsg m) {
+        boolean user = "user".equals(m.role);
+        LinearLayout wrap = new LinearLayout(this);
+        wrap.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams wlp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        wlp.topMargin = dp(6);
+        wrap.setLayoutParams(wlp);
+        wrap.setGravity(user ? android.view.Gravity.END : android.view.Gravity.START);
+
+        LinearLayout bubble = new LinearLayout(this);
+        bubble.setOrientation(LinearLayout.VERTICAL);
+        bubble.setBackgroundResource(user ? R.drawable.bubble_user : R.drawable.bubble_bot);
+        bubble.setPadding(dp(10), dp(8), dp(10), dp(8));
+        LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(
+                (int) (getResources().getDisplayMetrics().widthPixels * 0.82f),
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        bubble.setLayoutParams(blp);
+
+        TextView tv = new TextView(this);
+        tv.setTextSize(13);
+        tv.setTextColor(getResources().getColor(user ? R.color.app_on_accent
+                : (m.err ? R.color.app_warn : R.color.app_ink)));
+        tv.setText(m.text == null ? "" : m.text);
+        tv.setTextIsSelectable(true);
+        bubble.addView(tv);
+        if (!user) streamingText = tv;
+
+        if (!user && !m.err) {
+            java.util.List<Object[]> parts = AiClient.parseParts(m.text);
+            boolean hasCode = false;
+            for (Object[] p : parts) {
+                if (!"code".equals(p[0])) continue;
+                hasCode = true;
+                bubble.addView(buildCodeBlock((String) p[1], (String) p[2]));
+            }
+            if (hasCode && aiStatus != null) aiStatus.setText(getString(R.string.ai_run_hint));
+        }
+        wrap.addView(bubble);
+        return wrap;
+    }
+
+    private View buildCodeBlock(String lang, String content) {
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setBackgroundResource(R.drawable.code_bg);
+        box.setPadding(dp(8), dp(6), dp(8), dp(6));
+        LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        blp.topMargin = dp(6);
+        box.setLayoutParams(blp);
+
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        TextView lg = new TextView(this);
+        lg.setText(lang == null || lang.isEmpty() ? "code" : lang);
+        lg.setTextSize(10);
+        lg.setTextColor(getResources().getColor(R.color.app_muted));
+        head.addView(lg);
+
+        View sp = new View(this);
+        sp.setLayoutParams(new LinearLayout.LayoutParams(0, 1, 1f));
+        head.addView(sp);
+
+        Button copy = new Button(this);
+        copy.setText(getString(R.string.ai_copy));
+        copy.setAllCaps(false);
+        copy.setTextSize(10);
+        copy.setMinHeight(dp(28));
+        copy.setMinimumHeight(dp(28));
+        copy.setPadding(dp(8), 0, dp(8), 0);
+        copy.setBackgroundResource(R.drawable.btn_soft);
+        copy.setTextColor(getResources().getColor(R.color.app_ink2));
+        copy.setOnClickListener(v -> copyText("ai-block", content));
+        head.addView(copy);
+
+        if (AiClient.isExecLang(lang)) {
+            Button run = new Button(this);
+            run.setText(getString(R.string.ai_run));
+            run.setAllCaps(false);
+            run.setTextSize(10);
+            run.setMinHeight(dp(28));
+            run.setMinimumHeight(dp(28));
+            run.setPadding(dp(8), 0, dp(8), 0);
+            run.setBackgroundResource(R.drawable.btn_primary);
+            run.setTextColor(getResources().getColor(R.color.app_on_accent));
+            TextView res = new TextView(this);
+            res.setTextSize(11);
+            res.setTextColor(getResources().getColor(R.color.app_muted));
+            res.setVisibility(View.GONE);
+            run.setOnClickListener(v -> runAiBlock(lang, content, res));
+            head.addView(run);
+            box.addView(head);
+            box.addView(res);
+        } else {
+            box.addView(head);
+        }
+
+        TextView pre = new TextView(this);
+        pre.setText(content == null ? "" : content);
+        pre.setTextSize(11);
+        pre.setTypeface(android.graphics.Typeface.MONOSPACE);
+        pre.setTextColor(getResources().getColor(R.color.app_ink));
+        pre.setTextIsSelectable(true);
+        box.addView(pre);
+        return box;
+    }
+
+    private void runAiBlock(String lang, String content, TextView res) {
+        if (AiClient.isBusy()) { toast(getString(R.string.ai_busy)); return; }
+        if (AiClient.isDangerous(content) && !Boolean.TRUE.equals(res.getTag())) {
+            res.setTag(Boolean.TRUE);
+            res.setVisibility(View.VISIBLE);
+            res.setTextColor(getResources().getColor(R.color.app_warn));
+            res.setText(getString(R.string.ai_danger) + " " + getString(R.string.ai_confirm));
+            return;
+        }
+        res.setTag(null);
+        res.setVisibility(View.VISIBLE);
+        res.setTextColor(getResources().getColor(R.color.app_muted));
+        res.setText(getString(R.string.ai_running));
+        new Thread(() -> {
+            JSONObject r = AiClient.runBlock(this, lang, content);
+            UI.post(() -> {
+                res.setVisibility(View.VISIBLE);
+                boolean ok = r.optBoolean("ok", false);
+                res.setTextColor(getResources().getColor(ok ? R.color.app_ok : R.color.app_warn));
+                StringBuilder sb = new StringBuilder();
+                sb.append(getString(ok ? R.string.ai_done : R.string.ai_failed));
+                if (r.has("code")) sb.append(" (").append(getString(R.string.ai_exit, r.optInt("code", -1))).append(')');
+                String out = r.optString("out", "");
+                String err = r.optString("err", "");
+                if (!out.isEmpty()) sb.append('\n').append(clipStr(out, 2500));
+                if (!err.isEmpty()) sb.append('\n').append(clipStr(err, 1200));
+                res.setText(sb.toString());
+                if (r.has("image")) {
+                    try {
+                        android.widget.ImageView iv = new android.widget.ImageView(this);
+                        byte[] b = android.util.Base64.decode(
+                                r.getString("image").replaceFirst("^data:image/[^;]+;base64,", ""),
+                                android.util.Base64.DEFAULT);
+                        android.graphics.Bitmap bm = android.graphics.BitmapFactory.decodeByteArray(b, 0, b.length);
+                        if (bm != null) {
+                            iv.setImageBitmap(bm);
+                            iv.setAdjustViewBounds(true);
+                            iv.setMaxHeight(dp(220));
+                            LinearLayout.LayoutParams ilp = new LinearLayout.LayoutParams(
+                                    LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+                            ilp.topMargin = dp(6);
+                            iv.setLayoutParams(ilp);
+                            LinearLayout parent = (LinearLayout) res.getParent();
+                            parent.addView(iv, Math.max(0, parent.indexOfChild(res)));
+                        }
+                    } catch (Exception ignore) { }
+                }
+            });
+        }, "ai-run").start();
+    }
+
+    private static String clipStr(String s, int n) {
+        if (s == null) return "";
+        return s.length() <= n ? s : s.substring(0, n) + "…";
+    }
+
+    private void showHistory() {
+        aiStatus.setText(getString(R.string.ai_thinking));
+        AiClient.listConversations(this, r -> UI.post(() -> {
+            aiStatus.setText("");
+            if (!r.optBoolean("ok", false)) {
+                toast(getString(R.string.ai_hist_fail));
+                return;
+            }
+            org.json.JSONArray arr = r.optJSONArray("conversations");
+            int n = arr == null ? 0 : arr.length();
+            if (n == 0) { toast(getString(R.string.ai_hist_none)); return; }
+            LinearLayout box = new LinearLayout(this);
+            box.setOrientation(LinearLayout.VERTICAL);
+            for (int i = 0; i < n; i++) {
+                JSONObject c = arr.optJSONObject(i);
+                if (c == null) continue;
+                final String id = c.optString("id", "");
+                String title = c.optString("title", getString(R.string.ai_title_hist));
+                String when = c.optString("updated_at", "");
+                LinearLayout row = new LinearLayout(this);
+                row.setOrientation(LinearLayout.HORIZONTAL);
+                row.setGravity(android.view.Gravity.CENTER_VERTICAL);
+                row.setPadding(dp(10), dp(8), dp(10), dp(8));
+                TextView tv = new TextView(this);
+                tv.setText(title + "\n" + when);
+                tv.setTextSize(12);
+                tv.setTextColor(getResources().getColor(R.color.app_ink));
+                tv.setLayoutParams(new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
+                row.addView(tv);
+                Button del = new Button(this);
+                del.setText("✕");
+                del.setAllCaps(false);
+                del.setTextSize(10);
+                del.setMinHeight(dp(32));
+                del.setMinimumHeight(dp(32));
+                del.setBackgroundResource(R.drawable.btn_soft);
+                del.setTextColor(getResources().getColor(R.color.app_warn));
+                del.setOnClickListener(v -> AiClient.deleteConversation(this, id, d -> UI.post(() -> {
+                    toast(getString(R.string.ai_deleted));
+                    if (id.equals(Prefs.aiConv(this))) {
+                        Prefs.setAiConv(this, "");
+                        AI.clear();
+                        renderAi();
+                    }
+                })));
+                row.addView(del);
+                row.setOnClickListener(v -> {
+                    if (dlg != null) { try { dlg.dismiss(); } catch (Exception ignore) { } }
+                    AiClient.loadConversation(this, id, h -> UI.post(() -> {
+                        AI.clear();
+                        org.json.JSONArray msgs = h.optJSONArray("messages");
+                        if (msgs != null) {
+                            for (int k = 0; k < msgs.length(); k++) {
+                                JSONObject mm = msgs.optJSONObject(k);
+                                if (mm == null) continue;
+                                String role = "user".equals(mm.optString("role")) ? "user" : "bot";
+                                String ct = mm.optString("content", "");
+                                if (!ct.isEmpty()) addAiMsg(role, ct, false);
+                            }
+                        }
+                    }));
+                });
+                box.addView(row);
+            }
+            android.widget.ScrollView sv = new android.widget.ScrollView(this);
+            sv.addView(box);
+            dlg = new AlertDialog.Builder(this)
+                    .setTitle(getString(R.string.ai_title_hist))
+                    .setView(sv)
+                    .setNegativeButton(getString(R.string.setup_close), null)
+                    .show();
+        }));
+    }
+    private AlertDialog dlg;
 
     // ── 3.9.4: الأجهزة وطلب التحكم (وكيل ↔ وكيل) ─────────────────────────────
     private TextView devState;
@@ -702,7 +1094,7 @@ public class MainActivity extends Activity {
             title.setText(getString(R.string.card_connect));
             title.setTextColor(getResources().getColor(R.color.app_ink));
             title.setTextSize(14);
-            title.setTypeface(null, android.graphics.Typeface.BOLD);
+            title.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
             card.addView(title);
 
             devState = new TextView(this);
@@ -786,6 +1178,8 @@ public class MainActivity extends Activity {
             refresh.setAllCaps(false);
             refresh.setBackgroundResource(R.drawable.btn_soft);
             refresh.setTextColor(getResources().getColor(R.color.app_ink2));
+            refresh.setMinHeight(dp(44));
+            refresh.setMinimumHeight(dp(44));
             refresh.setOnClickListener(v -> loadDevices());
             btns.addView(refresh);
             Button send = new Button(this);
@@ -793,6 +1187,8 @@ public class MainActivity extends Activity {
             send.setAllCaps(false);
             send.setBackgroundResource(R.drawable.btn_primary);
             send.setTextColor(getResources().getColor(R.color.app_on_accent));
+            send.setMinHeight(dp(44));
+            send.setMinimumHeight(dp(44));
             send.setOnClickListener(v -> sendRequest());
             btns.addView(send);
             card.addView(btns);
@@ -810,7 +1206,7 @@ public class MainActivity extends Activity {
             sTitle.setText(getString(R.string.ses_title));
             sTitle.setTextColor(getResources().getColor(R.color.app_accent));
             sTitle.setTextSize(13);
-            sTitle.setTypeface(null, android.graphics.Typeface.BOLD);
+            sTitle.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
             sesCard.addView(sTitle);
 
             sesState = new TextView(this);
@@ -829,6 +1225,8 @@ public class MainActivity extends Activity {
             sRefresh.setAllCaps(false);
             sRefresh.setBackgroundResource(R.drawable.btn_soft);
             sRefresh.setTextColor(getResources().getColor(R.color.app_ink2));
+            sRefresh.setMinHeight(dp(44));
+            sRefresh.setMinimumHeight(dp(44));
             sRefresh.setOnClickListener(v -> loadSessions());
             sesCard.addView(sRefresh);
 
@@ -945,6 +1343,8 @@ public class MainActivity extends Activity {
             cut.setText(getString(R.string.btn_cut));
             cut.setAllCaps(false);
             cut.setTextSize(11);
+            cut.setMinHeight(dp(44));
+            cut.setMinimumHeight(dp(44));
             cut.setBackgroundResource(R.drawable.btn_soft);
             cut.setTextColor(getResources().getColor(R.color.app_warn));
             cut.setOnClickListener(v -> closeSessionById(rowSid));
@@ -1085,35 +1485,69 @@ public class MainActivity extends Activity {
         }).start();
     }
 
-    private void appendAi(String s) {
-        AI_CHAT.append(s);
-        if (AI_CHAT.length() > 12000) AI_CHAT.delete(0, AI_CHAT.length() - 12000);
-        aiList.setText(AI_CHAT.toString());
-        aiScroll.post(() -> aiScroll.fullScroll(View.FOCUS_DOWN));
-    }
-
-    // ── Viewer chat ─────────────────────────────────────────────────────────
+    // ── Viewer chat (bubbles) ───────────────────────────────────────────────
     private void sendViewerMessage() {
         String text = chatInput.getText().toString().trim();
         if (text.isEmpty()) return;
         AgentService svc = AgentService.INSTANCE;
         if (svc == null) { toast(getString(R.string.toast_start_agent_first)); return; }
         svc.sendScreenChat(text);
-        appendViewer("أنت (المضيف): " + text);
+        addChatMsg(getString(R.string.chat_you), text, true);
         chatInput.setText("");
     }
 
-    private void appendViewer(String line) {
-        VIEWER_CHAT.append(line).append('\n');
-        if (VIEWER_CHAT.length() > 12000) VIEWER_CHAT.delete(0, VIEWER_CHAT.length() - 12000);
-        chatList.setText(VIEWER_CHAT.toString());
+    private void addChatMsg(String from, String text, boolean mine) {
+        CHAT.add(new ChatMsg(from, text, mine));
+        if (CHAT.size() > MAX_MSGS) CHAT.remove(0);
+        renderChat();
+    }
+
+    private void renderChat() {
+        if (chatRows == null) return;
+        chatRows.removeAllViews();
+        if (chatEmpty != null) chatEmpty.setVisibility(CHAT.isEmpty() ? View.VISIBLE : View.GONE);
+        for (ChatMsg m : CHAT) chatRows.addView(buildChatBubble(m));
         chatScroll.post(() -> chatScroll.fullScroll(View.FOCUS_DOWN));
+    }
+
+    private View buildChatBubble(ChatMsg m) {
+        LinearLayout wrap = new LinearLayout(this);
+        wrap.setOrientation(LinearLayout.HORIZONTAL);
+        LinearLayout.LayoutParams wlp = new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT);
+        wlp.topMargin = dp(4);
+        wrap.setLayoutParams(wlp);
+        wrap.setGravity(m.mine ? android.view.Gravity.END : android.view.Gravity.START);
+
+        LinearLayout bubble = new LinearLayout(this);
+        bubble.setOrientation(LinearLayout.VERTICAL);
+        bubble.setBackgroundResource(m.mine ? R.drawable.bubble_user : R.drawable.bubble_bot);
+        bubble.setPadding(dp(10), dp(6), dp(10), dp(6));
+        LinearLayout.LayoutParams blp = new LinearLayout.LayoutParams(
+                (int) (getResources().getDisplayMetrics().widthPixels * 0.78f),
+                LinearLayout.LayoutParams.WRAP_CONTENT);
+        bubble.setLayoutParams(blp);
+
+        TextView who = new TextView(this);
+        who.setText(m.from);
+        who.setTextSize(9);
+        who.setTextColor(getResources().getColor(m.mine ? R.color.app_on_accent : R.color.app_accent));
+        bubble.addView(who);
+
+        TextView tv = new TextView(this);
+        tv.setTextSize(13);
+        tv.setTextColor(getResources().getColor(m.mine ? R.color.app_on_accent : R.color.app_ink));
+        tv.setText(m.text == null ? "" : m.text);
+        tv.setTextIsSelectable(true);
+        bubble.addView(tv);
+        wrap.addView(bubble);
+        return wrap;
     }
 
     static void viewerChat(String sender, String text) {
         UI.post(() -> {
             MainActivity a = instance;
-            if (a != null) a.appendViewer((sender == null ? "مشاهد" : sender) + ": " + text);
+            if (a != null) a.addChatMsg(sender == null || sender.isEmpty() ? "مشاهد" : sender, text, false);
         });
     }
 
@@ -1140,11 +1574,15 @@ public class MainActivity extends Activity {
     }
 
     // ── UI updates from service ─────────────────────────────────────────────
-    public static void log(String line) {
+    public static void log(String line) { logL("I", line); }
+    public static void logW(String line) { logL("W", line); }
+    public static void logE(String line) { logL("E", line); }
+
+    private static void logL(String lvl, String line) {
         final String ts = new java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(new java.util.Date());
         UI.post(() -> {
-            LOG.append(ts).append("  ").append(line).append('\n');
-            if (LOG.length() > 12000) LOG.delete(0, LOG.length() - 12000);
+            LOG.append(ts).append(' ').append(lvl).append(' ').append(line).append('\n');
+            if (LOG.length() > 16000) LOG.delete(0, LOG.length() - 16000);
             MainActivity a = instance;
             if (a != null) a.renderLog();
         });
@@ -1187,9 +1625,29 @@ public class MainActivity extends Activity {
                 if (a.connDevid != null) a.connDevid.setText(id.isEmpty() ? "" : a.getString(R.string.lbl_devid) + id);
             }
             if (a.connUptime != null && uptime != null) a.connUptime.setText(a.getString(R.string.lbl_uptime) + uptime);
+            a.refreshBadges();
         });
     }
 
+    public static void updateIps(String loc, String pub) {
+        UI.post(() -> {
+            MainActivity a = instance;
+            if (a == null) return;
+            if (a.connIpLocal != null) a.connIpLocal.setText(loc == null || loc.isEmpty() ? "—" : loc);
+            if (a.connIpPublic != null) a.connIpPublic.setText(pub == null || pub.isEmpty() ? "—" : pub);
+            a.refreshBadges();
+        });
+    }
+
+    private void refreshBadges() {
+        boolean cap = AgentService.isCaptureReady();
+        boolean live = AgentService.isStreaming();
+        if (badgeCap != null) {
+            badgeCap.setText(getString(cap ? R.string.badge_cap_on : R.string.badge_cap_off));
+            badgeCap.setTextColor(getResources().getColor(cap ? R.color.app_ok : R.color.app_warn));
+        }
+        if (badgeLive != null) badgeLive.setVisibility(live ? View.VISIBLE : View.GONE);
+    }
     public static void updateStats(final JSONObject s) {
         if (s == null) return;
         UI.post(() -> {
@@ -1207,19 +1665,40 @@ public class MainActivity extends Activity {
         });
     }
 
-    /** 3.16.16 — substring filter over the in-memory log (Windows-parity search). */
+    /** 3.16.17 — search + level filter (all/info/warn/error). */
     private void renderLog() {
         if (logView == null) return;
         String q = logFilterQ == null ? "" : logFilterQ.trim();
-        if (q.isEmpty()) {
-            logView.setText(LOG.length() == 0 ? "—" : LOG.toString());
-        } else {
-            StringBuilder sb = new StringBuilder();
-            for (String line : LOG.toString().split("\n")) {
-                if (line.contains(q)) sb.append(line).append('\n');
-            }
-            logView.setText(sb.length() == 0 ? "—" : sb.toString());
+        StringBuilder sb = new StringBuilder();
+        for (String line : LOG.toString().split("\n")) {
+            if (line.isEmpty()) continue;
+            if ("warn".equals(logLevel) && !line.contains(" W ")) continue;
+            if ("error".equals(logLevel) && !line.contains(" E ")) continue;
+            if ("info".equals(logLevel) && (line.contains(" W ") || line.contains(" E "))) continue;
+            if (!q.isEmpty() && !line.contains(q)) continue;
+            sb.append(line).append('\n');
         }
+        logView.setText(sb.length() == 0 ? "—" : sb.toString());
+    }
+
+    private void setLogLevel(String lvl) {
+        logLevel = lvl;
+        paintLogLevels();
+        renderLog();
+    }
+
+    private void paintLogLevels() {
+        if (lvlAll == null) return;
+        paintLvl(lvlAll, "all");
+        paintLvl(lvlInfo, "info");
+        paintLvl(lvlWarn, "warn");
+        paintLvl(lvlErr, "error");
+    }
+
+    private void paintLvl(Button b, String lvl) {
+        boolean on = lvl.equals(logLevel);
+        b.setBackgroundResource(on ? R.drawable.btn_primary : R.drawable.btn_soft);
+        b.setTextColor(getResources().getColor(on ? R.color.app_on_accent : R.color.app_ink2));
     }
 
     private void copyLog() {
@@ -1230,6 +1709,51 @@ public class MainActivity extends Activity {
                 toast(getString(R.string.log_copied));
             }
         } catch (Exception ignore) { }
+    }
+
+    private void copyText(String label, String v) {
+        try {
+            if (v == null || v.isEmpty()) return;
+            android.content.ClipboardManager cm = (android.content.ClipboardManager) getSystemService(CLIPBOARD_SERVICE);
+            if (cm != null) {
+                cm.setPrimaryClip(android.content.ClipData.newPlainText(label, v));
+                toast(getString(R.string.toast_copied));
+            }
+        } catch (Exception ignore) { }
+    }
+
+    private void exportLog() {
+        final String text = LOG.toString();
+        if (text.trim().isEmpty()) { toast(getString(R.string.log_empty)); return; }
+        final String name = "airemote-log-" + new java.text.SimpleDateFormat("yyyyMMdd-HHmmss", java.util.Locale.US).format(new java.util.Date()) + ".txt";
+        new Thread(() -> {
+            try {
+                if (Build.VERSION.SDK_INT >= 29) {
+                    android.content.ContentValues cv = new android.content.ContentValues();
+                    cv.put(android.provider.MediaStore.Downloads.DISPLAY_NAME, name);
+                    cv.put(android.provider.MediaStore.Downloads.MIME_TYPE, "text/plain");
+                    android.net.Uri uri = getContentResolver().insert(android.provider.MediaStore.Downloads.EXTERNAL_CONTENT_URI, cv);
+                    if (uri != null) {
+                        java.io.OutputStream os = getContentResolver().openOutputStream(uri);
+                        os.write(text.getBytes("UTF-8"));
+                        os.close();
+                        UI.post(() -> toast(getString(R.string.log_exported_dl, name)));
+                        return;
+                    }
+                }
+            } catch (Exception ignore) { }
+            try {
+                java.io.File dir = getExternalFilesDir("logs");
+                if (dir == null) dir = getFilesDir();
+                java.io.File f = new java.io.File(dir, name);
+                java.io.FileOutputStream fos = new java.io.FileOutputStream(f);
+                fos.write(text.getBytes("UTF-8"));
+                fos.close();
+                UI.post(() -> toast(getString(R.string.log_exported, f.getAbsolutePath())));
+            } catch (Exception e) {
+                UI.post(() -> toast(getString(R.string.log_export_fail)));
+            }
+        }, "log-export").start();
     }
 
     private void toast(String s) {

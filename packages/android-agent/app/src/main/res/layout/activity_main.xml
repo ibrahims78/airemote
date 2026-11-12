@@ -50,7 +50,7 @@
             android:text="AiRemote Agent"
             android:textColor="@color/app_ink"
             android:textSize="14sp"
-            android:textStyle="bold"
+            android:fontFamily="sans-serif-medium"
             android:maxLines="1"
             android:ellipsize="end" />
 
@@ -257,7 +257,7 @@
                             android:text="@string/state_offline"
                             android:textColor="@color/app_ink"
                             android:textSize="17sp"
-                            android:textStyle="bold" />
+                            android:fontFamily="sans-serif-medium" />
 
                         <Button
                             android:id="@+id/btn_start"
@@ -288,6 +288,42 @@
                         android:text="@string/hint_press_start2"
                         android:textColor="@color/app_muted"
                         android:textSize="11sp" />
+
+                    <!-- 3.16.17 — شارات البث/الخصوصية (S1) -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:id="@+id/badge_cap"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:background="@drawable/chip_badge"
+                            android:paddingStart="10dp"
+                            android:paddingEnd="10dp"
+                            android:paddingTop="4dp"
+                            android:paddingBottom="4dp"
+                            android:text="@string/badge_cap_off"
+                            android:textColor="@color/app_warn"
+                            android:textSize="10sp" />
+
+                        <TextView
+                            android:id="@+id/badge_live"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="6dp"
+                            android:background="@drawable/chip_badge"
+                            android:paddingStart="10dp"
+                            android:paddingEnd="10dp"
+                            android:paddingTop="4dp"
+                            android:paddingBottom="4dp"
+                            android:text="@string/badge_live"
+                            android:textColor="@color/app_on_accent"
+                            android:textSize="10sp"
+                            android:visibility="gone" />
+                    </LinearLayout>
                 </LinearLayout>
 
                 <!-- Connection strip -->
@@ -337,6 +373,83 @@
                         android:text="@string/lbl_uptime_dash"
                         android:textColor="@color/app_muted"
                         android:textSize="11sp" />
+
+                    <!-- 3.16.17 — بطاقة معلومات جهاز كاملة (P2): IP محلي/عام + نسخ -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="6dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/lbl_ip_local"
+                            android:textColor="@color/app_muted"
+                            android:textSize="11sp" />
+
+                        <TextView
+                            android:id="@+id/conn_ip_local"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:fontFamily="monospace"
+                            android:text="—"
+                            android:textColor="@color/app_ink2"
+                            android:textSize="11sp" />
+
+                        <Button
+                            android:id="@+id/btn_copy_ip_local"
+                            android:layout_width="wrap_content"
+                            android:layout_height="32dp"
+                            android:background="@drawable/btn_soft"
+                            android:minWidth="0dp"
+                            android:paddingStart="8dp"
+                            android:paddingEnd="8dp"
+                            android:text="@string/btn_copy"
+                            android:textAllCaps="false"
+                            android:textColor="@color/app_ink2"
+                            android:textSize="10sp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:gravity="center_vertical"
+                        android:orientation="horizontal">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/lbl_ip_public"
+                            android:textColor="@color/app_muted"
+                            android:textSize="11sp" />
+
+                        <TextView
+                            android:id="@+id/conn_ip_public"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:fontFamily="monospace"
+                            android:text="—"
+                            android:textColor="@color/app_ink2"
+                            android:textSize="11sp" />
+
+                        <Button
+                            android:id="@+id/btn_copy_ip_public"
+                            android:layout_width="wrap_content"
+                            android:layout_height="32dp"
+                            android:background="@drawable/btn_soft"
+                            android:minWidth="0dp"
+                            android:paddingStart="8dp"
+                            android:paddingEnd="8dp"
+                            android:text="@string/btn_copy"
+                            android:textAllCaps="false"
+                            android:textColor="@color/app_ink2"
+                            android:textSize="10sp" />
+                    </LinearLayout>
                 </LinearLayout>
 
                                 <!-- 3.14.1 — PLAN §4: what Windows does and Android does not is declared, not hidden -->
@@ -389,7 +502,7 @@
                         android:text="@string/sec_settings"
                         android:textColor="@color/app_ink"
                         android:textSize="13sp"
-                        android:textStyle="bold" />
+                        android:fontFamily="sans-serif-medium" />
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -450,7 +563,7 @@
                         <Button
                             android:id="@+id/btn_auth_consent"
                             android:layout_width="0dp"
-                            android:layout_height="40dp"
+                            android:layout_height="44dp"
                             android:layout_weight="1"
                             android:background="@drawable/btn_soft"
                             android:text="@string/btn_auth_consent"
@@ -460,7 +573,7 @@
                         <Button
                             android:id="@+id/btn_auth_password"
                             android:layout_width="0dp"
-                            android:layout_height="40dp"
+                            android:layout_height="44dp"
                             android:layout_marginStart="6dp"
                             android:layout_weight="1"
                             android:background="@drawable/btn_soft"
@@ -489,6 +602,27 @@
                         android:textColorHint="@color/app_hint"
                         android:textSize="12sp" />
 
+                    <!-- 3.16.17 — شريط قوة كلمة السر (P3) -->
+                    <ProgressBar
+                        android:id="@+id/pw_bar"
+                        style="?android:attr/progressBarStyleHorizontal"
+                        android:layout_width="match_parent"
+                        android:layout_height="6dp"
+                        android:layout_marginTop="8dp"
+                        android:max="100"
+                        android:progress="0"
+                        android:progressBackgroundTint="@color/app_line"
+                        android:progressTint="@color/app_warn" />
+
+                    <TextView
+                        android:id="@+id/pw_label"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text=""
+                        android:textColor="@color/app_muted"
+                        android:textSize="10sp" />
+
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -498,7 +632,7 @@
                         <Button
                             android:id="@+id/btn_save"
                             android:layout_width="0dp"
-                            android:layout_height="40dp"
+                            android:layout_height="44dp"
                             android:layout_weight="1"
                             android:background="@drawable/btn_primary"
                             android:text="@string/btn_save"
@@ -508,7 +642,7 @@
                         <Button
                             android:id="@+id/btn_del_pw"
                             android:layout_width="0dp"
-                            android:layout_height="40dp"
+                            android:layout_height="44dp"
                             android:layout_marginStart="6dp"
                             android:layout_weight="1"
                             android:background="@drawable/btn_soft"
@@ -535,7 +669,7 @@
                         android:text="@string/sec_resources"
                         android:textColor="@color/app_ink"
                         android:textSize="13sp"
-                        android:textStyle="bold" />
+                        android:fontFamily="sans-serif-medium" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -668,14 +802,29 @@
                 android:layout_marginTop="6dp"
                 android:background="@drawable/card_bg">
 
-                <TextView
-                    android:id="@+id/ai_list"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:padding="12dp"
-                    android:text="@string/ai_empty"
-                    android:textColor="@color/app_ink"
-                    android:textSize="12sp" />
+                    android:orientation="vertical"
+                    android:padding="10dp">
+
+                    <TextView
+                        android:id="@+id/ai_empty"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:padding="18dp"
+                        android:text="@string/ai_empty"
+                        android:textColor="@color/app_muted"
+                        android:textSize="12sp" />
+
+                    <!-- 3.16.17 — فقاعات المساعد (P1) تُبنى برمجيًا هنا -->
+                    <LinearLayout
+                        android:id="@+id/ai_rows"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+                </LinearLayout>
             </ScrollView>
 
             <LinearLayout
@@ -684,10 +833,21 @@
                 android:layout_marginTop="6dp"
                 android:orientation="horizontal">
 
+                <Button
+                    android:id="@+id/ai_hist"
+                    android:layout_width="wrap_content"
+                    android:layout_height="44dp"
+                    android:background="@drawable/btn_soft"
+                    android:text="@string/ai_hist"
+                    android:textAllCaps="false"
+                    android:textColor="@color/app_ink2"
+                    android:textSize="12sp" />
+
                 <EditText
                     android:id="@+id/ai_input"
                     android:layout_width="0dp"
                     android:layout_height="44dp"
+                    android:layout_marginStart="6dp"
                     android:layout_weight="1"
                     android:background="@drawable/input_bg"
                     android:hint="@string/ai_ph"
@@ -695,6 +855,18 @@
                     android:textColor="@color/app_ink"
                     android:textColorHint="@color/app_hint"
                     android:textSize="12sp" />
+
+                <Button
+                    android:id="@+id/ai_stop"
+                    android:layout_width="wrap_content"
+                    android:layout_height="44dp"
+                    android:layout_marginStart="6dp"
+                    android:background="@drawable/btn_soft"
+                    android:text="@string/btn_ai_stop"
+                    android:textAllCaps="false"
+                    android:textColor="@color/app_warn"
+                    android:textSize="12sp"
+                    android:visibility="gone" />
 
                 <Button
                     android:id="@+id/ai_send"
@@ -733,14 +905,29 @@
                 android:layout_marginTop="6dp"
                 android:background="@drawable/card_bg">
 
-                <TextView
-                    android:id="@+id/chat_list"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:padding="12dp"
-                    android:text="@string/chat_empty"
-                    android:textColor="@color/app_ink"
-                    android:textSize="12sp" />
+                    android:orientation="vertical"
+                    android:padding="10dp">
+
+                    <TextView
+                        android:id="@+id/chat_empty"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:padding="18dp"
+                        android:text="@string/chat_empty"
+                        android:textColor="@color/app_muted"
+                        android:textSize="12sp" />
+
+                    <!-- 3.16.17 — فقاعات دردشة المشاهدين (P1) -->
+                    <LinearLayout
+                        android:id="@+id/chat_rows"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" />
+                </LinearLayout>
             </ScrollView>
 
             <LinearLayout
@@ -783,6 +970,7 @@
             android:padding="10dp">
 
             <!-- 3.16.16 — search + copy, parity with the Windows agent log -->
+            <!-- 3.16.17 — فلترة مستوى + تصدير (P3) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -792,7 +980,7 @@
                 <EditText
                     android:id="@+id/log_search"
                     android:layout_width="0dp"
-                    android:layout_height="42dp"
+                    android:layout_height="44dp"
                     android:layout_weight="1"
                     android:background="@drawable/input_bg"
                     android:hint="@string/log_search_hint"
@@ -806,13 +994,78 @@
                 <Button
                     android:id="@+id/btn_copy_log"
                     android:layout_width="wrap_content"
-                    android:layout_height="42dp"
+                    android:layout_height="44dp"
                     android:layout_marginStart="6dp"
                     android:background="@drawable/btn_ghost"
                     android:text="@string/log_copy"
                     android:textAllCaps="false"
                     android:textColor="@color/app_ink2"
                     android:textSize="12sp" />
+
+                <Button
+                    android:id="@+id/btn_export_log"
+                    android:layout_width="wrap_content"
+                    android:layout_height="44dp"
+                    android:layout_marginStart="6dp"
+                    android:background="@drawable/btn_soft"
+                    android:text="@string/log_export"
+                    android:textAllCaps="false"
+                    android:textColor="@color/app_ink2"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="6dp"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/lvl_all"
+                    android:layout_width="0dp"
+                    android:layout_height="32dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/btn_primary"
+                    android:text="@string/log_lvl_all"
+                    android:textAllCaps="false"
+                    android:textColor="@color/app_on_accent"
+                    android:textSize="11sp" />
+
+                <Button
+                    android:id="@+id/lvl_info"
+                    android:layout_width="0dp"
+                    android:layout_height="32dp"
+                    android:layout_marginStart="4dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/btn_soft"
+                    android:text="@string/log_lvl_info"
+                    android:textAllCaps="false"
+                    android:textColor="@color/app_ink2"
+                    android:textSize="11sp" />
+
+                <Button
+                    android:id="@+id/lvl_warn"
+                    android:layout_width="0dp"
+                    android:layout_height="32dp"
+                    android:layout_marginStart="4dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/btn_soft"
+                    android:text="@string/log_lvl_warn"
+                    android:textAllCaps="false"
+                    android:textColor="@color/app_ink2"
+                    android:textSize="11sp" />
+
+                <Button
+                    android:id="@+id/lvl_err"
+                    android:layout_width="0dp"
+                    android:layout_height="32dp"
+                    android:layout_marginStart="4dp"
+                    android:layout_weight="1"
+                    android:background="@drawable/btn_soft"
+                    android:text="@string/log_lvl_err"
+                    android:textAllCaps="false"
+                    android:textColor="@color/app_ink2"
+                    android:textSize="11sp" />
             </LinearLayout>
 
             <ScrollView
@@ -836,7 +1089,7 @@
             <Button
                 android:id="@+id/btn_clear_log"
                 android:layout_width="match_parent"
-                android:layout_height="40dp"
+                android:layout_height="44dp"
                 android:layout_marginTop="6dp"
                 android:background="@drawable/btn_ghost"
                 android:text="@string/btn_clear_log"

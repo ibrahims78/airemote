@@ -44,6 +44,8 @@ import java.io.InputStreamReader;
 import java.io.RandomAccessFile;
 import java.net.NetworkInterface;
 import java.net.URI;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.Locale;
@@ -65,6 +67,11 @@ public class AgentService extends Service {
 
     public static final String ACTION_START = "com.airemote.agent.START";
     public static final String ACTION_STOP = "com.airemote.agent.STOP";
+
+    // 3.16.17 — IP العام (نفس مصدر وكيل ويندوز: api.ipify.org) للبطاقة الكاملة P2
+    private static volatile String publicIp = "";
+    private static volatile boolean publicIpTried = false;
+    private static volatile boolean publicIpFailed = false;
 
     private volatile WebSocketClient ws = null;
     private volatile String deviceId = "";
@@ -214,6 +221,7 @@ public class AgentService extends Service {
         Prefs.bootstrap(this);
         ensureChannel();
         startForeground(11, buildNotification("AiRemote Agent — يعمل"));
+        fetchPublicIpAsync();
 
         boolean manual = intent != null && intent.getBooleanExtra("manual", false);
         if (manual) Prefs.sp(this).edit().putBoolean("kicked", false).apply();
@@ -446,6 +454,7 @@ public class AgentService extends Service {
             if (running) {
                 acquireAgentLocks();
                 if (registered) MainActivity.updateConn(Prefs.server(AgentService.this), deviceDisplay, formatUptime());
+                MainActivity.updateIps(localIp(), publicIp);
             }
             try {
                 if (ws != null && ws.isOpen()) {
@@ -540,7 +549,12 @@ public class AgentService extends Service {
                         info.put("osVersion", "Android " + Build.VERSION.RELEASE + " (API " + Build.VERSION.SDK_INT + ")");
                         info.put("arch", Build.SUPPORTED_ABIS.length > 0 ? Build.SUPPORTED_ABIS[0] : "?");
                         info.put("ipLocal", localIp());
-                        info.put("ipPublic", "");
+                        // 3.16.17 — انتظار قصير لجلب IP العام إن كان الطلب جاريًا (بدون حجب إن فشل)
+                        long t0ip = System.currentTimeMillis();
+                        while (publicIp.isEmpty() && !publicIpFailed && System.currentTimeMillis() - t0ip < 1200) {
+                            try { Thread.sleep(100); } catch (InterruptedException ignore) { break; }
+                        }
+                        info.put("ipPublic", publicIp);
                         info.put("agentVersion", com.airemote.agent.BuildConfig.VERSION_NAME + "-android");
                         payload.put("info", info);
                         payload.put("stats", buildStats());
@@ -552,7 +566,7 @@ public class AgentService extends Service {
                         reg.put("timestamp", System.currentTimeMillis());
                         send(reg.toString());
                     } catch (Exception e) {
-                        MainActivity.log("فشل إرسال التسجيل: " + e.getMessage());
+                        MainActivity.logE("فشل إرسال التسجيل: " + e.getMessage());
                     }
                 }
 
@@ -561,7 +575,7 @@ public class AgentService extends Service {
                     try {
                         handleMessage(new JSONObject(message));
                     } catch (Exception e) {
-                        MainActivity.log("رسالة غير مفهومة");
+                        MainActivity.logW("رسالة غير مفهومة");
                     }
                 }
 
@@ -571,7 +585,7 @@ public class AgentService extends Service {
                     // v3.8.12 — مقبس مُستبدل: لا تلمس الحالة ولا تُفرغ المرجِع الحيّ.
                     if (ws != this) return;
                     MainActivity.setStatus("انقطع — إعادة المحاولة", false);
-                    MainActivity.log("انقطع الاتصال (" + code + ")");
+                    MainActivity.logW("انقطع الاتصال (" + code + ")");
                     ws = null;
                     if (code == 4001) {
                         Prefs.sp(AgentService.this).edit().putBoolean("kicked", true).apply();
@@ -592,7 +606,7 @@ public class AgentService extends Service {
                 @Override
                 public void onError(Exception ex) {
                     android.util.Log.e("AiRemoteAgent", "WebSocket onError", ex);
-                    MainActivity.log("خطأ اتصال: " + (ex != null ? ex.getMessage() : "?"));
+                    MainActivity.logE("خطأ اتصال: " + (ex != null ? ex.getMessage() : "?"));
                     if (ws != this) return;
                     if (!running) return;
                     final long delay = reconnectDelay;
@@ -606,7 +620,7 @@ public class AgentService extends Service {
             try { client.setTcpNoDelay(true); } catch (Exception ignore) { }
             client.connect();
         } catch (Exception e) {
-            MainActivity.log("عنوان غير صالح: " + e.getMessage());
+            MainActivity.logE("عنوان غير صالح: " + e.getMessage());
             if (running) scheduleReconnect(reconnectDelay);
         }
     }
@@ -761,7 +775,7 @@ public class AgentService extends Service {
             }
             if (!Prefs.verifyControlPassword(this, offerPw)) {
                 sendSessionDenyReason(sid0, "bad_password");
-                MainActivity.log("❌ رُفض طلب جلسة: كلمة سر خاطئة");
+                MainActivity.logW("❌ رُفض طلب جلسة: كلمة سر خاطئة");
                 return;
             }
             MainActivity.log("🔓 قُبلت جلسة وكيل↔وكيل بكلمة مرور");
@@ -1039,7 +1053,7 @@ public class AgentService extends Service {
                             JSONObject d = new JSONObject();
                             d.put("sessionId", scSid); d.put("requestId", scReq); d.put("reason", "bad_password");
                             sendMsg("agent:screen_control_denied", d);
-                            MainActivity.log("❌ كلمة مرور تحكم خاطئة");
+                            MainActivity.logW("❌ كلمة مرور تحكم خاطئة");
                         }
                     } else {
                         final String fSid = scSid, fReq = scReq;
@@ -1051,7 +1065,7 @@ public class AgentService extends Service {
                                     o.put("sessionId", fSid);
                                     o.put("requestId", fReq);
                                     if (allowed) { sendMsg("agent:screen_control_granted", o); MainActivity.log("✅ منحت إذن التحكم"); }
-                                    else { sendMsg("agent:screen_control_denied", o); MainActivity.log("❌ رفضت طلب التحكم"); }
+                                    else { sendMsg("agent:screen_control_denied", o); MainActivity.logW("❌ رفضت طلب التحكم"); }
                                 } catch (Exception ignore) { }
                             });
                         } else {
@@ -1113,7 +1127,7 @@ public class AgentService extends Service {
                 new Thread(() -> handleFs(fsPayload)).start();
                 break;
             case "server:error":
-                MainActivity.log("خطأ من الخادم: " + payload.optString("message"));
+                MainActivity.logE("خطأ من الخادم: " + payload.optString("message"));
                 break;
             case "session:offer":
                 handleSessionOffer(payload);
@@ -1679,6 +1693,62 @@ public class AgentService extends Service {
 
     public static boolean isCaptureReady() {
         return CaptureHolder.ready();
+    }
+
+    /** 3.16.17 — معرّف الجهاز الحالي (يحتاجه المساعد لحق deviceId). */
+    public static String currentDeviceId() {
+        AgentService s = INSTANCE;
+        return s == null ? "" : s.deviceId;
+    }
+
+    public static boolean isStreaming() {
+        AgentService s = INSTANCE;
+        return s != null && s.streamRunning;
+    }
+
+    public static String publicIp() {
+        return publicIp;
+    }
+
+    public static String currentLocalIp() {
+        AgentService s = INSTANCE;
+        return s == null ? "" : s.localIp();
+    }
+
+    /** بوابة لقطة الشاشة لكتل screenshot في المساعد. */
+    public static String captureToFilePublic(String path) {
+        AgentService s = INSTANCE;
+        if (s == null) return "الوكيل غير مشغل";
+        return s.captureToFile(path);
+    }
+
+    /** 3.16.17 — جلب IP العام مرة واحدة (لا يُحجب اتصال WS). */
+    private void fetchPublicIpAsync() {
+        if (publicIpTried && (!publicIp.isEmpty() || publicIpFailed)) return;
+        publicIpTried = true;
+        new Thread(() -> {
+            try {
+                HttpURLConnection c = (HttpURLConnection)
+                        new URL("https://api.ipify.org?format=json").openConnection();
+                c.setConnectTimeout(6000);
+                c.setReadTimeout(6000);
+                BufferedReader r = new BufferedReader(new InputStreamReader(c.getInputStream(), "UTF-8"));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = r.readLine()) != null) sb.append(line);
+                r.close();
+                String ip = new JSONObject(sb.toString()).optString("ip", "");
+                if (!ip.isEmpty()) {
+                    publicIp = ip;
+                    MainActivity.updateIps(localIp(), ip);
+                    MainActivity.log("IP العام: " + ip);
+                } else {
+                    publicIpFailed = true;
+                }
+            } catch (Exception ignore) {
+                publicIpFailed = true;
+            }
+        }, "public-ip").start();
     }
 
     private void acquireScreenWakeLock() {
