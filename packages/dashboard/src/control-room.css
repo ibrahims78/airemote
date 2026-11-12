@@ -1029,7 +1029,9 @@ html.light .cr-page-subtitle { color: #4f6474; }
 }
 .app-titlebar-left { display: flex; align-items: center; gap: 2px; min-width: 0; justify-self: start; overflow: visible; }
 .app-titlebar-center { display: flex; align-items: center; justify-content: center; min-width: 0; justify-self: center; }
-.app-titlebar-right { display: flex; align-items: center; justify-self: end; align-self: stretch; height: 100%; min-width: 0; }
+.app-titlebar-right { display: flex; align-items: center; justify-content: flex-end; gap: 6px; justify-self: end; align-self: stretch; height: 100%; min-width: 0; }
+/* 3.16.14 — أزرار النافذة تلامس الحافة اليمنى بارتفاع الشريط كاملًا. */
+.app-window-controls { margin-inline-start: 2px; }
 .app-titlebar button, .app-titlebar a, .app-titlebar input, .app-titlebar select { -webkit-app-region: no-drag; }
 .app-titlebar-brand {
   width: 30px; height: 30px; display: grid; place-items: center;

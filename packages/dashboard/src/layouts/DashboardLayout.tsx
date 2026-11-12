@@ -318,23 +318,17 @@ export function DashboardLayout() {
           )}
           <span className="app-titlebar-sep" aria-hidden="true" />
 
-        </div>
-
-        <div className="app-titlebar-right">
+          {/* 3.16.14 — أزرار النافذة دائمًا أقصى اليمين داخل عمود الأدوات، بلا شرط windowCtl. */}
           <div className="app-window-controls">
-          {windowCtl && (
-            <>
-              <button type="button" className="app-window-btn" onClick={() => windowCtl.minimize?.()} title={isRtl ? 'تصغير' : 'Minimize'}>
-                <Minus size={15} />
-              </button>
-              <button type="button" className="app-window-btn" onClick={() => windowCtl.maximize?.()} title={maximized ? (isRtl ? 'استعادة' : 'Restore') : (isRtl ? 'تكبير' : 'Maximize')}>
-                {maximized ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
-              </button>
-              <button type="button" className="app-window-btn is-close" onClick={() => windowCtl.close?.()} title={isRtl ? 'إغلاق' : 'Close'}>
-                <X size={15} />
-              </button>
-            </>
-          )}
+            <button type="button" className="app-window-btn" onClick={() => windowCtl?.minimize?.()} title={isRtl ? 'تصغير' : 'Minimize'} aria-label={isRtl ? 'تصغير' : 'Minimize'}>
+              <Minus size={15} />
+            </button>
+            <button type="button" className="app-window-btn" onClick={() => windowCtl?.maximize?.()} title={maximized ? (isRtl ? 'استعادة' : 'Restore') : (isRtl ? 'تكبير' : 'Maximize')} aria-label={maximized ? (isRtl ? 'استعادة' : 'Restore') : (isRtl ? 'تكبير' : 'Maximize')}>
+              {maximized ? <Minimize2 size={13} /> : <Maximize2 size={13} />}
+            </button>
+            <button type="button" className="app-window-btn is-close" onClick={() => windowCtl?.close?.()} title={isRtl ? 'إغلاق' : 'Close'} aria-label={isRtl ? 'إغلاق' : 'Close'}>
+              <X size={15} />
+            </button>
           </div>
         </div>
       </header>
