@@ -369,12 +369,13 @@
 
   </div><!-- /#upper -->
       <!-- 3.14.0 — D64: البطاقة الثالثة، بنفس تسلسل المرجع بعد بطاقتَي التحكم والخادم -->
-      <div class="card sess-card" id="card-session">
-        <div class="card-h">
-          <span class="ttl" data-i18n="sessConnect">الاتصال بجهاز آخر</span>
-          <div class="grow"></div>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
-        </div>
+      <div class="coll-sec sess-card" id="sec-session">
+        <button class="sec-hdr" type="button" data-target="session">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg>
+          <span data-i18n="sessConnect">الاتصال بجهاز آخر</span>
+          <svg class="coll-chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <div class="sec-body">
         <div class="card-b">
           <div class="field">
             <label data-i18n="sessDevices">الأجهزة</label>
@@ -399,8 +400,9 @@
           </div>
           <div class="hint" id="session-state" role="status"></div>
           <button id="session-request-btn" type="button" class="btn primary"><span data-i18n="sessRequest">طلب الاتصال</span></button>
-        </div>
-      </div>
+        </div><!-- /card-b -->
+        </div><!-- /sec-body -->
+      </div><!-- /sec-session -->
 
       <div class="tab-panel active" id="panel-sessions" style="border-top:1px solid rgba(100,116,139,.18);margin-top:12px;padding-top:12px">
         <div class="field">
