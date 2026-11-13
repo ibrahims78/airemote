@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 3.16.18 — Force Dark كان يعتم النافذة الفاتحة على HiOS ويجعل المعالج والشريط غير مقروءين.
+     الألوان تأتي من values / values-night، فلا حاجة لتعتيم المنصّة. -->
+<resources>
+    <style name="AppTheme" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:forceDarkAllowed">false</item>
+    </style>
+</resources>

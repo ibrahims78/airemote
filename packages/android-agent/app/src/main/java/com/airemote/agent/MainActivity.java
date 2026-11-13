@@ -121,7 +121,6 @@ public class MainActivity extends Activity {
     private static final java.util.List<ChatMsg> CHAT = new java.util.ArrayList<>();
     private static final int MAX_MSGS = 200;
 
-    private TextView tbState;
     private TextView statusTitle;
     private TextView statusSub;
     private View statusDot;
@@ -179,6 +178,7 @@ public class MainActivity extends Activity {
         if (verBottom != null) verBottom.setText("v" + com.airemote.agent.BuildConfig.VERSION_NAME + " · AiRemote Agent");
         hideSystemUi();
         applyTitlebarInsets();
+        applySystemBarAppearance();
 
         // v3.5 — file manager needs storage access on Android 9 and below
         try {
@@ -191,7 +191,6 @@ public class MainActivity extends Activity {
             }
         } catch (Exception ignore) { }
 
-        tbState = findViewById(R.id.tb_state);
         statusTitle = findViewById(R.id.status_title);
         statusSub = findViewById(R.id.status_sub);
         statusDot = findViewById(R.id.status_dot);
@@ -1595,7 +1594,6 @@ public class MainActivity extends Activity {
             if (a != null) {
                 int okC = a.getResources().getColor(R.color.app_ok);
                 int mutC = a.getResources().getColor(R.color.app_muted);
-                if (a.tbState != null) { a.tbState.setText(ok ? a.getString(R.string.state_online) : s); a.tbState.setTextColor(ok ? okC : mutC); }
                 if (a.statusTitle != null) { a.statusTitle.setText(s); a.statusTitle.setTextColor(ok ? okC : a.getResources().getColor(R.color.app_ink)); }
                 if (a.statusSub != null) a.statusSub.setText(ok ? a.getString(R.string.agent_active) : a.getString(R.string.hint_press_start));
                 // 3.15.0 (P1-2) — النقطتان كانتا @drawable/btn_ghost ثابتة ولا تعكسان الحالة.
@@ -1775,9 +1773,11 @@ public class MainActivity extends Activity {
     }
 
     private void paintThemeToggle(TextView btn, boolean isDark) {
-        btn.setText(getString(isDark ? R.string.theme_light : R.string.theme_dark));
-        btn.setTextColor(getColor(isDark ? R.color.app_muted : R.color.app_accent));
-        btn.setBackgroundResource(isDark ? 0 : R.drawable.tab_active);
+        // 3.16.18 — زر واحد دائم الشكل: شمس/قمر على شريحة واحدة.
+        btn.setText(isDark ? "☀" : "🌙");
+        btn.setTextSize(14);
+        btn.setTextColor(getColor(R.color.app_ink2));
+        btn.setBackgroundResource(R.drawable.btn_soft);
     }
 
 
@@ -1800,20 +1800,18 @@ public class MainActivity extends Activity {
     }
 
     private void setupLangToggle() {
-        final TextView ar = findViewById(R.id.tb_lang_ar);
-        final TextView en = findViewById(R.id.tb_lang_en);
-        if (ar == null || en == null) return;
+        // 3.16.18 — زر واحد يبدّل إلى اللغة الأخرى (يعرض اللغة التي ستنتقل إليها).
+        final TextView btn = findViewById(R.id.tb_lang);
+        if (btn == null) return;
         boolean isAr = "ar".equals(currentLang());
-        paintLangToggle(ar, en, isAr);
-        ar.setOnClickListener(v -> setLang("ar"));
-        en.setOnClickListener(v -> setLang("en"));
+        paintLangToggle(btn, isAr);
+        btn.setOnClickListener(v -> setLang("ar".equals(currentLang()) ? "en" : "ar"));
     }
 
-    private void paintLangToggle(TextView ar, TextView en, boolean isAr) {
-        ar.setTextColor(getColor(isAr ? R.color.app_accent : R.color.app_muted));
-        en.setTextColor(getColor(isAr ? R.color.app_muted : R.color.app_accent));
-        ar.setBackgroundResource(isAr ? R.drawable.tab_active : 0);
-        en.setBackgroundResource(isAr ? 0 : R.drawable.tab_active);
+    private void paintLangToggle(TextView btn, boolean isAr) {
+        btn.setText(isAr ? "EN" : "ع");
+        btn.setTextColor(getColor(R.color.app_ink2));
+        btn.setBackgroundResource(R.drawable.btn_soft);
     }
 
     private void setLang(String lang) {
@@ -1827,6 +1825,27 @@ public class MainActivity extends Activity {
         cfg.uiMode = (cfg.uiMode & ~Configuration.UI_MODE_NIGHT_MASK)
                 | (dark ? Configuration.UI_MODE_NIGHT_YES : Configuration.UI_MODE_NIGHT_NO);
         getResources().updateConfiguration(cfg, getResources().getDisplayMetrics());
+        applySystemBarAppearance();
+    }
+
+    /** 3.16.18 — Force Dark on HiOS darkened the light theme into an unreadable
+     *  grey (the setup wizard and the titlebar). The app owns its palette through
+     *  values / values-night, so platform force-dark is off and the status-bar
+     *  icons follow the active mode. */
+    private void applySystemBarAppearance() {
+        try {
+            View decor = getWindow().getDecorView();
+            if (Build.VERSION.SDK_INT >= 29) decor.setForceDarkAllowed(false);
+            boolean night = (getResources().getConfiguration().uiMode
+                    & android.content.res.Configuration.UI_MODE_NIGHT_MASK)
+                    == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+            if (Build.VERSION.SDK_INT >= 23) {
+                int vis = decor.getSystemUiVisibility();
+                if (night) vis &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+                else vis |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+                decor.setSystemUiVisibility(vis);
+            }
+        } catch (Exception ignore) { }
     }
 
     // التفضيل يحكم فقط إذا اختاره المستخدم؛ أول تشغيل يتبع النظام.

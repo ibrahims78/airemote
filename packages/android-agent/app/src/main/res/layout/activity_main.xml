@@ -19,98 +19,74 @@
         android:paddingBottom="6dp"
         android:background="@color/app_surface2">
 
-        <TextView
-            android:layout_width="30dp"
-            android:layout_height="30dp"
-            android:background="@drawable/logo_bg"
-            android:gravity="center"
-            android:text="Ai"
-            android:textColor="@color/app_on_accent"
-            android:textSize="11sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:id="@+id/tv_ver_top"
+        <!-- 3.16.18 — الهوية في أقصى البداية (يمين في العربية) والإصدار تحتها، بلا شعار Ai -->
+        <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
-            android:background="@drawable/btn_ghost"
-            android:paddingStart="6dp"
-            android:paddingEnd="6dp"
-            android:paddingTop="2dp"
-            android:paddingBottom="2dp"
-            android:text="v3.8.1"
-            android:textColor="@color/app_muted"
-            android:textSize="9sp" />
-        <TextView
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="9dp"
-            android:text="AiRemote Agent"
-            android:textColor="@color/app_ink"
-            android:textSize="14sp"
-            android:fontFamily="sans-serif-medium"
-            android:maxLines="1"
-            android:ellipsize="end" />
+            android:orientation="vertical">
 
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="AiRemote Agent"
+                android:textColor="@color/app_ink"
+                android:textSize="13sp"
+                android:fontFamily="sans-serif-medium"
+                android:maxLines="1" />
 
+            <TextView
+                android:id="@+id/tv_ver_top"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="v3.16.18"
+                android:textColor="@color/app_muted"
+                android:textSize="9sp" />
+        </LinearLayout>
 
         <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <!-- 3.16.18 — النقطة الخضراء فقط بلا كلمة الحالة -->
+        <View
             android:id="@+id/status_dot"
-            android:layout_width="9dp"
-            android:layout_height="9dp"
-            android:background="@drawable/btn_ghost" />
+            android:layout_width="10dp"
+            android:layout_height="10dp"
+            android:background="@drawable/btn_ghost"
+            android:contentDescription="@string/state_online" />
 
+        <!-- 3.16.18 — زر لغة واحد يبدّل إلى اللغة الأخرى -->
         <TextView
-            android:id="@+id/tb_state"
+            android:id="@+id/tb_lang"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
-            android:text="@string/state_stopped"
-            android:textColor="@color/app_muted"
-            android:textSize="10sp" />
-            <TextView
-            android:id="@+id/tb_lang_ar"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="8dp"
+            android:layout_marginStart="10dp"
             android:gravity="center"
-            android:minWidth="32dp"
+            android:minWidth="34dp"
             android:minHeight="32dp"
             android:paddingStart="8dp"
             android:paddingEnd="8dp"
-            android:text="ع"
-            android:textColor="@color/app_accent"
-            android:textSize="12sp" />
-
-        <TextView
-            android:id="@+id/tb_lang_en"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:gravity="center"
-            android:minWidth="32dp"
-            android:minHeight="32dp"
-            android:paddingStart="8dp"
-            android:paddingEnd="8dp"
+            android:background="@drawable/btn_soft"
             android:text="EN"
-            android:textColor="@color/app_muted"
+            android:textColor="@color/app_ink2"
             android:textSize="12sp" />
 
-        <!-- 3.16.16 — one theme chip; it always shows the mode you would switch to -->
+        <!-- 3.16.18 — زر ثيم واحد: شمس/قمر -->
         <TextView
             android:id="@+id/tb_theme"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:gravity="center"
-            android:minWidth="36dp"
+            android:minWidth="34dp"
             android:minHeight="32dp"
             android:paddingStart="8dp"
             android:paddingEnd="8dp"
+            android:background="@drawable/btn_soft"
             android:text="@string/theme_dark"
-            android:textColor="@color/app_accent"
-            android:textSize="12sp" />
+            android:textColor="@color/app_ink2"
+            android:textSize="14sp" />
         </LinearLayout>
 
     <!-- ══ Tabs ══ -->
