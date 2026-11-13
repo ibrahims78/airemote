@@ -44,7 +44,7 @@
                 android:id="@+id/tv_ver_top"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="v3.16.18"
+                android:text="v3.16.19"
                 android:textColor="#B3FFFFFF"
                 android:textSize="9sp" />
         </LinearLayout>
