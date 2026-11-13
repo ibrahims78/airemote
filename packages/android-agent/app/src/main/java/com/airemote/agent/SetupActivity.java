@@ -56,7 +56,8 @@ public class SetupActivity extends Activity {
         getWindow().setNavigationBarColor(chrome);
 
         ScrollView scroll = new ScrollView(this);
-        scroll.setBackgroundColor(getResources().getColor(R.color.app_bg));
+        // 3.16.18 — الوضع الفاتح: خلفية غارقة حتى تبرز البطاقات البيضاء.
+        scroll.setBackgroundColor(getResources().getColor(R.color.app_sunken));
         list = new LinearLayout(this);
         list.setOrientation(LinearLayout.VERTICAL);
         list.setPadding(dp(20), dp(22), dp(20), dp(32));
@@ -199,7 +200,8 @@ public class SetupActivity extends Activity {
         b.setAllCaps(false);
         b.setText(getString(R.string.setup_open));
         b.setTextColor(getResources().getColor(R.color.app_ink2));
-        b.setBackgroundResource(R.drawable.btn_ghost);
+        // 3.16.18 — فخّ #38: btn_ghost بلون البطاقة نفسها يختفي في الثيم الفاتح.
+        b.setBackgroundResource(R.drawable.btn_soft);
         b.setMinHeight(dp(38));
         b.setMinimumHeight(dp(38));
         b.setPadding(dp(12), 0, dp(12), 0);
