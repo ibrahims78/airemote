@@ -1428,7 +1428,15 @@ public class AgentService extends Service {
     private ImageReader ensureCaptureSession() throws Exception {
         if (activeReader != null) return activeReader;
         if (!CaptureHolder.ready()) return null;
-        DisplayMetrics dm = getResources().getDisplayMetrics();
+        // 3.16.19 — فخّ #80: مقاييس موارد الخدمة قد تبقى عمودية بعد الدوران،
+        // فتُنشئ جلسة بأبعاد خاطئة. اقرأ الشاشة الفعلية (المُدوَّرة) أولًا.
+        DisplayMetrics dm = new DisplayMetrics();
+        try {
+            DisplayManager dmgr0 = (DisplayManager) getSystemService(DISPLAY_SERVICE);
+            android.view.Display d0 = dmgr0 != null
+                    ? dmgr0.getDisplay(android.view.Display.DEFAULT_DISPLAY) : null;
+            if (d0 != null) d0.getRealMetrics(dm); else dm = getResources().getDisplayMetrics();
+        } catch (Exception e0) { dm = getResources().getDisplayMetrics(); }
         int w = dm.widthPixels, h = dm.heightPixels, dpi = dm.densityDpi;
         if (dpi <= 0) dpi = 320;
         MediaProjectionManager mgr = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
@@ -2112,8 +2120,16 @@ public class AgentService extends Service {
                             try {
                                 android.view.Display.Mode mode = display.getMode();
                                 if (mode != null) {
-                                    physW = Math.max(physW, mode.getPhysicalWidth());
-                                    physH = Math.max(physH, mode.getPhysicalHeight());
+                                    // 3.16.19 — فخّ #80: لا تخلط أبعادًا مُدوَّرة بأبعاد الوضع الأصلي؛
+                                    // Math.max بين (mw,mh) و(mode.w,mode.h) يعطي مربّعًا 1280×1280
+                                    // على لوحي يبلّغ 800×1280 والواجهة أفقية، فيظهر شريطان أسودان.
+                                    int mL = Math.max(mw, mh), mS = Math.min(mw, mh);
+                                    int dL = Math.max(mode.getPhysicalWidth(), mode.getPhysicalHeight());
+                                    int dS = Math.min(mode.getPhysicalWidth(), mode.getPhysicalHeight());
+                                    int nLong = Math.max(mL, dL), nShort = Math.max(mS, dS);
+                                    boolean nowLand = mw > mh;
+                                    physW = nowLand ? nLong : nShort;
+                                    physH = nowLand ? nShort : nLong;
                                 }
                             } catch (Exception ignore) { }
                             // الاتجاه الحقيقي = الحسّاس (أو الدوران إن توفّر)

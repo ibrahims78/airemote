@@ -259,7 +259,8 @@ public class SetupActivity extends Activity {
 
     private void refresh() {
         boolean capture = AgentService.isCaptureReady();
-        boolean a11y = a11yEnabled();
+        // 3.16.19 — فخّ #78: «مفعَّلة» لا تكفي؛ بعد force-stop تبقى مسجَّلة لكنها غير مربوطة.
+        boolean a11y = a11yEnabled() && AiRemoteA11y.I != null;
         boolean write = Settings.System.canWrite(this);
         boolean battery = batteryOk();
         boolean record = Build.VERSION.SDK_INT < 23 || checkSelfPermission(android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED;

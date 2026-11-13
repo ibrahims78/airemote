@@ -37,6 +37,8 @@ import java.util.function.Consumer;
 public class MainActivity extends Activity {
 
     private static final int REQ_CAPTURE = 1001;
+    /** 3.16.19 — فخّ #79: طلب واحد كحدّ أقصى لكل عملية. */
+    private static boolean askedCaptureThisProcess = false;
     public static volatile MainActivity instance;
     public static volatile boolean foreground = false;
 
@@ -329,8 +331,13 @@ public class MainActivity extends Activity {
         // 3.11.2 — طلب الإذن تلقائياً صار مقيّداً: مرة كل 6 ساعات، ولا يُطلب أثناء فتح جلسة عرض
         // (كان يظهر فوق العارض في كل تشغيل ويحجب الشاشة).
         if (!CaptureHolder.ready() && !SessionWebViewActivity.isOpen) {
+            // 3.16.19 — فخّ #79: الإيقاف القسري يُفقد إذن MediaProjection.
+            // اطلب مرة واحدة في كل عملية جديدة حتى لو مرّ أقل من 6 ساعات،
+            // حتى لا يبقى الالتقاط ميتًا بعد أي إعادة تشغيل.
             long lastAsk = Prefs.sp(this).getLong("cap_ask_at", 0L);
-            if (System.currentTimeMillis() - lastAsk > 6L * 3600L * 1000L) {
+            boolean stale = System.currentTimeMillis() - lastAsk > 6L * 3600L * 1000L;
+            if (!askedCaptureThisProcess || stale) {
+                askedCaptureThisProcess = true;
                 Prefs.sp(this).edit().putLong("cap_ask_at", System.currentTimeMillis()).apply();
                 UI.postDelayed(this::requestCapture, 1600);
             }
