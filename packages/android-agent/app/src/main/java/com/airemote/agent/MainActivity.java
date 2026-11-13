@@ -720,6 +720,7 @@ public class MainActivity extends Activity {
                 CaptureHolder.resultCode = resultCode;
                 CaptureHolder.data = data;
                 log("منح إذن التقاط الشاشة ✓");
+                try { if (AgentService.INSTANCE != null) AgentService.INSTANCE.resetCaptureSession(); } catch (Exception ignore) { }
                 try { if (AgentService.INSTANCE != null) AgentService.INSTANCE.sendCapabilities(); } catch (Exception ignore) { }
             } else {
                 logW("رُفض إذن التقاط الشاشة");

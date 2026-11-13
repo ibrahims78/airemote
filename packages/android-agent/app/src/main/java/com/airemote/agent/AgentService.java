@@ -1419,25 +1419,56 @@ public class AgentService extends Service {
         }
     }
 
+    /** One warm capture session for the whole service (screenshots + live stream).
+     *  Android 14 burns the consent token: a second getMediaProjection() on the same
+     *  result Intent returns a projection that never delivers a frame. So the session
+     *  is created once, kept in the shared active* fields (the stream adopts it through
+     *  its existing "projection != null" branch) and released only on destroy or when
+     *  a fresh consent arrives. Returns null when no consent is available. */
+    private ImageReader ensureCaptureSession() throws Exception {
+        if (activeReader != null) return activeReader;
+        if (!CaptureHolder.ready()) return null;
+        DisplayMetrics dm = getResources().getDisplayMetrics();
+        int w = dm.widthPixels, h = dm.heightPixels, dpi = dm.densityDpi;
+        if (dpi <= 0) dpi = 320;
+        MediaProjectionManager mgr = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
+        ensureProjectionForeground();
+        MediaProjection p = mgr.getMediaProjection(CaptureHolder.resultCode, CaptureHolder.data);
+        if (p == null) return null;
+        ImageReader r = ImageReader.newInstance(w, h, PixelFormat.RGBA_8888, 4);
+        VirtualDisplay v = p.createVirtualDisplay("airemote-shot", w, h, dpi,
+                DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, r.getSurface(), null, null);
+        activeProjection = p; activeReader = r; activeVd = v;
+        activeW = w; activeH = h; activeDpi = dpi;
+        return r;
+    }
+
+    /** Drop the warm session so the next capture uses a newly granted consent. */
+    public void resetCaptureSession() {
+        releaseProjection();
+    }
+
+    /** Poll for a frame: a fixed sleep misses the first frame on slow SoCs. */
+    private Image acquireFrame(ImageReader reader, long timeoutMs) {
+        long end = SystemClock.elapsedRealtime() + timeoutMs;
+        while (SystemClock.elapsedRealtime() < end) {
+            Image img = reader.acquireLatestImage();
+            if (img != null) return img;
+            try { Thread.sleep(50); } catch (InterruptedException ignore) { }
+        }
+        return null;
+    }
+
     /** Returns null on success, error text otherwise. */
     private String captureToFile(String path) {
-        MediaProjection projection = null;
-        VirtualDisplay vd = null;
-        ImageReader reader = null;
+        Image image = null;
         try {
             if (!CaptureHolder.ready()) return "لا يوجد إذن التقاط الشاشة — امنحه من التطبيق";
-            DisplayMetrics dm = getResources().getDisplayMetrics();
-            int w = dm.widthPixels, h = dm.heightPixels, dpi = dm.densityDpi;
-            MediaProjectionManager mgr = (MediaProjectionManager) getSystemService(MEDIA_PROJECTION_SERVICE);
-            ensureProjectionForeground(); projection = mgr.getMediaProjection(CaptureHolder.resultCode, CaptureHolder.data);
-            if (projection == null) return "projection null";
-            reader = ImageReader.newInstance(w, h, PixelFormat.RGBA_8888, 2);
-            vd = projection.createVirtualDisplay("airemote", w, h, dpi,
-                    DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR, reader.getSurface(), null, null);
-            Thread.sleep(600);
-            Image image = reader.acquireLatestImage();
-            if (image == null) { Thread.sleep(500); image = reader.acquireLatestImage(); }
+            ImageReader reader = ensureCaptureSession();
+            if (reader == null) return "projection null";
+            image = acquireFrame(reader, 3000);
             if (image == null) return "no frame";
+            int w = image.getWidth(), h = image.getHeight();
             Image.Plane[] planes = image.getPlanes();
             ByteBuffer buffer = planes[0].getBuffer();
             int pixelStride = planes[0].getPixelStride();
@@ -1454,14 +1485,11 @@ public class AgentService extends Service {
             fos.close();
             bmp.recycle();
             cropped.recycle();
-            image.close();
             return null;
         } catch (Exception e) {
             return "capture error: " + e.getMessage();
         } finally {
-            try { if (vd != null) vd.release(); } catch (Exception ignore) { }
-            try { if (reader != null) reader.close(); } catch (Exception ignore) { }
-            try { if (projection != null) projection.stop(); } catch (Exception ignore) { }
+            try { if (image != null) image.close(); } catch (Exception ignore) { }
         }
     }
 
