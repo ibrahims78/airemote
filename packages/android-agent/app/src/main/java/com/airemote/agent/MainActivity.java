@@ -1122,8 +1122,8 @@ public class MainActivity extends Activity {
             header = hdr;
             boolean dropFirst = first instanceof TextView && title != null
                     && title.contentEquals(((TextView) first).getText());
-            if (!dropFirst) body.addView(first);
             card.removeView(first);
+            if (!dropFirst) body.addView(first);
             while (card.getChildCount() > 0) {
                 View c = card.getChildAt(0);
                 card.removeView(c);
