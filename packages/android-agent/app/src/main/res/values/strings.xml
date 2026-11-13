@@ -137,6 +137,9 @@
     <string name="sess_state_password_locked">مقفل مؤقتًا بعد محاولات فاشلة</string>
     <string name="sess_state_target_offline">الجهاز الهدف غير متصل</string>
     <string name="card_connect">الاتصال بجهاز آخر</string>
+    <string name="card_setup">معالج التهيئة</string>
+    <string name="card_status">الحالة</string>
+    <string name="card_conn">الاتصال</string>
     <string name="toast_need_config">أدخل عنوان الخادم والرمز</string>
     <string name="toast_saved">تم حفظ الإعدادات</string>
     <string name="toast_saved_pw">تم حفظ الإعدادات وكلمة المرور</string>

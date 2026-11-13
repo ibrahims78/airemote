@@ -243,6 +243,13 @@ public class MainActivity extends Activity {
         // 3.9.4 — بطاقة «الأجهزة» لبدء جلسة وكيل↔وكيل من الهاتف نفسه.
         buildDevicesCard();
 
+        // 3.16.18 — كل بطاقات الواجهة الرئيسية قابلة للطيّ/الفتح مع حفظ الحالة.
+        makeCollapsible(findViewById(R.id.setup_card), getString(R.string.card_setup), "setup", true);
+        makeCollapsible(findViewById(R.id.status_card), null, "status", true);
+        makeCollapsible(findViewById(R.id.conn_strip_card), getString(R.string.card_conn), "conn", true);
+        makeCollapsible(findViewById(R.id.devices_card), getString(R.string.card_connect), "devices", true);
+        makeCollapsible(findViewById(R.id.settings_card), getString(R.string.sec_settings), "settings", true);
+
         tabs[0] = findViewById(R.id.tab_status);
         tabs[1] = findViewById(R.id.tab_ai);
         tabs[2] = findViewById(R.id.tab_chat);
@@ -1073,6 +1080,74 @@ public class MainActivity extends Activity {
     }
 
     private int dp(float v) { return Math.round(getResources().getDisplayMetrics().density * v); }
+
+    /** 3.16.18 — بطاقة قابلة للطيّ/الفتح. إن كان أول أبنائها صفًا (ViewGroup) صار هو الرأس؛
+     *  وإلا أُنشئ رأس بالعنوان الممرَّر (وإن كان أول عنصر TextView بنفس النص حُذف حتى لا يتكرر).
+     *  الحالة تُحفظ في التفضيلات، والانتقال متحرك. */
+    private void makeCollapsible(View cardView, String title, String key, boolean defOpen) {
+        if (!(cardView instanceof LinearLayout)) return;
+        LinearLayout card = (LinearLayout) cardView;
+        if (card.getChildCount() == 0) return;
+        View first = card.getChildAt(0);
+        View header;
+        LinearLayout body = new LinearLayout(this);
+        body.setOrientation(LinearLayout.VERTICAL);
+        TextView chev = new TextView(this);
+        chev.setText("▾");
+        chev.setTextSize(16);
+        chev.setTextColor(getResources().getColor(R.color.app_muted));
+        chev.setPadding(dp(8), 0, 0, 0);
+        if (first instanceof android.view.ViewGroup) {
+            header = first;
+            card.removeView(header);
+            while (card.getChildCount() > 0) {
+                View c = card.getChildAt(0);
+                card.removeView(c);
+                body.addView(c);
+            }
+            if (header instanceof android.view.ViewGroup) ((android.view.ViewGroup) header).addView(chev);
+        } else {
+            LinearLayout hdr = new LinearLayout(this);
+            hdr.setOrientation(LinearLayout.HORIZONTAL);
+            hdr.setGravity(android.view.Gravity.CENTER_VERTICAL);
+            hdr.setPadding(dp(2), dp(2), dp(2), dp(8));
+            TextView tv = new TextView(this);
+            tv.setText(title);
+            tv.setTextColor(getResources().getColor(R.color.app_ink));
+            tv.setTextSize(14);
+            tv.setTypeface(android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL));
+            tv.setLayoutParams(new LinearLayout.LayoutParams(0, android.view.ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+            hdr.addView(tv);
+            hdr.addView(chev);
+            header = hdr;
+            boolean dropFirst = first instanceof TextView && title != null
+                    && title.contentEquals(((TextView) first).getText());
+            if (!dropFirst) body.addView(first);
+            card.removeView(first);
+            while (card.getChildCount() > 0) {
+                View c = card.getChildAt(0);
+                card.removeView(c);
+                body.addView(c);
+            }
+        }
+        card.addView(header);
+        card.addView(body);
+        android.util.TypedValue out = new android.util.TypedValue();
+        getTheme().resolveAttribute(android.R.attr.selectableItemBackground, out, true);
+        header.setBackgroundResource(out.resourceId);
+        header.setClickable(true);
+        header.setFocusable(true);
+        boolean open = Prefs.sp(this).getBoolean("coll_" + key, defOpen);
+        body.setVisibility(open ? View.VISIBLE : View.GONE);
+        chev.setRotation(open ? 0f : -90f);
+        header.setOnClickListener(v -> {
+            boolean now = body.getVisibility() != View.VISIBLE;
+            android.transition.TransitionManager.beginDelayedTransition(card, new android.transition.AutoTransition());
+            body.setVisibility(now ? View.VISIBLE : View.GONE);
+            chev.animate().rotation(now ? 0f : -90f).setDuration(180).start();
+            Prefs.sp(this).edit().putBoolean("coll_" + key, now).apply();
+        });
+    }
 
     private void buildDevicesCard() {
         try {

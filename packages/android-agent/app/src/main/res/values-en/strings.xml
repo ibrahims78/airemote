@@ -137,6 +137,9 @@
     <string name="sess_state_password_locked">Temporarily locked after failed attempts</string>
     <string name="sess_state_target_offline">Target device offline</string>
     <string name="card_connect">Connect to another device</string>
+    <string name="card_setup">Setup</string>
+    <string name="card_status">Status</string>
+    <string name="card_conn">Connection</string>
     <string name="toast_need_config">Enter the server address and token</string>
     <string name="toast_saved">Settings saved</string>
     <string name="toast_saved_pw">Settings and password saved</string>
