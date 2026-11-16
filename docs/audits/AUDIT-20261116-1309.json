@@ -1,0 +1,571 @@
+{
+    "tool":  "pf-audit",
+    "version":  "1.0",
+    "date":  "2026-11-16 13:09",
+    "project":  "AiRemote",
+    "path":  "D:\\autoclaw projects-new\\AiRemote",
+    "branch":  "feat/screen-unify-3.13.0",
+    "head":  "8864292",
+    "total":  52.7,
+    "grade":  "D",
+    "verdict":  "غير جاهز (حواجز: 2) — غير جاهز — أعد التأسيس وفق R1 أو pf adopt",
+    "blockers":  [
+                     "مستودع: B6 — لا أسرار متتبعة (ملفات)",
+                     "استئناف: لا HANDOFF ولا state.json — العمل قابل للفقدان عند تبديل الحساب"
+                 ],
+    "axes":  {
+                 "A":  {
+                           "Name":  "الهوية والتوثيق",
+                           "Weight":  15,
+                           "Possible":  15,
+                           "Earned":  7,
+                           "Score":  7
+                       },
+                 "B":  {
+                           "Name":  "المستودع وGit",
+                           "Weight":  12,
+                           "Possible":  12,
+                           "Earned":  9,
+                           "Score":  9
+                       },
+                 "C":  {
+                           "Name":  "جودة الكود",
+                           "Weight":  12,
+                           "Possible":  12,
+                           "Earned":  7,
+                           "Score":  7
+                       },
+                 "D":  {
+                           "Name":  "الاختبارات",
+                           "Weight":  13,
+                           "Possible":  13,
+                           "Earned":  5.5,
+                           "Score":  5.5
+                       },
+                 "E":  {
+                           "Name":  "الأمان",
+                           "Weight":  15,
+                           "Possible":  15,
+                           "Earned":  10,
+                           "Score":  10
+                       },
+                 "F":  {
+                           "Name":  "البناء والتبعيات",
+                           "Weight":  10,
+                           "Possible":  8,
+                           "Earned":  5,
+                           "Score":  6.2
+                       },
+                 "G":  {
+                           "Name":  "التشغيل والنشر",
+                           "Weight":  10,
+                           "Possible":  10,
+                           "Earned":  6,
+                           "Score":  6
+                       },
+                 "H":  {
+                           "Name":  "المتابعة والاستئناف",
+                           "Weight":  13,
+                           "Possible":  13,
+                           "Earned":  2,
+                           "Score":  2
+                       }
+             },
+    "checks":  [
+                   {
+                       "Id":  "A1",
+                       "Axis":  "A",
+                       "Title":  "README.md موجود",
+                       "Weight":  2,
+                       "Status":  "PASS",
+                       "Evidence":  "README.md في الجذر",
+                       "Fix":  ""
+                   },
+                   {
+                       "Id":  "A2",
+                       "Axis":  "A",
+                       "Title":  "README يشرح التثبيت والتشغيل والاختبار",
+                       "Weight":  2,
+                       "Status":  "PARTIAL",
+                       "Evidence":  "قسمان فقط من الثلاثة",
+                       "Fix":  "أكمل القسم الناقص بأوامر حقيقية"
+                   },
+                   {
+                       "Id":  "A3",
+                       "Axis":  "A",
+                       "Title":  "LICENSE (أو بيان خاص)",
+                       "Weight":  1,
+                       "Status":  "PASS",
+                       "Evidence":  "LICENSE موجود",
+                       "Fix":  ""
+                   },
+                   {
+                       "Id":  "A4",
+                       "Axis":  "A",
+                       "Title":  "CHANGELOG بصيغة معروفة",
+                       "Weight":  2,
+                       "Status":  "PASS",
+                       "Evidence":  "يحتوي أقسام إصدارات",
+                       "Fix":  ""
+                   },
+                   {
+                       "Id":  "A5",
+                       "Axis":  "A",
+                       "Title":  "PROJECT_STATE + قسم التالي",
+                       "Weight":  2,
+                       "Status":  "FAIL",
+                       "Evidence":  "لا يوجد docs\\PROJECT_STATE.md",
+                       "Fix":  "أنشئه وفق القالب — هو مصدر الحقيقة للاستئناف"
+                   },
+                   {
+                       "Id":  "A6",
+                       "Axis":  "A",
+                       "Title":  "قرارات معمارية (ADR)",
+                       "Weight":  2,
+                       "Status":  "FAIL",
+                       "Evidence":  "لا ADR",
+                       "Fix":  "وثّق أول قرار تقني في docs\\ADR\\0001"
+                   },
+                   {
+                       "Id":  "A7",
+                       "Axis":  "A",
+                       "Title":  "AGENTS/CONTRIBUTING",
+                       "Weight":  1,
+                       "Status":  "FAIL",
+                       "Evidence":  "لا قواعد عمل",
+                       "Fix":  "أضف AGENTS.md بقواعد المساعد"
+                   },
+                   {
+                       "Id":  "A8",
+                       "Axis":  "A",
+                       "Title":  "تعريف \"منجز\"",
+                       "Weight":  1,
+                       "Status":  "PASS",
+                       "Evidence":  "DEFINITION-OF-DONE موجود",
+                       "Fix":  ""
+                   },
+                   {
+                       "Id":  "A9",
+                       "Axis":  "A",
+                       "Title":  "RUNBOOK تشغيلي",
+                       "Weight":  1,
+                       "Status":  "FAIL",
+                       "Evidence":  "لا RUNBOOK",
+                       "Fix":  "أضف docs\\RUNBOOK.md (تشغيل/أعطال/نسخ/تراجع)"
+                   },
+                   {
+                       "Id":  "A10",
+                       "Axis":  "A",
+                       "Title":  "هدف قابل للقياس في مقدمة README",
+                       "Weight":  1,
+                       "Status":  "FAIL",
+                       "Evidence":  "المقدمة غامضة",
+                       "Fix":  "اكتب: غرض بجملة + مستخدم + مقياس"
+                   },
+                   {
+                       "Id":  "B1",
+                       "Axis":  "B",
+                       "Title":  "مستودع Git مهيّأ",
+                       "Weight":  2,
+                       "Status":  "PASS",
+                       "Evidence":  ".git موجود",
+                       "Fix":  ""
+                   },
+                   {
+                       "Id":  "B2",
+                       "Axis":  "B",
+                       "Title":  "remote مضبوط",
+                       "Weight":  2,
+                       "Status":  "PASS",
+                       "Evidence":  "error: No such remote \u0027origin\u0027",
+                       "Fix":  ""
+                   },
+                   {
+                       "Id":  "B3",
+                       "Axis":  "B",
+                       "Title":  "الفرع الرئيسي main",
+                       "Weight":  1,
+                       "Status":  "PASS",
+                       "Evidence":  "الفرع الحالي: feat/screen-unify-3.13.0",
+                       "Fix":  ""
+                   },
+                   {
+                       "Id":  "B4",
+                       "Axis":  "B",
+                       "Title":  "تاريخ متراكم",
+                       "Weight":  1,
+                       "Status":  "PASS",
+                       "Evidence":  "913 commits",
+                       "Fix":  ""
+                   },
+                   {
+                       "Id":  "B5",
+                       "Axis":  "B",
+                       "Title":  ".gitignore يغطي الحساس والمولَّد",
+                       "Weight":  2,
+                       "Status":  "PASS",
+                       "Evidence":  "القواعد اللازمة موجودة",
+                       "Fix":  ""
+                   },
+                   {
+                       "Id":  "B6",
+                       "Axis":  "B",
+                       "Title":  "لا أسرار متتبعة (ملفات)",
+                       "Weight":  2,
+                       "Status":  "FAIL",
+                       "Evidence":  "متتبع: packages/android-agent/app/src/main/res/raw/airemote_ca.pem، releases/release-key.pub.pem",
+                       "Fix":  "أزلها من التتبع ودوّر مفاتيحها فوراً"
+                   },
+                   {
+                       "Id":  "B7",
+                       "Axis":  "B",
+                       "Title":  ".gitattributes (توحيد الأسطر)",
+                       "Weight":  1,
+                       "Status":  "PASS",
+                       "Evidence":  "موجود",
+                       "Fix":  ""
+                   },
+                   {
+                       "Id":  "B8",
+                       "Axis":  "B",
+                       "Title":  "لا ملفات ضخمة \u003e5MB",
+                       "Weight":  1,
+                       "Status":  "FAIL",
+                       "Evidence":  "packages/server-desktop/bin/cloudflared.exe (52.8MB)",
+                       "Fix":  "انقلها إلى تخزين خارجي أو LFS"
+                   },
+                   {
+                       "Id":  "C1",
+                       "Axis":  "C",
+                       "Title":  "بنية كود واضحة (src)",
+                       "Weight":  2,
+                       "Status":  "PARTIAL",
+                       "Evidence":  "كود في الجذر بلا src",
+                       "Fix":  "نظّم الكود في src/ وفق R1 §3"
+                   },
+                   {
+                       "Id":  "C2",
+                       "Axis":  "C",
+                       "Title":  ".editorconfig",
+                       "Weight":  1,
+                       "Status":  "FAIL",
+                       "Evidence":  "غير موجود",
+                       "Fix":  "أضفه من القالب"
+                   },
+                   {
+                       "Id":  "C3",
+                       "Axis":  "C",
+                       "Title":  "linter معدّ",
+                       "Weight":  2,
+                       "Status":  "PASS",
+                       "Evidence":  "scripts.lint في package.json",
+                       "Fix":  ""
+                   },
+                   {
+                       "Id":  "C4",
+                       "Axis":  "C",
+                       "Title":  "فحص أنواع",
+                       "Weight":  2,
+                       "Status":  "PASS",
+                       "Evidence":  "scripts.typecheck",
+                       "Fix":  ""
+                   },
+                   {
+                       "Id":  "C5",
+                       "Axis":  "C",
+                       "Title":  "لا TODO حرج غير مسجّل",
+                       "Weight":  1,
+                       "Status":  "FAIL",
+                       "Evidence":  "18 مواضع",
+                       "Fix":  "اجعلها مهام مسجّلة بمالك"
+                   },
+                   {
+                       "Id":  "C6",
+                       "Axis":  "C",
+                       "Title":  "لا مسارات مطلقة صلبة",
+                       "Weight":  2,
+                       "Status":  "FAIL",
+                       "Evidence":  "tools/lab/a2a/abs-test.ps1 → C:\\Users\\ | tools/lab/a2a/abs-test.ps1 → C:\\Users\\ | tools/lab/a2a/abs-test2.ps1 → C:\\Users\\",
+                       "Fix":  "استبدلها بمتغيرات بيئة أو مسارات نسبية"
+                   },
+                   {
+                       "Id":  "C7",
+                       "Axis":  "C",
+                       "Title":  "معالجة أخطاء/سجل مركزي",
+                       "Weight":  2,
+                       "Status":  "PASS",
+                       "Evidence":  "وحدة سجل/أخطاء موجودة",
+                       "Fix":  ""
+                   },
+                   {
+                       "Id":  "D1",
+                       "Axis":  "D",
+                       "Title":  "مجلد/ملفات اختبار",
+                       "Weight":  2,
+                       "Status":  "PASS",
+                       "Evidence":  "packages/agent-desktop/test/config-store.test.cjs",
+                       "Fix":  ""
+                   },
+                   {
+                       "Id":  "D2",
+                       "Axis":  "D",
+                       "Title":  "إطار اختبار معرّف",
+                       "Weight":  2,
+                       "Status":  "FAIL",
+                       "Evidence":  "لا إطار ظاهر",
+                       "Fix":  "اختر إطاراً وثبّته ووثّق أمره"
+                   },
+                   {
+                       "Id":  "D3",
+                       "Axis":  "D",
+                       "Title":  "اختبارات فعلية ≥1",
+                       "Weight":  2,
+                       "Status":  "PASS",
+                       "Evidence":  "38 ملف اختبار",
+                       "Fix":  ""
+                   },
+                   {
+                       "Id":  "D4",
+                       "Axis":  "D",
+                       "Title":  "أمر test موثّق",
+                       "Weight":  2,
+                       "Status":  "FAIL",
+                       "Evidence":  "لا أمر اختبار",
+                       "Fix":  "أضف أمر test موحّداً ووثّقه"
+                   },
+                   {
+                       "Id":  "D5",
+                       "Axis":  "D",
+                       "Title":  "CI يشغّل الاختبارات",
+                       "Weight":  3,
+                       "Status":  "PARTIAL",
+                       "Evidence":  "CI موجود بلا خطوة اختبار",
+                       "Fix":  "أضف خطوة test إلى ci.yml"
+                   },
+                   {
+                       "Id":  "D6",
+                       "Axis":  "D",
+                       "Title":  "تغطية/عتبة جودة",
+                       "Weight":  2,
+                       "Status":  "FAIL",
+                       "Evidence":  "لا إعداد تغطية",
+                       "Fix":  "أضف coverage للمسارات الحرجة"
+                   },
+                   {
+                       "Id":  "E1",
+                       "Axis":  "E",
+                       "Title":  ".env غير متتبع + .env.example",
+                       "Weight":  3,
+                       "Status":  "PARTIAL",
+                       "Evidence":  "لا .env متتبع لكن .env.example غائب",
+                       "Fix":  "أضف .env.example بأسماء المتغيرات"
+                   },
+                   {
+                       "Id":  "E2",
+                       "Axis":  "E",
+                       "Title":  "لا مفاتيح/توكنات في الكود",
+                       "Weight":  3,
+                       "Status":  "PARTIAL",
+                       "Evidence":  "5 مطابقة عامة (قيم نصية لكلمات/مفاتيح)",
+                       "Fix":  "راجعها: لا قيم حقيقية في الكود"
+                   },
+                   {
+                       "Id":  "E3",
+                       "Axis":  "E",
+                       "Title":  "lockfile متتبّع",
+                       "Weight":  2,
+                       "Status":  "PASS",
+                       "Evidence":  "packages/agent-desktop/package-lock.json",
+                       "Fix":  ""
+                   },
+                   {
+                       "Id":  "E4",
+                       "Axis":  "E",
+                       "Title":  "فحص ثغرات دوري",
+                       "Weight":  1,
+                       "Status":  "FAIL",
+                       "Evidence":  "لا فحص ثغرات",
+                       "Fix":  "أضف dependabot أو أمر audit للجدول الشهري"
+                   },
+                   {
+                       "Id":  "E5",
+                       "Axis":  "E",
+                       "Title":  "SECURITY.md",
+                       "Weight":  1,
+                       "Status":  "FAIL",
+                       "Evidence":  "غير موجود",
+                       "Fix":  "أضف سياسة الأمان وقناة الإبلاغ"
+                   },
+                   {
+                       "Id":  "E6",
+                       "Axis":  "E",
+                       "Title":  "تحقّق من المدخلات",
+                       "Weight":  2,
+                       "Status":  "PASS",
+                       "Evidence":  ".github/workflows/ci.yml",
+                       "Fix":  ""
+                   },
+                   {
+                       "Id":  "E7",
+                       "Axis":  "E",
+                       "Title":  "ملاحظات CORS/HTTPS/رؤوس",
+                       "Weight":  1,
+                       "Status":  "PASS",
+                       "Evidence":  "docker/docker-compose.yml",
+                       "Fix":  ""
+                   },
+                   {
+                       "Id":  "E8",
+                       "Axis":  "E",
+                       "Title":  "أسرار CI عبر مخزن الأسرار",
+                       "Weight":  2,
+                       "Status":  "PASS",
+                       "Evidence":  "لا قيم صريحة في السير",
+                       "Fix":  ""
+                   },
+                   {
+                       "Id":  "F1",
+                       "Axis":  "F",
+                       "Title":  "ملف حزمة/بناء",
+                       "Weight":  2,
+                       "Status":  "PASS",
+                       "Evidence":  "package.json",
+                       "Fix":  ""
+                   },
+                   {
+                       "Id":  "F2",
+                       "Axis":  "F",
+                       "Title":  "تبعيات مقفلة",
+                       "Weight":  2,
+                       "Status":  "PASS",
+                       "Evidence":  "packages/agent-desktop/package-lock.json",
+                       "Fix":  ""
+                   },
+                   {
+                       "Id":  "F3",
+                       "Axis":  "F",
+                       "Title":  "إصدارات لغة/بيئة محددة",
+                       "Weight":  2,
+                       "Status":  "PARTIAL",
+                       "Evidence":  "الإصدار غير مثبّت",
+                       "Fix":  "حدّد engines/requires-python"
+                   },
+                   {
+                       "Id":  "F4",
+                       "Axis":  "F",
+                       "Title":  ".env.example شامل",
+                       "Weight":  2,
+                       "Status":  "FAIL",
+                       "Evidence":  "غير موجود",
+                       "Fix":  "أنشئه من القالب"
+                   },
+                   {
+                       "Id":  "F5",
+                       "Axis":  "F",
+                       "Title":  "البناء ينجح فعلياً",
+                       "Weight":  2,
+                       "Status":  "NA",
+                       "Evidence":  "لم يُطلب (-Build) أو لا سكربت بناء",
+                       "Fix":  ""
+                   },
+                   {
+                       "Id":  "G1",
+                       "Axis":  "G",
+                       "Title":  "نشر موثّق",
+                       "Weight":  2,
+                       "Status":  "PASS",
+                       "Evidence":  "Docker",
+                       "Fix":  ""
+                   },
+                   {
+                       "Id":  "G2",
+                       "Axis":  "G",
+                       "Title":  "متغيرات البيئة موثّقة",
+                       "Weight":  2,
+                       "Status":  "FAIL",
+                       "Evidence":  "لا توثيق للمتغيرات",
+                       "Fix":  "وثّق كل متغير ووصفه"
+                   },
+                   {
+                       "Id":  "G3",
+                       "Axis":  "G",
+                       "Title":  "سجل ومراقبة",
+                       "Weight":  2,
+                       "Status":  "PASS",
+                       "Evidence":  "logger/فحص صحة موجود",
+                       "Fix":  ""
+                   },
+                   {
+                       "Id":  "G4",
+                       "Axis":  "G",
+                       "Title":  "نسخ احتياطي موثّق",
+                       "Weight":  2,
+                       "Status":  "PASS",
+                       "Evidence":  "scripts/restore-backup.cjs",
+                       "Fix":  ""
+                   },
+                   {
+                       "Id":  "G5",
+                       "Axis":  "G",
+                       "Title":  "استعادة موثّقة",
+                       "Weight":  2,
+                       "Status":  "FAIL",
+                       "Evidence":  "لا خطة استعادة",
+                       "Fix":  "وثّق خطوات الاستعادة وجرّبها مرة"
+                   },
+                   {
+                       "Id":  "H1",
+                       "Axis":  "H",
+                       "Title":  "ملف تسليم موجود",
+                       "Weight":  2,
+                       "Status":  "FAIL",
+                       "Evidence":  "لا HANDOFF",
+                       "Fix":  "نفّذ pf handoff قبل التوقف"
+                   },
+                   {
+                       "Id":  "H2",
+                       "Axis":  "H",
+                       "Title":  "التسليم كامل (مسار+commit+التالي)",
+                       "Weight":  3,
+                       "Status":  "FAIL",
+                       "Evidence":  "لا تسليم أصلاً",
+                       "Fix":  "نفّذ pf handoff"
+                   },
+                   {
+                       "Id":  "H3",
+                       "Axis":  "H",
+                       "Title":  "حالة آلية صالحة (.pf\\state.json)",
+                       "Weight":  2,
+                       "Status":  "FAIL",
+                       "Evidence":  "غير موجود أو تالف",
+                       "Fix":  "pf adopt يُنشئها"
+                   },
+                   {
+                       "Id":  "H4",
+                       "Axis":  "H",
+                       "Title":  "آخر نقطة حفظ حديثة (≤14 يوم)",
+                       "Weight":  2,
+                       "Status":  "FAIL",
+                       "Evidence":  "لا سجل جلسات",
+                       "Fix":  "checkpoint بانتظام بعد كل مهمة"
+                   },
+                   {
+                       "Id":  "H5",
+                       "Axis":  "H",
+                       "Title":  "المستودع البعيد يستجيب",
+                       "Weight":  2,
+                       "Status":  "FAIL",
+                       "Evidence":  "لا remote — العمل قابل للفقد",
+                       "Fix":  "اربط مستودعاً محلياً (pf adopt)"
+                   },
+                   {
+                       "Id":  "H6",
+                       "Axis":  "H",
+                       "Title":  "سكربتات متابعة في المشروع",
+                       "Weight":  2,
+                       "Status":  "PASS",
+                       "Evidence":  "android-audit.cjs",
+                       "Fix":  ""
+                   }
+               ]
+}
