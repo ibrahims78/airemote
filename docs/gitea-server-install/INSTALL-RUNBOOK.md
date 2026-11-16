@@ -131,3 +131,29 @@ New-NetFirewallRule -DisplayName 'AiRemote Gitea' -Direction Inbound -Protocol T
 ---
 
 *نهاية RUNBOOK — Gitea جاهز — لا GitHub.*
+
+---
+
+## 9) اختصار سطح المكتب
+
+| الاختصار | الوظيفة |
+|---|---|
+| `AiRemote Gitea.lnk` | يشغّل الخدمة ثم يفتح المتصفح على `http://localhost:3000` |
+| `AiRemote Gitea Stop.lnk` | يوقف الخدمة |
+
+الملفات:
+- `D:\Services\Gitea\gitea-start.bat`
+- `D:\Services\Gitea\gitea-stop.bat`
+- `D:\Services\Gitea\start-gitea.ps1`
+
+---
+
+## 10) Git مربوط — لا خطوة ربط متبقية
+
+```
+origin = http://localhost:3000/ibrahims78/airemote.git
+upstream = origin/feat/screen-unify-3.13.0
+credentials = D:\Services\Gitea\git-credentials (خارج المستودع)
+```
+
+`git push` و`git fetch` تعمل بلا إدخال كلمة مرور على هذا الاستنساخ.
