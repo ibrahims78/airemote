@@ -100,8 +100,14 @@
                          "note":  "البند 2 منجز: 3.17.0 مثبّت على المضيف — /health=3.17.0 — verify.js 57/57 — P6 أخضر",
                          "commit":  "",
                          "at":  "2026-11-17 15:57"
+                     },
+                     {
+                         "account":  "admin@",
+                         "note":  "البند 3: قياس 15 دقيقة PASSED (~90ث من استنساخ نظيف إلى /health=3.17.0) — GitHub ألغاه المالك مؤقتاً — SECURITY placeholder — README + bundle.js",
+                         "commit":  "",
+                         "at":  "2026-11-17 16:47"
                      }
                  ],
     "created":  "2026-11-17",
-    "updated":  "2026-11-17 15:57"
+    "updated":  "2026-11-17 16:47"
 }
