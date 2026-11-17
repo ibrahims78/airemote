@@ -85,22 +85,22 @@ async function main() {
 
   // A) filters
   const all = await fetch(BASE + '/api/sessions', { headers: auth(adminTok) }).then(r => r.json())
-  check('all rows visible to admin', Array.isArray(all) && all.length === 4)
+  check('all rows visible to admin', Array.isArray(all.sessions) && all.sessions.length === 4)
 
   const byQ = await fetch(BASE + '/api/sessions?q=quoted', { headers: auth(adminTok) }).then(r => r.json())
-  check('q searches the device name', byQ.length === 2 && byQ.every(r => (r.deviceName || '').includes('quoted')))
+  check('q searches the device name', byQ.sessions.length === 2 && byQ.sessions.every(r => (r.deviceName || '').includes('quoted')))
 
   const byType = await fetch(BASE + '/api/sessions?type=ssh', { headers: auth(adminTok) }).then(r => r.json())
-  check('type filter', byType.length === 1 && byType[0].type === 'ssh')
+  check('type filter', byType.sessions.length === 1 && byType.sessions[0].type === 'ssh')
 
   const active = await fetch(BASE + '/api/sessions?status=active', { headers: auth(adminTok) }).then(r => r.json())
-  check('status=active filter', active.length === 1 && !active[0].endedAt)
+  check('status=active filter', active.sessions.length === 1 && !active.sessions[0].endedAt)
 
   const ranged = await fetch(BASE + '/api/sessions?from=2026-10-14&to=2026-10-21T23:59:59', { headers: auth(adminTok) }).then(r => r.json())
-  check('date range filter', ranged.length === 2)
+  check('date range filter', ranged.sessions.length === 2)
 
   const viewerRows = await fetch(BASE + '/api/sessions', { headers: auth(viewerTok) }).then(r => r.json())
-  check('viewer sees only their own rows', Array.isArray(viewerRows) && viewerRows.length === 0)
+  check('viewer sees only their own rows', Array.isArray(viewerRows.sessions) && viewerRows.sessions.length === 0)
 
   // B) CSV
   const res = await fetch(BASE + '/api/sessions/export', { headers: auth(adminTok) })
