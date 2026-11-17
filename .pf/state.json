@@ -13,7 +13,8 @@
               ],
     "repo":  {
                  "branch":  "main",
-                 "remote":  ""
+                 "remote":  "",
+                 "lastCommit":  "3e4e744"
              },
     "sessions":  [
                      {
@@ -21,8 +22,14 @@
                          "note":  "تبنّي المشروع",
                          "commit":  "",
                          "at":  "2026-11-17 10:12"
+                     },
+                     {
+                         "account":  "admin@",
+                         "note":  "W1-1: pf adopt + pf backup منجزان — SHA256 مطابق، ls-remote ينجح بعد إصلاح سلسلة الاعتماد",
+                         "commit":  "3e4e744",
+                         "at":  "2026-11-17 10:22"
                      }
                  ],
     "created":  "2026-11-17",
-    "updated":  "2026-11-17 10:12"
+    "updated":  "2026-11-17 10:22"
 }
