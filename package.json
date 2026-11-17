@@ -14,7 +14,9 @@
     "build": "pnpm -r build",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
-    "verify": "node scripts/verify.js"
+    "verify": "node scripts/verify.js",
+    "test": "node scripts/run-tests.cjs",
+    "coverage": "c8 --include packages/server --reporter=text-summary node scripts/run-tests.cjs"
   },
   "workspaces": [
     "packages/*"
@@ -23,6 +25,7 @@
     "pnpm": "^11.28.12"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.6.8"
+    "@biomejs/biome": "^2.6.8",
+    "c8": "^12.0.0"
   }
 }

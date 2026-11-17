@@ -79,14 +79,8 @@ jobs:
       - name: Lint (biome — warnings week W2-3)
         run: pnpm lint
 
-      - name: Unit — registry race
-        run: node packages/server/test/registry-race.test.cjs
-
-      - name: E2E — web server connection
-        run: node packages/server/test/e2e-connection.test.cjs
-
-      - name: E2E — device authorization
-        run: node packages/server/test/e2e-authz.test.cjs
+      - name: Tests (unified — 7 groups)
+        run: pnpm test
 
       - name: Build dashboard
         run: pnpm --filter @airemote/dashboard build
