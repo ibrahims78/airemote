@@ -102,7 +102,7 @@ git -C "D:\autoclaw projects-new\AiRemote" push origin --all
 
 ---
 
-### W1-2 · إغلاق الثغرات HIGH + فحص دوري
+### W1-2 · إغلاق الثغرات HIGH + فحص دوري — **☑ منجز 2026-11-17** — دليله `outputs/verify-2026-11-17/W1-2/`
 
 | البند | التفصيل |
 |---|---|

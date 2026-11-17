@@ -1,6 +1,22 @@
 packages:
   - packages/*
 
+# W1-2 (2026-11-17): pnpm 11 لم يعد يقرأ pnpm.overrides من package.json — النقل هنا إلزامي
+# (يحفظ تثبيتات الأمان السابقة + إغلاق high جديدة). المصدر: مخرَج pnpm install تحذير ignored keys.
+overrides:
+  proxy-addr@2: 2.0.8
+  fast-uri@2: 2.4.8
+  fast-uri@3: 3.1.9
+  form-data@4: 4.0.6
+  follow-redirects@1: 1.16.2
+  brace-expansion@2: 2.1.7
+  brace-expansion@5: 5.0.13
+  '@fastify/busboy@3': 3.2.6
+
+# pnpm 11 يتطلب هذا الاسم (camelCase) — kebab-case في .npmrc لم يمنع رسالة
+# ERR_PNPM_ABORTED_REMOVE_MODULES_DIR_NO_TTY عند الترقية من node_modules بُنيت بـpnpm 9.
+confirmModulesPurge: false
+
 ignoredBuiltDependencies:
   - '@google/genai'
   - better-sqlite3
@@ -9,3 +25,6 @@ ignoredBuiltDependencies:
   - esbuild
   - protobufjs
   - ssh2
+
+minimumReleaseAgeExclude:
+  - '@fastify/busboy@3.2.6'
