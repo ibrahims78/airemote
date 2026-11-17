@@ -1,18 +1,17 @@
 {
   "name": "@airemote/agent",
   "version": "3.17.0",
-
   "engines": {
     "node": ">=22",
     "pnpm": ">=11.5.3"
   },
-  
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check ."
   },
   "dependencies": {
     "@airemote/shared": "workspace:*",

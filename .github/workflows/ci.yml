@@ -76,6 +76,9 @@ jobs:
       - name: Typecheck dashboard
         run: pnpm --filter @airemote/dashboard typecheck
 
+      - name: Lint (biome — warnings week W2-3)
+        run: pnpm lint
+
       - name: Unit — registry race
         run: node packages/server/test/registry-race.test.cjs
 

@@ -1,6 +1,6 @@
 import WebSocket from 'ws'
 import { v4 as uuidv4 } from 'uuid'
-import { spawn, ChildProcess } from 'child_process'
+import { spawn, type ChildProcess } from 'child_process'
 import fs from 'fs/promises'
 import fsSync from 'fs'
 import path from 'path'

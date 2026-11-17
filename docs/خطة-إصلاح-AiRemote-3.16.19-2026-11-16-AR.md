@@ -237,7 +237,7 @@ updates:
 | **معيار القبول** | البوابة PASS · لا package.json خارج 3.17.0 (إلا إن استُثني بإذن مكتوب) |
 | **الخطر** | رفع إصدار حزمة غير مشحونة لا يكسر التشغيل؛ رفع server-desktop/agent-desktop/dashboard يجب أن يمشي مع البناء. |
 
-### W2-3 · .editorconfig + ESLint (أو Biome) + أمر lint حقيقي
+### W2-3 · .editorconfig + ESLint (أو Biome) + أمر lint حقيقي — **☑ منجز 2026-11-17** — دليله `outputs/verify-2026-11-17/W2-3/`
 
 | البند | التفصيل |
 |---|---|

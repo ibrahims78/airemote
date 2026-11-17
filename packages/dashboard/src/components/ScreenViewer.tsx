@@ -19,7 +19,7 @@
  */
 import {
   useEffect, useRef, useState, useCallback,
-  MouseEvent as ReactMouseEvent, KeyboardEvent as ReactKeyboardEvent
+  type MouseEvent as ReactMouseEvent, type KeyboardEvent as ReactKeyboardEvent
 } from 'react'
 import {
   Monitor, Maximize2, Minimize2, RefreshCw, Wifi, WifiOff, ExternalLink, ArrowLeftRight, PenLine, Eraser, Crosshair, Trash2, Fingerprint,

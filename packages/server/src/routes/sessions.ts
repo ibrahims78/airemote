@@ -74,7 +74,7 @@ export async function sessionRoutes(fastify: FastifyInstance) {
     // Enrich with device names from DB
     const db = getDb()
     const deviceIds = [...new Set(raw.map(s => s.deviceId))]
-    let nameMap = new Map<string, string>()
+    const nameMap = new Map<string, string>()
     if (deviceIds.length > 0) {
       const placeholders = deviceIds.map(() => '?').join(',')
       const result = await db.execute({ sql: `SELECT id, name FROM devices WHERE id IN (${placeholders})`, args: deviceIds })

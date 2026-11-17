@@ -1,17 +1,16 @@
 {
   "name": "@airemote/dashboard",
   "version": "3.17.0",
-
   "engines": {
     "node": ">=22",
     "pnpm": ">=11.5.3"
   },
-  
   "scripts": {
     "dev": "vite --port 5000 --host",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check ."
   },
   "dependencies": {
     "@airemote/shared": "workspace:*",

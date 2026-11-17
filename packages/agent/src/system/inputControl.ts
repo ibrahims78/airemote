@@ -4,7 +4,7 @@
  * Uses native OS tools: xdotool (Linux), PowerShell (Windows), cliclick/osascript (macOS).
  */
 
-import { exec, execFile, spawn, ChildProcess } from 'child_process'
+import { exec, execFile, spawn, type ChildProcess } from 'child_process'
 import { promisify } from 'util'
 
 const execAsync     = promisify(exec)

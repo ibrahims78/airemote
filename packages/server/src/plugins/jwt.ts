@@ -21,10 +21,10 @@ declare module 'fastify' {
   }
 }
 
-export const jwtPlugin = fp(async function (fastify: FastifyInstance, opts: {
+export const jwtPlugin = fp(async (fastify: FastifyInstance, opts: {
   secret: string
   sign?: SignOptions
-}) {
+}) => {
   const secret = opts.secret
   const defaultSignOpts = opts.sign ?? {}
 

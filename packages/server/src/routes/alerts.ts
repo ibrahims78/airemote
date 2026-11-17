@@ -4,7 +4,7 @@ import { requireAuth } from '../middleware/auth'
 import { getDb } from '../db/database'
 import { logAudit } from '../db/audit'
 import type { AuthTokenPayload } from '@airemote/shared'
-import { assertSafeOutboundUrl, UnsafeUrlError } from '../lib/security'
+import { assertSafeOutboundUrl, type UnsafeUrlError } from '../lib/security'
 
 export async function alertRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', requireAuth)

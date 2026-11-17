@@ -465,7 +465,6 @@ export async function handleAgentMessage(
             binary: false, width: p.width, height: p.height, seq: p.seq, at: Date.now()
           })
         }
-        {
           deviceRegistry.sendToScreenViewers(p.sessionId, JSON.stringify({
             type:    'screen:frame',
             payload: {
@@ -478,7 +477,6 @@ export async function handleAgentMessage(
               deltaRegion: p.deltaRegion
             }
           }))
-        }
       }
       return null
     }

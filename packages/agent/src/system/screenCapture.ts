@@ -14,7 +14,7 @@
  * macOS: native screencapture utility.
  */
 
-import { exec, execFile, spawn, ChildProcess } from 'child_process'
+import { exec, execFile, spawn, type ChildProcess } from 'child_process'
 import { promisify } from 'util'
 import fs from 'fs/promises'
 import path from 'path'

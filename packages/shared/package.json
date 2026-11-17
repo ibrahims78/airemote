@@ -1,18 +1,17 @@
 {
   "name": "@airemote/shared",
   "version": "3.17.0",
-
   "engines": {
     "node": ">=22",
     "pnpm": ">=11.5.3"
   },
-  
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "lint": "biome check ."
   },
   "devDependencies": {
     "typescript": "^5.4.0"

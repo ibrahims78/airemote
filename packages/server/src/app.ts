@@ -158,7 +158,7 @@ export async function buildServer() {
   //         dashboard clients (JWT via ?token= query param)
   // /ssh — SSH tunnel; requires JWT upfront
   // /pty — Direct PTY shell; requires JWT upfront (v1.2.0)
-  await app.register(async function (fastify) {
+  await app.register(async (fastify) => {
     fastify.get('/ws',     { websocket: true }, wsHandler)
     fastify.get('/ssh',    { websocket: true, preHandler: [requireAuthWs] }, handleSshWebSocket)
     fastify.get('/pty',    { websocket: true, preHandler: [requireAuthWs] }, handlePtyWebSocket)
