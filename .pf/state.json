@@ -106,8 +106,14 @@
                          "note":  "البند 3: قياس 15 دقيقة PASSED (~90ث من استنساخ نظيف إلى /health=3.17.0) — GitHub ألغاه المالك مؤقتاً — SECURITY placeholder — README + bundle.js",
                          "commit":  "",
                          "at":  "2026-11-17 16:47"
+                     },
+                     {
+                         "account":  "admin@",
+                         "note":  "الأسطول 6/6 على 3.17.0 — بوابة W2 حالة 13 PASS — AISHOT سليم",
+                         "commit":  "",
+                         "at":  "2026-11-17 20:01"
                      }
                  ],
     "created":  "2026-11-17",
-    "updated":  "2026-11-17 16:47"
+    "updated":  "2026-11-17 20:01"
 }
