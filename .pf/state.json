@@ -1,0 +1,28 @@
+{
+    "schema":  1,
+    "project":  "AiRemote",
+    "type":  "adopted",
+    "phase":  "غير محددة",
+    "status":  "BUILDING",
+    "next_action":  "حدّدها في docs\\PROJECT_STATE.md بعد أول فحص pf audit",
+    "blockers":  [
+
+                 ],
+    "stack":  [
+
+              ],
+    "repo":  {
+                 "branch":  "main",
+                 "remote":  ""
+             },
+    "sessions":  [
+                     {
+                         "account":  "admin@",
+                         "note":  "تبنّي المشروع",
+                         "commit":  "",
+                         "at":  "2026-11-17 10:12"
+                     }
+                 ],
+    "created":  "2026-11-17",
+    "updated":  "2026-11-17 10:12"
+}
