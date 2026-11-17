@@ -5529,7 +5529,7 @@ async function start(config) {
       }
     } catch {}
 
-    const shotPath = 'C:\\Users\\Public\\airemote-shot.jpg'
+    const shotPath = require('path').join(process.env.AIREMOTE_TMP || os.tmpdir(), 'airemote-shot.jpg')
     // v3.3.4 — make the capture process DPI-aware first, otherwise on scaled displays it only
     // grabs the top-left logical region instead of the entire physical screen.
     const ps = "try { $cs = 'using System;using System.Runtime.InteropServices;public class DpiAw { [DllImport(' + [char]34 + 'user32.dll' + [char]34 + ')] public static extern bool SetProcessDPIAware(); }'; Add-Type -TypeDefinition $cs -ErrorAction SilentlyContinue; [DpiAw]::SetProcessDPIAware() | Out-Null } catch {}; Add-Type -AssemblyName System.Windows.Forms,System.Drawing; $vb=[System.Windows.Forms.SystemInformation]::VirtualScreen; $bmp=New-Object System.Drawing.Bitmap($vb.Width,$vb.Height); $g=[System.Drawing.Graphics]::FromImage($bmp); $g.CopyFromScreen($vb.Location,[System.Drawing.Point]::Empty,$vb.Size); $bmp.Save('" + shotPath + "',[System.Drawing.Imaging.ImageFormat]::Jpeg); $g.Dispose(); $bmp.Dispose(); 'shot-ok'"
@@ -5692,7 +5692,7 @@ if ($target -eq $null) { 'name-not-found' } else {
     else if (action === 'clickname') {
       const name = String(b.text || b.name || '').slice(0, 80)
       if (!name) return reply.code(400).send({ error: 'clickname يحتاج نصاً في text' })
-      const scriptPath = 'C:\\Users\\Public\\ai-ctl.ps1'
+      const scriptPath = require('path').join(process.env.AIREMOTE_TMP || os.tmpdir(), 'ai-ctl.ps1')
       const sbuf = Buffer.from(CLICKNAME_PS, 'utf8')
       const sop = uuidv4()
       const waitFs = new Promise((resolve, reject) => {
