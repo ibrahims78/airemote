@@ -40,8 +40,14 @@
                          "note":  "W1-3: HANDOFF + STATE 3.16.19 + CHANGELOG 3.16.x + ADR السيرفرين (الحيّ = server-desktop)",
                          "commit":  "",
                          "at":  "2026-11-17 11:08"
+                     },
+                     {
+                         "account":  "admin@",
+                         "note":  "W1-4: SECURITY.md — قناة placeholder يملؤها المالك؛ W1 كاملة بانتظار بوابة W1",
+                         "commit":  "",
+                         "at":  "2026-11-17 11:09"
                      }
                  ],
     "created":  "2026-11-17",
-    "updated":  "2026-11-17 11:08"
+    "updated":  "2026-11-17 11:09"
 }
