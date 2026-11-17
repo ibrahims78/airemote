@@ -90,7 +90,7 @@ session_view_tickets(id, session_id, device_id, access, token_hash, expires_at, 
 
 4) خطة التنفيذ — مراحل وملفات ووكلاء
 M0 — تثبيت القرار (يومان)
-docs/ADR-AGENT-SESSION-AR.md: يبرّر الانحراف عن §4.4 (relay للتفويض + /screen للوسائط) + بديل WebView + بوابة الفشل.
+docs/ADR/AGENT-SESSION-AR.md: يبرّر الانحراف عن §4.4 (relay للتفويض + /screen للوسائط) + بديل WebView + بوابة الفشل.
 تحديث docs/PROTOCOL-RELAY-AR.md إلى v2.0 (العقود §2 أعلاه).
 docs/PRODUCTION-PLAN-v2.0-AR.md: تعديل §4.4 بسطر «منفَّذ بصيغة v2.0» بلا حذف النص الأصلي.
 البوابة: الوثائق معتمدة، لا كود.
@@ -190,4 +190,4 @@ WebView أندرويد بطيء	أول إطار >2s أو لمس >150ms	تفعي�
 تضخّم النطاق	ميزة خارج §3.3	قائمة قطع: لا طرفية/SSH/AI
 تسريب تذكرة في URL	ظهورها في سجلات	تدقيق Referer، ومنع تسجيل rt في اللوجات
 9) المخرجات النهائية
-docs/ADR-AGENT-SESSION-AR.md · docs/PROTOCOL-RELAY-AR.md v2.0 · docs/AGENT-SESSION-AR.md · docs/AGENT-SESSION-TEST-MATRIX-AR.md · docs/DECISIONS-LOG.md · outputs/verify-<date>/agent-session/ (أدلة + لقطات + JSON قياس) · حزم 3.9.0 (سيرفر · وكيل ويندوز · APK) · manifest.json مُحدَّث · CHANGELOG وPROJECT_STATE وPLAN-STATUS محدَّثة.
+docs/ADR/AGENT-SESSION-AR.md · docs/PROTOCOL-RELAY-AR.md v2.0 · docs/AGENT-SESSION-AR.md · docs/AGENT-SESSION-TEST-MATRIX-AR.md · docs/DECISIONS-LOG.md · outputs/verify-<date>/agent-session/ (أدلة + لقطات + JSON قياس) · حزم 3.9.0 (سيرفر · وكيل ويندوز · APK) · manifest.json مُحدَّث · CHANGELOG وPROJECT_STATE وPLAN-STATUS محدَّثة.

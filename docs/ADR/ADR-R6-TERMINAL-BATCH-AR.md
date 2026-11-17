@@ -2,7 +2,7 @@
 
 **التاريخ:** 2026-10-29 · **الحالة:** معتمد ومُنفَّذ
 **النطاق:** `CommandRunner.tsx` · `SettingsExtra.tsx` · `PTYTerminal.tsx` · `SSHTerminal.tsx`
-**الأساس:** بوابة `scripts/scan-ui-colors.cjs` (1061 → 765) وسياسة `docs/ADR-R6-INTERACTIVE-SURFACES-AR.md`.
+**الأساس:** بوابة `scripts/scan-ui-colors.cjs` (1061 → 765) وسياسة `docs/ADR/R6-INTERACTIVE-SURFACES-AR.md`.
 
 ---
 

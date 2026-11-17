@@ -23,7 +23,7 @@
 | `packages/agent-desktop/renderer/index.html` | — | بطاقة اتصال + modal موافقة | وكيل ويندوز |
 | `packages/agent-desktop/renderer/app.js` | — | +68 سطراً: رمز 9 أرقام · طلب · عدّاد · قرار | وكيل ويندوز |
 | `packages/*/package.json` · `version.ts` | 3.8.41 | **3.9.0** | الإصدار |
-| `docs/ADR-AGENT-SESSION-AR.md` | — | قرار المعمارية + بوابة الفشل | وثائق |
+| `docs/ADR/AGENT-SESSION-AR.md` | — | قرار المعمارية + بوابة الفشل | وثائق |
 | `docs/PROTOCOL-RELAY-AR.md` | v1.1 | **v2.0** (+57 سطراً، v1.1 محفوظ) | وثائق |
 | `docs/DECISIONS-LOG.md` | — | 12 قراراً تنفيذياً | وثائق |
 | `docs/AGENT-SESSION-TEST-MATRIX-AR.md` | — | T1–T18 بحالتها الصادقة | وثائق |

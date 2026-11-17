@@ -151,7 +151,7 @@ updates:
 الخيار (ب) **التوحيد التدريجي** — نقل مسارات الحياة من `server.js` إلى TS على موجات لاحقة (خارج نطاق W1).  
 الخيار (ج) **دمج فوري** — مرفوض في W1 (خطر بلا اختبار كافٍ).
 
-**التوصية:** (أ) الآن + بند في W3 لدراسة (ب). القرار يُكتب في `docs/ADR-DUAL-SERVER.md` بالقالب: سياق / خيارات / قرار / نتائج.
+**التوصية:** (أ) الآن + بند في W3 لدراسة (ب). القرار يُكتب في `docs/ADR/DUAL-SERVER.md` بالقالب: سياق / خيارات / قرار / نتائج.
 
 **قالب HANDOFF (يُملأ ولا يُترك فارغاً):**
 
@@ -509,7 +509,7 @@ DEVICE_NAME=My Computer
 | `.github/dependabot.yml` | W1 | جديد |
 | `.github/workflows/ci.yml` | W1/W2 | pnpm version + خطوة test موحّدة + lint |
 | `docs/HANDOFF-2026-11-16.md` | W1 | جديد |
-| `docs/ADR-DUAL-SERVER.md` | W1 | جديد |
+| `docs/ADR/DUAL-SERVER.md` | W1 | جديد |
 | `SECURITY.md` | W1 | جديد |
 | `PROJECT_STATE.md` | W1 | ترويسة + §0.1 + §12 |
 | `CHANGELOG.md` | W1/W2 | 3.16.x + 3.17.0 |

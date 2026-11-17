@@ -10,7 +10,7 @@
 | 2 | رفع pnpm الفعّل والجذر | `pnpm -v` ≥ 11.5.3 | `pnpm -v` = **11.28.12** (آخر 11.x؛ engines تتطلب node ≥22.13 — متوافق مع CI node 22 والمحلي 24) · الجذر `"pnpm": "^11.28.12"` | PASS |
 | 3 | توحيد CI مع الجذر (فخّ 89) | نفس الإصدار في الـ3 مواضع | `ci.yml`: 9.15.9 → **11.28.12** ×3 (verify · desktop-e2e · installer) | PASS |
 | 4 | `.github/dependabot.yml` | npm + github-actions أسبوعي | أُنشئ — بلا reviewers (GitHub مقفل من المالك؛ تعليق داخل الملف) | PASS |
-| 5 | fastify بلا ترقية 4→5 (D4) | ADR + آخر 4.x إن وُجد backport | **لا يوجد backport** (4.29.1 آخر 4.x؛ GHSA-jx2c-rxcm-jvmq مصحَّح في 5.7.2 فقط) → `docs/ADR-FASTIFY-SECURITY.md`. الحيّ `server-desktop` على **fastify ^5.12.7** غير متأثر | PASS |
+| 5 | fastify بلا ترقية 4→5 (D4) | ADR + آخر 4.x إن وُجد backport | **لا يوجد backport** (4.29.1 آخر 4.x؛ GHSA-jx2c-rxcm-jvmq مصحَّح في 5.7.2 فقط) → `docs/ADR/FASTIFY-SECURITY.md`. الحيّ `server-desktop` على **fastify ^5.12.7** غير متأثر | PASS |
 | 6 | إغلاق high قابلة للإصلاح دون كسر توافق | overrides بأسلوب المستودع القائم | `brace-expansion@5` → **5.0.13** (يغلق 4 high في الحيّ عبر @fastify/static) · `@fastify/busboy@3` → **3.2.6** (يغلق 2 high عبر multipart@8). **نُقلت كل الـoverrides إلى `pnpm-workspace.yaml`** — pnpm 11 لا يقرأ `pnpm.overrides` من package.json (تحذير موثّق أدناه) | PASS |
 | 7 | `pnpm install --no-frozen-lockfile` | قفل محدَّث بالـoverrides | 905 حزمة · lockfileVersion 9.0 · القفل يحمل brace-expansion@5.0.13 وbusboy@3.2.6 وpnpm@11.28.12 | PASS |
 | 8 | أمر CI حرفياً: `pnpm install --frozen-lockfile --ignore-scripts` | ينجح على pnpm 11 | exit 0 في 13.9s — «Lockfile is up to date» | PASS |

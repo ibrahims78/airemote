@@ -35,7 +35,7 @@
 
 | ما قد يقوله الآلي خطأً | الحقيقة | كيف تتحقق |
 |---|---|---|
-| A6 لا ADR | 9 ملفات `docs/ADR-*.md` موجودة | `Get-ChildItem docs -Filter 'ADR-*'` |
+| A6 لا ADR | 9 ملفات `docs/ADR/*.md` موجودة | `Get-ChildItem docs -Filter 'ADR-*'` |
 | A5 لا PROJECT_STATE | `PROJECT_STATE.md` في **الجذر** لا في `docs\` | `Test-Path PROJECT_STATE.md` |
 | B2 remote مضبوط | `git remote -v` **فارغ** | `git remote -v` |
 | B6 أسرار `.pem` | شهادة + مفتاح عام، ليست أسراراً | اقرأ أول سطر من كل `.pem` متتبع |
@@ -77,7 +77,7 @@ cd D:\ProjectForge\05-SCRIPTS
 - هل أوامر التشغيل حقيقية (اقرأها سطراً سطراً وجرّب وجود الملفات التي تستدعيها)؟
 - `CHANGELOG.md` آخر إصدار موثّق مقابل `VERSION`.
 - `PROJECT_STATE.md` (الجذر): ترويسة «آخر تحديث» مقابل الحقيقة.
-- `docs/DEFINITION-OF-DONE.md` · `docs/ADR-*.md` · غياب `RUNBOOK` و`SECURITY.md` و`AGENTS.md` و`CONTRIBUTING.md`.
+- `docs/DEFINITION-OF-DONE.md` · `docs/ADR/*.md` · غياب `RUNBOOK` و`SECURITY.md` و`AGENTS.md` و`CONTRIBUTING.md`.
 - هل أول 20 سطراً من README تحوي غرضاً بجملة + مستخدماً + **مقياس نجاح رقمياً**؟
 
 ### B — المستودع

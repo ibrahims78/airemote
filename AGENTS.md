@@ -34,7 +34,7 @@
 
 ## الكود الحيّ
 
-`packages/server-desktop/server.js` هو المشحون — **ليس** `packages/server` TypeScript (فخّ 88). انظر `docs/ADR-DUAL-SERVER.md`.
+`packages/server-desktop/server.js` هو المشحون — **ليس** `packages/server` TypeScript (فخّ 88). انظر `docs/ADR/DUAL-SERVER.md`.
 
 ## كل بند
 

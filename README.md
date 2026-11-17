@@ -64,7 +64,7 @@ AiRemote منصة **self-hosted** للوصول عن بُعد وإدارة الأ
 
 ## 🏗️ المعمارية — مصدر حقيقة واحد
 
-> **قرار معماري موثّق:** `docs/ADR-DUAL-SERVER.md` (W1-3).
+> **قرار معماري موثّق:** `docs/ADR/DUAL-SERVER.md` (W1-3).
 > **الكود الحيّ المشحون هو `packages/server-desktop/server.js`** (Electron main → esbuild bundle → `app.asar`).
 > **`packages/server` (TypeScript) مرجع تعليمي مجمد غير مشحون** — إصداره 3.14.0 عمداً. أي إصلاح فيه وحده لا يصل الحزمة المشحونة (فخّ 88).
 
@@ -135,7 +135,7 @@ docker compose -f docker/docker-compose.yml up -d
 ```
 
 `docker-compose.yml` يرفض الإقلاع بلا `JWT_SECRET` و`CREDENTIALS_KEY` (healthcheck مضمّن).
-**تنبيه صدق:** صورة Docker حالياً تبني `packages/server` **المرجع المجمد** لا `server-desktop` الحيّ — انظر `docs/ADR-DUAL-SERVER.md`. لا تُشغَّل على قاعدة إنتاج حيّة.
+**تنبيه صدق:** صورة Docker حالياً تبني `packages/server` **المرجع المجمد** لا `server-desktop` الحيّ — انظر `docs/ADR/DUAL-SERVER.md`. لا تُشغَّل على قاعدة إنتاج حيّة.
 
 **لا تُشغَّل حاويات Docker على قاعدة الإنتاج الحيّة.**
 

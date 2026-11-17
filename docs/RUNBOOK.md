@@ -27,7 +27,7 @@ export JWT_SECRET=$(openssl rand -hex 32)
 export CREDENTIALS_KEY=$(openssl rand -hex 32)
 docker compose -f docker/docker-compose.yml up -d
 ```
-يرفض الإقلاع بلا المفتاحين. **صورة Docker تبني حالياً الحزمة المرجعية TS لا `server-desktop`** — `docs/ADR-DUAL-SERVER.md`.
+يرفض الإقلاع بلا المفتاحين. **صورة Docker تبني حالياً الحزمة المرجعية TS لا `server-desktop`** — `docs/ADR/DUAL-SERVER.md`.
 
 ---
 
@@ -103,6 +103,21 @@ node scripts/restore-backup.cjs `
 
 ---
 
+
+## 7.1) CORS — قياس حيّ (W3-5 · 2026-11-17)
+
+الكود: `server.js:3914` → `origin: false, credentials: true` (نفس الأصل فقط).
+
+قياس على 3001 الحيّ (3.16.19 — نفس الكود في 3.17.0، لم يُلمس):
+
+| الطلب | النتيجة |
+|---|---|
+| `Origin: https://evil.example` | **لا `Access-Control-Allow-Origin`** — المتصفح يحجب القراءة العابرة ✓ |
+| `Origin: http://localhost:5000` (اللوحة) | **لا ACAO** — الإنتاج يخدم اللوحة same-origin (static مدمجة) فلا حاجة CORS عابرة ✓ |
+| بلا Origin (same-origin) | 200 طبيعي ✓ |
+| HSTS + nosniff | موجودة ✓ |
+
+**الحكم:** سلوك CORS آمن ومقيس فعلياً — نفس الأصل فقط. لو فُتحت اللوحة على منفذ مختلف ستتطلب إعداد origin صريح (قرار مستقبلي بلا تنفيذ).
 ## 7) TLS
 
 - الإنتاج: TLS إلزامي — البوتس بلا JWT_SECRET أو TLS = FATAL (`e2e-connection` يحميها).

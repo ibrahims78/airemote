@@ -18,7 +18,7 @@
 
 ## قواعد لا تُكسر
 
-1. **الكود الحيّ المشحون هو `packages/server-desktop/server.js`** — إصلاح `packages/server` (TS) وحده لا يصل الحزمة (`docs/ADR-DUAL-SERVER.md`).
+1. **الكود الحيّ المشحون هو `packages/server-desktop/server.js`** — إصلاح `packages/server` (TS) وحده لا يصل الحزمة (`docs/ADR/DUAL-SERVER.md`).
 2. **لا `better-sqlite3`** كمحرك أساسي — `@libsql/client` / `node:sqlite` async.
 3. **@fastify/multipart@8 و @fastify/rate-limit@8 و @fastify/cookie@9** لا تُرفع خارج مسار مدروس (توافق fastify).
 4. **shared يُبنى قبل server** — وعند تعديل الأنواع.

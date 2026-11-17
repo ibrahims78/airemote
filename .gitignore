@@ -90,3 +90,7 @@ secrets/
 
 # W2-9 — ثنائيات ثقيلة تُنزَّل وقت التثبيت (scripts/download-cloudflared.js)
 packages/server-desktop/bin/cloudflared.exe
+
+# W3-2 — سجلات بناء لا تُتتبع
+srv-build-log*
+agent-build-log*

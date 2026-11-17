@@ -5,7 +5,7 @@
 | **التاريخ** | 2026-11-17 |
 | **الحالة** | مقبول — قرار D5 (الملك: السيرفر الحيّ = `server-desktop`) |
 | **الدليل** | `outputs/verify-2026-11-17/W1-3/` |
-| **ذو صلة** | `docs/ADR-FASTIFY-SECURITY.md` (ثغرات الحزمة المجمدة) |
+| **ذو صلة** | `docs/ADR/FASTIFY-SECURITY.md` (ثغرات الحزمة المجمدة) |
 
 ## السياق
 
@@ -30,7 +30,7 @@
 
 1. `packages/server-desktop/server.js` هو **مصدر الحقيقة المشحون**.
 2. `packages/server` = **مرجع تعليمي/مجمد** — أُعلن ذلك في `packages/server/README.md` (ويُكتب في README الجذر ضمن W2-1).
-3. ثغرات fastify 4.x العالية في هذه الحزمة مقبولة موثّقة بـ`docs/ADR-FASTIFY-SECURITY.md` لأنها غير مشحونة.
+3. ثغرات fastify 4.x العالية في هذه الحزمة مقبولة موثّقة بـ`docs/ADR/FASTIFY-SECURITY.md` لأنها غير مشحونة.
 4. أي عمل مستقبلي على السيرفر يستهدف `server.js` الحيّ إلا بقرار صريح من المالك.
 
 ## النتائج

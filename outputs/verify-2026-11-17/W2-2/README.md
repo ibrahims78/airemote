@@ -14,7 +14,7 @@
 | `airemote-agent-desktop` | 3.16.19 | **3.17.0** |
 | `@airemote/dashboard` | 3.16.19 | **3.17.0** |
 | `airemote-server-desktop` | 3.16.19 | **3.17.0** |
-| `@airemote/server` | 3.14.0 | **3.14.0 — استثناء مكتوب** (`docs/ADR-DUAL-SERVER.md`: مرجع مجمد غير مشحون) |
+| `@airemote/server` | 3.14.0 | **3.14.0 — استثناء مكتوب** (`docs/ADR/DUAL-SERVER.md`: مرجع مجمد غير مشحون) |
 | `VERSION` | 3.16.19 | **3.17.0** |
 | android `versionCode` | 109 | **110** (versionName يُقرأ من VERSION آلياً) |
 | dashboard `APP_VERSION` | 3.16.19 | **3.17.0** |

@@ -15,7 +15,7 @@
 
 ## ما لا يعمل / ناقص
 - `/health` على 3001 UNREACHABLE لحظة 2026-11-17 (لم يُصلَح — بند 15 من r20)
-- 6 high متبقية في `packages/server` المجمدة غير المشحونة (`docs/ADR-FASTIFY-SECURITY.md`)
+- 6 high متبقية في `packages/server` المجمدة غير المشحونة (`docs/ADR/FASTIFY-SECURITY.md`)
 - W1-4 وبوابة W1 ثم W2 (3.17.0) ثم W3 — انظر خطة الإصلاح
 - CI على GitHub Actions غير مفعّل (GitHub مقفل من المالك)
 

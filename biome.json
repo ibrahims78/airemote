@@ -7,7 +7,11 @@
       "packages/ai-engine/src/**",
       "packages/dashboard/src/**",
       "packages/server/src/**",
-      "!**/*.css"
+      "!**/*.css",
+      "!packages/server-desktop/server.js"
+      "!packages/server-desktop/main.js"
+      "!**/static/**"
+      "!**/dist/**"
     ]
   },
   "formatter": {
