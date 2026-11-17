@@ -93,8 +93,9 @@ AiRemote منصة **self-hosted** للوصول عن بُعد وإدارة الأ
 ### 1) الاستنساخ
 
 ```bash
-# المستودع الرسمي حالياً: Gitea محلي خاص (قرار المالك — GitHub غير مرتبط)
+# مستودعان خاصان: Gitea محلي (origin) + GitHub (github)
 git clone http://localhost:3000/ibrahims78/airemote.git
+# أو: git clone https://github.com/ibrahims78/airemote.git
 cd airemote
 pnpm install
 ```
