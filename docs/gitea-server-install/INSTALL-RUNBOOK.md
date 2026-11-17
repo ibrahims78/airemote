@@ -158,4 +158,6 @@ credentials = D:\Services\Gitea\git-credentials (خارج المستودع)
 
 `git push` و`git fetch` تعمل بلا إدخال كلمة مرور على هذا الاستنساخ.
 
+> **ملاحظة 2026-11-17 (فخّ اعتماد):** كلمة مرور Gitea تنتهي بـ`@` — يجب **URL-encoding** في ملف store (`%40`) وإلاّ لا يطابقها `credential-store`، ويجب أن يكون الملف بنهايات **LF** لا CRLF (الـ`\r` يفسد مطابقة host). أُعيد بناء الملف من `gitea-admin.txt` بترميز سليم بعد فشل دفع مفاجئ (الملف كُتب فوقه CRLF + كلمة مرور خام في 11:19). الدليل: إصلاح موثق في جلسة W2.
+
 > **ملاحظة 2026-11-17:** إن فشل `fetch`/`push` بـ`Authentication failed` رغم وجود ملف الاعتماد، فالسبب الغالب تدخّل Git Credential Manager (helper عام `credential.helper = manager` على مستوى النظام) قبل store helper. العلاج المطبّق في `.git/config` لهذا الاستنساخ: قسم `[credential]` بقيمة `helper =` فارغة قبل مدخلي `credential "http://localhost:3000"` / `credential "http://192.168.1.25:3000"` — يُصفّر موروث GCM ويبقي store هو المعتمد. الدليل: `outputs/verify-2026-11-17/W1-1/`.
