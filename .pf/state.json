@@ -112,8 +112,14 @@
                          "note":  "الأسطول 6/6 على 3.17.0 — بوابة W2 حالة 13 PASS — AISHOT سليم",
                          "commit":  "",
                          "at":  "2026-11-17 20:01"
+                     },
+                     {
+                         "account":  "admin@",
+                         "note":  "GitHub مرتبط: 5 فروع + 6 وسوم + CI أخضر — SSH deploy key + core.sshCommand wrapper",
+                         "commit":  "",
+                         "at":  "2026-11-18 00:45"
                      }
                  ],
     "created":  "2026-11-17",
-    "updated":  "2026-11-17 20:01"
+    "updated":  "2026-11-18 00:45"
 }
