@@ -94,7 +94,9 @@
 > - **W1-1 منجز:** pf adopt + backup (bundle SHA256 مطابق) + Gitea origin + إصلاح سلسلة اعتماد GCM. الدليل: `outputs/verify-2026-11-17/W1-1/`.
 > - **W1-2 منجز:** pnpm 11.28.12 + dependabot + نقل overrides إلى pnpm-workspace.yaml + ADR-FASTIFY-SECURITY (6 high متبقية في الحزمة المجمدة). الدليل: `outputs/verify-2026-11-17/W1-2/`.
 > - **W1-3 منجز:** HANDOFF + ترويسة هذا الملف + CHANGELOG 3.16.1–3.16.19 + ADR-DUAL-SERVER (الحيّ = server-desktop).
-> - **التالي:** W1-4 ثم بوابة W1 (10 حالات) ثم W2 (3.17.0/vc110) ثم W3. لا تثبيت أسطول قبل «ثبّت».
+> - **W1-4 منجز:** SECURITY.md (قناة placeholder يملؤها المالك).
+> - **بوابة W1: PASS 10/10** — الدليل: `outputs/verify-2026-11-17/gate-W1/` (المجموعات السبع كلها PASSED).
+> - **التالي:** W2 (3.17.0/vc110) ثم بوابة W2 ثم W3. لا تثبيت أسطول قبل «ثبّت».
 > - `/health` UNREACHABLE لحظة 2026-11-17 — لا يُصلَح بلا أمر (r20 بند 15).
 
 > **(تاريخي — من حقبة 3.12.x / 2026-11-03 — أُبقي للسجل):** **3.12.2 — M1 الخطوة 2 (2026-11-03):** ✅ الدقة الكاملة. العيب الجذري: `degradationPreference`
