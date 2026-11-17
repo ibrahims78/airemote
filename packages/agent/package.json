@@ -1,6 +1,12 @@
 {
   "name": "@airemote/agent",
-  "version": "3.14.0",
+  "version": "3.17.0",
+
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=11.5.3"
+  },
+  
   "main": "dist/index.js",
   "scripts": {
     "dev": "tsx watch src/index.ts",

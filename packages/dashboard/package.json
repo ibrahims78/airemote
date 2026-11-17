@@ -1,6 +1,12 @@
 {
   "name": "@airemote/dashboard",
-  "version": "3.16.19",
+  "version": "3.17.0",
+
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=11.5.3"
+  },
+  
   "scripts": {
     "dev": "vite --port 5000 --host",
     "build": "tsc && vite build",
