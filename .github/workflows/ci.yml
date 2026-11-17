@@ -73,6 +73,9 @@ jobs:
       - name: Typecheck agent
         run: pnpm --filter @airemote/agent typecheck
 
+      - name: Build agent
+        run: pnpm --filter @airemote/agent build
+
       - name: Typecheck dashboard
         run: pnpm --filter @airemote/dashboard typecheck
 
