@@ -285,7 +285,7 @@ end_of_line = crlf
 | **معيار القبول** | `git grep "C:\\\\Users\\\\admin"` في `packages/server-desktop/server.js` = **0** · اختبار لقطة شاشة ينجح على مضيف غير admin |
 | **الجهد** | الكود الحيّ 1–2 ساعة · scripts 2–3 ساعات (يمكن تقسيمها) |
 
-### W2-6 · `.env.example` مركزي شامل
+### W2-6 · `.env.example` مركزي شامل — **☑ منجز 2026-11-17** — دليله `outputs/verify-2026-11-17/W2-6/`
 
 | البند | التفصيل |
 |---|---|
@@ -321,7 +321,7 @@ DEVICE_TOKEN=                 # من اللوحة
 DEVICE_NAME=My Computer
 ```
 
-### W2-7 · CONTRIBUTING + AGENTS
+### W2-7 · CONTRIBUTING + AGENTS — **☑ منجز 2026-11-17** — دليله `outputs/verify-2026-11-17/W2-7/`
 
 قالبان يُكتبان من WORKING_AGREEMENT + قواعد هذا الملف. `AGENTS.md` يمنع: ميزة قبل W1، كتابة أسرار، تجاوز توقّف r19/r20، تعديل `server.js` خارج نطاق مهمة.
 
