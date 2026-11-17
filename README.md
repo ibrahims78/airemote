@@ -2,14 +2,14 @@
 
 # ⚡ AiRemote
 
-**Open-source remote access platform with a built-in AI Agent**  
-**منصة وصول عن بُعد مفتوحة المصدر مع AI Agent مدمج**
+**منصة وصول عن بُعد self-hosted مع طبقة ذكاء اصطناعي مدمجة**
+**Self-hosted remote access platform with a built-in AI Agent**
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.4-3178C6?logo=typescript&logoColor=white)](https://typescriptlang.org)
 [![Node.js](https://img.shields.io/badge/Node.js-22+-5FA04E?logo=node.js&logoColor=white)](https://nodejs.org)
-[![Fastify](https://img.shields.io/badge/Fastify-4.x-000000?logo=fastify)](https://fastify.dev)
+[![pnpm](https://img.shields.io/badge/pnpm-11.x-F69220?logo=pnpm&logoColor=white)](https://pnpm.io)
+[![Fastify](https://img.shields.io/badge/Fastify-5.x-000000?logo=fastify)](https://fastify.dev)
 [![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black)](https://react.dev)
-[![Version](https://img.shields.io/badge/version-3.7.0-blueviolet)]()
+[![Version](https://img.shields.io/badge/version-3.17.0-blueviolet)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Self-hosted](https://img.shields.io/badge/Self--hosted-✓-brightgreen)]()
 
@@ -17,186 +17,229 @@
 
 ---
 
-## What is AiRemote?
+## ما هو AiRemote؟
 
-AiRemote is a **self-hosted** remote access and system management platform. It combines real-time screen sharing, full remote control (mouse + keyboard), AI-powered command execution, SSH terminal, and file management — all in one open-source solution.
+AiRemote منصة **self-hosted** للوصول عن بُعد وإدارة الأنظمة: بثّ شاشة، تحكم كامل (فأرة + لوحة مفاتيح)، تنفيذ أوامر بالذكاء الاصطناعي، طرفية SSH، وإدارة ملفات — في حل واحد مفتوح المصدر. بديل خفيف لـ AnyDesk/TeamViewer مع طبقة AI.
 
-It is a lean, self-hosted alternative to AnyDesk / TeamViewer, extended with an AI layer that no competing tool currently offers.
+**مقياس النجاح المعتمد (D6):** مستخدم جديد يرفع سيرفراً ووكيل ويندوز ويتحكم بجهاز واحد خلال **≤ 15 دقيقة** من الاستنساخ إلى `/health` — يُقاس في بوابة W2.
 
 ---
 
-## ✨ Features
+## ✨ الميزات
 
-### Remote Control (v3.0.0)
-| Feature | Description |
+### التحكم عن بُعد
+| الميزة | الوصف |
 |---|---|
-| 🖥️ **Screen Streaming** | MJPEG-over-WebSocket, up to 30 FPS, adjustable quality |
-| 🖱️ **Mouse Control** | Move, click, right-click, double-click, drag, scroll |
-| ⌨️ **Keyboard Control** | All keys + modifier combos (Ctrl+C, Alt+F4, etc.) |
-| 📋 **Clipboard Sync** | Read/write remote clipboard, bidirectional |
-| 🖥️ **Multi-monitor** | Switch between monitors in real-time |
-| 🔒 **Privacy Mode** | Blank the remote screen during a session |
-| 📹 **Session Recording** | Record session to WebM video download |
-| 📡 **Latency Display** | RTT ping-pong — color-coded connection quality |
-| ⏱️ **Idle Timeout** | Auto-warning after 5 min of inactivity |
+| 🖥️ **بثّ الشاشة** | MJPEG-over-WebSocket حتى 30 FPS بجودة قابلة للضبط |
+| 🖱️ **الفأرة** | تحريك، نقر، نقر مزدوج، سحب، تمرير |
+| ⌨️ **لوحة المفاتيح** | كل المفاتيح + التركيبات (Ctrl+C، Alt+F4…) |
+| 📋 **الحافظة** | قراءة/كتابة ثنائية الاتجاه |
+| 🖥️ **شاشات متعددة** | تبديل حي بين الشاشات |
+| 🔒 **وضع الخصوصية** | إطفاء الشاشة البعيدة أثناء الجلسة |
+| 📹 **تسجيل الجلسة** | تسجيل WebM قابل للتنزيل |
+| 📡 **زمن الاستجابة** | RTT ملوّن حسب الجودة |
+| ⏱️ **مهلة الخمول** | تحذير تلقائي بعد 5 دقائق |
 
-### Platform Support
-| Feature | Linux | macOS | Windows |
+### المنصات
+| الميزة | Linux | macOS | Windows |
 |---|---|---|---|
-| Screen capture | scrot / ImageMagick / xwd | screencapture | PowerShell GDI |
-| Mouse control | xdotool | cliclick / osascript | user32.dll |
-| Keyboard control | xdotool | osascript | SendKeys |
-| Clipboard | xclip / xsel | pbcopy/pbpaste | Set-Clipboard |
-| Multi-monitor | xrandr | system_profiler | Screen.AllScreens |
-| Privacy mode | xrandr brightness | system sleep | LockWorkStation |
+| التقاط الشاشة | scrot / ImageMagick / xwd | screencapture | PowerShell GDI |
+| الفأرة | xdotool | cliclick / osascript | user32.dll |
+| لوحة المفاتيح | xdotool | osascript | SendKeys |
+| الحافظة | xclip / xsel | pbcopy/pbpaste | Set-Clipboard |
 
-### Management
-| Feature | Description |
+### الإدارة
+| الميزة | الوصف |
 |---|---|
-| 🤖 **AI Agent** | Chat in Arabic or English — executes shell commands with one click |
-| 🔌 **SSH Terminal** | Full browser-based terminal with xterm.js (256-color, resize, fullscreen) |
-| 📊 **Real-time Monitoring** | Live CPU / RAM / Disk / Network charts |
-| 📁 **File Manager** | Browse, upload, download, rename, delete from the browser |
-| 🔔 **Alert Rules** | CPU/RAM/Disk thresholds with webhook notifications |
-| 👥 **Multi-user** | Role-based access: Admin / Manager / Viewer |
-| 🌍 **Arabic + English** | Full bilingual UI with instant switching |
-| 🔐 **2FA** | Optional TOTP-based two-factor authentication |
+| 🤖 **وكيل AI** | محادثة بالعربية أو الإنجليزية — تنفيذ أوامر بنقرة |
+| 🔌 **طرفية SSH** | xterm.js في المتصفح (256 لوناً، ملء الشاشة) |
+| 📊 **مراقبة حيّة** | CPU / RAM / Disk / Network |
+| 📁 **مدير ملفات** | تصفح، رفع، تنزيل، إعادة تسمية |
+| 🔔 **قواعد تنبيه** | عتبات CPU/RAM/Disk مع webhook |
+| 👥 **تعدد مستخدمين** | أدوار: Admin / Manager / Viewer |
+| 🌍 **عربي + إنجليزي** | واجهة ثنائية اللغة بتبديل فوري |
+| 🔐 **2FA** | TOTP اختياري |
 
 ---
 
-## 🏗️ Architecture
+## 🏗️ المعمارية — مصدر حقيقة واحد
+
+> **قرار معماري موثّق:** `docs/ADR-DUAL-SERVER.md` (W1-3).
+> **الكود الحيّ المشحون هو `packages/server-desktop/server.js`** (Electron main → esbuild bundle → `app.asar`).
+> **`packages/server` (TypeScript) مرجع تعليمي مجمد غير مشحون** — إصداره 3.14.0 عمداً. أي إصلاح فيه وحده لا يصل الحزمة المشحونة (فخّ 88).
 
 ```
-Browser (React Dashboard :5000)
-        │  REST API + WebSocket
+المتصفح (React Dashboard :5000)
+        │  REST + WebSocket
         ▼
-AiRemote Server (Fastify :3001)
-  ├── REST API   — Auth · Devices · Users · Sessions · AI · Settings · Downloads
-  ├── WS /agent  — Agent relay + capabilities registry
-  ├── WS /ws     — Real-time stats broadcast
-  ├── WS /screen — MJPEG stream + remote control relay (v2.0.0)
-  ├── WS /pty    — PTY shell sessions
-  └── LibSQL DB  — users · devices · sessions · audit_log · alert_rules
-        │  WebSocket (Agent Protocol)
+سيرفر AiRemote الحيّ (packages/server-desktop/server.js · Fastify 5 · :3001 TLS)
+  ├── REST API    — Auth · Devices · Users · Sessions · AI · Settings
+  ├── WS /agent   — تسجيل الوكلاء + capabilities
+  ├── WS /ws      — بثّ الإحصاءات
+  ├── WS /screen  — بثّ MJPEG + تحكم
+  ├── WS /pty     — طرفية
+  └── SQLite      — users · devices · sessions · audit_log · alert_rules
+        │  بروتوكول الوكيل
         ▼
-AiRemote Agent  (runs on each remote device)
-  ├── Registers with device token + full v3.0.0 capabilities
-  ├── Sends heartbeat + stats every 4s
-  ├── Screen capture (MJPEG frames)
-  ├── Mouse + keyboard + clipboard control
-  ├── PTY shell / SSH tunnels
-  └── File system operations
+وكيل AiRemote (packages/agent-desktop على ويندوز · android-agent على أندرويد)
 ```
 
 ---
 
-## 🚀 Quick Start
+## 🚀 البدء السريع
 
-### Development (pnpm)
+**المتطلبات:** Node.js ≥ 22 · pnpm ≥ 11.5.3 (المستودع يعلن `engines`).
+
+### 1) الاستنساخ
 
 ```bash
-git clone https://github.com/yourusername/airemote.git
+# المستودع الرسمي حالياً: Gitea محلي خاص (قرار المالك — GitHub غير مرتبط)
+git clone http://localhost:3000/ibrahims78/airemote.git
 cd airemote
 pnpm install
-
-# Terminal 1 — Server
-pnpm --filter @airemote/shared build && pnpm --filter @airemote/ai-engine build
-cd packages/server && pnpm dev    # http://localhost:3001
-
-# Terminal 2 — Dashboard
-cd packages/dashboard && pnpm dev  # http://localhost:5000
-
-# Terminal 3 — Agent (on remote device)
-cd packages/agent && pnpm dev
 ```
 
-### Docker (coming soon)
+### 2) التطوير
+
 ```bash
-docker compose up -d
+# بناء الحزم المشتركة أولاً (قاعدة WORKING_AGREEMENT)
+pnpm --filter @airemote/shared build
+pnpm --filter @airemote/ai-engine build
+pnpm --filter @airemote/dashboard build
+
+# السيرفر الحيّ (ما يُشحن في المثبّتات)
+cd packages/server-desktop
+pnpm start            # electron — استمع على :3001 (TLS إلزامي في production)
+
+# اللوحة (تطوير)
+pnpm --filter @airemote/dashboard dev    # :5000
 ```
+
+> **ملاحظة:** `pnpm --filter @airemote/server dev` يشغّل **المرجع المجمد** لا السيرفر الحيّ — لا تستخدمه كمرجع سلوك الإنتاج.
+
+### 3) الإنتاج (ويندوز)
+
+المثبّتات الجاهزة في `releases/`:
+- `releases/server-windows/` — سيرفر ويندوز (Setup / zip)
+- `releases/agent-windows/` — وكيل ويندوز
+- `releases/android-agent/` — APK
+
+التثبيت: السيرفر أولاً ثم `/health` ثم الوكلاء. **TLS إلزامي في production** (البوتس بلا TLS/JWT_SECRET = FATAL).
+
+### 4) Docker (موجود — بحدّث موثّق)
+
+```bash
+export JWT_SECRET=$(openssl rand -hex 32)
+export CREDENTIALS_KEY=$(openssl rand -hex 32)
+docker compose -f docker/docker-compose.yml up -d
+```
+
+`docker-compose.yml` يرفض الإقلاع بلا `JWT_SECRET` و`CREDENTIALS_KEY` (healthcheck مضمّن).
+**تنبيه صدق:** صورة Docker حالياً تبني `packages/server` **المرجع المجمد** لا `server-desktop` الحيّ — انظر `docs/ADR-DUAL-SERVER.md`. لا تُشغَّل على قاعدة إنتاج حيّة.
+
+**لا تُشغَّل حاويات Docker على قاعدة الإنتاج الحيّة.**
+
+### 5) الاختبارات
+
+```bash
+pnpm typecheck                          # TypeScript — 5 حزم
+node packages/server/test/registry-race.test.cjs
+node packages/server/test/e2e-connection.test.cjs
+node packages/server/test/e2e-authz.test.cjs
+node packages/server/test/e2e-screen-keyframe.test.cjs
+node packages/agent-desktop/test/safety.test.cjs
+node packages/agent-desktop/test/password-kdf.test.cjs
+node packages/server-desktop/test/secrets.test.cjs
+```
+
+المجموعات السبع كلها **PASSED** عند آخر بوابة (`outputs/verify-2026-11-17/gate-W1/`). `SKIP` لا يُحسب نجاحاً (`docs/DEFINITION-OF-DONE.md` §7).
 
 ---
 
-## 📦 Repository Structure
+## 📦 هيكل المستودع
 
 ```
 /
 ├── packages/
-│   ├── server/       ← Fastify API + WebSocket relay (Node.js 22)
-│   ├── dashboard/    ← React 18 + TailwindCSS SPA
-│   ├── agent/        ← Cross-platform device agent (v3.0.0)
-│   ├── ai-engine/    ← OpenAI / Anthropic / Google AI abstraction
-│   └── shared/       ← Shared TypeScript types + message protocol
-└── releases/         ← Built agent binaries
+│   ├── server-desktop/   ← السيرفر الحيّ المشحون (Electron + server.js) ★
+│   ├── agent-desktop/    ← وكيل ويندوز المشحون (Electron) ★
+│   ├── android-agent/    ← وكيل أندرويد (Gradle · versionCode)
+│   ├── server/           ← مرجع TypeScript مجمد — غير مشحون (ADR)
+│   ├── dashboard/        ← React 18 + TailwindCSS
+│   ├── agent/            ← وكيل تطوير (TS)
+│   ├── shared/           ← أنواع TypeScript + عقد الرسائل
+│   └── ai-engine/        ← تجريد مزودي AI
+├── docker/               ← Dockerfile.server + Dockerfile.dashboard + compose
+├── docs/                 ← الخطط وADRs والتقارير (عربية)
+├── releases/             ← الحزم المبنية
+└── VERSION               ← مصدر رقم الإصدار الواحد
 ```
 
 ---
 
-## 🤖 Installing the Agent
+## 🤖 تثبيت الوكيل
 
-```bash
-# 1. Create a device in the Dashboard to get a token
-# 2. On the remote device:
-git clone <repo> && cd airemote
-pnpm install
-# Set SERVER_URL and DEVICE_TOKEN in packages/agent/.env
-pnpm --filter @airemote/agent dev
-```
+1. أنشئ جهازاً في اللوحة لتوليد token.
+2. على الجهاز البعيد: ثبّت وكيل ويندوز من `releases/agent-windows/` أو APK من `releases/android-agent/`.
+3. الوكيل يسجّل بـ device token + heartbeat كل 4 ثوانٍ.
 
-**Linux prerequisites:**
+**Linux (وكيل التطوير `packages/agent`):**
 ```bash
 sudo apt install scrot xdotool xclip imagemagick
 ```
 
-**macOS prerequisites:**
-```bash
-brew install cliclick   # optional — enhanced mouse control
-# Grant Accessibility permissions in System Preferences
-```
-
 ---
 
-## ⚙️ Environment Variables
+## ⚙️ متغيرات البيئة
 
-| Variable | Default | Description |
+المصدر المركزي: `.env.example` في الجذر (W2-6). الأهم:
+
+| المتغير | الافتراضي | الوصف |
 |---|---|---|
-| `PORT` | `3001` | Server port |
-| `JWT_SECRET` | *(required)* | Secret for JWT signing |
-| `DATABASE_URL` | `file:./data/airemote.db` | LibSQL connection string |
-| `LOG_LEVEL` | `info` | Logging level |
+| `PORT` | `3001` | منفذ السيرفر |
+| `JWT_SECRET` | إلزامي في production | توقيع JWT |
+| `CREDENTIALS_KEY` | إلزامي في Docker | تشفير الاعتمادات |
+| `NODE_ENV` | `development` | `production` يلزم TLS |
+| `DB_PATH` | `./data/airemote.db` | قاعدة البيانات |
+| `TRUST_PROXY` | `false` | `true` فقط خلف proxy HTTPS |
+| `TLS_CERT_PATH` / `TLS_KEY_PATH` | — | شهادة TLS |
+| `AGENT_ALLOW_INSECURE_WS` | — | `1` للمعمل المعزول فقط |
+| `AIREMOTE_BACKUP_KEEP` | `7` | تدوير النسخ |
 
-> **AI API keys** (OpenAI, Anthropic, Gemini) are configured per-user in the Dashboard Settings.
-
----
-
-## 🛡️ Security
-
-- JWT access tokens + rotating refresh tokens
-- Passwords hashed with bcrypt (cost factor 12)
-- Role-based access control on all API routes
-- Agent command execution with security pattern blocklist
-- All remote control events authenticated via session ticket
-- Server-side session tracking with full audit log
+> مفاتيح AI (OpenAI/Anthropic/Gemini) تُضبط لكل مستخدم من لوحة الإعدادات — لا تُكتب في المستودع.
 
 ---
 
-## 🤝 Contributing
+## 🛡️ الأمان
 
-Pull requests are welcome. For major changes, please open an issue first.
-
-1. Fork the repo
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes
-4. Push and open a Pull Request
+- JWT + refresh tokens دوّارة
+- bcrypt cost 12
+- RBAC على كل مسارات API
+- حجب أنماط تنفيذ الأوامر في الوكيل
+- تذاكر جلسة أحادية الاستخدام لـ WebSocket
+- سجل تدقيق كامل
+- الإبلاغ عن ثغرات: `SECURITY.md` (لا Issues العامة)
 
 ---
 
-## 📄 License
+## 🤝 المساهمة
 
-[MIT](LICENSE) — Free for personal and commercial use.
+اتبع `docs/WORKING_AGREEMENT.md`:
+1. **أولاً إصلاح الأخطاء والثغرات ثم الميزات** — لا ميزة على أساس متصدّع.
+2. ملف خطة لكل ميزة كبرى، يُحدَّث أولاً بأول.
+3. كل تغيير: توثيق + اختبار + دليل في `outputs/verify-YYYY-MM-DD/`.
+4. لا سرّ في أي ملف متتبع — الاعتمادات خارج المستودع.
+
+تفاصيل أدوات المساعد: `AGENTS.md` (W2-7).
+
+---
+
+## 📄 الترخيص
+
+[MIT](LICENSE)
 
 ---
 
 <div align="center">
-  Built with ❤️ · TypeScript · Fastify · React · WebSocket · v3.7.0
+  AiRemote · TypeScript · Fastify 5 · React · WebSocket · v3.17.0
 </div>
