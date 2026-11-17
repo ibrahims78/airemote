@@ -28,8 +28,14 @@
                          "note":  "W1-1: pf adopt + pf backup منجزان — SHA256 مطابق، ls-remote ينجح بعد إصلاح سلسلة الاعتماد",
                          "commit":  "3e4e744",
                          "at":  "2026-11-17 10:22"
+                     },
+                     {
+                         "account":  "admin@",
+                         "note":  "W1-2: pnpm 11.28.12 + dependabot + ADR fastify — 6 high متبقية في الحزمة المجمدة موثقة",
+                         "commit":  "",
+                         "at":  "2026-11-17 11:02"
                      }
                  ],
     "created":  "2026-11-17",
-    "updated":  "2026-11-17 10:22"
+    "updated":  "2026-11-17 11:02"
 }
