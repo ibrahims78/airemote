@@ -17,7 +17,7 @@
 | 10 | `check-version-consistency` | PASS على 3.17.0 | كل المصادر ✓ 3.17.0/vc110 — الفشل الوحيد `/health` UNREACHABLE | PASS* |
 | 11 | بطارية `verify.js` | ≥ 56/57 بلا تراجع | **55/57** — فشلان: (أ) `e2e: sessions export` — فلتر التاريخ + عزل viewer على **node:sqlite** (better-sqlite3@9.6.0 **بلا prebuild لـNode 24**؛ A/B بserver.js القديم فشل أكثر — **ليس انحداراً من W2**)؛ (ب) P6 `/health` UNREACHABLE | **FAIL** |
 | 12 | البناء الخمسة + بيان موقَّع | signature OK | **خمس قطع 3.17.0 على القرص** + `signature OK · all artifacts match` + APK v2+v3 | PASS |
-| 13 | تثبيت الأسطول 6/6 على 3.17.0 | بعد «ثبّت» | **لم يُنفَّذ** — بانتظار كلمة «ثبّت» + **تحذير better-sqlite3/node:sqlite أعلاه** | N/A |
+| 13 | تثبيت الأسطول 6/6 على 3.17.0 | بعد «ثبّت» | **نُفِّذ 2026-11-17 — 6/6 online على 3.17.0** (المضيف + WIN10 + WIN11 + TECNO + TAB16 + المحاكي) · AISHOT 720×1600 · 1280×800 · 1600×900 · فخ 76 عولج بـsetx AGENT_CA_CERT | **PASS** |
 | 14 | cloudflared خارج ls-files أو داخل LFS | نعم | **خارج ls-files** — تنزيل وقت التثبيت | PASS |
 
 ## سبب فشل حالة 11 (تشخيص)
