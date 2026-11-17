@@ -34,8 +34,14 @@
                          "note":  "W1-2: pnpm 11.28.12 + dependabot + ADR fastify — 6 high متبقية في الحزمة المجمدة موثقة",
                          "commit":  "",
                          "at":  "2026-11-17 11:02"
+                     },
+                     {
+                         "account":  "admin@",
+                         "note":  "W1-3: HANDOFF + STATE 3.16.19 + CHANGELOG 3.16.x + ADR السيرفرين (الحيّ = server-desktop)",
+                         "commit":  "",
+                         "at":  "2026-11-17 11:08"
                      }
                  ],
     "created":  "2026-11-17",
-    "updated":  "2026-11-17 11:02"
+    "updated":  "2026-11-17 11:08"
 }
