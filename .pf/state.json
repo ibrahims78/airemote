@@ -88,8 +88,14 @@
                          "note":  "W3: دمج main ff + تنظيف 77 سجل + ADRs + CORS مقيس — قف عند P6 (3001=3.16.19 ≠ 3.17.0)",
                          "commit":  "",
                          "at":  "2026-11-17 13:04"
+                     },
+                     {
+                         "account":  "admin@",
+                         "note":  "البند 1 منجز: better-sqlite3 13.2.0 — sessions export PASSED — verify 56/57 (P6 ينتظر تثبيت 3.17.0 على 3001)",
+                         "commit":  "",
+                         "at":  "2026-11-17 14:07"
                      }
                  ],
     "created":  "2026-11-17",
-    "updated":  "2026-11-17 13:04"
+    "updated":  "2026-11-17 14:07"
 }
