@@ -126,6 +126,16 @@ node scripts/restore-backup.cjs `
 
 ---
 
+
+## 8.1) GitHub (مرتبط 2026-11-17 — بأمر «اربط GitHub»)
+
+- **المستودع:** `https://github.com/ibrahims78/airemote` (**خاص**).
+- **الremote:** `github` = `git@github.com:ibrahims78/airemote.git` (SSH + deploy key للمستودع وحده: `C:\Users\admin\.ssh\id_ed25519_gh`).
+- **لماذا SSH لا HTTPS:** شبكة الجهاز تقطع أي اتصال HTTPS طويل عند ~9 دقائق (`remote end hung up`) — الدفع الكبير يفشل. SSH أثبت استقراراً (دفع ~60MB/960 التزاماً عبر شرائح).
+- **الرفع:** `git push github main` + `git push github feat/screen-unify-3.13.0` + `--tags`. `core.sshCommand` مضبوط في `.git/config` — لا حاجة لضبط بيئة.
+- **CI:** GitHub Actions خضر على main/feat (`ci.yml`: typecheck + lint + 7 مجموعات + builds). Desktop E2E job تجريبي (`continue-on-error`).
+- **dependabot:** `.github/dependabot.yml` مفعّل تلقائياً (npm + actions أسبوعياً).
+- **السياسة:** لا أسرار في الـremote. لا تُعدّل إلى HTTPS بلا سبب (يفشل على هذه الشبكة).
 ## 8) Gitea
 
 تشغيل/إيقاف/اعتمادات/دفع: `docs/gitea-server-install/INSTALL-RUNBOOK.md`.
