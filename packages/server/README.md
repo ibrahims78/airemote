@@ -1,5 +1,7 @@
 # @airemote/server
 
+> **⚠️ مرجع مجمد — غير مشحون** (`docs/ADR-DUAL-SERVER.md`، W1-3 2026-11-17): هذه الحزمة TypeScript **ليست** الكود الذي يعمل على الأجهزة. الكود الحيّ المشحون هو `packages/server-desktop/server.js` (esbuild → `server.bundle` → `app.asar`). الإصدار هنا 3.14.0 تعليمي/مرجعي. أي إصلاح في هذه الحزمة وحده لا يصل الحزمة المشحونة (فخّ 88).
+
 AiRemote Server v2.0.0 — Fastify-based management server that relays WebSocket connections between remote agents and the dashboard.
 
 ## Architecture
