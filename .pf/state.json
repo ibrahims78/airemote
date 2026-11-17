@@ -14,7 +14,7 @@
     "repo":  {
                  "branch":  "main",
                  "remote":  "",
-                 "lastCommit":  "3e4e744"
+                 "lastCommit":  "51a8978"
              },
     "sessions":  [
                      {
@@ -58,8 +58,14 @@
                          "note":  "W2-2: إصدارات موحدة 3.17.0/vc110 + engines — server 3.14.0 باستثناء ADR",
                          "commit":  "",
                          "at":  "2026-11-17 11:19"
+                     },
+                     {
+                         "account":  "admin@",
+                         "note":  "W2 تقدم: W2-1..W2-7 منجزة (README/env/agents/lint/test) — يتبقى W2-8/9/10 والبناء",
+                         "commit":  "51a8978",
+                         "at":  "2026-11-17 11:47"
                      }
                  ],
     "created":  "2026-11-17",
-    "updated":  "2026-11-17 11:19"
+    "updated":  "2026-11-17 11:47"
 }
