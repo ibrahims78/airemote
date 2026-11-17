@@ -87,3 +87,6 @@ outputs/**/phase3/agent-light/
 # مفتاح توقيع أندرويد (نسخة المشروع — كان في %APPDATA%\\AiRemote\\signing ويضيع)
 # secrets/airemote-release.jks + keystore-password.txt — لا يُرفع أبدًا
 secrets/
+
+# W2-9 — ثنائيات ثقيلة تُنزَّل وقت التثبيت (scripts/download-cloudflared.js)
+packages/server-desktop/bin/cloudflared.exe

@@ -333,7 +333,7 @@ DEVICE_NAME=My Computer
 
 **اختبار الاستعادة (G5):** شغّل `restore-backup.cjs` على نسخة مؤقتة (لا على القاعدة الحيّة) وسجّل التاريخ والنتيجة في RUNBOOK.
 
-### W2-9 · cloudflared.exe — LFS فعلي أو تنزيل
+### W2-9 · cloudflared.exe — LFS فعلي أو تنزيل — **☑ منجز 2026-11-17 (خيار ب)** — دليله `outputs/verify-2026-11-17/W2-9/`
 
 خيار (أ) تثبيت git-lfs + `git lfs migrate import --no-rewrite` للملف.  
 خيار (ب) **مفضّل:** أخرجه من Git، ونزّله وقت التثبيت (CI installer يفحص وجوده أصلاً).  
