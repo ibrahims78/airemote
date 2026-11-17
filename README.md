@@ -109,6 +109,8 @@ pnpm --filter @airemote/dashboard build
 
 # السيرفر الحيّ (ما يُشحن في المثبّتات)
 cd packages/server-desktop
+node scripts/bundle.js          # يلزم من استنساخ نظيف — بدونها لا يقلع server.js
+node scripts/copy-dashboard.js
 pnpm start            # electron — استمع على :3001 (TLS إلزامي في production)
 
 # اللوحة (تطوير)
