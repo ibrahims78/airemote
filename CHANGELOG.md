@@ -8,10 +8,35 @@
 - `MAJOR` — تغيير كاسر للبروتوكول أو مخطط قاعدة البيانات.
 
 **قاعدة توحيد الإصدار:** الهدف أن يحمل السيرفر والوكيلان واللوحة الرقم نفسه في كل إصدار عام.
-الوضع الحالي: المصادر على **3.16.19** (vc109 — آخر إصدار مشحون موثق، r19). هذه الجولة تُعدّ **3.17.0** في W2.
+الوضع الحالي: المصادر على **3.17.0** (vc110 — W2-2). آخر إصدار مشحون موثق **3.16.19** (r19).
 
 ---
 
+## [3.17.0] — 2026-11-17 · موجة الإصلاح W1–W2
+
+### أُضيف
+- `.github/dependabot.yml` أسبوعي (npm + github-actions) — يعمل عند ربط GitHub.
+- `SECURITY.md` · `CONTRIBUTING.md` · `AGENTS.md` · `docs/RUNBOOK.md` · `.env.example` مركزي.
+- `docs/ADR-DUAL-SERVER.md` (الحيّ = server-desktop) و`docs/ADR-FASTIFY-SECURITY.md`.
+- Biome linter على `packages/*/src` + `.editorconfig` + `pnpm lint` (أسبوع تحذير).
+- `pnpm test` موحّد (7 مجموعات) + تغطية c8 (خط أساس 23.42% أسطر).
+- `docs/HANDOFF-2026-11-16.md` · `.pf/state.json` (pf adopt) · bundle نسخة ثانية.
+
+### أُصلح
+- pnpm 11.28.12 (كان 11.5.1) — إغلاق استشارات pnpm العالية.
+- overrides نُقلت إلى pnpm-workspace.yaml (pnpm 11 لا يقرأ حقل pnpm في package.json).
+- CI: pnpm 9.15.9 → 11.28.12.
+- مسارات `C:\Users\Public` في `server.js` → `AIREMOTE_TMP` أو `os.tmpdir()`.
+- README صادق (كان 3.7.0 / Docker coming soon / yourusername).
+- cloudflared.exe خارج Git — تنزيل وقت التثبيت.
+- CHANGELOG 3.16.1–3.16.19 موثّق (كان يتوقف عند 3.16.0).
+- PROJECT_STATE ترويسة إلى الواقع.
+- إصلاح سلسلة اعتماد Gitea (GCM + ترميز @ في store).
+
+### البناء
+- versionCode 109 → **110** · المصادر موحّدة 3.17.0 · البيان يُعاد توليده عند البناء.
+
+---
 ## [3.16.19] — 2026-11-13 · فخاخ 78–80 مغلقة بكود (r19)
 
 ### أُصلح
