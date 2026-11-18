@@ -4336,7 +4336,7 @@ async function start(config) {
   })
 
   // ── GET /api/agent/allowed — lets a kicked agent poll whether it may reconnect ──
-  fastify.get('/api/agent/allowed', async (req, reply) => {
+  fastify.get('/api/agent/allowed', { config: { rateLimit: { max: 30, timeWindow: '1 minute' } } }, async (req, reply) => {
     const token = String((req.query && req.query.token) || '')
     if (!token) return reply.code(400).send({ error: 'token required' })
     const d = db.prepare('SELECT status FROM devices WHERE token=?').get(token)
