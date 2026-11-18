@@ -7,6 +7,7 @@
   },
   "private": true,
   "description": "AiRemote — Open Source Remote Access + AI Agent Platform",
+  "packageManager": "pnpm@11.28.12",
   "scripts": {
     "dev:server": "pnpm --filter @airemote/server dev",
     "dev:dashboard": "pnpm --filter @airemote/dashboard dev",

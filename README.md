@@ -88,7 +88,8 @@ AiRemote منصة **self-hosted** للوصول عن بُعد وإدارة الأ
 
 ## 🚀 البدء السريع
 
-**المتطلبات:** Node.js ≥ 22 · pnpm ≥ 11.5.3 (المستودع يعلن `engines`).
+**المتطلبات:** Node.js ≥ 22 · pnpm ≥ 11.5.3 (المستودع يعلن `engines` + يثبّت `packageManager`).
+إن كان pnpm العالمي أقدم، شغّل الأوامر عبر Corepack (يشتق الإصدار المثبّت تلقائيًا): `corepack pnpm install` · `corepack pnpm build` — أو رقّع العالمي بـ`pnpm i -g pnpm@11`.
 
 ### 1) الاستنساخ
 
