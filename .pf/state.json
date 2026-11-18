@@ -154,9 +154,15 @@
                          "note":  "اختبار هوية المالك بعد إصلاح Invoke-Git",
                          "commit":  "d74e8d6",
                          "at":  "2026-11-18 22:42"
+                     },
+                     {
+                         "account":  "admin@",
+                         "note":  "هوية المالك عبر env في Invoke-Git",
+                         "commit":  "",
+                         "at":  "2026-11-18 22:45"
                      }
                  ],
     "created":  "2026-11-17",
-    "updated":  "2026-11-18 22:42",
+    "updated":  "2026-11-18 22:45",
     "lastHandoff":  "HANDOFF-20261118-2016.md"
 }
