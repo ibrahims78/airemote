@@ -12,6 +12,22 @@
 
 ---
 
+## [غير مُصدَر] — 2026-11-18 · جولة D2: تشخيص شامل + إصلاح النتائج
+
+### أُضيف
+- **D2-P2-1:** حارس SSRF في السيرفر الحيّ `server.js` — منقول من المرجع المجمد (`assertSafeOutboundUrl` + CIDR الخاصة): خنق `callAI` (يغطي chat/stream/auto-heal) + `/api/ai/validate` + webhook التنبيهات (فحص عند الإنشاء + `safeWebhookFetch` في 4 مواقع إطلاق). ollama وحده مسموح له بالمحلي (تصميم self-hosted). مُقاس معزولًا: **10/10** (حجب 169.254/127.0.0.1/[::1]/user:pass@/file:// — عبور api.openai.com وollama وwebhook داخلي).
+- **D2-P2-3:** تدقيق المسارات «اليتيمة» (`docs/audits/AUDIT-2026-11-18-ORPHAN-ROUTES-AR.md`) — تصحيح: `desktop/*` و`sftp` و`contacts` و`credentials` تستهلكها أدوات المعمل واختبارات e2e فتُبقى؛ اليتيم الحقيقي الوحيد WS `/ssh` (قرار حذفه للمالك).
+
+### أُصلح
+- **D2-P1-1:** `scripts/run-electron-builder.cjs` — تنصيص مسار الـ`.CMD` والوسائط؛ كان البناء ينكسر على أي مسار مستودع فيه فراغ (`'D:\autoclaw' is not recognized`). مُثبت ببناء `--dir` فعلي للوكيل.
+- **D2-P2-2:** `"packageManager": "pnpm@11.28.12"` في الجذر — `corepack pnpm` يشتق الإصدار الصحيح مهما كان العالمي (كان 9.15.9 يرفض `engines >= 11.5.3`).
+- **D2-P3-1:** توثيق `AGENT_CA_CERT` / `AGENT_PIN_SHA256` / `AGENT_INSECURE_TLS` في `.env.example` (كانت تُقرأ في الكود بلا توثيق).
+
+### التحقق
+- بطارية الاختبارات **7/7** · `node --check server.js` OK · `corepack pnpm typecheck` عبر 5 حزم OK · لا تغيير سلوك REST/WS قائم.
+
+---
+
 ## [غير مُصدَر] — 2026-11-18 · تشخيص وإصلاح P1/P2 الصغير
 
 ### أُصلح
