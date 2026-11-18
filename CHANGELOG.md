@@ -195,6 +195,7 @@
 - 2026-11-17 20:01 — الأسطول 6/6 على 3.17.0 — بوابة W2 حالة 13 PASS — AISHOT سليم
 - 2026-11-18 00:45 — GitHub مرتبط: 5 فروع + 6 وسوم + CI أخضر — SSH deploy key + core.sshCommand wrapper
 - 2026-11-18 12:32 — P1+P2small: downloads version, e2e timeout, rate-limit, TLS gate, biome .zwork, STATE header
+- 2026-11-18 13:07 — P1-1/P2-1 live on host 3001: downloads/version 3.17.0, health 200, LAN agents reconnected
 ## [3.14.2] — 2026-11-07 · **إغلاق r6: الأسماء، ملء الشاشة، والحزم الخمس**
 
 ### الإصدار
