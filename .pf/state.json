@@ -3,7 +3,7 @@
     "project":  "AiRemote",
     "type":  "adopted",
     "phase":  "غير محددة",
-    "status":  "BUILDING",
+    "status":  "PAUSED",
     "next_action":  "حدّدها في docs\\PROJECT_STATE.md بعد أول فحص pf audit",
     "blockers":  [
 
@@ -127,5 +127,6 @@
                      }
                  ],
     "created":  "2026-11-17",
-    "updated":  "2026-11-18 12:32"
+    "updated":  "2026-11-18 12:33",
+    "lastHandoff":  "HANDOFF-20261118-1233.md"
 }
