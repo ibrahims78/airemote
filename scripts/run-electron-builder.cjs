@@ -20,5 +20,12 @@ if (!found) {
 const env = Object.assign({}, process.env, {
   CSC_IDENTITY_AUTO_DISCOVERY: process.env.CSC_IDENTITY_AUTO_DISCOVERY || "false",
 });
-const res = spawnSync(found, process.argv.slice(2), { stdio: "inherit", env, shell: process.platform === "win32" });
+// D2-P1-1 (2026-11-18): with shell:true, cmd.exe does not quote the executable —
+// a repo path containing spaces ("D:\autoclaw projects-new\...") was split at the
+// first space and the build died with "'D:\autoclaw' is not recognized". Quote the
+// .CMD path (and any argument carrying spaces) before handing them to the shell.
+const isWin = process.platform === "win32";
+const cmdFile = isWin ? `"${found}"` : found;
+const cmdArgs = process.argv.slice(2).map((a) => (isWin && /\s/.test(a) ? `"${a}"` : a));
+const res = spawnSync(cmdFile, cmdArgs, { stdio: "inherit", env, shell: isWin });
 process.exit(res.status === null ? 1 : res.status);
