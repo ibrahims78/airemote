@@ -173,7 +173,9 @@ function handleMsg(msg) {
 function connect() {
   if (!running) return
   log('info', `🔌 Connecting to ${config.serverUrl} ...`)
-  try { ws = new WebSocket(config.serverUrl, { rejectUnauthorized: false }) }
+  const wsOptions = { rejectUnauthorized: true }
+  if (process.env.AGENT_INSECURE_TLS === '1') wsOptions.rejectUnauthorized = false
+  try { ws = new WebSocket(config.serverUrl, wsOptions) }
   catch(e) { log('error', e.message); scheduleReconnect(); return }
 
   ws.on('open', async () => {

@@ -421,7 +421,9 @@ function connect() {
   log('info', `🔌 Connecting to ${url} ...`)
 
   try {
-    ws = new WebSocket(url, { rejectUnauthorized: false })
+    const wsOptions = { rejectUnauthorized: true }
+    if (process.env.AGENT_INSECURE_TLS === '1') wsOptions.rejectUnauthorized = false
+    ws = new WebSocket(url, wsOptions)
   } catch (e) {
     log('error', `Failed to create socket: ${e.message}`)
     scheduleReconnect()
