@@ -214,6 +214,7 @@
 - 2026-11-18 12:32 — P1+P2small: downloads version, e2e timeout, rate-limit, TLS gate, biome .zwork, STATE header
 - 2026-11-18 13:07 — P1-1/P2-1 live on host 3001: downloads/version 3.17.0, health 200, LAN agents reconnected
 - 2026-11-18 19:03 — إعادة فحص شامل بعد الإصلاحات: verify 57/57، بطارية 7/7، 3001 حي بالإصلاحات، أسطول متصل
+- 2026-11-18 20:15 — D2: diagnosis round executed — build fix (electron-builder quoting), SSRF guard ported to live server 10/10, packageManager pin, orphan-route audit, agent env docs; battery 7/7
 ## [3.14.2] — 2026-11-07 · **إغلاق r6: الأسماء، ملء الشاشة، والحزم الخمس**
 
 ### الإصدار

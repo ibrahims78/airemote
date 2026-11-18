@@ -136,9 +136,15 @@
                          "note":  "إعادة فحص شامل بعد الإصلاحات: verify 57/57، بطارية 7/7، 3001 حي بالإصلاحات، أسطول متصل",
                          "commit":  "",
                          "at":  "2026-11-18 19:03"
+                     },
+                     {
+                         "account":  "admin@DESKTOP-K81PJ9H",
+                         "note":  "D2: diagnosis round executed — build fix (electron-builder quoting), SSRF guard ported to live server 10/10, packageManager pin, orphan-route audit, agent env docs; battery 7/7",
+                         "commit":  "",
+                         "at":  "2026-11-18 20:15"
                      }
                  ],
     "created":  "2026-11-17",
-    "updated":  "2026-11-18 19:03",
+    "updated":  "2026-11-18 20:15",
     "lastHandoff":  "HANDOFF-20261118-1307.md"
 }
