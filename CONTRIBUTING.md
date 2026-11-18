@@ -22,9 +22,9 @@
 2. **لا `better-sqlite3`** كمحرك أساسي — `@libsql/client` / `node:sqlite` async.
 3. **@fastify/multipart@8 و @fastify/rate-limit@8 و @fastify/cookie@9** لا تُرفع خارج مسار مدروس (توافق fastify).
 4. **shared يُبنى قبل server** — وعند تعديل الأنواع.
-5. **ai-engine يُبنى قبل server**.
+5. **ai-engine يُبنى قبل `packages/server` المجمد فقط** — السيرفر الحيّ `server-desktop` لا يستورده (عميل AI مضمّن في server.js).
 6. **لا سرّ في أي ملف متتبع** — الاعتمادات في `%APPDATA%\AiRemote\` أو متغير جلسة مؤقت.
-7. **لا GitHub** — المستودع الرسمي Gitea المحلي حتى قرار جديد من المالك.
+7. **GitHub مربوط** (2026-11-18) — الدفع: Gitea أولاً ثم GitHub. المستودع الرسمي Gitea المحلي.
 8. **SKIP لا يُحسب نجاحاً** (`docs/DEFINITION-OF-DONE.md` §7).
 9. **لا حكم بلا دليل** — (ملف:سطر) أو (مخرَج أمر) أو (غياب موثّق).
 10. **كل بند = التزام واحد** — التراجع بـ`git revert`.

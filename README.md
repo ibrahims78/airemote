@@ -25,6 +25,20 @@ AiRemote منصة **self-hosted** للوصول عن بُعد وإدارة الأ
 
 ---
 
+## 📰 جولة 2026-11-18 — إصلاحات حيّة على الإنتاج
+
+| البند | الحالة على 3001 |
+|---|---|
+| /api/downloads/version | **3.17.0** (كانت تعيد 0.0.0) |
+| rate-limit /api/agent/allowed | 30/دقيقة |
+| بوابة AGENT_INSECURE_TLS | للوكيلين المصغّرين |
+| SSRF guard على AI/webhook | حيّ (D2) |
+| الأسطول | متصل — لا يحتاج إعادة تثبيت وكيل |
+
+> المُثبّت الحيّ بُني من هذه المصادر بتاريخ 2026-11-18. التفاصيل: CHANGELOG.md §[غير مُصدَر] وdocs/HANDOFF-20261118-1307.md.
+
+---
+
 ## ✨ الميزات
 
 ### التحكم عن بُعد
@@ -148,16 +162,11 @@ docker compose -f docker/docker-compose.yml up -d
 
 ```bash
 pnpm typecheck                          # TypeScript — 5 حزم
-node packages/server/test/registry-race.test.cjs
-node packages/server/test/e2e-connection.test.cjs
-node packages/server/test/e2e-authz.test.cjs
-node packages/server/test/e2e-screen-keyframe.test.cjs
-node packages/agent-desktop/test/safety.test.cjs
-node packages/agent-desktop/test/password-kdf.test.cjs
-node packages/server-desktop/test/secrets.test.cjs
+pnpm test                               # البطارية الموحدة — 7 مجموعات
+node scripts/verify.js                  # 57 خطوة — البوابة الذهبية
 ```
 
-المجموعات السبع كلها **PASSED** عند آخر بوابة (`outputs/verify-2026-11-17/gate-W1/`). `SKIP` لا يُحسب نجاحاً (`docs/DEFINITION-OF-DONE.md` §7).
+آخر قياس 2026-11-18: **7/7** و **57/57**. SKIP لا يُحسب نجاحاً (`docs/DEFINITION-OF-DONE.md` §7).
 
 ---
 
@@ -209,15 +218,18 @@ sudo apt install scrot xdotool xclip imagemagick
 | `TRUST_PROXY` | `false` | `true` فقط خلف proxy HTTPS |
 | `TLS_CERT_PATH` / `TLS_KEY_PATH` | — | شهادة TLS |
 | `AGENT_ALLOW_INSECURE_WS` | — | `1` للمعمل المعزول فقط |
+| `AGENT_INSECURE_TLS` | — | `1` للمعمل المعزول فقط — الوكيلان المصغّران |
 | `AIREMOTE_BACKUP_KEEP` | `7` | تدوير النسخ |
 
-> مفاتيح AI (OpenAI/Anthropic/Gemini) تُضبط لكل مستخدم من لوحة الإعدادات — لا تُكتب في المستودع.
+> مفاتيح AI (OpenAI / Gemini / Z.ai / Ollama) تُضبط لكل مستخدم من لوحة الإعدادات — لا تُكتب في المستودع.
 
 ---
 
 ## 🛡️ الأمان
 
 - JWT + refresh tokens دوّارة
+- rate-limit: دخول 5/د · وكيل مطرود 30/د · ws-ticket 30/د
+- SSRF guard على نداءات AI والويبhook
 - bcrypt cost 12
 - RBAC على كل مسارات API
 - حجب أنماط تنفيذ الأوامر في الوكيل
