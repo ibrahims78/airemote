@@ -20,10 +20,11 @@
 - **P2-1:** rate-limit ‏30/دقيقة على `/api/agent/allowed` (مُقاس: 30×404 ثم 429).
 - **P2-2:** بوابة `AGENT_INSECURE_TLS` للوكيلين المصغّرين بدل `rejectUnauthorized:false` الصريح.
 - **P2-3:** استبعاد `.zwork` من biome + radix 10 لكل `parseInt` في agent stats/inputControl + `node:` imports.
+- **P2-4:** فصل `@airemote/ai-engine` عن سلسلة بناء اللوحة (`build:dashboard`) — السيرفر الحي لا يستوردها. الحزمة تبقى كمرجع. حزمة TS المجمدة على قرار ADR-DUAL-SERVER.
 
 ### لم يُمسّ
 - الإنتاج على 3001 **حُدِّث بتاريخ 2026-11-18** بمُثبّت مبني من هذه المصادر: `/api/downloads/version` تعيد **3.17.0** (كانت 0.0.0) و`/health` 200 والمصادقة تعمل. الأسطول (WIN10/WIN11/أندرويد) لم يُثبَّت عليه جديد — لا يحتاجه P1-1/P2-1 (كلاهما سيرفر فقط).
-- عزل نوافذ Electron · نقل `secrets/` · مصير `ai-engine` وحزمة TS المجمدة — مؤجّلة بقرار المالك.
+- عزل نوافذ Electron — مؤجّل بقرار المالك. `secrets/` نُسخت إلى `%APPDATA%\AiRemote\signing` (الأصل باقٍ). `ai-engine` مفصولة عن بناء اللوحة. حزمة TS المجمدة على قرار ADR.
 
 ---
 

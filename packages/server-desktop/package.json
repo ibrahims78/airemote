@@ -14,7 +14,7 @@
   "scripts": {
     "start": "electron .",
     "bundle": "node scripts/bundle.js",
-    "build:dashboard": "cd ../.. && pnpm --filter @airemote/shared build && pnpm --filter @airemote/ai-engine build && pnpm --filter @airemote/dashboard build && node packages/server-desktop/scripts/copy-dashboard.js",
+    "build:dashboard": "cd ../.. && pnpm --filter @airemote/shared build && pnpm --filter @airemote/dashboard build && node packages/server-desktop/scripts/copy-dashboard.js",
     "build:win": "npm run bundle && npm run build:dashboard && node ../../scripts/download-cloudflared.js && electron-builder --win --x64",
     "build:win:nodownload": "node scripts/bundle.js && node scripts/copy-dashboard.js && electron-builder --win --x64",
     "postinstall": "node scripts/postinstall.js"
