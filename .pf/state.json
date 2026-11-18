@@ -118,8 +118,14 @@
                          "note":  "GitHub مرتبط: 5 فروع + 6 وسوم + CI أخضر — SSH deploy key + core.sshCommand wrapper",
                          "commit":  "",
                          "at":  "2026-11-18 00:45"
+                     },
+                     {
+                         "account":  "admin@",
+                         "note":  "P1+P2small: downloads version, e2e timeout, rate-limit, TLS gate, biome .zwork, STATE header",
+                         "commit":  "",
+                         "at":  "2026-11-18 12:32"
                      }
                  ],
     "created":  "2026-11-17",
-    "updated":  "2026-11-18 00:45"
+    "updated":  "2026-11-18 12:32"
 }
