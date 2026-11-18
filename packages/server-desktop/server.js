@@ -767,11 +767,72 @@ function setAiConfigs(m) {
   try { db.prepare("INSERT OR REPLACE INTO settings (key,value,updated_at) VALUES ('ai_configs',?,datetime('now'))").run(JSON.stringify(m || {})) } catch {}
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// D2-P2-1 (2026-11-18): حارس SSRF — منقول من المرجع المجمد packages/server/src/lib/security.ts (v3.7.0)
+// يُفحص كل URL صادر يضبطه المستخدم (AI baseUrl · webhook التنبيهات).
+// ollama فقط يُسمح له بالعناوين المحلية (تصميم self-hosted)؛ webhook يُسمح له
+// بالمحلي (استدعاء n8n داخلي مشروع) ويُفحص بروتوكوله فقط.
+// ─────────────────────────────────────────────────────────────────────────────
+const SSRF_BLOCKED_HOSTNAMES = new Set([
+  'localhost', 'localhost.localdomain', 'ip6-localhost', 'ip6-loopback',
+  'metadata', 'metadata.google.internal', 'instance-data'
+])
+function ipv4ToInt(ip) {
+  const parts = ip.split('.')
+  if (parts.length !== 4) return null
+  let out = 0
+  for (const part of parts) {
+    if (!/^\d{1,3}$/.test(part)) return null
+    const n = Number(part)
+    if (n > 255) return null
+    out = (out << 8) + n
+  }
+  return out >>> 0
+}
+function inCidr4(value, base, bits) {
+  const b = ipv4ToInt(base)
+  if (b === null) return false
+  const mask = bits === 0 ? 0 : (0xffffffff << (32 - bits)) >>> 0
+  return (value & mask) === (b & mask)
+}
+const PRIVATE_V4 = [['0.0.0.0',8],['10.0.0.0',8],['100.64.0.0',10],['127.0.0.0',8],['169.254.0.0',16],['172.16.0.0',12],['192.0.0.0',24],['192.168.0.0',16],['198.18.0.0',15],['224.0.0.0',4],['240.0.0.0',4]]
+function isPrivateAddress(hostname) {
+  const host = String(hostname || '').trim().toLowerCase().replace(/^\[|\]$/g, '')
+  if (!host) return true
+  if (SSRF_BLOCKED_HOSTNAMES.has(host)) return true
+  if (host.endsWith('.localhost') || host.endsWith('.internal') || host.endsWith('.local')) return true
+  if (host === '::1' || host === '::' || host.startsWith('fe80:') || host.startsWith('fc') || host.startsWith('fd')) return true
+  const v4 = ipv4ToInt(host)
+  if (v4 !== null) return PRIVATE_V4.some(([base, bits]) => inCidr4(v4, base, bits))
+  return false
+}
+function assertSafeOutboundUrl(raw, opts = {}) {
+  if (!raw || typeof raw !== 'string') throw new Error('URL مطلوب')
+  let url
+  try { url = new URL(raw) } catch { throw new Error('صيغة URL غير صالحة') }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new Error('يُسمح ببروتوكول http أو https فقط')
+  if (url.username || url.password) throw new Error('لا يُسمح ببيانات دخول داخل URL')
+  const host = url.hostname.toLowerCase()
+  if (opts.allowHosts && opts.allowHosts.some((h) => host === h || host.endsWith('.' + h))) return url
+  if (!opts.allowPrivate && isPrivateAddress(host)) throw new Error('عنوان داخلي/محلي غير مسموح')
+  return url
+}
+// الصفوف القديمة ذات webhook غير الصالح تُتخطى بصمت بدل إسقاط بقية القواعد
+function safeWebhookFetch(url, init) {
+  try { assertSafeOutboundUrl(url, { allowPrivate: true }) } catch { return Promise.resolve() }
+  return fetch(url, init)
+}
+
 async function callAI(messages, cfg, stream = false, onChunk = null) {
   if (!cfg?.provider) throw new Error('AI provider not configured')
   const { provider, apiKey, model, baseUrl } = cfg
   // v3.3.4 — tolerate trailing /openai or /v1 in custom base URLs (Pollinations docs style)
   const normBase = (u) => String(u || '').replace(/\/+$/, '').replace(/\/openai$/i, '').replace(/\/v1$/i, '')
+  // D2-P2-1 — حراسة SSRF على baseUrl المضبوط يدويًا (نقطة الخنق الوحيدة لكل استدعاءات AI)
+  if (baseUrl) {
+    try { assertSafeOutboundUrl(baseUrl, { allowPrivate: provider === 'ollama' }) }
+    catch (e) { throw new Error('AI baseUrl مرفوض: ' + e.message) }
+  }
 
   if (provider === 'openai') {
     const base = normBase(baseUrl) || 'https://api.openai.com'
@@ -929,7 +990,7 @@ function checkAlerts(deviceId, stats) {
       broadcastToClients({ type: 'alert:triggered', payload: { ruleId: rule.id, deviceId, deviceName, type: rule.type, value, threshold: rule.threshold, message: alertMsg } })
       addNotification({ userId: rule.user_id, deviceId, type: rule.type, title: deviceName + ' — ' + rule.type, message: alertMsg, severity: value >= 90 ? 'critical' : 'warning' })
       if (rule.channel === 'webhook' && rule.webhook_url) {
-        fetch(rule.webhook_url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        safeWebhookFetch(rule.webhook_url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text: alertMsg, device: deviceName, type: rule.type, value, threshold: rule.threshold, timestamp: now }) }).catch(() => {})
       }
     }
@@ -951,7 +1012,7 @@ function fireOfflineAlerts(deviceId) {
 broadcastToClients({ type: 'alert:triggered', payload: { ruleId: rule.id, deviceId, deviceName, type: 'device_offline', message: msg } })
       addNotification({ userId: rule.user_id, deviceId, type: 'device_offline', title: deviceName, message: msg, severity: 'warning' })
       if (rule.channel === 'webhook' && rule.webhook_url) {
-        fetch(rule.webhook_url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        safeWebhookFetch(rule.webhook_url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text: msg, device: deviceName, type: 'device_offline', timestamp: now }) }).catch(() => {})
       }
     }
@@ -976,7 +1037,7 @@ broadcastToClients({ type: 'alert:triggered', payload: { ruleId: rule.id, device
       // 3.16.7 — the form offers a webhook channel for this rule type; only the offline
       // path ever posted, so a Slack rule for device_online stayed silent.
       if (rule.channel === 'webhook' && rule.webhook_url) {
-        fetch(rule.webhook_url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        safeWebhookFetch(rule.webhook_url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ text: msg, device: deviceName, type: 'device_online', timestamp: now }) }).catch(() => {})
       }
     }
@@ -1012,7 +1073,7 @@ function fireLongOfflineAlerts() {
         try { broadcastToClients({ type: 'alert:triggered', payload: { ruleId: rule.id, deviceId: d.id, deviceName: d.name, type: 'device_offline', event: 'offline_long', minutes: mins, message: msg } }) } catch {}
         try { addNotification({ userId: rule.user_id, deviceId: d.id, type: 'device_offline', title: d.name || d.id, message: msg, severity: 'warning' }) } catch {}
         if (rule.channel === 'webhook' && rule.webhook_url) {
-          fetch(rule.webhook_url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+          safeWebhookFetch(rule.webhook_url, { method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ text: msg, device: d.name, type: 'device_offline', event: 'offline_long', minutes: mins, timestamp: new Date().toISOString() }) }).catch(() => {})
         }
       }
@@ -5993,6 +6054,11 @@ if ($target -eq $null) { 'name-not-found' } else {
     const apiKey  = cfg.apiKey || stored.apiKey || ''
     const model   = cfg.model || stored.model || ''
     const baseUrl = String(cfg.baseUrl || '').replace(/\/$/, '')
+    // D2-P2-1 — افحص baseUrl قبل أي اتصال صادر
+    if (baseUrl) {
+      try { assertSafeOutboundUrl(baseUrl, { allowPrivate: provider === 'ollama' }) }
+      catch (e) { return reply.code(400).send({ error: 'baseUrl مرفوض: ' + e.message }) }
+    }
     const ctrl = new AbortController()
     const timer = setTimeout(() => ctrl.abort(), 30000)
     try {
@@ -6063,6 +6129,11 @@ if ($target -eq $null) { 'name-not-found' } else {
     const { type, deviceId, threshold, cooldownMin = 30, channel = 'in_app', webhookUrl } = req.body || {}
     const validTypes = ['device_offline','device_online','cpu_high','ram_high','disk_high']
     if (!validTypes.includes(type)) return reply.code(400).send({ error: `type must be one of: ${validTypes.join(', ')}` })
+    // D2-P2-1 — بروتوكول webhook سليم فقط (http/https بلا بيانات دخول)؛ المحلي مشروع لمنصة self-hosted
+    if (webhookUrl) {
+      try { assertSafeOutboundUrl(webhookUrl, { allowPrivate: true }) }
+      catch (e) { return reply.code(400).send({ error: 'webhookUrl مرفوض: ' + e.message }) }
+    }
     const id = uuidv4()
     db.prepare("INSERT INTO alert_rules (id, user_id, device_id, type, threshold, cooldown_min, channel, webhook_url) VALUES (?,?,?,?,?,?,?,?)").run(id, p.userId, deviceId || null, type, threshold || null, cooldownMin, channel, webhookUrl || null)
     return reply.code(201).send({ id, type, deviceId, threshold, cooldownMin, channel })
