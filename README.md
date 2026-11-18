@@ -58,6 +58,8 @@ AiRemote منصة **self-hosted** للوصول عن بُعد وإدارة الأ
 | 🔔 **قواعد تنبيه** | عتبات CPU/RAM/Disk مع webhook |
 | 👥 **تعدد مستخدمين** | أدوار: Admin / Manager / Viewer |
 | 🌍 **عربي + إنجليزي** | واجهة ثنائية اللغة بتبديل فوري |
+| 🛡️ **SSRF guard** | حجب metadata/loopback على نداءات AI والويبhook |
+| 🚦 **rate-limit** | دخول 5/د · وكيل مطرود 30/د · ws-ticket 30/د |
 | 🔐 **2FA** | TOTP اختياري |
 
 ---
@@ -106,7 +108,6 @@ pnpm install
 ```bash
 # بناء الحزم المشتركة أولاً (قاعدة WORKING_AGREEMENT)
 pnpm --filter @airemote/shared build
-pnpm --filter @airemote/ai-engine build
 pnpm --filter @airemote/dashboard build
 
 # السيرفر الحيّ (ما يُشحن في المثبّتات)
