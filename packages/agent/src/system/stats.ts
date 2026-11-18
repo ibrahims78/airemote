@@ -72,8 +72,8 @@ function getDiskInfo(): { percent: number; usedGb: number; totalGb: number } {
       const freeMatch = out.match(/FreeSpace=(\d+)/)
       const sizeMatch = out.match(/Size=(\d+)/)
       if (freeMatch && sizeMatch) {
-        const total = parseInt(sizeMatch[1])
-        const free  = parseInt(freeMatch[1])
+        const total = parseInt(sizeMatch[1], 10)
+        const free  = parseInt(freeMatch[1], 10)
         const used  = total - free
         return {
           totalGb: Math.round(total / 1073741824 * 10) / 10,
@@ -89,10 +89,10 @@ function getDiskInfo(): { percent: number; usedGb: number; totalGb: number } {
       const dataLine = lines.find((l, i) => i > 0 && /\d+/.test(l))
       if (dataLine) {
         const parts = dataLine.trim().split(/\s+/)
-        const totalKb = parseInt(parts[1])
-        const usedKb  = parseInt(parts[2])
+        const totalKb = parseInt(parts[1], 10)
+        const usedKb  = parseInt(parts[2], 10)
         const pctStr  = parts[4]?.replace('%', '')
-        const percent = pctStr ? parseInt(pctStr) : Math.round((usedKb / totalKb) * 100)
+        const percent = pctStr ? parseInt(pctStr, 10) : Math.round((usedKb / totalKb) * 100)
         return {
           totalGb: Math.round(totalKb / 1048576 * 10) / 10,
           usedGb:  Math.round(usedKb  / 1048576 * 10) / 10,
@@ -139,8 +139,8 @@ function readRawNetworkBytes(): { rx: number; tx: number } {
         const iface = parts[0]
         if (iface.startsWith('lo') || seen.has(iface)) continue
         seen.add(iface)
-        rx += parseInt(parts[6]) || 0
-        tx += parseInt(parts[9]) || 0
+        rx += parseInt(parts[6], 10) || 0
+        tx += parseInt(parts[9], 10) || 0
       }
       return { rx, tx }
     }
@@ -152,8 +152,8 @@ function readRawNetworkBytes(): { rx: number; tx: number } {
         const bytesLine = out.split('\n').find(l => /^\s*bytes\s+\d/i.test(l))
         if (bytesLine) {
           const parts = bytesLine.trim().split(/\s+/)
-          const rx = parseInt(parts[1]) || 0
-          const tx = parseInt(parts[2]) || 0
+          const rx = parseInt(parts[1], 10) || 0
+          const tx = parseInt(parts[2], 10) || 0
           if (rx > 0 || tx > 0) return { rx, tx }
         }
       } catch {}
@@ -162,7 +162,7 @@ function readRawNetworkBytes(): { rx: number; tx: number } {
         'powershell -NoProfile -Command "$a=Get-CimInstance Win32_PerfRawData_Tcpip_NetworkInterface;$a|ForEach-Object{$_.BytesReceivedPersec,$_.BytesSentPersec}"',
         { timeout: 5000, stdio: ['pipe', 'pipe', 'ignore'] }
       ).toString().trim()
-      const nums = psOut.split(/\s+/).map(n => parseInt(n.replace(/[^\d]/g, '')) || 0)
+      const nums = psOut.split(/\s+/).map(n => parseInt(n.replace(/[^\d]/g, ''), 10) || 0)
       let rx = 0, tx = 0
       for (let i = 0; i + 1 < nums.length; i += 2) { rx += nums[i]; tx += nums[i + 1] }
       if (rx > 0 || tx > 0) return { rx, tx }
