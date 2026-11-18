@@ -216,6 +216,7 @@
 - 2026-11-18 19:03 — إعادة فحص شامل بعد الإصلاحات: verify 57/57، بطارية 7/7، 3001 حي بالإصلاحات، أسطول متصل
 - 2026-11-18 20:15 — D2: diagnosis round executed — build fix (electron-builder quoting), SSRF guard ported to live server 10/10, packageManager pin, orphan-route audit, agent env docs; battery 7/7
 - 2026-11-18 22:14 — رفع Gitea+GitHub main+feat fd01e17/e3d4b61 — README عربي شامل، 3001 حي بالإصلاحات
+- 2026-11-18 22:42 — اختبار هوية المالك بعد إصلاح Invoke-Git
 ## [3.14.2] — 2026-11-07 · **إغلاق r6: الأسماء، ملء الشاشة، والحزم الخمس**
 
 ### الإصدار
