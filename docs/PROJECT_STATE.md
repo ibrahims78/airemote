@@ -38,6 +38,7 @@
 
 | التاريخ | الحساب/الجهاز | Commit | ملاحظة |
 |---|---|---|---|
+| 2026-11-18 13:07 | admin@ | — | تسليم: HANDOFF-20261118-1307.md |
 | 2026-11-18 13:07 | admin@ | — | P1-1/P2-1 live on host 3001: downloads/version 3.17.0, health 200, LAN agents reconnected |
 | 2026-11-18 12:33 | admin@ | — | تسليم: HANDOFF-20261118-1233.md |
 | 2026-11-18 12:32 | admin@ | — | P1+P2small: downloads version, e2e timeout, rate-limit, TLS gate, biome .zwork, STATE header |
