@@ -62,7 +62,9 @@ function startServer(extraEnv) {
     serverProc.on('error', reject)
     const startedAt = Date.now()
     const timer = setInterval(async () => {
-      if (Date.now() - startedAt > 25000) { clearInterval(timer); reject(new Error('server did not become healthy in time')); return }
+      // P1-2 (2026-11-18): 25s was too tight under parallel local load (fresh dist + AV scan)
+      // — the server booted but missed the window with an empty log. 60s matches CI reality.
+      if (Date.now() - startedAt > 60000) { clearInterval(timer); reject(new Error('server did not become healthy in time')); return }
       try { const r = await fetch(BASE + '/health'); if (r.ok) { clearInterval(timer); resolve() } } catch {}
     }, 300)
   })
