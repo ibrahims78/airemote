@@ -3675,7 +3675,10 @@ function pkgVersion (rel) {
   try { return String(require(rel).version || '0.0.0') } catch { return '0.0.0' }
 }
 const SERVER_VERSION = pkgVersion('./package.json')      // server build version (/health)
-const AGENT_VERSION = pkgVersion('../agent-desktop/package.json')  // agent artifact version (downloads)
+// P1 (2026-11-18): ‏../agent-desktop/package.json لا يُشحن داخل app.asar — قياس حي:
+// /api/downloads/version كانت تعيد 0.0.0 بينما /health تعيد 3.17.0 من './package.json'.
+// الإصدارات موحّدة منذ W2-2، فالمصدر المشحون هو المرجع.
+const AGENT_VERSION = pkgVersion('./package.json')  // agent artifact version (downloads)
 let serverLogger = null   // set in start(); lets WS handlers write to the app log
 
 // 3.12.0 (M1) — صفحة تشخيص WebRTC (مضمّنة: لا تعتمد على مجلد static الذي يُعاد نسخه)
