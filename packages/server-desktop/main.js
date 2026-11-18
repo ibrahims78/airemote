@@ -65,6 +65,11 @@ function installCertificateTrust() {
 }
 const tunnel  = require('./tunnel.bundle')
 const logger  = require('./logger.bundle')
+
+// Prevent Electron's uncaught-exception dialog on shutdown (window destroyed during agent close).
+process.on('uncaughtException', (e) => {
+  try { logger.error('main', 'uncaughtException: ' + ((e && e.stack) || e)) } catch {}
+})
 const backup  = require('./backup.bundle')
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -280,13 +285,13 @@ function checkHealth() {
 // IPC helpers
 // ─────────────────────────────────────────────────────────────────────────────
 function broadcastStatus() {
-  if (!mainWindow?.webContents) return
-  mainWindow.webContents.send('server:status', getServerStatus())
+  if (!mainWindow || mainWindow.isDestroyed() || !mainWindow.webContents) return
+  try { mainWindow.webContents.send('server:status', getServerStatus()) } catch {}
 }
 
 function broadcastEvent(channel, payload) {
-  if (!mainWindow?.webContents) return
-  mainWindow.webContents.send(channel, payload)
+  if (!mainWindow || mainWindow.isDestroyed() || !mainWindow.webContents) return
+  try { mainWindow.webContents.send(channel, payload) } catch {}
 }
 
 function getServerStatus() {
@@ -504,14 +509,14 @@ function notify(title, body) {
 
 // Device connect/disconnect notifications
 server.events.on('device:connected', (deviceId, name) => {
-  broadcastEvent('device:connected', { deviceId, name })
-  notify('Device Connected', `${name} is now online`)
-  updateTrayMenu()
+  try { broadcastEvent('device:connected', { deviceId, name }) } catch {}
+  try { notify('Device Connected', `${name} is now online`) } catch {}
+  try { updateTrayMenu() } catch {}
 })
 
 server.events.on('device:disconnected', (deviceId) => {
-  broadcastEvent('device:disconnected', { deviceId })
-  updateTrayMenu()
+  try { broadcastEvent('device:disconnected', { deviceId }) } catch {}
+  try { updateTrayMenu() } catch {}
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
