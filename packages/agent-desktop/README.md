@@ -1,4 +1,4 @@
-# AiRemote Agent — Windows Desktop (Electron) v3.0.0
+# AiRemote Agent — Windows Desktop (Electron) v3.17.0
 
 تطبيق **Windows GUI** كامل مبني بـ Electron. يعمل في System Tray ويوفر نفس إمكانيات الـ agent مع واجهة مرئية.
 
@@ -26,7 +26,7 @@ pnpm build:portable
 # ثم إنشاء ZIP للتوزيع
 python3 ../../scripts/zip-agent.py \
   ../../releases/agent-windows/win-unpacked \
-  ../../releases/agent-windows/AiRemote-Agent-v3.0.0-Windows-x64.zip
+  ../../releases/agent-windows/AiRemote-Agent-v3.17.0-Windows-x64.zip
 ```
 
 أو من لوحة التحكم (Admin): **Downloads → Windows Agent (GUI) → Build Now**
@@ -79,9 +79,9 @@ packages/agent-desktop/
 
 | الأداة | الإصدار |
 |--------|---------|
-| Node.js | 18+ |
-| pnpm | 8+ |
-| Electron | 28.x |
+| Node.js | 22+ |
+| pnpm | 11+ |
+| Electron | 44.x |
 | electron-builder | 24.x |
 | Python 3 | مطلوب لسكريبت الـ ZIP |
 

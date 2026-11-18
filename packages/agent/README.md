@@ -1,6 +1,6 @@
 # @airemote/agent
 
-AiRemote Agent v2.0.0 — cross-platform device-side service that connects to the AiRemote Server and exposes full remote access capabilities.
+AiRemote Agent v3.17.0 — cross-platform device-side service that connects to the AiRemote Server and exposes full remote access capabilities.
 
 ## Features
 
@@ -78,6 +78,7 @@ The agent reads from a `.env` file (or environment variables):
 | `SERVER_URL` | WebSocket URL of the server | `ws://localhost:3001` |
 | `DEVICE_TOKEN` | Device registration token | — |
 | `LOG_LEVEL` | `debug` \| `info` \| `warn` | `info` |
+| AGENT_INSECURE_TLS | تجاوز التحقق من الشهادة الذاتية — المعمل فقط | — |
 
 ## Message Protocol
 

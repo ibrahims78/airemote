@@ -76,11 +76,11 @@ src/
 ```ts
 // vite.config.ts
 proxy: {
-  '/api':    { target: 'http://localhost:3001', changeOrigin: true },
-  '/ws':     { target: 'ws://localhost:3001',   ws: true },
-  '/ssh':    { target: 'ws://localhost:3001',   ws: true },
-  '/pty':    { target: 'ws://localhost:3001',   ws: true },
-  '/screen': { target: 'ws://localhost:3001',   ws: true },
+  '/api':    { target: 'https://localhost:3001', changeOrigin: true, secure: false },
+  '/ws':     { target: 'https://localhost:3001',   ws: true },
+  '/ssh':    { target: 'https://localhost:3001',   ws: true },
+  '/pty':    { target: 'https://localhost:3001',   ws: true },
+  '/screen': { target: 'https://localhost:3001',   ws: true },
 }
 ```
 
