@@ -1,6 +1,6 @@
-import os from 'os'
-import fs from 'fs'
-import { execSync } from 'child_process'
+import os from 'node:os'
+import fs from 'node:fs'
+import { execSync } from 'node:child_process'
 import type { DeviceStats } from '@airemote/shared'
 
 let lastNetworkBytes = { rx: 0, tx: 0, time: Date.now() }
@@ -96,7 +96,7 @@ function getDiskInfo(): { percent: number; usedGb: number; totalGb: number } {
         return {
           totalGb: Math.round(totalKb / 1048576 * 10) / 10,
           usedGb:  Math.round(usedKb  / 1048576 * 10) / 10,
-          percent: isNaN(percent) ? 0 : percent
+          percent: Number.isNaN(percent) ? 0 : percent
         }
       }
     }

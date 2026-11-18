@@ -4,8 +4,8 @@
  * Uses native OS tools: xdotool (Linux), PowerShell (Windows), cliclick/osascript (macOS).
  */
 
-import { exec, execFile, spawn, type ChildProcess } from 'child_process'
-import { promisify } from 'util'
+import { exec, execFile, spawn, type ChildProcess } from 'node:child_process'
+import { promisify } from 'node:util'
 
 const execAsync     = promisify(exec)
 const execFileAsync = promisify(execFile)
@@ -46,7 +46,7 @@ public class WinIC{
 Add-Type -AssemblyName System.Windows.Forms
 Write-Host 'WINIC_READY'
 `
-  ;(_winPs as any).stdin.write(init + '\n')
+  ;(_winPs as any).stdin.write(`${init}\n`)
   ;(_winPs as any).stdout.on('data', (d: Buffer) => {
     if (d.toString().includes('WINIC_READY')) _winPsReady = true
   })
@@ -57,14 +57,14 @@ Write-Host 'WINIC_READY'
 function sendWinCmd(cmd: string): void {
   ensureWinPs()
   if (_winPs && !(_winPs as any).killed && _winPsReady) {
-    try { (_winPs as any).stdin.write(cmd + '\n') } catch {}
+    try { (_winPs as any).stdin.write(`${cmd}\n`) } catch {}
     return
   }
   // Queue until PS is ready (first call initialises it)
   const deadline = Date.now() + 5000
   const poll = setInterval(() => {
     if (_winPsReady && _winPs && !(_winPs as any).killed) {
-      clearInterval(poll); try { (_winPs as any).stdin.write(cmd + '\n') } catch {}
+      clearInterval(poll); try { (_winPs as any).stdin.write(`${cmd}\n`) } catch {}
     } else if (Date.now() > deadline) { clearInterval(poll) }
   }, 80)
 }
@@ -453,7 +453,7 @@ async function controlKeyboardMac(evt: KeyEvent, mods: string[]): Promise<void> 
   if (evt.type === 'down' && isSingleChar && !hasAccel) return // plain chars → 'press' owns them
 
   const usingClause = mods.length > 0
-    ? ' using {' + mods.map(m => m === 'ctrl' ? 'control down' : m === 'alt' ? 'option down' : m === 'shift' ? 'shift down' : m === 'meta' ? 'command down' : m).join(', ') + '}'
+    ? ` using {${mods.map(m => m === 'ctrl' ? 'control down' : m === 'alt' ? 'option down' : m === 'shift' ? 'shift down' : m === 'meta' ? 'command down' : m).join(', ')}}`
     : ''
 
   try {
@@ -642,10 +642,10 @@ async function listMonitorsLinux(): Promise<MonitorInfo[]> {
       monitors.push({
         id: id++,
         name: m[1],
-        width: parseInt(m[2]),
-        height: parseInt(m[3]),
-        x: parseInt(m[4]),
-        y: parseInt(m[5]),
+        width: parseInt(m[2], 10),
+        height: parseInt(m[3], 10),
+        x: parseInt(m[4], 10),
+        y: parseInt(m[5], 10),
         primary: line.includes(' primary ')
       })
     }
@@ -671,8 +671,8 @@ $result -join "|"
     const [x, y, w, h, primary, name] = part.split(',')
     monitors.push({
       id: idx,
-      x: parseInt(x), y: parseInt(y),
-      width: parseInt(w), height: parseInt(h),
+      x: parseInt(x, 10), y: parseInt(y, 10),
+      width: parseInt(w, 10), height: parseInt(h, 10),
       primary: primary?.toLowerCase() === 'true',
       name: name?.replace('\\\\.\\', '').trim() || `Monitor ${idx + 1}`
     })
@@ -697,8 +697,8 @@ system_profiler SPDisplaysDataType | grep Resolution
         monitors.push({
           id: id++,
           x: 0, y: 0,
-          width: parseInt(m[1]),
-          height: parseInt(m[2]),
+          width: parseInt(m[1], 10),
+          height: parseInt(m[2], 10),
           primary: id === 1,
           name: `Display ${id}`
         })

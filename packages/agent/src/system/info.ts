@@ -1,4 +1,4 @@
-import os from 'os'
+import os from 'node:os'
 import type { DeviceInfo } from '@airemote/shared'
 
 export async function getDeviceInfo(): Promise<DeviceInfo> {

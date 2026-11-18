@@ -14,11 +14,11 @@
  * macOS: native screencapture utility.
  */
 
-import { exec, execFile, spawn, type ChildProcess } from 'child_process'
-import { promisify } from 'util'
-import fs from 'fs/promises'
-import path from 'path'
-import os from 'os'
+import { exec, execFile, spawn, type ChildProcess } from 'node:child_process'
+import { promisify } from 'node:util'
+import fs from 'node:fs/promises'
+import path from 'node:path'
+import os from 'node:os'
 import type { MonitorInfo } from './inputControl'
 
 const execAsync     = promisify(exec)
@@ -326,7 +326,7 @@ function captureWithPersistentPs(
         // Partial frame — "DELTA:fullW,fullH,x,y,w,h:<base64>"
         const colonIdx = line.lastIndexOf(':')
         const meta     = line.slice(6, colonIdx).split(',').map(Number)
-        if (meta.length === 6 && meta.every(n => !isNaN(n))) {
+        if (meta.length === 6 && meta.every(n => !Number.isNaN(n))) {
           const data = Buffer.from(line.slice(colonIdx + 1), 'base64')
           resolve({ isDelta: true, data, fullW: meta[0], fullH: meta[1], x: meta[2], y: meta[3], w: meta[4], h: meta[5] })
         } else {

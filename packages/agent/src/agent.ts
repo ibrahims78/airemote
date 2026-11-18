@@ -1,9 +1,9 @@
 import WebSocket from 'ws'
 import { v4 as uuidv4 } from 'uuid'
-import { spawn, type ChildProcess } from 'child_process'
-import fs from 'fs/promises'
-import fsSync from 'fs'
-import path from 'path'
+import { spawn, type ChildProcess } from 'node:child_process'
+import fs from 'node:fs/promises'
+import fsSync from 'node:fs'
+import path from 'node:path'
 import { getDeviceInfo } from './system/info'
 import { getDeviceStats } from './system/stats'
 import { executeCommand } from './system/executor'
@@ -606,7 +606,7 @@ export class AgentService {
 
             const settled = await Promise.allSettled(entries.map(async (e) => {
               const fullPath = path.join(osPath, e.name)
-              const webPath  = (p.path === '/' ? '' : p.path) + '/' + e.name
+              const webPath  = `${p.path === '/' ? '' : p.path}/${e.name}`
 
               let size = 0, modified = new Date().toISOString(), permissions = '---'
               let isDir = e.isDirectory()
@@ -752,13 +752,13 @@ export class AgentService {
     const m = webPath.match(/^\/([A-Za-z]:[\\/].*)$/)
     if (m) return m[1].replace(/\//g, '\\')
     const drive = webPath.match(/^\/([A-Za-z]:)$/)
-    if (drive) return drive[1] + '\\'
+    if (drive) return `${drive[1]}\\`
     return webPath
   }
 
   private async listWindowsDrives(): Promise<unknown[]> {
     const checkDrive = async (letter: string): Promise<unknown | null> => {
-      const drivePath = letter + ':\\'
+      const drivePath = `${letter}:\\`
       try {
         await Promise.race([
           fs.access(drivePath),
@@ -767,8 +767,8 @@ export class AgentService {
           )
         ])
         return {
-          name: letter + ':',
-          path: '/' + letter + ':',
+          name: `${letter}:`,
+          path: `/${letter}:`,
           isDirectory: true,
           size: 0,
           modified: new Date().toISOString(),
