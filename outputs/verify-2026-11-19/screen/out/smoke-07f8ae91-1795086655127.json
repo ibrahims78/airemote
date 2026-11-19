@@ -1,0 +1,63 @@
+{
+  "mode": "smoke",
+  "deviceId": "07f8ae91-5b64-41d9-97df-ce649772b0d3",
+  "startedAt": "2026-11-19T11:10:45.603Z",
+  "firstShot": {
+    "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\shot-smoke-first-720x1600.webp",
+    "w": 720,
+    "h": 1600,
+    "bytes": 32822,
+    "mime": "webp"
+  },
+  "measure": {
+    "windowSec": 8,
+    "frames": 8,
+    "fps": 1,
+    "kbps": 141.7,
+    "resolution": "720x1600",
+    "rttMs": 1,
+    "totalFrames": 11,
+    "deltas": 6,
+    "keyframes": 5,
+    "webp": 3,
+    "jpeg": 8,
+    "errors": []
+  },
+  "lastShot": {
+    "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\shot-smoke-last-720x1600.jpg",
+    "w": 720,
+    "h": 1600,
+    "bytes": 66533,
+    "mime": "jpeg"
+  },
+  "summary": {
+    "label": "smoke",
+    "opened": true,
+    "openMs": 7,
+    "frames": 11,
+    "fpsAvg": 1.21,
+    "kbpsAvg": 190.2,
+    "resolution": "720x1600",
+    "rttMs": 1,
+    "deltas": 6,
+    "keyframes": 5,
+    "webp": 3,
+    "jpeg": 8,
+    "viewers": 1,
+    "monitors": {
+      "monitors": [
+        {
+          "id": 0,
+          "name": "Android",
+          "width": 720,
+          "height": 1528,
+          "primary": true,
+          "x": 0,
+          "y": 0
+        }
+      ]
+    },
+    "errors": [],
+    "savedShots": 2
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "deviceId": "35850a47-e50f-48f3-bc81-8c38d7a908c0",
+  "mode": "quality",
+  "control": null,
+  "errors": [
+    "الجهاز غير متصل / Device is offline"
+  ],
+  "rtc": null,
+  "frames": 0,
+  "shots": [],
+  "log": [
+    "open",
+    "closed"
+  ],
+  "msgTypes": [
+    "screen:error"
+  ]
+}

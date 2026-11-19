@@ -1,0 +1,95 @@
+{
+  "deviceId": "b42175d0-d0c9-428d-ab94-4e66dff56af3",
+  "mode": "quality",
+  "control": null,
+  "errors": [],
+  "rtc": null,
+  "qualitySteps": [
+    {
+      "id": "saver",
+      "fps": 0.75,
+      "quality": 55,
+      "maxWidth": 1280,
+      "kbps": 77.6,
+      "res": "1024x768"
+    },
+    {
+      "id": "balanced",
+      "fps": 0.75,
+      "quality": 72,
+      "maxWidth": 1920,
+      "kbps": 77.6,
+      "res": "1024x768"
+    },
+    {
+      "id": "high",
+      "fps": 0.75,
+      "quality": 78,
+      "maxWidth": 1920,
+      "kbps": 77.6,
+      "res": "1024x768"
+    },
+    {
+      "id": "best",
+      "fps": 0.75,
+      "quality": 72,
+      "maxWidth": 1920,
+      "kbps": 77.6,
+      "res": "1024x768"
+    },
+    {
+      "id": "lowband",
+      "fps": 0.75,
+      "quality": 25,
+      "maxWidth": 640,
+      "kbps": 32.6,
+      "res": "640x480"
+    }
+  ],
+  "frames": 42,
+  "shots": [
+    {
+      "tag": "q-saver",
+      "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\q-saver-1795088518529.jpg",
+      "w": 1024,
+      "h": 768,
+      "bytes": 12915
+    },
+    {
+      "tag": "q-balanced",
+      "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\q-balanced-1795088526532.jpg",
+      "w": 1024,
+      "h": 768,
+      "bytes": 12915
+    },
+    {
+      "tag": "q-high",
+      "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\q-high-1795088534533.jpg",
+      "w": 1024,
+      "h": 768,
+      "bytes": 12915
+    },
+    {
+      "tag": "q-best",
+      "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\q-best-1795088542535.jpg",
+      "w": 1024,
+      "h": 768,
+      "bytes": 12915
+    },
+    {
+      "tag": "q-lowband",
+      "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\q-lowband-1795088550537.jpg",
+      "w": 640,
+      "h": 480,
+      "bytes": 5426
+    }
+  ],
+  "log": [
+    "open",
+    "closed"
+  ],
+  "msgTypes": [
+    "screen:viewer_count",
+    "screen:cursor"
+  ]
+}

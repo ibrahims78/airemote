@@ -1,0 +1,95 @@
+{
+  "deviceId": "b42175d0-d0c9-428d-ab94-4e66dff56af3",
+  "mode": "quality",
+  "control": null,
+  "errors": [],
+  "rtc": null,
+  "qualitySteps": [
+    {
+      "id": "saver",
+      "fps": 0.75,
+      "quality": 55,
+      "maxWidth": 1280,
+      "kbps": 721.7,
+      "res": "1600x677"
+    },
+    {
+      "id": "balanced",
+      "fps": 0.75,
+      "quality": 72,
+      "maxWidth": 1920,
+      "kbps": 721.7,
+      "res": "1600x677"
+    },
+    {
+      "id": "high",
+      "fps": 0.63,
+      "quality": 78,
+      "maxWidth": 1920,
+      "kbps": 601.2,
+      "res": "1600x677"
+    },
+    {
+      "id": "best",
+      "fps": 0.75,
+      "quality": 72,
+      "maxWidth": 1920,
+      "kbps": 721.6,
+      "res": "1600x677"
+    },
+    {
+      "id": "lowband",
+      "fps": 0.75,
+      "quality": 25,
+      "maxWidth": 640,
+      "kbps": 721.6,
+      "res": "1600x677"
+    }
+  ],
+  "frames": 43,
+  "shots": [
+    {
+      "tag": "q-saver",
+      "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\q-saver-1795088354032.jpg",
+      "w": 1600,
+      "h": 677,
+      "bytes": 120332
+    },
+    {
+      "tag": "q-balanced",
+      "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\q-balanced-1795088362038.jpg",
+      "w": 1600,
+      "h": 677,
+      "bytes": 120192
+    },
+    {
+      "tag": "q-high",
+      "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\q-high-1795088370041.jpg",
+      "w": 1600,
+      "h": 677,
+      "bytes": 120275
+    },
+    {
+      "tag": "q-best",
+      "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\q-best-1795088378050.jpg",
+      "w": 1600,
+      "h": 677,
+      "bytes": 120310
+    },
+    {
+      "tag": "q-lowband",
+      "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\q-lowband-1795088386051.jpg",
+      "w": 1600,
+      "h": 677,
+      "bytes": 120234
+    }
+  ],
+  "log": [
+    "open",
+    "closed"
+  ],
+  "msgTypes": [
+    "screen:viewer_count",
+    "screen:cursor"
+  ]
+}

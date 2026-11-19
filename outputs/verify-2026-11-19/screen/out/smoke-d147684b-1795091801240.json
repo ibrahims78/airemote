@@ -1,0 +1,59 @@
+{
+  "mode": "smoke",
+  "deviceId": "d147684b-2451-4418-a628-86f11aa66a4e",
+  "startedAt": "2026-11-19T12:36:29.723Z",
+  "firstShot": {
+    "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\shot-smoke-first-1600x677.jpg",
+    "w": 1600,
+    "h": 677,
+    "bytes": 69398,
+    "mime": "jpeg"
+  },
+  "measure": {
+    "windowSec": 10,
+    "frames": 12,
+    "fps": 1.2,
+    "kbps": 650.5,
+    "resolution": "1600x677",
+    "rttMs": 0,
+    "totalFrames": 14,
+    "deltas": 0,
+    "keyframes": 14,
+    "webp": 0,
+    "jpeg": 14,
+    "errors": []
+  },
+  "lastShot": {
+    "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\shot-smoke-last-1600x677.jpg",
+    "w": 1600,
+    "h": 677,
+    "bytes": 65928,
+    "mime": "jpeg"
+  },
+  "summary": {
+    "label": "smoke",
+    "opened": true,
+    "openMs": 5,
+    "frames": 14,
+    "fpsAvg": 1.32,
+    "kbpsAvg": 713.2,
+    "resolution": "1600x677",
+    "rttMs": 0,
+    "deltas": 0,
+    "keyframes": 14,
+    "webp": 0,
+    "jpeg": 14,
+    "viewers": 1,
+    "monitors": {
+      "monitors": [
+        {
+          "id": 0,
+          "name": "Entire screen",
+          "primary": true
+        }
+      ]
+    },
+    "errors": [],
+    "savedShots": 2
+  }
+}

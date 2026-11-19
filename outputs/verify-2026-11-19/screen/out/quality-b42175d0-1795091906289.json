@@ -1,0 +1,95 @@
+{
+  "deviceId": "b42175d0-d0c9-428d-ab94-4e66dff56af3",
+  "mode": "quality",
+  "control": null,
+  "errors": [],
+  "rtc": null,
+  "qualitySteps": [
+    {
+      "id": "saver",
+      "fps": 0.75,
+      "quality": 55,
+      "maxWidth": 1280,
+      "kbps": 534.5,
+      "res": "1280x541"
+    },
+    {
+      "id": "balanced",
+      "fps": 0.63,
+      "quality": 72,
+      "maxWidth": 1920,
+      "kbps": 1269.6,
+      "res": "1918x811"
+    },
+    {
+      "id": "high",
+      "fps": 0.63,
+      "quality": 78,
+      "maxWidth": 1920,
+      "kbps": 1370.5,
+      "res": "1918x811"
+    },
+    {
+      "id": "best",
+      "fps": 0.75,
+      "quality": 72,
+      "maxWidth": 1920,
+      "kbps": 1523.6,
+      "res": "1918x811"
+    },
+    {
+      "id": "lowband",
+      "fps": 0.63,
+      "quality": 25,
+      "maxWidth": 640,
+      "kbps": 83.7,
+      "res": "640x271"
+    }
+  ],
+  "frames": 38,
+  "shots": [
+    {
+      "tag": "q-saver",
+      "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\q-saver-1795091874278.jpg",
+      "w": 1280,
+      "h": 541,
+      "bytes": 89075
+    },
+    {
+      "tag": "q-balanced",
+      "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\q-balanced-1795091882279.jpg",
+      "w": 1918,
+      "h": 811,
+      "bytes": 253909
+    },
+    {
+      "tag": "q-high",
+      "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\q-high-1795091890281.jpg",
+      "w": 1918,
+      "h": 811,
+      "bytes": 274097
+    },
+    {
+      "tag": "q-best",
+      "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\q-best-1795091898284.jpg",
+      "w": 1918,
+      "h": 811,
+      "bytes": 253917
+    },
+    {
+      "tag": "q-lowband",
+      "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\q-lowband-1795091906284.jpg",
+      "w": 640,
+      "h": 271,
+      "bytes": 16726
+    }
+  ],
+  "log": [
+    "open",
+    "closed"
+  ],
+  "msgTypes": [
+    "screen:viewer_count",
+    "screen:cursor"
+  ]
+}
