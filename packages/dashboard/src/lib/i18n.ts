@@ -413,6 +413,7 @@ const T = {
     viewer_device_audio: 'صوت الجهاز', 
     viewer_play_audio: 'تشغيل الصوت', 
     viewer_record_webm: 'تسجيل الجلسة كفيديو WebM',
+    viewer_snapshot: 'حفظ اللقطة الحالية كصورة',
  
     viewer_preparing: ' جارٍ التجهيز', 
     viewer_download_mp4: ' تحميل MP4', 
@@ -1076,6 +1077,7 @@ const T = {
     viewer_device_audio: 'Device audio', 
     viewer_play_audio: 'Play audio', 
     viewer_record_webm: 'Record the session as WebM video',
+    viewer_snapshot: 'Save current frame as image',
  
     viewer_preparing: 'Preparing', 
     viewer_download_mp4: 'Download MP4', 

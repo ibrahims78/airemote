@@ -1016,10 +1016,13 @@ public class AgentService extends Service {
                 break;
             }
             case "server:screen_mouse":
-                handleScreenMouse(payload);
+                // 3.17.1 — مطابقة لوكيل ويندوز: الإدخال لا يُنفَّذ بلا جلسة منحة.
+                if (grantedSessions.contains(String(payload.optString("sessionId", "")))) handleScreenMouse(payload);
+                else sendInputWarningThrottled();
                 break;
             case "server:screen_key":
-                handleScreenKey(payload);
+                if (grantedSessions.contains(String(payload.optString("sessionId", "")))) handleScreenKey(payload);
+                else sendInputWarningThrottled();
                 break;
             case "server:screen_control_request":
                 try {
@@ -2855,6 +2858,20 @@ public class AgentService extends Service {
     // "a11y-not-enabled" ولا أحد يقرأ القيمة. صرنا نُبلّغ العارض مرة كل 10 ثوانٍ (لا مع كل
     // نقرة) عبر قناة تحذير غير قاتلة، فلا تُغلق الجلسة ويظهر السبب للمستخدم.
     private long lastA11yWarnAt = 0;
+    private long lastGrantWarnAt = 0;
+
+    // 3.17.1 — تحذير غير قاتل عند إسقاط إدخال بلا منحة (نفس نمط P1.4).
+    private void sendInputWarningThrottled() {
+        long now = System.currentTimeMillis();
+        if (now - lastGrantWarnAt < 5000) return;
+        lastGrantWarnAt = now;
+        try {
+            JSONObject warn = new JSONObject();
+            warn.put("code", "input_not_granted");
+            warn.put("message", "التحكم غير ممنوح لهذه الجلسة — اطلب المنح أولًا");
+            sendMsg("agent:screen_input_warning", warn);
+        } catch (Exception ignore) { }
+    }
 
     private void runA11y(JSONObject act) {
         String res = AiRemoteA11y.runSync(act);

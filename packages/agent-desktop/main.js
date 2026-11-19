@@ -751,6 +751,16 @@ function handleMsg(msg) {
       break
     case 'server:screen_set_quality':
       if (capWin && !capWin.isDestroyed()) capWin.webContents.send('set-quality', msg.payload)
+      // 3.17.1 — GDI لا يسمع set-quality (العامل يُقلع بـ-Fps/-Quality ثابتة).
+      // كان تبديل الجودة على ويندوز no-op صامتًا. أعد تشغيل العامل بالمعاملات الجديدة.
+      if (gdiSessionId && screenSessions.has(gdiSessionId)) {
+        const qs = screenSessions.get(gdiSessionId)
+        qs.fps      = Math.max(1, Math.min(30, Number(msg.payload?.fps) || qs.fps))
+        qs.quality  = Math.max(10, Math.min(95, Number(msg.payload?.quality) || qs.quality))
+        qs.maxWidth = Math.max(320, Math.min(1920, Number(msg.payload?.maxWidth) || qs.maxWidth))
+        try { gdiCapture.stop() } catch {}
+        startGdiForSession(gdiSessionId, { fps: qs.fps, quality: qs.quality, maxWidth: qs.maxWidth })
+      }
       break
     case 'server:screen_control_request': {
       // 3.11.9 — تسخين مبكر: طلب التحكم يسبق screen_start عادةً، فإقلاع PowerShell يقع خارج المسار الحرج
@@ -1648,8 +1658,8 @@ function startGdiForSession (sessionId, opts) {
   gdiSeq = 0
   gdiRestartCount = 0
   const info = {
-    fps: Math.max(4, Math.min(15, Number(opts && opts.fps) || 12)),
-    quality: Math.max(30, Math.min(90, Number(opts && opts.quality) || 60)),
+    fps: Math.max(1, Math.min(30, Number(opts && opts.fps) || 12)),
+    quality: Math.max(10, Math.min(95, Number(opts && opts.quality) || 60)),
     maxWidth: Math.max(320, Math.min(2560, Number(opts && opts.maxWidth) || 1600))
   }
   try {

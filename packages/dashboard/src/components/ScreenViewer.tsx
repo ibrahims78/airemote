@@ -25,7 +25,7 @@ import {
   Monitor, Maximize2, Minimize2, RefreshCw, Wifi, WifiOff, ExternalLink, ArrowLeftRight, PenLine, Eraser, Crosshair, Trash2, Fingerprint,
   AlertTriangle, Loader2, Settings2,
   Clipboard, ClipboardPaste, Smartphone, EyeOff, Eye,
-  Video, Tv2, Mouse, Keyboard, ChevronDown, ChevronUp, Undo2, Home, Layers, Circle, Type,
+  Video, Tv2, Mouse, Keyboard, ChevronDown, ChevronUp, Undo2, Home, Layers, Circle, Type, Camera,
   Upload, Shield, Zap, CheckCircle2, Pin, PinOff,
   MessageSquare, Send, Download, Activity, X, PlayCircle, Square, Volume2, VolumeX, RotateCw, Sun, Scaling, MoreHorizontal
 } from 'lucide-react'
@@ -1610,6 +1610,23 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
       flushAudio()
     } catch {}
   }
+  // 3.17.1 — حفظ اللقطة الحالية كصورة PNG (كان الحفظ كصورة غير موجود في العارض).
+  const saveSnapshot = useCallback(() => {
+    const canvas = canvasRef.current
+    if (!canvas || !canvas.width || !canvas.height) return
+    try {
+      canvas.toBlob((blob) => {
+        if (!blob) return
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `airemote-${deviceName}-${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.png`
+        a.click()
+        setTimeout(() => URL.revokeObjectURL(url), 2000)
+      }, 'image/png')
+    } catch (err) { console.error('[snapshot]', err) }
+  }, [deviceName])
+
   const startRecording = () => {
     const canvas = canvasRef.current; if (!canvas) return
     try {
@@ -2014,6 +2031,14 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
                 ? <><Loader2 size={11} className="animate-spin"/> {tr('viewer_requesting_perm_short')}</>
                 : controlEnabled ? <><Mouse size={12}/> {tr('viewer_controlling')}</> : <><Shield size={12}/> {tr('viewer_control')}</>
               }
+            </button>
+          )}
+
+          {/* 3.17.1 — حفظ اللقطة الحالية كصورة */}
+          {status === 'streaming' && (
+            <button onClick={saveSnapshot} data-tb="1" title={tr('viewer_snapshot')}
+              className="p-1.5 rounded text-muted hover:text-ink hover:bg-surface2 transition-colors">
+              <Camera size={14} />
             </button>
           )}
 
