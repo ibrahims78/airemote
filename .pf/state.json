@@ -262,9 +262,15 @@
                          "note":  "r31: release artifacts zip 220214513B + setup 166042144B in releases/server-windows (new static verified)",
                          "commit":  "",
                          "at":  "2026-11-19 23:56"
+                     },
+                     {
+                         "account":  "admin@",
+                         "note":  "r32: relay card fixed - owner device -\u003e admin owner, 5 peers both directions, db backup",
+                         "commit":  "",
+                         "at":  "2026-11-20 00:40"
                      }
                  ],
     "created":  "2026-11-17",
-    "updated":  "2026-11-19 23:56",
+    "updated":  "2026-11-20 00:40",
     "lastHandoff":  "HANDOFF-20261119-2341.md"
 }
