@@ -1,0 +1,35 @@
+[
+  {
+    "name": "c",
+    "rx": 0.5,
+    "ry": 0.5,
+    "intended": [
+      360,
+      800
+    ],
+    "dumpCoords": [],
+    "getevent": []
+  },
+  {
+    "name": "a",
+    "rx": 0.3,
+    "ry": 0.3,
+    "intended": [
+      216,
+      480
+    ],
+    "dumpCoords": [],
+    "getevent": []
+  },
+  {
+    "name": "b",
+    "rx": 0.7,
+    "ry": 0.7,
+    "intended": [
+      504,
+      1120
+    ],
+    "dumpCoords": [],
+    "getevent": []
+  }
+]

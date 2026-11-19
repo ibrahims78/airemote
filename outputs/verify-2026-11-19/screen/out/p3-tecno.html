@@ -1,0 +1,8 @@
+<!doctype html><meta name=viewport content="width=device-width,initial-scale=1,user-scalable=no">
+<body style="margin:0;background:#fff;font:700 28px monospace">
+<div id=o style="padding:8px">WAIT</div>
+<div style="position:fixed;inset:0" id=hit></div>
+<script>
+const o=document.getElementById('o'), hit=document.getElementById('hit')
+hit.addEventListener('pointerdown',e=>{o.textContent='CLICK '+e.clientX+','+e.clientY; document.title='CLICK '+e.clientX+','+e.clientY})
+</script>
