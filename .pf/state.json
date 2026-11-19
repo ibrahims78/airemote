@@ -238,9 +238,15 @@
                          "note":  "r28: P2 15.66fps@1080p + P3-TECNO 0px + WIN11 asar; P6 viewer live 5.9fps 1080p bad=0, 10min open",
                          "commit":  "2c020ed",
                          "at":  "2026-11-19 21:42"
+                     },
+                     {
+                         "account":  "admin@",
+                         "note":  "r29: P6 session 10m6s 21 shots bad=0, gate FAIL distortion 2/21, P6 open",
+                         "commit":  "",
+                         "at":  "2026-11-19 22:21"
                      }
                  ],
     "created":  "2026-11-17",
-    "updated":  "2026-11-19 21:43",
+    "updated":  "2026-11-19 22:21",
     "lastHandoff":  "HANDOFF-20261119-2143.md"
 }
