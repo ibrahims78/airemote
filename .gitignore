@@ -94,3 +94,9 @@ packages/server-desktop/bin/cloudflared.exe
 # W3-2 — سجلات بناء لا تُتتبع
 srv-build-log*
 agent-build-log*
+
+# lab helper scripts (never track; may embed lab passwords)
+outputs/**/_.cjs
+outputs/**/_.ps1
+outputs/**/_*.cjs
+outputs/**/_*.ps1
