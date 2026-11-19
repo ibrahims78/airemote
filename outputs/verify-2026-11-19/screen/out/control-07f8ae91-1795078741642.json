@@ -1,0 +1,66 @@
+{
+  "deviceId": "07f8ae91-5b64-41d9-97df-ce649772b0d3",
+  "mode": "control",
+  "control": null,
+  "errors": [],
+  "monitors": {
+    "monitors": [
+      {
+        "id": 0,
+        "name": "Android",
+        "width": 720,
+        "height": 1528,
+        "primary": true,
+        "x": 0,
+        "y": 0
+      }
+    ]
+  },
+  "rtc": null,
+  "brightness": {
+    "value": 255,
+    "ok": true
+  },
+  "frames": 20,
+  "shots": [
+    {
+      "tag": "pre-control",
+      "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\pre-control-1795078732925.jpg",
+      "w": 720,
+      "h": 1600,
+      "bytes": 36626
+    },
+    {
+      "tag": "after-click",
+      "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\after-click-1795078737928.jpg",
+      "w": 669,
+      "h": 55,
+      "bytes": 23200
+    },
+    {
+      "tag": "after-home",
+      "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\after-home-1795078739332.jpg",
+      "w": 720,
+      "h": 1600,
+      "bytes": 49569
+    },
+    {
+      "tag": "final",
+      "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\final-1795078741639.jpg",
+      "w": 159,
+      "h": 99,
+      "bytes": 38740
+    }
+  ],
+  "log": [
+    "open",
+    "control=null",
+    "closed"
+  ],
+  "msgTypes": [
+    "screen:viewer_count",
+    "screen:brightness_status",
+    "screen:monitors",
+    "screen:clipboard"
+  ]
+}

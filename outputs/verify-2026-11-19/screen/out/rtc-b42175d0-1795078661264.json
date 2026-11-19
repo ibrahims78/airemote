@@ -1,0 +1,22 @@
+{
+  "deviceId": "b42175d0-d0c9-428d-ab94-4e66dff56af3",
+  "mode": "rtc",
+  "control": null,
+  "errors": [],
+  "rtc": {
+    "got": true,
+    "kind": "other"
+  },
+  "frames": 11,
+  "shots": [],
+  "log": [
+    "open",
+    "rtc-timeout",
+    "closed"
+  ],
+  "msgTypes": [
+    "screen:viewer_count",
+    "screen:cursor",
+    "rtc:signal"
+  ]
+}

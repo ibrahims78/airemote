@@ -1,0 +1,84 @@
+{
+  "mode": "record",
+  "deviceId": "35850a47-e50f-48f3-bc81-8c38d7a908c0",
+  "startedAt": "2026-11-19T07:55:09.832Z",
+  "firstShot": {
+    "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\shot-rec-first-1600x900.jpg",
+    "w": 1600,
+    "h": 900,
+    "bytes": 84238,
+    "mime": "jpeg"
+  },
+  "recordStatusStart": {
+    "recording": true,
+    "meta": {
+      "sessionId": "e1503966-42b1-4b82-9850-b1b3cc33dacf",
+      "startedAt": "2026-11-19T07:55:11.847Z",
+      "maxFrames": 0
+    }
+  },
+  "midMeasure": {
+    "windowSec": 10,
+    "frames": 92,
+    "fps": 9.2,
+    "kbps": 9946.2,
+    "resolution": "1600x900",
+    "rttMs": 1,
+    "totalFrames": 6743,
+    "deltas": 0,
+    "keyframes": 6743,
+    "webp": 0,
+    "jpeg": 6743,
+    "errors": []
+  },
+  "midShot": {
+    "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\shot-rec-mid-1600x900.jpg",
+    "w": 1600,
+    "h": 900,
+    "bytes": 140787,
+    "mime": "jpeg"
+  },
+  "lastShot": {
+    "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\shot-rec-last-1600x900.jpg",
+    "w": 1600,
+    "h": 900,
+    "bytes": 96918,
+    "mime": "jpeg"
+  },
+  "recordStatusStop": {
+    "recording": false,
+    "meta": {
+      "sessionId": "e1503966-42b1-4b82-9850-b1b3cc33dacf",
+      "mp4Pending": true,
+      "capped": false
+    }
+  },
+  "summary": {
+    "label": "record",
+    "opened": true,
+    "openMs": 4,
+    "frames": 13847,
+    "fpsAvg": 7.2,
+    "kbpsAvg": 7533.9,
+    "resolution": "1600x900",
+    "rttMs": 0,
+    "deltas": 0,
+    "keyframes": 13847,
+    "webp": 0,
+    "jpeg": 13847,
+    "viewers": 1,
+    "control": "granted",
+    "recordStatus": {
+      "recording": false,
+      "meta": {
+        "sessionId": "e1503966-42b1-4b82-9850-b1b3cc33dacf",
+        "mp4Pending": true,
+        "capped": false
+      }
+    },
+    "errors": [],
+    "savedShots": 3
+  },
+  "endedAt": "2026-11-19T08:27:15.863Z",
+  "durationPlannedSec": 1920
+}

@@ -1,0 +1,199 @@
+{
+  "mode": "quality",
+  "deviceId": "07f8ae91-5b64-41d9-97df-ce649772b0d3",
+  "startedAt": "2026-11-19T07:57:22.033Z",
+  "steps": [
+    {
+      "windowSec": 8,
+      "frames": 2,
+      "fps": 0.25,
+      "kbps": 50.7,
+      "resolution": "720x1600",
+      "rttMs": 0,
+      "totalFrames": 12,
+      "deltas": 9,
+      "keyframes": 3,
+      "webp": 12,
+      "jpeg": 0,
+      "errors": [],
+      "preset": {
+        "id": "saver",
+        "fps": 12,
+        "quality": 55,
+        "maxWidth": 1280
+      },
+      "shot": {
+        "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\shot-q-saver-720x1600.webp",
+        "w": 720,
+        "h": 1600,
+        "bytes": 25338,
+        "mime": "webp"
+      }
+    },
+    {
+      "windowSec": 8,
+      "frames": 2,
+      "fps": 0.25,
+      "kbps": 89.4,
+      "resolution": "720x1600",
+      "rttMs": 0,
+      "totalFrames": 14,
+      "deltas": 9,
+      "keyframes": 5,
+      "webp": 13,
+      "jpeg": 1,
+      "errors": [],
+      "preset": {
+        "id": "balanced",
+        "fps": 20,
+        "quality": 72,
+        "maxWidth": 1920
+      },
+      "shot": {
+        "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\shot-q-balanced-720x1600.jpg",
+        "w": 720,
+        "h": 1600,
+        "bytes": 60860,
+        "mime": "jpeg"
+      }
+    },
+    {
+      "windowSec": 8,
+      "frames": 1,
+      "fps": 0.13,
+      "kbps": 67.4,
+      "resolution": "720x1600",
+      "rttMs": 1,
+      "totalFrames": 16,
+      "deltas": 9,
+      "keyframes": 7,
+      "webp": 13,
+      "jpeg": 3,
+      "errors": [],
+      "preset": {
+        "id": "high",
+        "fps": 25,
+        "quality": 78,
+        "maxWidth": 1920
+      },
+      "shot": {
+        "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\shot-q-high-720x1600.jpg",
+        "w": 720,
+        "h": 1600,
+        "bytes": 67396,
+        "mime": "jpeg"
+      }
+    },
+    {
+      "windowSec": 8,
+      "frames": 1,
+      "fps": 0.13,
+      "kbps": 60.9,
+      "resolution": "720x1600",
+      "rttMs": 1,
+      "totalFrames": 18,
+      "deltas": 9,
+      "keyframes": 9,
+      "webp": 13,
+      "jpeg": 5,
+      "errors": [],
+      "preset": {
+        "id": "best",
+        "fps": 30,
+        "quality": 72,
+        "maxWidth": 1920
+      },
+      "shot": {
+        "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\shot-q-best-720x1600.jpg",
+        "w": 720,
+        "h": 1600,
+        "bytes": 60860,
+        "mime": "jpeg"
+      }
+    },
+    {
+      "windowSec": 8,
+      "frames": 1,
+      "fps": 0.13,
+      "kbps": 51.5,
+      "resolution": "720x1600",
+      "rttMs": 0,
+      "totalFrames": 20,
+      "deltas": 9,
+      "keyframes": 11,
+      "webp": 13,
+      "jpeg": 7,
+      "errors": [],
+      "preset": {
+        "id": "smooth",
+        "fps": 30,
+        "quality": 60,
+        "maxWidth": 1600
+      },
+      "shot": {
+        "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\shot-q-smooth-720x1600.jpg",
+        "w": 720,
+        "h": 1600,
+        "bytes": 51467,
+        "mime": "jpeg"
+      }
+    },
+    {
+      "windowSec": 8,
+      "frames": 1,
+      "fps": 0.12,
+      "kbps": 34.3,
+      "resolution": "720x1600",
+      "rttMs": 0,
+      "totalFrames": 22,
+      "deltas": 9,
+      "keyframes": 13,
+      "webp": 13,
+      "jpeg": 9,
+      "errors": [],
+      "preset": {
+        "id": "lowband",
+        "fps": 5,
+        "quality": 25,
+        "maxWidth": 640
+      },
+      "shot": {
+        "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\shot-q-lowband-720x1600.jpg",
+        "w": 720,
+        "h": 1600,
+        "bytes": 34285,
+        "mime": "jpeg"
+      }
+    }
+  ],
+  "summary": {
+    "label": "quality",
+    "opened": true,
+    "openMs": 8,
+    "frames": 22,
+    "fpsAvg": 0.37,
+    "kbpsAvg": 82.9,
+    "resolution": "720x1600",
+    "rttMs": 0,
+    "deltas": 9,
+    "keyframes": 13,
+    "webp": 13,
+    "jpeg": 9,
+    "viewers": 1,
+    "monitors": {
+      "monitors": [
+        {
+          "id": 0,
+          "name": "Android",
+          "width": 720,
+          "height": 1528,
+          "primary": true,
+          "x": 0,
+          "y": 0
+        }
+      ]
+    },
+    "errors": [],
+    "savedShots": 6
+  }
+}

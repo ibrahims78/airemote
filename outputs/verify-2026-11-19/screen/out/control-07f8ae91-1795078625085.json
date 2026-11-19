@@ -1,0 +1,61 @@
+{
+  "deviceId": "07f8ae91-5b64-41d9-97df-ce649772b0d3",
+  "mode": "control",
+  "control": "denied:{\"requestId\":\"test-1795078616359\",\"reason\":\"manual_approval_required\"}",
+  "errors": [],
+  "rtc": null,
+  "rotate": {
+    "ok": true,
+    "enabled": true,
+    "reason": ""
+  },
+  "brightness": {
+    "value": 255,
+    "ok": true
+  },
+  "frames": 26,
+  "shots": [
+    {
+      "tag": "pre-control",
+      "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\pre-control-1795078616358.jpg",
+      "w": 720,
+      "h": 1600,
+      "bytes": 35744
+    },
+    {
+      "tag": "after-click",
+      "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\after-click-1795078621362.jpg",
+      "w": 55,
+      "h": 63,
+      "bytes": 35744
+    },
+    {
+      "tag": "after-home",
+      "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\after-home-1795078622779.jpg",
+      "w": 55,
+      "h": 63,
+      "bytes": 35744
+    },
+    {
+      "tag": "final",
+      "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\final-1795078625082.jpg",
+      "w": 159,
+      "h": 99,
+      "bytes": 23138
+    }
+  ],
+  "log": [
+    "open",
+    "control=denied:{\"requestId\":\"test-1795078616359\",\"reason\":\"manual_approval_required\"}",
+    "closed"
+  ],
+  "msgTypes": [
+    "screen:viewer_count",
+    "screen:state",
+    "screen:display_state",
+    "screen:rotate_status",
+    "screen:control_denied",
+    "screen:brightness_status",
+    "screen:clipboard"
+  ]
+}

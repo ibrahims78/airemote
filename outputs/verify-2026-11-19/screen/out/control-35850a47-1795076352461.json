@@ -1,0 +1,53 @@
+{
+  "deviceId": "35850a47-e50f-48f3-bc81-8c38d7a908c0",
+  "mode": "control",
+  "control": null,
+  "errors": [],
+  "rtc": null,
+  "brightness": {
+    "value": 255,
+    "ok": false
+  },
+  "frames": 71,
+  "shots": [
+    {
+      "tag": "pre-control",
+      "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\pre-control-1795076343743.jpg",
+      "w": 1600,
+      "h": 900,
+      "bytes": 135520
+    },
+    {
+      "tag": "after-click",
+      "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\after-click-1795076348747.jpg",
+      "w": 1600,
+      "h": 900,
+      "bytes": 135537
+    },
+    {
+      "tag": "after-home",
+      "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\after-home-1795076350152.jpg",
+      "w": 1600,
+      "h": 900,
+      "bytes": 135564
+    },
+    {
+      "tag": "final",
+      "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\final-1795076352457.jpg",
+      "w": 1600,
+      "h": 900,
+      "bytes": 145303
+    }
+  ],
+  "log": [
+    "open",
+    "control=null",
+    "closed"
+  ],
+  "msgTypes": [
+    "screen:viewer_count",
+    "screen:cursor",
+    "screen:input_warning",
+    "screen:brightness_status"
+  ]
+}
