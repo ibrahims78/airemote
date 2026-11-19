@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<style>
+  html,body{margin:0;padding:0;background:#fff;overflow:hidden;height:100%}
+  #o{position:fixed;top:0;left:0;right:0;padding:12px;font:900 22px monospace;background:#000;color:#0f0;z-index:9;white-space:nowrap}
+  #m{position:fixed;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:red;z-index:8;display:none}
+  #hit{position:fixed;inset:0}
+</style>
+</head>
+<body>
+<div id="o">TAP ANYWHERE</div>
+<div id="m"></div>
+<div id="hit"></div>
+<script>
+var o=document.getElementById('o'), m=document.getElementById('m'), hit=document.getElementById('hit');
+function onPtr(e){
+  var dpr = window.devicePixelRatio || 1;
+  var x = Math.round(e.screenX * dpr), y = Math.round(e.screenY * dpr);
+  o.textContent='CLICK '+x+','+y;
+  m.style.left=e.screenX+'px'; m.style.top=e.screenY+'px'; m.style.display='block';
+  document.title='CLICK '+x+','+y;
+}
+hit.addEventListener('pointerdown', onPtr, {passive:true});
+hit.addEventListener('click', onPtr, {passive:true});
+</script>
+</body>
+</html>
