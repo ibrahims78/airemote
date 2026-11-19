@@ -353,6 +353,7 @@
 - 2026-11-19 21:42 — r28: P2 15.66fps@1080p + P3-TECNO 0px + WIN11 asar; P6 viewer live 5.9fps 1080p bad=0, 10min open
 - 2026-11-19 22:21 — r29: P6 session 10m6s 21 shots bad=0, gate FAIL distortion 2/21, P6 open
 - 2026-11-19 23:27 — r30: P6 locked 10m06s 21/21 clean 0/21 distortion bad=0 after delta u32 fix
+- 2026-11-19 23:41 — r31: dashboard deployed to 3001 - asar 22384587B, health 13s, 6/6 online
 ## [3.14.2] — 2026-11-07 · **إغلاق r6: الأسماء، ملء الشاشة، والحزم الخمس**
 
 ### الإصدار
