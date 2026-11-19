@@ -220,9 +220,15 @@
                          "note":  "r26 close: P1/P3-win10 closed by numbers; P5 no WAN; P6 no same-device; P7 closed",
                          "commit":  "726bc3c",
                          "at":  "2026-11-19 19:13"
+                     },
+                     {
+                         "account":  "admin@",
+                         "note":  "r27-P2: owner 1080p 15.66fps from WIN11 external viewer; DIB+memcmp worker 5b21742b",
+                         "commit":  "",
+                         "at":  "2026-11-19 19:54"
                      }
                  ],
     "created":  "2026-11-17",
-    "updated":  "2026-11-19 19:14",
+    "updated":  "2026-11-19 19:54",
     "lastHandoff":  "HANDOFF-20261119-1914.md"
 }
