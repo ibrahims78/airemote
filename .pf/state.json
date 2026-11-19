@@ -184,9 +184,15 @@
                          "note":  "r21 استئناف حساب جديد: بث مُقاس + إصلاحات مصادر + ما تبقى في §4",
                          "commit":  "dc0cfd9",
                          "at":  "2026-11-19 13:15"
+                     },
+                     {
+                         "account":  "admin@",
+                         "note":  "r22: item-a WIN11 smoke 1600x900 clear + item-b WakeActivity source fix; c,d,e,w,z blocked on owner",
+                         "commit":  "",
+                         "at":  "2026-11-19 13:41"
                      }
                  ],
     "created":  "2026-11-17",
-    "updated":  "2026-11-19 13:15",
+    "updated":  "2026-11-19 13:41",
     "lastHandoff":  "HANDOFF-20261119-1226.md"
 }
