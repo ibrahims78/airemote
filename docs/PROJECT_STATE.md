@@ -38,6 +38,7 @@
 
 | التاريخ | الحساب/الجهاز | Commit | ملاحظة |
 |---|---|---|---|
+| 2026-11-20 01:34 | admin@ | — | تسليم: HANDOFF-20261120-0134.md |
 | 2026-11-20 01:34 | admin@ | — | r33: ui fixes deployed - relay hint, dblclick, android cursor, files fallback; releases rebuilt |
 | 2026-11-20 00:40 | admin@ | — | تسليم: HANDOFF-20261120-0040.md |
 | 2026-11-20 00:40 | admin@ | — | r32: relay card fixed - owner device -> admin owner, 5 peers both directions, db backup |
