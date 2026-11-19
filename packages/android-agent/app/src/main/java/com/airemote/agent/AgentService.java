@@ -1017,11 +1017,11 @@ public class AgentService extends Service {
             }
             case "server:screen_mouse":
                 // 3.17.1 — مطابقة لوكيل ويندوز: الإدخال لا يُنفَّذ بلا جلسة منحة.
-                if (grantedSessions.contains(String(payload.optString("sessionId", "")))) handleScreenMouse(payload);
+                if (grantedSessions.contains(payload.optString("sessionId", ""))) handleScreenMouse(payload);
                 else sendInputWarningThrottled();
                 break;
             case "server:screen_key":
-                if (grantedSessions.contains(String(payload.optString("sessionId", "")))) handleScreenKey(payload);
+                if (grantedSessions.contains(payload.optString("sessionId", ""))) handleScreenKey(payload);
                 else sendInputWarningThrottled();
                 break;
             case "server:screen_control_request":
@@ -1049,6 +1049,7 @@ public class AgentService extends Service {
                         if (Prefs.verifyControlPassword(AgentService.this, payload.optString("password", ""))) {
                             JSONObject g = new JSONObject();
                             g.put("sessionId", scSid); g.put("requestId", scReq); g.put("via", "password");
+                            grantedSessions.add(scSid);
                             sendMsg("agent:screen_control_granted", g);
                             MainActivity.log("🔓 منح التحكم بكلمة مرور");
                         } else {
@@ -1067,7 +1068,7 @@ public class AgentService extends Service {
                                     JSONObject o = new JSONObject();
                                     o.put("sessionId", fSid);
                                     o.put("requestId", fReq);
-                                    if (allowed) { sendMsg("agent:screen_control_granted", o); MainActivity.log("✅ منحت إذن التحكم"); }
+                                    if (allowed) { grantedSessions.add(fSid); sendMsg("agent:screen_control_granted", o); MainActivity.log("✅ منحت إذن التحكم"); }
                                     else { sendMsg("agent:screen_control_denied", o); MainActivity.logW("❌ رفضت طلب التحكم"); }
                                 } catch (Exception ignore) { }
                             });
@@ -1086,7 +1087,7 @@ public class AgentService extends Service {
                                                 JSONObject o = new JSONObject();
                                                 o.put("sessionId", fSid);
                                                 o.put("requestId", fReq);
-                                                if (allowed) { sendMsg("agent:screen_control_granted", o); MainActivity.log("✅ منحت إذن التحكم"); }
+                                                if (allowed) { grantedSessions.add(fSid); sendMsg("agent:screen_control_granted", o); MainActivity.log("✅ منحت إذن التحكم"); }
                                                 else { sendMsg("agent:screen_control_denied", o); MainActivity.logW("❌ رفضت طلب التحكم"); }
                                             } catch (Exception ignore) { }
                                         });
