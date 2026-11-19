@@ -38,6 +38,7 @@
 
 | التاريخ | الحساب/الجهاز | Commit | ملاحظة |
 |---|---|---|---|
+| 2026-11-20 00:40 | admin@ | — | تسليم: HANDOFF-20261120-0040.md |
 | 2026-11-20 00:40 | admin@ | — | r32: relay card fixed - owner device -> admin owner, 5 peers both directions, db backup |
 | 2026-11-19 23:56 | admin@ | — | r31: release artifacts zip 220214513B + setup 166042144B in releases/server-windows (new static verified) |
 | 2026-11-19 23:41 | admin@ | — | تسليم: HANDOFF-20261119-2341.md |
