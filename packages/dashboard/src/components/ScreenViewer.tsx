@@ -351,6 +351,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
   // createImageBitmap resolves, causing every frame to be discarded as stale.
   const decodingRef        = useRef(false)
   const needKeyRef         = useRef(false)   // بعد تغيّر المقاس: انتظر إطارًا كاملًا قبل لصق أي دلتا
+  const pendingKeyBufRef   = useRef<ArrayBuffer | null>(null)
 
   // Keep startedRef in sync so event handlers (visibilitychange) can read it
   useEffect(() => { startedRef.current = started }, [started])
@@ -571,6 +572,39 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
       setFrameCount(c => c + 1)
     }).catch(() => { decodingRef.current = false })
   }, [])
+  // DISTORTION-FIX — apply the newest stashed key after the in-flight decode
+  // (dropping keys made later deltas paint on a stale canvas = video ghosting).
+  const flushPendingKey = useCallback(() => {
+    const pk = pendingKeyBufRef.current
+    if (!pk || decodingRef.current) return
+    pendingKeyBufRef.current = null
+    try {
+      const pv   = new DataView(pk)
+      const pw   = pv.getUint32(0)
+      const ph   = pv.getUint32(4)
+      const pfl  = pv.getUint8(12)
+      const poff = (pfl & 2) !== 0 ? 21 : 13
+      const mime = (pfl & 4) !== 0 ? 'image/webp' : 'image/jpeg'
+      const pjpeg = new Blob([pk.slice(poff)], { type: mime })
+      decodingRef.current = true
+      createImageBitmap(pjpeg).then((kbmp: ImageBitmap) => {
+        decodingRef.current = false
+        const kc = canvasRef.current
+        if (!kc) { kbmp.close(); return }
+        const kx = kc.getContext('2d')
+        if (!kx) { kbmp.close(); return }
+        needKeyRef.current = false
+        if (kc.width !== pw || kc.height !== ph) {
+          kc.width = pw; kc.height = ph
+          kc.dataset.orient = ph > pw ? 'portrait' : 'landscape'
+          kx.clearRect(0, 0, pw, ph)
+        }
+        kx.drawImage(kbmp, 0, 0)
+        kbmp.close()
+        fpsCountRef.current++
+      }).catch(() => { decodingRef.current = false })
+    } catch { decodingRef.current = false }
+  }, [])
 
   // ── Send WS ───────────────────────────────────────────────────────────────
   const sendWs = useCallback((msg: object) => {
@@ -703,7 +737,11 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
         bwBytesRef.current += buf.byteLength - 13
         statsTotalRef.current++
         if (flags & 1) statsKeyRef.current++
-        if (decodingRef.current) return   // skip — previous frame still decoding
+        if (decodingRef.current) {
+          // DISTORTION-FIX — إسقاط المفتاح كان يترك الدلتا تُلصق على لوحة قديمة (تشويش فيديو).
+          if (flags & 1) { try { pendingKeyBufRef.current = buf.slice(0) } catch {} }
+          return
+        }
         // v3.3.2 — delta frames (flags bit1): [x:4][y:4] then the JPEG of just the changed region
         const isDelta = (flags & 2) !== 0
         const dx = isDelta ? view.getUint32(13) : 0
@@ -738,7 +776,8 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
           }
           bmp.close()
           fpsCountRef.current++
-        }).catch(() => { decodingRef.current = false })
+          flushPendingKey()
+        }).catch(() => { decodingRef.current = false; flushPendingKey() })
         return
       }
 
@@ -965,7 +1004,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
       }
     }
     ws.onerror = () => { setStatus('error'); setErrorMsg(tr('viewer_ws_failed')) }
-  }, [deviceId, token, ticketMode, sessionTicket, sessionResumeKey, sessionAccess, drawFrame, startFpsCounter, startBwCounter, sendWs, startStaleWatchdog])
+  }, [deviceId, token, ticketMode, sessionTicket, sessionResumeKey, sessionAccess, drawFrame, startFpsCounter, startBwCounter, sendWs, startStaleWatchdog, flushPendingKey])
 
   // ── Mount / unmount ───────────────────────────────────────────────────────
   useEffect(() => {

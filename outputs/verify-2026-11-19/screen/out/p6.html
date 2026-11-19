@@ -14,6 +14,11 @@
 <canvas id="cv"></canvas>
 <button id="fs">Fullscreen</button>
 <script>
+// r29 — مطابق لبروتوكول السيرفر والمنتج:
+//   key:   [w:4][h:4][seq:4][flags:1][jpeg]
+//   delta: [w:4][h:4][seq:4][flags:1][dx:4][dy:4][jpeg]
+// الإصلاح: dx/dy يُقرآن u32 عند 13 و17 (كانت u16 عند 13 و15 ⇒ لصق الدلتا في مكان خطأ = تشويش الفيديو).
+// التركيب: إطار كامل يرسم على الكانفس، دلتا تُلصق فوقه بلا إعادة رسم المفتاح (نفس ScreenViewer).
 const qs = new URLSearchParams(location.search);
 const DEV = qs.get('deviceId') || '35850a47-e50f-48f3-bc81-8c38d7a908c0';
 const TOK = qs.get('token') || '';
@@ -24,10 +29,8 @@ const st = document.getElementById('st'), fpsEl = document.getElementById('fps')
       resEl = document.getElementById('res'), badEl = document.getElementById('bad');
 document.getElementById('fs').onclick = () => { document.documentElement.requestFullscreen && document.documentElement.requestFullscreen() };
 
-let ws, frames = 0, bad = 0, lastT = performance.now(), fpsN = 0, lastSeq = -1;
-let pendingKey = null; // آخر مفتاح كامل لِلصق الدلتا
+let ws, bad = 0, lastT = performance.now(), fpsN = 0, lastSeq = -1;
 
-let pendingKeyImg = null;
 function connect() {
   const url = `${WSURL}?ticket=${encodeURIComponent(TOK)}&deviceId=${DEV}&binary=1&fps=20&quality=72&maxWidth=1920`;
   ws = new WebSocket(url);
@@ -40,13 +43,15 @@ function connect() {
     if (typeof buf === 'string') return;
     if (buf instanceof Blob) { try { buf = await buf.arrayBuffer(); } catch { return; } }
     if (!(buf instanceof ArrayBuffer)) return;
-    if (buf.byteLength < 21) return;
+    if (buf.byteLength < 13) return;
     const dv = new DataView(buf);
     const w = dv.getUint32(0), h = dv.getUint32(4), seq = dv.getUint32(8), flags = dv.getUint8(12);
     if (seq !== 0 && seq <= lastSeq) return;
     lastSeq = seq;
     const isDelta = (flags & 2) !== 0;
     const off = isDelta ? 21 : 13;
+    const dx = isDelta ? dv.getUint32(13) : 0;
+    const dy = isDelta ? dv.getUint32(17) : 0;
     const jpeg = new Uint8Array(buf, off, buf.byteLength - off);
     if (!(jpeg[0] === 0xFF && jpeg[1] === 0xD8)) {
       bad++; badEl.textContent = 'bad=' + bad + ' h=' + jpeg[0].toString(16) + jpeg[1].toString(16);
@@ -56,19 +61,14 @@ function connect() {
     const url = URL.createObjectURL(blob);
     const img = new Image();
     img.onload = () => {
-      if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; resEl.textContent = w + 'x' + h; }
-      if (isDelta) {
-        const rx = dv.getUint16(13), ry = dv.getUint16(15);
-        if (pendingKeyImg) {
-          ctx.drawImage(pendingKeyImg, 0, 0, w, h);
-          ctx.drawImage(img, rx, ry);
-        }
-      } else {
+      if (!isDelta) {
+        if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; resEl.textContent = w + 'x' + h; }
         ctx.drawImage(img, 0, 0);
-        pendingKeyImg = img;
+      } else if (cv.width > 0 && cv.height > 0) {
+        ctx.drawImage(img, dx, dy);
       }
       URL.revokeObjectURL(url);
-      frames++; fpsN++;
+      fpsN++;
       const now = performance.now();
       if (now - lastT >= 1000) { fpsEl.textContent = (fpsN * 1000 / (now - lastT)).toFixed(1) + ' fps'; fpsN = 0; lastT = now; }
     };
