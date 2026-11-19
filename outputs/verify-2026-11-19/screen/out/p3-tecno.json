@@ -1,0 +1,64 @@
+{
+  "deviceId": "07f8ae91-5b64-41d9-97df-ce649772b0d3",
+  "control": "granted",
+  "res": "720x1600",
+  "results": [
+    {
+      "name": "center",
+      "rx": 0.5,
+      "ry": 0.5,
+      "intended": [
+        360,
+        800
+      ],
+      "shot": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\p3-tecno-center.png",
+      "focus": ""
+    },
+    {
+      "name": "q1",
+      "rx": 0.25,
+      "ry": 0.25,
+      "intended": [
+        180,
+        400
+      ],
+      "shot": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\p3-tecno-q1.png",
+      "focus": ""
+    },
+    {
+      "name": "q3",
+      "rx": 0.75,
+      "ry": 0.25,
+      "intended": [
+        540,
+        400
+      ],
+      "shot": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\p3-tecno-q3.png",
+      "focus": ""
+    },
+    {
+      "name": "q4",
+      "rx": 0.75,
+      "ry": 0.75,
+      "intended": [
+        540,
+        1200
+      ],
+      "shot": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\p3-tecno-q4.png",
+      "focus": ""
+    },
+    {
+      "name": "q2",
+      "rx": 0.25,
+      "ry": 0.75,
+      "intended": [
+        180,
+        1200
+      ],
+      "shot": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\p3-tecno-q2.png",
+      "focus": ""
+    }
+  ],
+  "errors": [],
+  "at": "2026-11-19T15:44:44.165Z"
+}

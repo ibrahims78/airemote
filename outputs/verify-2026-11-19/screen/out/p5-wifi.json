@@ -1,0 +1,25 @@
+{
+  "at": "2026-11-19T16:06:56.761Z",
+  "note": "إطفاء WiFi بإذن المالك. مسار الوكيل الحيّ هو جسر USB adb reverse 127.0.0.1:3101 — ليس LTE WAN. النافذة 120ث لا 600ث.",
+  "serverUrlSeen": "wss://127.0.0.1:3101/ws",
+  "wifiDisabled": true,
+  "deviceOnlineAfterOff": true,
+  "deviceOnlineAfterMeasure": false,
+  "saver120s": {
+    "frames": 0,
+    "fps": 0,
+    "kbps": 0,
+    "deltas": 0,
+    "keys": 0,
+    "res": "0x0",
+    "opened": true,
+    "errors": [
+      "الجهاز انقطع اتصاله / Device disconnected"
+    ]
+  },
+  "gate_P5": {
+    "pass_10min_lte": false,
+    "pass_300kbps_saver": true,
+    "reason": "لا مسار WAN عام: serverUrl = 127.0.0.1:3101 (جسر USB). إطفاء WiFi لا ينتج LTE طرف-إلى-طرف إلى 192.168.1.25."
+  }
+}
