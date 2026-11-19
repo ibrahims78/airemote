@@ -185,7 +185,7 @@ outputs/verify-2026-11-19/screen/
 | WIN10-VM | `b42175d0-d0c9-428d-ab94-4e66dff56af3` | online · controlAuth=password · unattended يطلب كلمة سر حتى view |
 | TECNO-KL4 | `07f8ae91-5b64-41d9-97df-ce649772b0d3` | online · USB serial `12927374CM001019` · a11y مفعّل |
 | TAB16-USB | `7fc54b40-e7c1-4db6-9f55-78f377c4f4ad` | online · USB `GPSZ2025040701858` (unauthorized في adb) |
-| WIN11-VM | `d147684b-2451-4418-a628-86f11aa66a4e` | **أُقلع** — أكمل smoke عند online |
+| WIN11-VM | `d147684b-2451-4418-a628-86f11aa66a4e` | **online الآن** · IP 192.168.1.102 · بثه لم يُقَس بعد — ابدأ به |
 | Android-Emulator | `9b5eeaf9-b30d-449c-875e-1e21e56ac041` | offline |
 
 **adb:** `D:\autoclaw projects\offline-build-tools\android-toolchain\sdk\platform-tools\adb.exe`  
@@ -251,7 +251,7 @@ node outputs/verify-2026-11-19/screen/screen-test.cjs smoke d147684b-2451-4418-a
 - وكيل↔وكيل view مُقاس.  
 - 4 إصلاحات في المصادر مدفوعة GitHub، **غير مثبتة على الأسطول**.  
 - تشويش جهاز المالك مُشخّص DPI 175% + نفس الشاشة.  
-- WIN11 أُقلع ولم يُقَس بثه.  
+- WIN11 أُقلع وهو **online الآن** (192.168.1.102) وبثه لم يُقَس — أول مهمة للجلسة الجديدة.  
 - تحكم TECNO معلّق على عيب WakeActivity يُخفي MainActivity.  
 - a11y TECNO مفعّل.  
 - Gitea مغلق.
