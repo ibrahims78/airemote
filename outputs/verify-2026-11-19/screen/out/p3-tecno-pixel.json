@@ -1,0 +1,95 @@
+{
+  "deviceId": "07f8ae91-5b64-41d9-97df-ce649772b0d3",
+  "name": "TECNO-KL4",
+  "screen": "720x1600",
+  "streamRes": "720x1600",
+  "control": "granted",
+  "gate_P3": {
+    "maxErrPx": 0,
+    "avgErrPx": 0,
+    "pass": true,
+    "n": "6/6"
+  },
+  "results": [
+    {
+      "name": "center",
+      "intended": [
+        360,
+        800
+      ],
+      "actual": [
+        360,
+        800
+      ],
+      "errPx": 0,
+      "read": "ok"
+    },
+    {
+      "name": "q1",
+      "intended": [
+        180,
+        480
+      ],
+      "actual": [
+        180,
+        480
+      ],
+      "errPx": 0,
+      "read": "ok"
+    },
+    {
+      "name": "q3",
+      "intended": [
+        504,
+        480
+      ],
+      "actual": [
+        504,
+        480
+      ],
+      "errPx": 0,
+      "read": "ok"
+    },
+    {
+      "name": "q4",
+      "intended": [
+        504,
+        1280
+      ],
+      "actual": [
+        504,
+        1280
+      ],
+      "errPx": 0,
+      "read": "ok"
+    },
+    {
+      "name": "q2",
+      "intended": [
+        180,
+        1280
+      ],
+      "actual": [
+        180,
+        1280
+      ],
+      "errPx": 0,
+      "read": "ok"
+    },
+    {
+      "name": "mid",
+      "intended": [
+        360,
+        640
+      ],
+      "actual": [
+        360,
+        640
+      ],
+      "errPx": 0,
+      "read": "ok"
+    }
+  ],
+  "errors": [],
+  "at": "2026-11-19T17:17:37.554Z"
+}

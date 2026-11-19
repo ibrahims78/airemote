@@ -12,6 +12,17 @@
 
 ---
 
+## [غير مُصدَر] — 2026-11-19 · r27: P3-TECNO دقة نقر 0px
+
+### أُضيف
+- **P3-TECNO مقفولة:** **maxErr 0px · avg 0px** على 6 أهداف عند 720×1600 (بوابة ≤2px). مسار المنتج: `screen:mouse_event` → `dispatchGesture`. الدليل: `outputs/verify-2026-11-19/screen/r27-P3-TECNO-تنفيذ-2026-11-19.md`.
+- هدف HTML يعرض `screenX*devicePixelRatio` (density 320 ⇒ DPR=2) — uiautomator كان لا يرى محتوى Chrome بدون هذا الهدف.
+
+### فخّ 78 (اختبار، ليس إصلاحًا جديدًا)
+- a11y كان معطّلًا (`accessibility_enabled=0`) — أُعيد تمكين `AiRemoteA11y` بلا force-stop. بعده النقرات وصلت.
+
+---
+
 ## [غير مُصدَر] — 2026-11-19 · r27: P2 المالك 1080p من مشاهد خارجي (DIB + memcmp)
 
 ### أُضيف
