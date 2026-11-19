@@ -19,6 +19,7 @@
 - المخدوم الآن `index-DOQhNlu-.js` + `ScreenViewer-DiJBgU3Q.js` (كان `index-BxytK7Vf` / `ScreenViewer-Dno2gfJB`). **SHA256 المنشور = المحلي**.
 - التحقق: 4/4 أصول 200 · دخول 200 · **6/6 online** · 3001 = 3.17.0 (بلا رفع إصدار).
 - الدليل: `outputs/verify-2026-11-19/screen/r30-نشر-اللوحة-2026-11-19.md`.
+- **حزم الإصدار في `releases/server-windows`:** `AiRemote-Server-v3.17.0-Windows-x64.zip` **220,214,513 B** (23:51) · `AiRemote-Server-Setup-v3.17.0-x64.exe` **166,042,144 B** (23:53) + blockmap (173,549 B) — كلها تحوي `index-DOQhNlu-.js` / `ScreenViewer-DiJBgU3Q.js` (تحقق asar **21,701,887 B** داخل الـzip وفي `win-unpacked`).
 
 ---
 

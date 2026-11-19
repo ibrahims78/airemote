@@ -73,6 +73,7 @@
 | الأصول | **4/4 = 200** |
 | الدخول/DB | `login 200` · token ✓ |
 | الأسطول | **6/6 online** |
+| حزم الإصدار (`releases/server-windows`) | zip **220,214,513 B** · Setup **166,042,144 B** · blockmap 173,549 B |
 
 - الدليل: `outputs/verify-2026-11-19/screen/r30-نشر-اللوحة-2026-11-19.md`.
 - **التراجع:** أعِد `app.asar.bak-r30` → `app.asar` و`app.asar.unpacked.bak-r30` → `app.asar.unpacked` ثم أعد التشغيل.
