@@ -1026,7 +1026,6 @@ public class AgentService extends Service {
                 break;
             case "server:screen_control_request":
                 try {
-                    wakeScreenForRemote();
                     String scSid = payload.optString("sessionId", "");
                     String scReq = payload.optString("requestId", "");
                     // مطابقة لوكيل ويندوز: جلسة قُبلت سابقًا لا تُسأل مرة ثانية — وإلا ضاع التحكم
@@ -1062,6 +1061,7 @@ public class AgentService extends Service {
                         final String fSid = scSid, fReq = scReq;
                         final String requester = payload.optString("requesterName", "مشاهد");
                         if (MainActivity.visibleNow()) {
+                            // الشاشة صاحية والتطبيق في المقدمة: اعرض الحوار فورًا بلا WakeActivity.
                             MainActivity.askConsent(requester, allowed -> {
                                 try {
                                     JSONObject o = new JSONObject();
@@ -1072,15 +1072,32 @@ public class AgentService extends Service {
                                 } catch (Exception ignore) { }
                             });
                         } else {
-                            try {
-                                android.content.Intent ci = new android.content.Intent(AgentService.this, MainActivity.class);
-                                ci.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK | android.content.Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
-                                startActivity(ci);
-                            } catch (Exception ignore3) { }
-                            JSONObject g = new JSONObject();
-                            g.put("sessionId", fSid); g.put("requestId", fReq); g.put("reason", "manual_approval_required");
-                            sendMsg("agent:screen_control_denied", g);
-                            MainActivity.log("منح التحكم تلقائياً (التطبيق في الخلفية)");
+                            // التطبيق ليس في المقدمة (أو الشاشة مطفأة): ايقظ/ارفع ثم أعد فحص
+                            // visibleNow بعد مهلة قبل الرفض الفوري بـ manual_approval_required.
+                            PowerManager pmc = (PowerManager) getSystemService(POWER_SERVICE);
+                            final boolean wasOff = pmc == null || !pmc.isInteractive();
+                            wakeScreenForRemote();
+                            final long recheckMs = wasOff ? 2200L : 800L;
+                            new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                                try {
+                                    if (MainActivity.visibleNow()) {
+                                        MainActivity.askConsent(requester, allowed -> {
+                                            try {
+                                                JSONObject o = new JSONObject();
+                                                o.put("sessionId", fSid);
+                                                o.put("requestId", fReq);
+                                                if (allowed) { sendMsg("agent:screen_control_granted", o); MainActivity.log("✅ منحت إذن التحكم"); }
+                                                else { sendMsg("agent:screen_control_denied", o); MainActivity.logW("❌ رفضت طلب التحكم"); }
+                                            } catch (Exception ignore) { }
+                                        });
+                                    } else {
+                                        JSONObject g = new JSONObject();
+                                        g.put("sessionId", fSid); g.put("requestId", fReq); g.put("reason", "manual_approval_required");
+                                        sendMsg("agent:screen_control_denied", g);
+                                        MainActivity.log("رفض منح التحكم: التطبيق ليس في المقدمة بعد المهلة");
+                                    }
+                                } catch (Exception ignore4) { }
+                            }, recheckMs);
                         }
                     }
                 } catch (Exception ignore) { }
@@ -1650,6 +1667,20 @@ public class AgentService extends Service {
      *  dismiss a secure PIN/password keyguard; this is the supported part. */
     public void wakeScreenForRemote() {
         try {
+            // r21 §4-ب: لا تُطلق WakeActivity إذا كانت الشاشة صاحية أصلًا.
+            // WakeActivity الشفافة تجلس فوق MainActivity ⇒ onPause ⇒ foreground=false
+            // ⇒ visibleNow()==false ⇒ يُرفض طلب التحكم فورًا بـ manual_approval_required
+            // قبل عرض حوار المنح. الشاشة صاحية: ارفع MainActivity فقط إن لم تكن في المقدمة.
+            PowerManager pm = (PowerManager) getSystemService(POWER_SERVICE);
+            if (pm != null && pm.isInteractive()) {
+                if (!MainActivity.visibleNow()) {
+                    android.content.Intent mi = new android.content.Intent(this, MainActivity.class);
+                    mi.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                            | android.content.Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+                    startActivity(mi);
+                }
+                return;
+            }
             android.content.Intent wi = new android.content.Intent(this, WakeActivity.class);
             wi.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK
                     | android.content.Intent.FLAG_ACTIVITY_SINGLE_TOP
