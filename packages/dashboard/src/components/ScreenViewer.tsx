@@ -352,6 +352,8 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
   const decodingRef        = useRef(false)
   const needKeyRef         = useRef(false)   // بعد تغيّر المقاس: انتظر إطارًا كاملًا قبل لصق أي دلتا
   const pendingKeyBufRef   = useRef<ArrayBuffer | null>(null)
+  // DOUBLE-CLICK-FIX — آخر نقرة (وقت/موضع) لكشف النقر المزدوج الصريح.
+  const lastClickRef       = useRef<{ t: number; x: number; y: number } | null>(null)
 
   // Keep startedRef in sync so event handlers (visibilitychange) can read it
   useEffect(() => { startedRef.current = started }, [started])
@@ -1433,7 +1435,17 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
       g.dragging = false
     } else if (!g.longFired && Math.hypot(e.clientX - g.downX, e.clientY - g.downY) <= 10) {
       // نقرة واحدة = زر أيسر (أمر واحد على الوكيل = أقل زمن وصول).
-      sendMouseAt('click', e.clientX, e.clientY, 0)
+      const lc = lastClickRef.current
+      const nowMs = performance.now()
+      const isDouble = !!lc && (nowMs - lc.t) <= 450 && Math.hypot(e.clientX - lc.x, e.clientY - lc.y) <= 8
+      if (isDouble && !remoteIsAndroid) {
+        // DOUBLE-CLICK-FIX — النقرة الثانية قد تصل متأخرة فلا يراها ويندوز نقرًا مزدوجًا.
+        sendMouseAt('dblclick', e.clientX, e.clientY, 0)
+        lastClickRef.current = null
+      } else {
+        sendMouseAt('click', e.clientX, e.clientY, 0)
+        lastClickRef.current = { t: nowMs, x: e.clientX, y: e.clientY }
+      }
     }
     g.moved = false; g.downX = 0; g.downY = 0
   }
@@ -2695,7 +2707,7 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
         />
         {/* 3.11.9 — المؤشر الواحد: سهم بطرف حادّ على البكسل نفسه. داخل حاوية المسرح
             لأن نسبتها = نسبة الإطار تماماً، فلا letterbox ولا إزاحة translate. */}
-        {status === 'streaming' && (controlEnabled ? cursorVisible : !!remoteCursor) && (
+        {status === 'streaming' && !remoteIsAndroid && (controlEnabled ? cursorVisible : !!remoteCursor) && (
           <svg
             aria-hidden
             viewBox="0 0 16 20"

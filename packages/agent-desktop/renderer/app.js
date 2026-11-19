@@ -110,6 +110,7 @@ const LANG = {
     sessRequest:   'طلب الاتصال',
     sessPickFirst: 'اختر جهازًا من القائمة أولًا.',
     sessNoDevices: 'لا توجد أجهزة أخرى في حسابك.',
+    sessNoDevicesHint: 'لا توجد أجهزة أخرى في حسابك — تظهر الأجهزة هنا فقط إذا سُجّلت بنفس الحساب. جرّب تسجيل الجهاز الآخر بنفس البريد.',
     sessLoadFail:  'تعذّر جلب الأجهزة.',
     sessLoading:   'جارٍ جلب الأجهزة…',
     sessPickOpt:   '— اختر جهازًا —',
@@ -265,6 +266,7 @@ const LANG = {
     sessRequest:   'Request connection',
     sessPickFirst: 'Pick a device from the list first.',
     sessNoDevices: 'No other devices in your account.',
+    sessNoDevicesHint: 'No other devices in your account — devices appear here only when registered under the same account. Sign the other device in with the same email.',
     sessLoadFail:  'Could not load the device list.',
     sessLoading:   'Loading devices…',
     sessPickOpt:   '— pick a device —',
@@ -1350,6 +1352,8 @@ bridge.onInit(data => {
     }
     const list = (r.data && (r.data.devices || r.data)) || []
     const devices = Array.isArray(list) ? list : []
+    const emptyEl = $id('session-empty')
+    if (emptyEl) emptyEl.hidden = devices.length > 0
     if (!devices.length) {
       sel.innerHTML = '<option value="">' + esc(t.sessNoDevices) + '</option>'
       sel.disabled = false

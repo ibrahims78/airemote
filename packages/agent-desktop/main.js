@@ -2276,7 +2276,21 @@ function openSessionView (payload) {
   const sid = String((payload && payload.sessionId) || '')
   const viewUrl = String((payload && payload.viewUrl) || '')
   // 3.11 — وضع الملفات: نافذة مدير ملفات بدل بثّ الشاشة.
-  const filesUrl = String((payload && payload.filesUrl) || '')
+  let filesUrl = String((payload && payload.filesUrl) || '')
+  // FILES-FALLBACK — جلسة files بلا رابط مُجهّز: اشتقه من viewUrl بنفس التذكرة
+  // حتى لا تُفتح نافذة بث بدل مدير الملفات أو لا تُفتح نافذة إطلاقًا.
+  if (!filesUrl && String((payload && payload.access) || '') === 'files' && viewUrl) {
+    try {
+      const u = new URL('http://x' + (viewUrl.startsWith('/') ? '' : '/') + viewUrl)
+      const parts = u.pathname.split('/').filter(Boolean)
+      const dev = (parts[0] === 'view' || parts[0] === 'files') ? parts[1] : ''
+      const rt = u.searchParams.get('rt') || ''
+      if (dev && rt) {
+        const platform = u.searchParams.get('platform') || ''
+        filesUrl = '/files/' + dev + '?rt=' + encodeURIComponent(rt) + '&platform=' + encodeURIComponent(platform)
+      }
+    } catch {}
+  }
   const openPath = filesUrl || viewUrl
   const base = serverHttpBase()
   if (!sid || !openPath || !base) return
@@ -2314,6 +2328,9 @@ function openSessionView (payload) {
       try { event.preventDefault() } catch {}
       try { v.webContents.reload() } catch {}
     })
+    addLog('info', '[session] opening ' + (filesUrl ? 'files' : 'screen') + ' ' + String(url).replace(/rt=[^&]+/, 'rt=***').slice(0, 120))
+    v.once('ready-to-show', () => { try { v.show(); v.focus() } catch {} })
+    v.webContents.on('did-fail-load', (_e, code, desc) => { try { addLog('warn', '[session] load failed ' + code + ' ' + String(desc || '')) } catch {} })
     v.loadURL(url).catch(() => {})
     v.on('closed', () => { sessionViews.delete(sid) })
     sessionViews.set(sid, v)
