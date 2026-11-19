@@ -1,0 +1,86 @@
+{
+  "viewer": {
+    "hostname": "DESKTOP-P7Q6D6U",
+    "role": "external-viewer",
+    "rendered": false,
+    "sameDeviceAsTarget": false,
+    "note": "WS client on WIN11-VM; frames counted, never drawn on owner display"
+  },
+  "target": {
+    "id": "35850a47-e50f-48f3-bc81-8c38d7a908c0",
+    "name": "DESKTOP-K81PJ9H",
+    "requestedBy": "P2 owner 1080p from external viewer"
+  },
+  "label": "p2-owner-from-win11",
+  "startedAt": "2026-11-19T16:51:36.690Z",
+  "gate_P2": {
+    "activeFps": 15.66,
+    "fpsTimestamps": 15.59,
+    "pass_fps": true,
+    "activeKbps": 1365.3,
+    "resolution": "1920x1080",
+    "pass_resolution_1080p": true,
+    "deltas": 188,
+    "keyframes": 0,
+    "shotActive": {
+      "path": "C:\\Windows\\Temp\\p2-out\\shot-p2-owner-active-1920x1080.jpg",
+      "w": 1920,
+      "h": 1080,
+      "bytes": 95446,
+      "okMagic": true
+    }
+  },
+  "gate_P1_observed": {
+    "staticKbps": 177.8,
+    "staticFps": 8,
+    "badJpeg": 0,
+    "pass_bitrate": true
+  },
+  "totals": {
+    "frames": 311,
+    "deltas": 302,
+    "keyframes": 9,
+    "jpeg": 311,
+    "webp": 0,
+    "bytes": 3222872,
+    "badJpeg": 0,
+    "rttMs": 2,
+    "monitors": {
+      "monitors": [
+        {
+          "id": 0,
+          "name": "Entire screen",
+          "primary": true
+        }
+      ]
+    },
+    "viewers": 1,
+    "errors": []
+  },
+  "windows": {
+    "static": {
+      "windowSec": 12,
+      "frames": 96,
+      "fps": 8,
+      "fpsTimestamps": 11.24,
+      "kbps": 177.8,
+      "deltas": 96,
+      "keyframes": 0,
+      "resolution": "0x0",
+      "rttMs": 1,
+      "errors": []
+    },
+    "active": {
+      "windowSec": 12,
+      "frames": 188,
+      "fps": 15.66,
+      "fpsTimestamps": 15.59,
+      "kbps": 1365.3,
+      "deltas": 188,
+      "keyframes": 0,
+      "resolution": "1920x1080",
+      "rttMs": 2,
+      "errors": []
+    }
+  }
+}

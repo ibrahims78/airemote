@@ -12,6 +12,17 @@
 
 ---
 
+## [غير مُصدَر] — 2026-11-19 · r27: P2 المالك 1080p من مشاهد خارجي (DIB + memcmp)
+
+### أُضيف
+- **P2 مقفولة:** **15.66 fps** عند **1920×1080** على `DESKTOP-K81PJ9H` من مشاهد **WIN11-VM** (بلا بث نفس الجهاز). الدلتا 188/188 · 1365.3 kbps · **0 JPEG تالف**. الدليل: `outputs/verify-2026-11-19/screen/r27-P2-owner-تنفيذ-2026-11-19.md`.
+- **التقاط DIB section** في `capture-gdi-worker.cs`: `CreateDIBSection` + `BitBlt` (مؤشر بكسل دائم) بدل `CopyFromScreen` + `LockBits` كل إطار. الفرق بـ**memcmp أصلي** (msvcrt) على المؤشر. Fallback إلى مسار GDI+ القديم لو فشل DIB. العامل: `capture-gdi-worker-5b21742b.exe` (18,944B).
+
+### القياس الذي كسر السقف
+- عامل قديم معزول: 10.33 fps · `LockBits` كان ينسخ ~16MB/دورة. DIB BitBlt ‏29.9 fps · memcmp ‏8MB ‏0.05ms.
+
+---
+
 ## [غير مُصدَر] — 2026-11-19 · r25: دلتا GDI + رفع FPS + دقة نقر WIN10
 
 ### أُضيف

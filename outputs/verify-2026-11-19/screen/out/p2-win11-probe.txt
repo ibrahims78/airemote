@@ -1,0 +1,14 @@
+=== node ===
+INFO: Could not find files for the given pattern(s).
+'node' is not recognized as an internal or external command,
+operable program or batch file.
+=== ip ===
+   IPv4 Address. . . . . . . . . . . : 192.168.1.102
+=== health 192.168.1.25 ===
+{"status":"ok","version":"3.17.0","tls":true,"uptime":17228,"port":3001,"isDesktop":true}
+=== health 192.168.1.55 ===
+
+=== ping host ===
+Reply from 192.168.1.25: bytes=32 time<1ms TTL=128
+Reply from 192.168.1.25: bytes=32 time<1ms TTL=128
+    Packets: Sent = 2, Received = 2, Lost = 0 (0% loss),

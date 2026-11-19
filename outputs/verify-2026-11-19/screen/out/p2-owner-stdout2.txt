@@ -1,0 +1,16 @@
+(node:6608) Warning: Setting the NODE_TLS_REJECT_UNAUTHORIZED environment variable to '0' makes TLS connections and HTTPS requests insecure by disabling certificate verification.
+(Use `node --trace-warnings ...` to show where the warning was created)
+viewerHost DESKTOP-P7Q6D6U
+target DESKTOP-K81PJ9H 35850a47-e50f-48f3-bc81-8c38d7a908c0 online undefined
+sameDeviceViewer=false  renderer=none
+ws open 12ms
+first null
+measuring STATIC 12s…
+STATIC {"windowSec":12,"frames":96,"fps":8,"fpsTimestamps":11.24,"kbps":177.8,"deltas":96,"keyframes":0,"resolution":"0x0","rttMs":1,"errors":[]}
+starting animation on OWNER…
+measuring ACTIVE 12s…
+ACTIVE {"windowSec":12,"frames":188,"fps":15.66,"fpsTimestamps":15.59,"kbps":1365.3,"deltas":188,"keyframes":0,"resolution":"1920x1080","rttMs":2,"errors":[]} shot 95446
+WROTE C:\Windows\Temp\p2-out\p2-owner-from-win11.json
+P2 pass_fps true fps 15.66 | res 1920x1080 | kbps 1365.3
+anim exit 200 anim-done 
+EXIT 0 

@@ -41,6 +41,9 @@ public class GdiStream
     [DllImport("gdi32.dll")] static extern bool BitBlt(IntPtr d, int x, int y, int w, int h, IntPtr s, int sx, int sy, int rop);
     [DllImport("gdi32.dll")] static extern bool DeleteObject(IntPtr obj);
     [DllImport("gdi32.dll")] static extern bool DeleteDC(IntPtr hdc);
+    [DllImport("gdi32.dll")] static extern bool GdiFlush();
+    [DllImport("gdi32.dll", SetLastError = true)] static extern IntPtr CreateDIBSection(IntPtr hdc, ref BITMAPINFO bmi, uint usage, out IntPtr bits, IntPtr hSection, uint offset);
+    [DllImport("msvcrt.dll", CallingConvention = CallingConvention.Cdecl)] static extern int memcmp(IntPtr a, IntPtr b, IntPtr count);
     [DllImport("user32.dll")] static extern bool SetProcessDPIAware();
     // 3.12.2 — ضروري قبل أي GetSystemMetrics: بدونه تُحسب الإحداثيات في فضاء 1920 بينما
     // SendInput يطبّقها على 1280 الفعلية ⇒ كل نقرة تهبط عند 0.667 من موضعها (قيس: 400→267).
@@ -126,6 +129,160 @@ public class GdiStream
     // BitBlt على سطح مُعاد استخدامه — Create/Delete DC كل إطار كان مكلفاً على VMware.
     static Bitmap screenBmp = null;
     static Graphics screenG = null;
+
+    // P2 (r27) — التقاط DIB section: مؤشر بكسل دائم بلا LockBits كل إطار.
+    // LockBits على GDI+ Bitmap كان ينسخ 8MB × 2 كل دورة على 1080p ⇒ سقف ~10fps.
+    [StructLayout(LayoutKind.Sequential)]
+    struct BITMAPINFOHEADER { public uint biSize; public int biWidth; public int biHeight; public ushort biPlanes; public ushort biBitCount; public uint biCompression; public uint biSizeImage; public int biXPelsPerMeter; public int biYPelsPerMeter; public uint biClrUsed; public uint biClrImportant; }
+    [StructLayout(LayoutKind.Sequential)]
+    struct BITMAPINFO { public BITMAPINFOHEADER bmiHeader; public uint bmiColors; }
+    static IntPtr capDC = IntPtr.Zero;
+    static IntPtr capDib = IntPtr.Zero;
+    static IntPtr capBits = IntPtr.Zero;
+    static IntPtr prevDib = IntPtr.Zero;
+    static IntPtr prevBits = IntPtr.Zero;
+    static IntPtr scrDC = IntPtr.Zero;
+    static int dibW = 0, dibH = 0;
+    static bool dibOk = false;
+    static bool dibResized = false;
+
+    static bool EnsureDib(int w, int h)
+    {
+        if (dibOk && dibW == w && dibH == h && capBits != IntPtr.Zero && prevBits != IntPtr.Zero) return true;
+        ReleaseDib();
+        scrDC = GetDC(IntPtr.Zero);
+        if (scrDC == IntPtr.Zero) return false;
+        capDC = CreateCompatibleDC(scrDC);
+        if (capDC == IntPtr.Zero) { ReleaseDC(IntPtr.Zero, scrDC); scrDC = IntPtr.Zero; return false; }
+        BITMAPINFO bmi = new BITMAPINFO();
+        bmi.bmiHeader.biSize = (uint)Marshal.SizeOf(typeof(BITMAPINFOHEADER));
+        bmi.bmiHeader.biWidth = w;
+        bmi.bmiHeader.biHeight = -h; // top-down
+        bmi.bmiHeader.biPlanes = 1;
+        bmi.bmiHeader.biBitCount = 32;
+        bmi.bmiHeader.biCompression = 0; // BI_RGB
+        capDib = CreateDIBSection(capDC, ref bmi, 0, out capBits, IntPtr.Zero, 0);
+        prevDib = CreateDIBSection(capDC, ref bmi, 0, out prevBits, IntPtr.Zero, 0);
+        if (capDib == IntPtr.Zero || prevDib == IntPtr.Zero || capBits == IntPtr.Zero || prevBits == IntPtr.Zero)
+        {
+            ReleaseDib();
+            return false;
+        }
+        SelectObject(capDC, capDib);
+        dibW = w; dibH = h; dibOk = true;
+        dibResized = true;
+        return true;
+    }
+
+    static void ReleaseDib()
+    {
+        if (capDib != IntPtr.Zero) { try { DeleteObject(capDib); } catch { } capDib = IntPtr.Zero; }
+        if (prevDib != IntPtr.Zero) { try { DeleteObject(prevDib); } catch { } prevDib = IntPtr.Zero; }
+        if (capDC != IntPtr.Zero) { try { DeleteDC(capDC); } catch { } capDC = IntPtr.Zero; }
+        if (scrDC != IntPtr.Zero) { try { ReleaseDC(IntPtr.Zero, scrDC); } catch { } scrDC = IntPtr.Zero; }
+        capBits = IntPtr.Zero; prevBits = IntPtr.Zero;
+        dibOk = false; dibW = 0; dibH = 0;
+    }
+
+    // يُرجع مؤشر بكسل DIB بعد BitBlt من الشاشة. IntPtr.Zero = فشل (استخدم Grab البديل).
+    static IntPtr GrabDib(int x, int y, int w, int h)
+    {
+        if (!EnsureDib(w, h)) return IntPtr.Zero;
+        if (!BitBlt(capDC, 0, 0, w, h, scrDC, x, y, SRCCOPY)) return IntPtr.Zero;
+        GdiFlush();
+        return capBits;
+    }
+
+    static Bitmap BitmapFromDib(IntPtr bits, int srcW, Rectangle r)
+    {
+        if (bits == IntPtr.Zero || r.Width <= 0 || r.Height <= 0) return null;
+        Bitmap bmp = new Bitmap(r.Width, r.Height, PixelFormat.Format32bppRgb);
+        BitmapData dd = bmp.LockBits(new Rectangle(0, 0, r.Width, r.Height), ImageLockMode.WriteOnly, PixelFormat.Format32bppRgb);
+        try
+        {
+            int row = r.Width * 4;
+            for (int y = 0; y < r.Height; y++)
+            {
+                IntPtr sp = new IntPtr(bits.ToInt64() + (long)(r.Y + y) * srcW * 4 + (long)r.X * 4);
+                IntPtr dp = new IntPtr(dd.Scan0.ToInt64() + y * dd.Stride);
+                MemCopy(dp, sp, (IntPtr)row);
+            }
+        }
+        finally { bmp.UnlockBits(dd); }
+        return bmp;
+    }
+
+    static void CopyDibRegion(IntPtr src, IntPtr dst, int srcW, Rectangle r)
+    {
+        if (src == IntPtr.Zero || dst == IntPtr.Zero || r.Width <= 0 || r.Height <= 0) return;
+        int row = r.Width * 4;
+        for (int y = 0; y < r.Height; y++)
+        {
+            IntPtr sp = new IntPtr(src.ToInt64() + (long)(r.Y + y) * srcW * 4 + (long)r.X * 4);
+            IntPtr dp = new IntPtr(dst.ToInt64() + (long)(r.Y + y) * srcW * 4 + (long)r.X * 4);
+            MemCopy(dp, sp, (IntPtr)row);
+        }
+    }
+
+    static void CopyDibAll(IntPtr src, IntPtr dst, int w, int h)
+    {
+        if (src == IntPtr.Zero || dst == IntPtr.Zero) return;
+        MemCopy(dst, src, (IntPtr)(w * h * 4));
+    }
+
+    // P2 — diff على مؤشر DIB مباشرة (memcmp أصلي) بلا LockBits.
+    static Rectangle DiffDib(IntPtr a, IntPtr b, int w, int h, out bool any, out double changedRatio)
+    {
+        any = false; changedRatio = 0.0;
+        if (a == IntPtr.Zero || b == IntPtr.Zero) { any = true; changedRatio = 1.0; return new Rectangle(0, 0, w, h); }
+        int stride = w * 4;
+        if (memcmp(a, b, (IntPtr)(w * h * 4)) == 0) return Rectangle.Empty; // مسار ساكن سريع
+        int tw = (w + TILE - 1) / TILE;
+        int th = (h + TILE - 1) / TILE;
+        bool[] changed = new bool[tw * th];
+        int changedTiles = 0;
+        int minTx = tw, minTy = th, maxTx = -1, maxTy = -1;
+        for (int y = 0; y < h; y++)
+        {
+            IntPtr ra = new IntPtr(a.ToInt64() + y * stride);
+            IntPtr rb = new IntPtr(b.ToInt64() + y * stride);
+            if (memcmp(ra, rb, (IntPtr)stride) == 0) continue;
+            int ty = y / TILE;
+            int tileTop = ty * TILE;
+            int tileBot = Math.Min(h, tileTop + TILE);
+            for (int tx = 0; tx < tw; tx++)
+            {
+                int idx = ty * tw + tx;
+                if (changed[idx]) continue;
+                int x0 = tx * TILE;
+                int x1 = Math.Min(w, x0 + TILE);
+                bool hit = false;
+                for (int yy = tileTop; yy < tileBot; yy++)
+                {
+                    IntPtr ta = new IntPtr(a.ToInt64() + yy * stride + x0 * 4);
+                    IntPtr tb = new IntPtr(b.ToInt64() + yy * stride + x0 * 4);
+                    if (memcmp(ta, tb, (IntPtr)((x1 - x0) * 4)) != 0) { hit = true; break; }
+                }
+                if (hit)
+                {
+                    changed[idx] = true;
+                    changedTiles++;
+                    if (tx < minTx) minTx = tx;
+                    if (tx > maxTx) maxTx = tx;
+                    if (ty < minTy) minTy = ty;
+                    if (ty > maxTy) maxTy = ty;
+                }
+            }
+        }
+        if (changedTiles == 0) return Rectangle.Empty;
+        any = true;
+        changedRatio = (double)changedTiles / (double)(tw * th);
+        int rx = minTx * TILE;
+        int ry = minTy * TILE;
+        int rw = Math.Min(w, (maxTx + 1) * TILE) - rx;
+        int rh = Math.Min(h, (maxTy + 1) * TILE) - ry;
+        return new Rectangle(rx, ry, rw, rh);
+    }
 
     // يُرجع Bitmap مُعاد استخدامه — الاستدعائي **لا يُتلفه**.
     static Bitmap Grab(int x, int y, int w, int h)
@@ -468,28 +625,31 @@ public class GdiStream
             sw.Restart();
             try
             {
-                Bitmap full = Grab(vx, vy, vw, vh); // مُعاد استخدامه — لا يُتلف
                 long now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-
                 POINT p; GetCursorPos(out p);
-                // 3.12.2 — المؤشر يُقاس في فضاء القراءة (maxX/maxY) ويُحوَّل إلى فضاء الخرج.
                 int cx = (int)Math.Round((p.X - vx) * (outW / (double)Math.Max(1, maxX)));
                 int cy = (int)Math.Round((p.Y - vy) * (outH / (double)Math.Max(1, maxY)));
                 if (cx < 0) cx = 0; if (cy < 0) cy = 0;
                 if (cx > 65535) cx = 65535; if (cy > 65535) cy = 65535;
 
-                bool forceKey = prevFull == null
-                    || prevFull.Width != vw || prevFull.Height != vh
+                IntPtr cur = GrabDib(vx, vy, vw, vh);
+                bool useDib = cur != IntPtr.Zero;
+                bool forceKey = !useDib
+                    || dibResized
                     || now - lastKeyAt >= KEY_MS;
+                if (useDib && (dibResized || lastKeyAt == 0L))
+                {
+                    CopyDibAll(cur, prevBits, vw, vh);
+                    dibResized = false;
+                }
 
                 if (!forceKey)
                 {
                     bool any = false;
                     double ratio = 0.0;
-                    Rectangle bbox = DiffBBox(full, prevFull, out any, out ratio);
+                    Rectangle bbox = DiffDib(cur, prevBits, vw, vh, out any, out ratio);
                     if (!any)
                     {
-                        // شاشة ساكنة: لا JPEG إطلاقاً حتى يحن وقت المفتاح
                         statSkips++;
                         statMsSum += sw.ElapsedMilliseconds; statMsN++;
                         int idleWait = minInterval - (int)sw.Elapsed.TotalMilliseconds;
@@ -515,23 +675,23 @@ public class GdiStream
                                 if (ox2 > outW) ox2 = outW; if (oy2 > outH) oy2 = outH;
                                 int ow = ox2 - ox, oh = oy2 - oy;
                                 if (ow < 1) ow = 1; if (oh < 1) oh = 1;
-                                Bitmap crop = full.Clone(bbox, full.PixelFormat);
+                                Bitmap crop = BitmapFromDib(cur, vw, bbox);
                                 Bitmap scaled = ScaleTo(crop, ow, oh);
-                                crop.Dispose();
+                                if (crop != null) crop.Dispose();
                                 jb = JpegOf(scaled, jpg, ep);
                                 scaled.Dispose();
                                 rx = ox; ry = oy;
                             }
                             else
                             {
-                                Bitmap crop = full.Clone(bbox, full.PixelFormat);
+                                Bitmap crop = BitmapFromDib(cur, vw, bbox);
                                 jb = JpegOf(crop, jpg, ep);
-                                crop.Dispose();
+                                if (crop != null) crop.Dispose();
                                 rx = bbox.X; ry = bbox.Y;
                             }
                             WriteFrame(so, jb, cx, cy, outW, outH, false, rx, ry);
                             statDeltas++;
-                            CopyRegion(full, prevFull, bbox);
+                            CopyDibRegion(cur, prevBits, vw, bbox);
                         }
                     }
                     else
@@ -542,15 +702,18 @@ public class GdiStream
 
                 if (forceKey)
                 {
-                    Bitmap keySrc = needScale ? ScaleTo(full, outW, outH) : full;
-                    byte[] jb = JpegOf(keySrc, jpg, ep);
-                    WriteFrame(so, jb, cx, cy, outW, outH, true, 0, 0);
-                    if (needScale) { try { keySrc.Dispose(); } catch { } }
+                    Bitmap fullBmp = useDib ? BitmapFromDib(cur, vw, new Rectangle(0, 0, vw, vh)) : Grab(vx, vy, vw, vh);
+                    if (fullBmp != null)
+                    {
+                        Bitmap keySrc = needScale ? ScaleTo(fullBmp, outW, outH) : fullBmp;
+                        byte[] jb = JpegOf(keySrc, jpg, ep);
+                        WriteFrame(so, jb, cx, cy, outW, outH, true, 0, 0);
+                        if (needScale) { try { keySrc.Dispose(); } catch { } }
+                        if (fullBmp != keySrc) { try { fullBmp.Dispose(); } catch { } }
+                    }
                     lastKeyAt = now;
                     statKeys++;
-                    Bitmap old = prevFull;
-                    prevFull = Clone32(full);
-                    if (old != null) { try { old.Dispose(); } catch { } }
+                    if (useDib) CopyDibAll(cur, prevBits, vw, vh);
                 }
 
                 long el = sw.ElapsedMilliseconds;
@@ -559,7 +722,7 @@ public class GdiStream
                 {
                     ILog("stats keys=" + statKeys + " deltas=" + statDeltas + " skips=" + statSkips
                         + " avgMs=" + (statMsN > 0 ? (statMsSum / statMsN) : 0)
-                        + " out=" + outW + "x" + outH + " fps=" + fps);
+                        + " out=" + outW + "x" + outH + " fps=" + fps + " dib=" + (useDib ? 1 : 0));
                     lastStatAt = now;
                     statKeys = 0; statDeltas = 0; statSkips = 0;
                     statMsSum = 0; statMsN = 0;

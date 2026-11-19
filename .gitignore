@@ -100,3 +100,8 @@ outputs/**/_.cjs
 outputs/**/_.ps1
 outputs/**/_*.cjs
 outputs/**/_*.ps1
+outputs/**/_*.cmd
+outputs/**/_*.exe
+outputs/**/_*.cs
+outputs/**/out/asar-tmp/
+outputs/**/out/asar-verify/
