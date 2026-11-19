@@ -14,7 +14,7 @@
     "repo":  {
                  "branch":  "main",
                  "remote":  "",
-                 "lastCommit":  "86341ed"
+                 "lastCommit":  "2c020ed"
              },
     "sessions":  [
                      {
@@ -232,9 +232,15 @@
                          "note":  "r27-P3: TECNO click maxErr 0px on 6 targets; a11y re-enabled trap78",
                          "commit":  "86341ed",
                          "at":  "2026-11-19 20:20"
+                     },
+                     {
+                         "account":  "admin@",
+                         "note":  "r28: P2 15.66fps@1080p + P3-TECNO 0px + WIN11 asar; P6 viewer live 5.9fps 1080p bad=0, 10min open",
+                         "commit":  "2c020ed",
+                         "at":  "2026-11-19 21:42"
                      }
                  ],
     "created":  "2026-11-17",
-    "updated":  "2026-11-19 20:20",
+    "updated":  "2026-11-19 21:42",
     "lastHandoff":  "HANDOFF-20261119-1914.md"
 }

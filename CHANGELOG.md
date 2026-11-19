@@ -314,6 +314,7 @@
 - 2026-11-19 19:13 — r26 close: P1/P3-win10 closed by numbers; P5 no WAN; P6 no same-device; P7 closed
 - 2026-11-19 19:54 — r27-P2: owner 1080p 15.66fps from WIN11 external viewer; DIB+memcmp worker 5b21742b
 - 2026-11-19 20:20 — r27-P3: TECNO click maxErr 0px on 6 targets; a11y re-enabled trap78
+- 2026-11-19 21:42 — r28: P2 15.66fps@1080p + P3-TECNO 0px + WIN11 asar; P6 viewer live 5.9fps 1080p bad=0, 10min open
 ## [3.14.2] — 2026-11-07 · **إغلاق r6: الأسماء، ملء الشاشة، والحزم الخمس**
 
 ### الإصدار
