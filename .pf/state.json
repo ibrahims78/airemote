@@ -14,7 +14,7 @@
     "repo":  {
                  "branch":  "main",
                  "remote":  "",
-                 "lastCommit":  "dc0cfd9"
+                 "lastCommit":  "cb34dd3"
              },
     "sessions":  [
                      {
@@ -208,9 +208,15 @@
                          "note":  "r25 handoff committed for new account - P1-P7 plan ready",
                          "commit":  "",
                          "at":  "2026-11-19 17:05"
+                     },
+                     {
+                         "account":  "admin@",
+                         "note":  "r25-P1P2: GDI delta 499-1149kbps 0-corrupt; P3 win10 1px; P2 13fps vmware-bound",
+                         "commit":  "cb34dd3",
+                         "at":  "2026-11-19 18:38"
                      }
                  ],
     "created":  "2026-11-17",
-    "updated":  "2026-11-19 17:05",
+    "updated":  "2026-11-19 18:38",
     "lastHandoff":  "HANDOFF-20261119-1705.md"
 }

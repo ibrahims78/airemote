@@ -2,10 +2,10 @@
 
 > **ملاحظة (2026-11-17):** هذا الملف يديره `pf checkpoint` (سجل الجلسات أدناه). **الملف التاريخي الرسمي الكامل هو `PROJECT_STATE.md` في الجذر** حتى نقله إلى `docs/` في W3-3. قالب pf الافتراضي («لا اختبارات، لا CI») **لا يطابق** هذا المشروع — المحتوى أدناه مصحّح ليطابق الواقع.
 
-- **آخر تحديث:** 2026-11-19 17:05
+- **آخر تحديث:** 2026-11-19 18:38
 - **المرحلة:** تشخيص وإصلاح P1/P2 الصغير — مكتمل (التثبيت على 3001 ينتظر «ثبّت»)
 - **الحالة:** BUILDING
-- **آخر commit:** dc0cfd9
+- **آخر commit:** cb34dd3
 
 ## ما يعمل
 - [x] Gitea محلي + دفع التاريخ + `pf adopt`/`pf backup` (W1-1)
@@ -38,6 +38,7 @@
 
 | التاريخ | الحساب/الجهاز | Commit | ملاحظة |
 |---|---|---|---|
+| 2026-11-19 18:38 | admin@ | cb34dd3 | r25-P1P2: GDI delta 499-1149kbps 0-corrupt; P3 win10 1px; P2 13fps vmware-bound |
 | 2026-11-19 17:05 | admin@ | — | تسليم: HANDOFF-20261119-1705.md |
 | 2026-11-19 17:05 | admin@ | — | r25 handoff committed for new account - P1-P7 plan ready |
 | 2026-11-19 16:02 | admin@ | — | r24: final resume point committed and pushed; no open work without owner |

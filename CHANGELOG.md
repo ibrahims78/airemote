@@ -270,6 +270,7 @@
 - 2026-11-19 16:01 — r23: install complete - APK TECNO/TAB16, agents host/WIN10/WIN11, server 3001; items a-d measured
 - 2026-11-19 16:02 — r24: final resume point committed and pushed; no open work without owner
 - 2026-11-19 17:05 — r25 handoff committed for new account - P1-P7 plan ready
+- 2026-11-19 18:38 — r25-P1P2: GDI delta 499-1149kbps 0-corrupt; P3 win10 1px; P2 13fps vmware-bound
 ## [3.14.2] — 2026-11-07 · **إغلاق r6: الأسماء، ملء الشاشة، والحزم الخمس**
 
 ### الإصدار
