@@ -256,9 +256,15 @@
                          "note":  "r31: dashboard deployed to 3001 - asar 22384587B, health 13s, 6/6 online",
                          "commit":  "",
                          "at":  "2026-11-19 23:41"
+                     },
+                     {
+                         "account":  "admin@",
+                         "note":  "r31: release artifacts zip 220214513B + setup 166042144B in releases/server-windows (new static verified)",
+                         "commit":  "",
+                         "at":  "2026-11-19 23:56"
                      }
                  ],
     "created":  "2026-11-17",
-    "updated":  "2026-11-19 23:41",
+    "updated":  "2026-11-19 23:56",
     "lastHandoff":  "HANDOFF-20261119-2341.md"
 }
