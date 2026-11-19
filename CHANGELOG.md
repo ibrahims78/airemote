@@ -256,6 +256,7 @@
 - 2026-11-19 13:41 — r22: item-a WIN11 smoke 1600x900 clear + item-b WakeActivity source fix; c,d,e,w,z blocked on owner
 - 2026-11-19 16:01 — r23: install complete - APK TECNO/TAB16, agents host/WIN10/WIN11, server 3001; items a-d measured
 - 2026-11-19 16:02 — r24: final resume point committed and pushed; no open work without owner
+- 2026-11-19 17:05 — r25 handoff committed for new account - P1-P7 plan ready
 ## [3.14.2] — 2026-11-07 · **إغلاق r6: الأسماء، ملء الشاشة، والحزم الخمس**
 
 ### الإصدار
