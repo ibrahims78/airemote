@@ -14,7 +14,7 @@
     "repo":  {
                  "branch":  "main",
                  "remote":  "",
-                 "lastCommit":  "cb34dd3"
+                 "lastCommit":  "726bc3c"
              },
     "sessions":  [
                      {
@@ -214,9 +214,15 @@
                          "note":  "r25-P1P2: GDI delta 499-1149kbps 0-corrupt; P3 win10 1px; P2 13fps vmware-bound",
                          "commit":  "cb34dd3",
                          "at":  "2026-11-19 18:38"
+                     },
+                     {
+                         "account":  "admin@",
+                         "note":  "r26 close: P1/P3-win10 closed by numbers; P5 no WAN; P6 no same-device; P7 closed",
+                         "commit":  "726bc3c",
+                         "at":  "2026-11-19 19:13"
                      }
                  ],
     "created":  "2026-11-17",
-    "updated":  "2026-11-19 18:38",
+    "updated":  "2026-11-19 19:13",
     "lastHandoff":  "HANDOFF-20261119-1705.md"
 }
