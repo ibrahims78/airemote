@@ -268,9 +268,15 @@
                          "note":  "r32: relay card fixed - owner device -\u003e admin owner, 5 peers both directions, db backup",
                          "commit":  "",
                          "at":  "2026-11-20 00:40"
+                     },
+                     {
+                         "account":  "admin@",
+                         "note":  "r33: ui fixes deployed - relay hint, dblclick, android cursor, files fallback; releases rebuilt",
+                         "commit":  "",
+                         "at":  "2026-11-20 01:34"
                      }
                  ],
     "created":  "2026-11-17",
-    "updated":  "2026-11-20 00:40",
+    "updated":  "2026-11-20 01:34",
     "lastHandoff":  "HANDOFF-20261120-0040.md"
 }

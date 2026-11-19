@@ -386,6 +386,7 @@
 - 2026-11-19 23:41 — r31: dashboard deployed to 3001 - asar 22384587B, health 13s, 6/6 online
 - 2026-11-19 23:56 — r31: release artifacts zip 220214513B + setup 166042144B in releases/server-windows (new static verified)
 - 2026-11-20 00:40 — r32: relay card fixed - owner device -> admin owner, 5 peers both directions, db backup
+- 2026-11-20 01:34 — r33: ui fixes deployed - relay hint, dblclick, android cursor, files fallback; releases rebuilt
 ## [3.14.2] — 2026-11-07 · **إغلاق r6: الأسماء، ملء الشاشة، والحزم الخمس**
 
 ### الإصدار

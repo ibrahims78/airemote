@@ -2,7 +2,7 @@
 
 > **ملاحظة (2026-11-17):** هذا الملف يديره `pf checkpoint` (سجل الجلسات أدناه). **الملف التاريخي الرسمي الكامل هو `PROJECT_STATE.md` في الجذر** حتى نقله إلى `docs/` في W3-3. قالب pf الافتراضي («لا اختبارات، لا CI») **لا يطابق** هذا المشروع — المحتوى أدناه مصحّح ليطابق الواقع.
 
-- **آخر تحديث:** 2026-11-20 00:40
+- **آخر تحديث:** 2026-11-20 01:34
 - **المرحلة:** تشخيص وإصلاح P1/P2 الصغير — مكتمل (التثبيت على 3001 ينتظر «ثبّت»)
 - **الحالة:** BUILDING
 - **آخر commit:** 2c020ed
@@ -38,6 +38,7 @@
 
 | التاريخ | الحساب/الجهاز | Commit | ملاحظة |
 |---|---|---|---|
+| 2026-11-20 01:34 | admin@ | — | r33: ui fixes deployed - relay hint, dblclick, android cursor, files fallback; releases rebuilt |
 | 2026-11-20 00:40 | admin@ | — | تسليم: HANDOFF-20261120-0040.md |
 | 2026-11-20 00:40 | admin@ | — | r32: relay card fixed - owner device -> admin owner, 5 peers both directions, db backup |
 | 2026-11-19 23:56 | admin@ | — | r31: release artifacts zip 220214513B + setup 166042144B in releases/server-windows (new static verified) |
