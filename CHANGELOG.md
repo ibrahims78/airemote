@@ -298,6 +298,7 @@
 - 2026-11-19 18:38 — r25-P1P2: GDI delta 499-1149kbps 0-corrupt; P3 win10 1px; P2 13fps vmware-bound
 - 2026-11-19 19:13 — r26 close: P1/P3-win10 closed by numbers; P5 no WAN; P6 no same-device; P7 closed
 - 2026-11-19 19:54 — r27-P2: owner 1080p 15.66fps from WIN11 external viewer; DIB+memcmp worker 5b21742b
+- 2026-11-19 20:20 — r27-P3: TECNO click maxErr 0px on 6 targets; a11y re-enabled trap78
 ## [3.14.2] — 2026-11-07 · **إغلاق r6: الأسماء، ملء الشاشة، والحزم الخمس**
 
 ### الإصدار
