@@ -1,6 +1,6 @@
 "use strict";
 
-// packages/server-desktop/tunnel.js
+// tunnel.js
 var { spawn } = require("child_process");
 var path = require("path");
 var fs = require("fs");
