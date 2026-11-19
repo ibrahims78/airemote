@@ -1,0 +1,76 @@
+{
+  "label": "win10c",
+  "deviceId": "b42175d0-d0c9-428d-ab94-4e66dff56af3",
+  "name": "WIN10-VM",
+  "startedAt": "2026-11-19T15:35:06.197Z",
+  "gate_P1": {
+    "staticKbps": 1148.7,
+    "pass_bitrate": true,
+    "badJpeg": 0,
+    "tinyKeyframes": 0,
+    "pass_no_corrupt": true,
+    "shotStatic": {
+      "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\shot-p1p2-win10c-static-1918x810.jpg",
+      "w": 1918,
+      "h": 810,
+      "bytes": 213099,
+      "okMagic": true
+    },
+    "resolution": "1918x810",
+    "deltas": 105,
+    "keyframes": 4,
+    "fpsStatic": 9.08
+  },
+  "gate_P2": {
+    "activeFps": 12.92,
+    "pass_fps": false,
+    "activeKbps": 3828.7,
+    "resolution": "1918x810",
+    "deltas": 152,
+    "keyframes": 3,
+    "shotActive": {
+      "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\shot-p1p2-win10c-active-1918x810.jpg",
+      "w": 1918,
+      "h": 810,
+      "bytes": 214520,
+      "okMagic": true
+    }
+  },
+  "totals": {
+    "frames": 285,
+    "deltas": 278,
+    "keyframes": 7,
+    "jpeg": 285,
+    "webp": 0,
+    "bytes": 7674567,
+    "deltaBytes": 6295206,
+    "keyBytes": 1373432,
+    "badJpeg": 0,
+    "rttMs": 0,
+    "errors": []
+  },
+  "windows": {
+    "static": {
+      "windowSec": 12,
+      "frames": 109,
+      "fps": 9.08,
+      "kbps": 1148.7,
+      "deltas": 105,
+      "keyframes": 4,
+      "resolution": "1918x810",
+      "rttMs": 1,
+      "errors": []
+    },
+    "active": {
+      "windowSec": 12,
+      "frames": 155,
+      "fps": 12.92,
+      "kbps": 3828.7,
+      "deltas": 152,
+      "keyframes": 3,
+      "resolution": "1918x810",
+      "rttMs": 0,
+      "errors": []
+    }
+  }
+}

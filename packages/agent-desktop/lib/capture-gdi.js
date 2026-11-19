@@ -23,7 +23,10 @@
  * ملاحظة تعبئة: الأصل يُستخرج من app.asar إلى userData لأن العملية الخارجية
  * لا تستطيع قراءة مسار داخل الأرشيف.
  *
- * بروتوكول العملية: [u32 len][u16 cx][u16 cy][u16 sw][u16 sh][u8 flags][jpeg]
+ * بروتوكول العملية:
+ *   إطار كامل : [u32 len][u16 cx][u16 cy][u16 sw][u16 sh][u8 flags=1][jpeg]
+ *   دلتا منطقة: [u32 len][u16 cx][u16 cy][u16 sw][u16 sh][u8 flags=2][u16 rx][u16 ry][jpeg]
+ *   sw/sh = مقاس الخرج الكامل في الحالتين. rx/ry = أصل المستطيل المتغيّر.
  */
 const fs = require('fs')
 const os = require('os')
@@ -46,7 +49,7 @@ class GdiCapture extends EventEmitter {
     this.proc = null
     this.buf = Buffer.alloc(0)
     this.sessionId = null
-    this.opts = { fps: 12, quality: 60, maxWidth: 1600 }
+    this.opts = { fps: 20, quality: 60, maxWidth: 1600 }
     this.frames = 0
     this.discarded = 0
     this.lastError = ''
@@ -107,6 +110,7 @@ class GdiCapture extends EventEmitter {
     this.stopping = false
     this.buf = Buffer.alloc(0)
     this._exitHandled = false
+    this.spawnOpts = { fps: this.opts.fps, quality: this.opts.quality, maxWidth: this.opts.maxWidth }
 
     if (this.engine !== 'ps1') {
       const worker = this.materializeWorker()
@@ -184,16 +188,22 @@ class GdiCapture extends EventEmitter {
         this.lastError = 'bad length ' + len
         return
       }
-      if (this.buf.length < 13 + len) return
+      // P1 — الدلتا تضيف u16 rx/ry بعد الترويسة الـ13 (flags bit1)
+      const flags = this.buf.readUInt8(12)
+      const isDelta = (flags & 2) !== 0
+      const hdrLen = isDelta ? 17 : 13
+      if (this.buf.length < hdrLen + len) return
       const cx = this.buf.readUInt16BE(4)
       const cy = this.buf.readUInt16BE(6)
       const width = this.buf.readUInt16BE(8)
       const height = this.buf.readUInt16BE(10)
-      const jpeg = this.buf.subarray(13, 13 + len)
-      this.buf = this.buf.subarray(13 + len)
+      const rx = isDelta ? this.buf.readUInt16BE(13) : 0
+      const ry = isDelta ? this.buf.readUInt16BE(15) : 0
+      const jpeg = this.buf.subarray(hdrLen, hdrLen + len)
+      this.buf = this.buf.subarray(hdrLen + len)
       if (!this.sessionId) { this.discarded++; continue }
       this.frames++
-      this.emit('frame', { jpeg, cx, cy, width, height, sessionId: this.sessionId })
+      this.emit('frame', { jpeg, cx, cy, width, height, flags, rx, ry, sessionId: this.sessionId })
     }
   }
 
@@ -214,7 +224,18 @@ class GdiCapture extends EventEmitter {
 
   setSession (sessionId, opts) {
     this.sessionId = sessionId
-    if (opts) this.opts = Object.assign({}, this.opts, opts)
+    const next = opts ? Object.assign({}, this.opts, opts) : this.opts
+    // P2 — إن كانت الجلسة نشطة بمعاملات مختلفة أعِد تشغيل العامل (كان يُتجاهل التغيير)
+    const changed = this.running && this.spawnOpts && (
+      Number(next.fps) !== Number(this.spawnOpts.fps) ||
+      Number(next.quality) !== Number(this.spawnOpts.quality) ||
+      Number(next.maxWidth) !== Number(this.spawnOpts.maxWidth)
+    )
+    this.opts = next
+    if (changed) {
+      this.stop()
+      this.fallbackTried = false
+    }
     if (!this.running) this.prewarm()
     this.cmd('A')
   }

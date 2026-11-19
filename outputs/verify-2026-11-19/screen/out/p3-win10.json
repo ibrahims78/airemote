@@ -1,0 +1,110 @@
+{
+  "label": "win10",
+  "deviceId": "b42175d0-d0c9-428d-ab94-4e66dff56af3",
+  "control": "granted",
+  "streamRes": "1918x811",
+  "shot": {
+    "path": "D:\\autoclaw projects-new\\AiRemote\\outputs\\verify-2026-11-19\\screen\\out\\p3-win10.jpg",
+    "bytes": 209504,
+    "w": 1918,
+    "h": 811
+  },
+  "results": [
+    {
+      "name": "center",
+      "rx": 0.5,
+      "ry": 0.5,
+      "intendedStream": [
+        959,
+        406
+      ],
+      "cursor": [
+        960,
+        406
+      ],
+      "errPx": 1,
+      "streamRes": "1918x811"
+    },
+    {
+      "name": "q1",
+      "rx": 0.25,
+      "ry": 0.25,
+      "intendedStream": [
+        480,
+        203
+      ],
+      "cursor": [
+        480,
+        203
+      ],
+      "errPx": 0,
+      "streamRes": "1918x811"
+    },
+    {
+      "name": "q3",
+      "rx": 0.75,
+      "ry": 0.25,
+      "intendedStream": [
+        1439,
+        203
+      ],
+      "cursor": [
+        1439,
+        203
+      ],
+      "errPx": 0,
+      "streamRes": "1918x811"
+    },
+    {
+      "name": "q4",
+      "rx": 0.75,
+      "ry": 0.75,
+      "intendedStream": [
+        1439,
+        608
+      ],
+      "cursor": [
+        1439,
+        609
+      ],
+      "errPx": 1,
+      "streamRes": "1918x811"
+    },
+    {
+      "name": "q2",
+      "rx": 0.25,
+      "ry": 0.75,
+      "intendedStream": [
+        480,
+        608
+      ],
+      "cursor": [
+        480,
+        609
+      ],
+      "errPx": 1,
+      "streamRes": "1918x811"
+    },
+    {
+      "name": "edge",
+      "rx": 0.9,
+      "ry": 0.5,
+      "intendedStream": [
+        1726,
+        406
+      ],
+      "cursor": [
+        1727,
+        406
+      ],
+      "errPx": 1,
+      "streamRes": "1918x811"
+    }
+  ],
+  "maxErrPx": 1,
+  "avgErrPx": 0.67,
+  "pass": true,
+  "note": "GetCursorPos قد يكون بفضاء مختلف عن البث إن DPI ≠ 100%. الخطأ يُقاس بين النسبة المطلوبة وموضع المؤشر المُرجع.",
+  "at": "2026-11-19T15:33:31.831Z",
+  "errors": []
+}

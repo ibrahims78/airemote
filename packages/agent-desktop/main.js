@@ -1658,7 +1658,7 @@ function startGdiForSession (sessionId, opts) {
   gdiSeq = 0
   gdiRestartCount = 0
   const info = {
-    fps: Math.max(1, Math.min(30, Number(opts && opts.fps) || 12)),
+    fps: Math.max(1, Math.min(30, Number(opts && opts.fps) || 20)),
     quality: Math.max(10, Math.min(95, Number(opts && opts.quality) || 60)),
     maxWidth: Math.max(320, Math.min(2560, Number(opts && opts.maxWidth) || 1600))
   }
@@ -1680,7 +1680,7 @@ function stopGdi (reason) {
   if (reason) addLog('info', '[screen] إيقاف محرّك GDI (' + reason + ')')
 }
 
-gdiCapture.on('frame', ({ jpeg, cx, cy, width, height }) => {
+gdiCapture.on('frame', ({ jpeg, cx, cy, width, height, flags, rx, ry }) => {
   const sid = gdiSessionId
   if (!sid || !screenSessions.has(sid)) return
   if (!gdiCaptureActive) {
@@ -1691,7 +1691,20 @@ gdiCapture.on('frame', ({ jpeg, cx, cy, width, height }) => {
     // أوقف مسار Chromium لهذه الجلسة: مصدر واحد فقط للإطارات
     try { if (capWin && !capWin.isDestroyed()) capWin.webContents.send('stop-capture', { sessionId: sid }) } catch {}
   }
-  sendScreenFramePacket({ sessionId: sid, width, height, seq: ++gdiSeq, buffer: jpeg, flags: 1, x: 0, y: 0 })
+  // P1 — flags bit1 = دلتا منطقة: العارض يلصق JPEG عند (rx,ry) دون تغيير مقاس اللوحة.
+  // sw/sh تبقى مقاس الخرج الكامل في الحالتين (JSON legacy لا يتقلّص).
+  const f = (flags == null) ? 1 : (Number(flags) & 0xff)
+  const isDelta = (f & 2) !== 0
+  sendScreenFramePacket({
+    sessionId: sid,
+    width,
+    height,
+    seq: ++gdiSeq,
+    buffer: jpeg,
+    flags: f,
+    x: isDelta ? (Number(rx) || 0) : 0,
+    y: isDelta ? (Number(ry) || 0) : 0,
+  })
   // 3.12.0 (M1) — نفس الإطار يذهب إلى جسر WebRTC إن كان مفتوحاً (لا يمسّ مسار JPEG)
   if (rtcWin && !rtcWin.isDestroyed() && rtcSessionId) {
     rtcFrames++
