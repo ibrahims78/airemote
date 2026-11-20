@@ -298,9 +298,15 @@
                          "note":  "r36: queue over rt E2E verified (create201/start200/chunk200/finish200 completed)",
                          "commit":  "",
                          "at":  "2026-11-20 18:13"
+                     },
+                     {
+                         "account":  "admin@",
+                         "note":  "r37: android viewer clean x2, ?path=, files-session auto-close blocker",
+                         "commit":  "",
+                         "at":  "2026-11-20 18:57"
                      }
                  ],
     "created":  "2026-11-17",
-    "updated":  "2026-11-20 18:17",
+    "updated":  "2026-11-20 18:57",
     "lastHandoff":  "HANDOFF-20261120-1817.md"
 }

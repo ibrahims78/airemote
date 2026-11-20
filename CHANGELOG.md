@@ -446,6 +446,7 @@
 - 2026-11-20 15:45 — agent gate2 fix + WIN10/WIN11 agents 740659; view/files 200 both; WIN10 stream composite clean
 - 2026-11-20 17:46 — r35: signed APK installed, android->windows clean, agent release rebuilt
 - 2026-11-20 18:13 — r36: queue over rt E2E verified (create201/start200/chunk200/finish200 completed)
+- 2026-11-20 18:57 — r37: android viewer clean x2, ?path=, files-session auto-close blocker
 ## [3.14.2] — 2026-11-07 · **إغلاق r6: الأسماء، ملء الشاشة، والحزم الخمس**
 
 ### الإصدار
