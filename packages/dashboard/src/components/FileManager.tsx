@@ -81,6 +81,13 @@ export function FileManager({ deviceId, rt, initialPath, platform }: Props) {
   const t = useT()
   // كل نداءات الملفات تحمل التذكرة إن وُجدت (الوكيل بلا حساب لوحة).
   const rq = rt ? `?rt=${encodeURIComponent(rt)}` : ''
+  // 2026-11-20 — كل نداءات api تحمل التذكرة عند غياب الحساب (طابور النقل + القوائم).
+  useEffect(() => {
+    if (!rt) return
+    const h = (api.defaults.headers.common || (api.defaults.headers.common = {})) as Record<string, string>
+    h['x-relay-key'] = rt
+    return () => { try { delete h['x-relay-key'] } catch {} }
+  }, [rt])
   const rqJoin = (sep: string) => (rt ? `${sep}rt=${encodeURIComponent(rt)}` : '')
   const [path, setPath] = useState(initialPath || '/')
   const [files, setFiles] = useState<FileEntry[]>([])
@@ -390,11 +397,14 @@ export function FileManager({ deviceId, rt, initialPath, platform }: Props) {
 
       {/* 2026-11-11 — the chunked queue authenticates with the dashboard JWT only; inside an
           agent ticket session every call 401'd without a word. Hide it there and explain why. */}
-      {(!rt || authToken()) ? (
-        <TransferQueue deviceId={deviceId} currentPath={path} onFinished={() => { void loadDir(path) }} />
-      ) : (
-        <Alert tone="info">{t('fm_queue_needs_account')}</Alert>
+      {/* 2026-11-20 — الطابور يعمل في جلسة الوكيل عبر تذكرة rt؛ الرابط يفتحه تحت الحساب. */}
+      {rt && !authToken() && (
+        <Alert tone="info">
+          {t('fm_queue_needs_account')}{' '}
+          <a className="underline font-medium" href={`/devices/${deviceId}?tab=files`}>{t('files_open_workspace')}</a>
+        </Alert>
       )}
+      <TransferQueue deviceId={deviceId} currentPath={path} onFinished={() => { void loadDir(path) }} />
 
       {uploading && (
         <Alert tone="info">

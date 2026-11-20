@@ -5345,8 +5345,10 @@ async function start(config) {
   })
 
   fastify.delete('/api/devices/:id/fs', async (req, reply) => {
-    const p = authMiddleware(req, reply); if (!p) return
-    if (!hasDeviceCapability(p, req.params.id, 'files')) return denyCapability(reply, p, req.params.id, 'files', req)
+    const hasJwt = !!String((req.headers && req.headers.authorization) || '')
+    const p = hasJwt ? authMiddleware(req, reply) : ftTicketPrincipal(req, req.params.id)
+    if (!p) { if (!hasJwt) reply.code(403).send({ error: 'وضع الملفات: تذكرة غير صالحة', code: 'ticket_required' }); return }
+    if (hasJwt && !hasDeviceCapability(p, req.params.id, 'files')) return denyCapability(reply, p, req.params.id, 'files', req)
     const { path: fsPath } = req.query || {}
     if (!fsPath) return reply.code(400).send({ error: 'path required' })
     try { return await agentFsRequest(req.params.id, 'delete', { path: fsPath }) }
@@ -5382,17 +5384,35 @@ async function start(config) {
     const status = (e && e.status) ? e.status : (e && e.code === 'device_offline' ? 409 : 400)
     return reply.code(status).send({ error: e.message, code: (e && e.code) || 'ft_error', expected: e && e.expected })
   }
+  // 2026-11-20 — طابور النقل داخل جلسة وكيل: نقبل تذكرة rt (access=files) بلا حساب لوحة.
+  function ftTicketPrincipal (req, deviceId) {
+    const rt = String((req.query && req.query.rt) || (req.headers && req.headers['x-relay-key']) || '')
+    if (!rt) return null
+    let r = sessionViewResolve(rt, { deviceId })
+    if (!r.ok) r = sessionViewResolveKey(rt, { deviceId })
+    if (!r.ok || !r.session || r.session.access !== 'files') return null
+    const owner = (r.session.requester && r.session.requester.userId) || 'device'
+    return { userId: owner, role: 'device', isDevice: true, deviceId, via: 'ticket', session: r.session }
+  }
   function ftAuth (req, reply) {
-    const p = authMiddleware(req, reply); if (!p) return null
+    const hasJwt = !!String((req.headers && req.headers.authorization) || '')
     const row = fileTransfers.getRow(req.params.tid)
     if (!row) { reply.code(404).send({ error: 'النقل غير موجود', code: 'not_found' }); return null }
+    if (!hasJwt) {
+      const tp = ftTicketPrincipal(req, row.device_id)
+      if (!tp) { reply.code(403).send({ error: 'وضع الملفات: تذكرة غير صالحة', code: 'ticket_required' }); return null }
+      return tp
+    }
+    const p = authMiddleware(req, reply); if (!p) return null
     if (!hasDeviceCapability(p, row.device_id, 'files')) { denyCapability(reply, p, row.device_id, 'files', req); return null }
     return p
   }
 
   fastify.post('/api/devices/:id/file-transfers', { config: { rateLimit: { max: 120, timeWindow: '1 minute' } } }, async (req, reply) => {
-    const p = authMiddleware(req, reply); if (!p) return
-    if (!hasDeviceCapability(p, req.params.id, 'files')) return denyCapability(reply, p, req.params.id, 'files', req)
+    const hasJwt = !!String((req.headers && req.headers.authorization) || '')
+    const p = hasJwt ? authMiddleware(req, reply) : ftTicketPrincipal(req, req.params.id)
+    if (!p) { if (!hasJwt) reply.code(403).send({ error: 'وضع الملفات: تذكرة غير صالحة', code: 'ticket_required' }); return }
+    if (hasJwt && !hasDeviceCapability(p, req.params.id, 'files')) return denyCapability(reply, p, req.params.id, 'files', req)
     try {
       const b = req.body || {}
       const row = fileTransfers.createTransfer({
@@ -5406,8 +5426,10 @@ async function start(config) {
 
   // دفعة الملفات الصغيرة: بيان واحد، صفّ لكل ملف، تقدّم لكل ملف.
   fastify.post('/api/devices/:id/file-transfers/batch', { bodyLimit: 134217728 }, async (req, reply) => {
-    const p = authMiddleware(req, reply); if (!p) return
-    if (!hasDeviceCapability(p, req.params.id, 'files')) return denyCapability(reply, p, req.params.id, 'files', req)
+    const hasJwt = !!String((req.headers && req.headers.authorization) || '')
+    const p = hasJwt ? authMiddleware(req, reply) : ftTicketPrincipal(req, req.params.id)
+    if (!p) { if (!hasJwt) reply.code(403).send({ error: 'وضع الملفات: تذكرة غير صالحة', code: 'ticket_required' }); return }
+    if (hasJwt && !hasDeviceCapability(p, req.params.id, 'files')) return denyCapability(reply, p, req.params.id, 'files', req)
     try {
       const b = req.body || {}
       const out = await fileTransfers.createBatch({
@@ -5419,7 +5441,9 @@ async function start(config) {
   })
 
   fastify.get('/api/file-transfers', async (req, reply) => {
-    const p = authMiddleware(req, reply); if (!p) return
+    const hasJwt = !!String((req.headers && req.headers.authorization) || '')
+    const p = hasJwt ? authMiddleware(req, reply) : ftTicketPrincipal(req, String((req.query && req.query.deviceId) || ''))
+    if (!p) { if (!hasJwt) reply.code(403).send({ error: 'وضع الملفات: تذكرة غير صالحة', code: 'ticket_required' }); return }
     return {
       transfers: fileTransfers.list(p, {
         deviceId: req.query && req.query.deviceId,
