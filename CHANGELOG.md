@@ -419,6 +419,7 @@
 - 2026-11-20 01:34 — r33: ui fixes deployed - relay hint, dblclick, android cursor, files fallback; releases rebuilt
 - 2026-11-20 14:29 — r34: fit start + password gate control-only + download hook + dir cache + denied race fixed; releases rebuilt
 - 2026-11-20 15:45 — agent gate2 fix + WIN10/WIN11 agents 740659; view/files 200 both; WIN10 stream composite clean
+- 2026-11-20 17:46 — r35: signed APK installed, android->windows clean, agent release rebuilt
 ## [3.14.2] — 2026-11-07 · **إغلاق r6: الأسماء، ملء الشاشة، والحزم الخمس**
 
 ### الإصدار

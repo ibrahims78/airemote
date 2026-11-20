@@ -286,9 +286,15 @@
                          "note":  "agent gate2 fix + WIN10/WIN11 agents 740659; view/files 200 both; WIN10 stream composite clean",
                          "commit":  "f7c8dff",
                          "at":  "2026-11-20 15:45"
+                     },
+                     {
+                         "account":  "admin@",
+                         "note":  "r35: signed APK installed, android-\u003ewindows clean, agent release rebuilt",
+                         "commit":  "",
+                         "at":  "2026-11-20 17:46"
                      }
                  ],
     "created":  "2026-11-17",
-    "updated":  "2026-11-20 15:45",
+    "updated":  "2026-11-20 17:46",
     "lastHandoff":  "HANDOFF-20261120-1429.md"
 }

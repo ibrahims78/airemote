@@ -2,7 +2,7 @@
 
 > **ملاحظة (2026-11-17):** هذا الملف يديره `pf checkpoint` (سجل الجلسات أدناه). **الملف التاريخي الرسمي الكامل هو `PROJECT_STATE.md` في الجذر** حتى نقله إلى `docs/` في W3-3. قالب pf الافتراضي («لا اختبارات، لا CI») **لا يطابق** هذا المشروع — المحتوى أدناه مصحّح ليطابق الواقع.
 
-- **آخر تحديث:** 2026-11-20 15:45
+- **آخر تحديث:** 2026-11-20 17:46
 - **المرحلة:** تشخيص وإصلاح P1/P2 الصغير — مكتمل (التثبيت على 3001 ينتظر «ثبّت»)
 - **الحالة:** BUILDING
 - **آخر commit:** f7c8dff
@@ -38,6 +38,7 @@
 
 | التاريخ | الحساب/الجهاز | Commit | ملاحظة |
 |---|---|---|---|
+| 2026-11-20 17:46 | admin@ | — | r35: signed APK installed, android->windows clean, agent release rebuilt |
 | 2026-11-20 15:45 | admin@ | f7c8dff | agent gate2 fix + WIN10/WIN11 agents 740659; view/files 200 both; WIN10 stream composite clean |
 | 2026-11-20 14:29 | admin@ | — | تسليم: HANDOFF-20261120-1429.md |
 | 2026-11-20 14:29 | admin@ | — | r34: fit start + password gate control-only + download hook + dir cache + denied race fixed; releases rebuilt |
