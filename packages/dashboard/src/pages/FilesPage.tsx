@@ -20,7 +20,9 @@ export function FilesPage() {
   const name = params.get('name') || ''
   // 3.11.1 — هدف أندرويد لا يعرض `/` (جذر نظام فارغ)؛ نبدأ من /sdcard.
   const platform = (params.get('platform') || '').toLowerCase()
-  const initialPath = platform === 'android' ? '/sdcard' : '/'
+  // 2026-11-20 — ?path= يفتح المجلد المطلوب مباشرة (روابط الجلسة/الاختبار).
+  const pathParam = String(params.get('path') || '')
+  const initialPath = pathParam.startsWith('/') ? pathParam : (platform === 'android' ? '/sdcard' : '/')
   const short = deviceId ? deviceId.slice(0, 8) : ''
 
   return (

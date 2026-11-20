@@ -2295,6 +2295,7 @@ function openSessionView (payload) {
   }
   const openPath = filesUrl || viewUrl
   const base = serverHttpBase()
+  try { require('fs').appendFileSync(require('path').join(app.getPath('userData'), 'session-open.log'), new Date().toISOString() + ' sid=' + (sid ? 1 : 0) + ' path=' + (openPath ? 1 : 0) + ' base=' + (base ? 1 : 0) + ' files=' + (filesUrl ? 1 : 0) + ' access=' + String((payload && payload.access) || '') + '\n') } catch {}
   if (!sid || !openPath || !base) return
   closeSessionView(sid)
   const url = base + (openPath.startsWith('/') ? openPath : '/' + openPath)
