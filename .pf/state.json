@@ -14,7 +14,7 @@
     "repo":  {
                  "branch":  "main",
                  "remote":  "",
-                 "lastCommit":  "2c020ed"
+                 "lastCommit":  "f7c8dff"
              },
     "sessions":  [
                      {
@@ -280,9 +280,15 @@
                          "note":  "r34: fit start + password gate control-only + download hook + dir cache + denied race fixed; releases rebuilt",
                          "commit":  "",
                          "at":  "2026-11-20 14:29"
+                     },
+                     {
+                         "account":  "admin@",
+                         "note":  "agent gate2 fix + WIN10/WIN11 agents 740659; view/files 200 both; WIN10 stream composite clean",
+                         "commit":  "f7c8dff",
+                         "at":  "2026-11-20 15:45"
                      }
                  ],
     "created":  "2026-11-17",
-    "updated":  "2026-11-20 14:29",
+    "updated":  "2026-11-20 15:45",
     "lastHandoff":  "HANDOFF-20261120-1429.md"
 }
