@@ -292,9 +292,15 @@
                          "note":  "r35: signed APK installed, android-\u003ewindows clean, agent release rebuilt",
                          "commit":  "",
                          "at":  "2026-11-20 17:46"
+                     },
+                     {
+                         "account":  "admin@",
+                         "note":  "r36: queue over rt E2E verified (create201/start200/chunk200/finish200 completed)",
+                         "commit":  "",
+                         "at":  "2026-11-20 18:13"
                      }
                  ],
     "created":  "2026-11-17",
-    "updated":  "2026-11-20 17:46",
+    "updated":  "2026-11-20 18:13",
     "lastHandoff":  "HANDOFF-20261120-1746.md"
 }
