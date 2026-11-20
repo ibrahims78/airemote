@@ -111,12 +111,16 @@ export function FileManager({ deviceId, rt, initialPath, platform }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deviceId])
 
+  const dirCacheRef = useRef<Map<string, FileEntry[]>>(new Map())
   async function loadDir(p: string) {
-    setLoading(true)
+    const cached = dirCacheRef.current.get(p)
+    if (cached) { setFiles(cached); setPath(p); setQuery('') }
+    setLoading(!cached)
     setError('')
     try {
       const res = await api.get(`/api/devices/${deviceId}/fs/list`, { params: rt ? { path: p, rt } : { path: p }, timeout: 20000 })
       setFiles(res.data as FileEntry[])
+      dirCacheRef.current.set(p, res.data as FileEntry[])
       setPath(p)
       setQuery('')
     } catch (e: unknown) {

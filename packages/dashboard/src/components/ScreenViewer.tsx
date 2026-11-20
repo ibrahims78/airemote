@@ -174,13 +174,9 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
   // v3.8.14 - the standalone window opens edge-to-edge: with 'fit' a maximised
   // popout on a differently-shaped screen showed black bands. 'fill' covers the
   // viewport and crops the overflow; the user can still pick 'fit' per device.
-  const [fitMode,        setFitMode]        = useState<'fit' | 'fill' | 'actual'>(() => {
-    try {
-      const v = localStorage.getItem('airemote.screen.fit')
-      // 2026-11-09 — كان العارض المستقل يفتح على «ملء» فيقصّ حواف الشاشة.
-      return (v === 'fill' || v === 'actual' || v === 'fit') ? v : 'fit'
-    } catch { return 'fit' }
-  })
+  // 2026-11-20 — المالك: كل بث يبدأ بوضع «ملاءمة» دائمًا (لوحة/نافذة مستقلة/سيرفر→وكيل/وكيل↔وكيل).
+  // لا نقرأ التفضيل المحفوظ عند البدء؛ يُعاد الضبط في effect بدء البث أدناه.
+  const [fitMode,        setFitMode]        = useState<'fit' | 'fill' | 'actual'>('fit')
   const [canvasBox,      setCanvasBox]      = useState<{ w: number; h: number } | null>(null)
   // 3.9.4 — قياس منطقة العرض نفسها، لأن «ملاءمة» تحتاج نسبة أبعاد حقيقية لا شدّاً.
   const [areaSize,       setAreaSize]       = useState({ w: 0, h: 0 })
@@ -432,6 +428,17 @@ export function ScreenViewer({ deviceId, deviceName, popout = false, preview = f
       window.removeEventListener('resize', compute)
     }
   }, [started, resolution.w, resolution.h, fitMode])
+
+  // 2026-11-20 — عند كل بدء بث: ملاءمة + تكبير/إزاحة افتراضيان.
+  const prevStartedRef = useRef(false)
+  useEffect(() => {
+    if (started && !prevStartedRef.current) {
+      setFitMode('fit')
+      setViewZoom(1)
+      setViewPan({ x: 0, y: 0 })
+    }
+    prevStartedRef.current = started
+  }, [started])
 
   const cycleFit = useCallback(() => {
     setFitMode((m) => {

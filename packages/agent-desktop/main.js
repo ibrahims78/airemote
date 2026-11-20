@@ -772,7 +772,8 @@ function handleMsg(msg) {
         send({ type: 'agent:screen_control_granted', payload: { sessionId: scSid, requestId, via: 'session' }, timestamp: Date.now() })
         break
       }
-      if (controlAuthCapability() === 'password') {
+      // 3.17.1 — كلمة سر التحكم تحكم «التحكم» فقط؛ عرض/ملفات لا تُرفض بها.
+      if (String(offer.access || '') === 'control' && controlAuthCapability() === 'password') {
         const nowTs = Date.now()
         ctrlAuthAttempts = ctrlAuthAttempts.filter(t => nowTs - t < 60000)
         if (ctrlAuthAttempts.length >= 10) {
@@ -2331,6 +2332,25 @@ function openSessionView (payload) {
     addLog('info', '[session] opening ' + (filesUrl ? 'files' : 'screen') + ' ' + String(url).replace(/rt=[^&]+/, 'rt=***').slice(0, 120))
     v.once('ready-to-show', () => { try { v.show(); v.focus() } catch {} })
     v.webContents.on('did-fail-load', (_e, code, desc) => { try { addLog('warn', '[session] load failed ' + code + ' ' + String(desc || '')) } catch {} })
+    // 3.17.1 — تنزيل الملفات في نافذة الجلسة: احفظ في Downloads واعرض النتيجة في السجل.
+    try {
+      const dlSess = v.webContents.session
+      if (dlSess && !dlSess.__airemoteDownloadHook) {
+        dlSess.__airemoteDownloadHook = true
+        dlSess.on('will-download', (_evt, item) => {
+          try {
+            const pathMod = require('path'), fsMod = require('fs')
+            const dir = app.getPath('downloads')
+            const name = String(item.getFilename() || 'download.bin')
+            const ext = pathMod.extname(name), base = pathMod.basename(name, ext)
+            let target = pathMod.join(dir, name), i = 1
+            while (fsMod.existsSync(target)) { target = pathMod.join(dir, base + ' (' + (i++) + ')' + ext) }
+            item.setSavePath(target)
+            item.once('done', (_e, state) => { try { addLog('info', '[session] download ' + state + ' -> ' + target) } catch {} })
+          } catch {}
+        })
+      }
+    } catch {}
     v.loadURL(url).catch(() => {})
     v.on('closed', () => { sessionViews.delete(sid) })
     sessionViews.set(sid, v)

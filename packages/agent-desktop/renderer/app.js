@@ -1400,6 +1400,8 @@ bridge.onInit(data => {
   let pollTimer = null
   let waitUntil = 0
   let waitTarget = ''
+  // 2026-11-20 — الرفض قد يصل قبل بدء عدّاد الانتظار (رفض فوري بكلمة سر) فيطمسه العدّاد.
+  let deniedFlag = false
 
   function stopWait () {
     if (waitTimer) { clearInterval(waitTimer); waitTimer = null }
@@ -1408,6 +1410,7 @@ bridge.onInit(data => {
 
   function startWait (targetDeviceId) {
     const t = T()
+    if (deniedFlag) { deniedFlag = false; return }
     stopWait()
     waitTarget = String(targetDeviceId || '')
     waitUntil = Date.now() + 60000
@@ -1439,6 +1442,7 @@ bridge.onInit(data => {
     const password = pwEl ? String(pwEl.value || '').trim() : ''
     const btn = $id('session-request-btn')
     if (btn) btn.disabled = true
+    deniedFlag = false
     setState(t.sessSending)
     let r = null
     try {
@@ -1517,6 +1521,7 @@ bridge.onInit(data => {
     window.airemote.onSessionDenied(function (p) {
       const t = T()
       const reason = String((p && p.reason) || '')
+      deniedFlag = true
       stopWait()
       if (reason === 'password_required') { showPw(true); setState(t.sessPwRequired); const f = $id('session-pw'); if (f) f.focus(); return }
       if (reason === 'bad_password') { showPw(true); setState(t.sessPwWrong); return }

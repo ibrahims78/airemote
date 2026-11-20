@@ -767,7 +767,8 @@ public class AgentService extends Service {
         if (sid0.isEmpty()) return;
         // 3.13.1 — وكيل↔وكيل بكلمة سر: نفس دالة مسار السيرفر→وكيل، وبلا حوار إن صحّت.
         String offerPw = offer.optString("controlPassword", "");
-        if ("password".equals(Prefs.getAuthMode(this))) {
+        // 3.17.1 — كلمة سر التحكم تحكم «التحكم» فقط؛ عرض/ملفات لا تُرفض بها.
+        if ("control".equals(offer.optString("access", "")) && "password".equals(Prefs.getAuthMode(this))) {
             if (offerPw.isEmpty()) {
                 sendSessionDenyReason(sid0, "password_required");
                 MainActivity.log("🔒 رُفض طلب جلسة: كلمة سر التحكم مطلوبة");
