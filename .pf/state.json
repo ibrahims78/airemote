@@ -274,9 +274,15 @@
                          "note":  "r33: ui fixes deployed - relay hint, dblclick, android cursor, files fallback; releases rebuilt",
                          "commit":  "",
                          "at":  "2026-11-20 01:34"
+                     },
+                     {
+                         "account":  "admin@",
+                         "note":  "r34: fit start + password gate control-only + download hook + dir cache + denied race fixed; releases rebuilt",
+                         "commit":  "",
+                         "at":  "2026-11-20 14:29"
                      }
                  ],
     "created":  "2026-11-17",
-    "updated":  "2026-11-20 01:34",
+    "updated":  "2026-11-20 14:29",
     "lastHandoff":  "HANDOFF-20261120-0134.md"
 }

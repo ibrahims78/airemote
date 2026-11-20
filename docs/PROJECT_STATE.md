@@ -2,7 +2,7 @@
 
 > **ملاحظة (2026-11-17):** هذا الملف يديره `pf checkpoint` (سجل الجلسات أدناه). **الملف التاريخي الرسمي الكامل هو `PROJECT_STATE.md` في الجذر** حتى نقله إلى `docs/` في W3-3. قالب pf الافتراضي («لا اختبارات، لا CI») **لا يطابق** هذا المشروع — المحتوى أدناه مصحّح ليطابق الواقع.
 
-- **آخر تحديث:** 2026-11-20 01:34
+- **آخر تحديث:** 2026-11-20 14:29
 - **المرحلة:** تشخيص وإصلاح P1/P2 الصغير — مكتمل (التثبيت على 3001 ينتظر «ثبّت»)
 - **الحالة:** BUILDING
 - **آخر commit:** 2c020ed
@@ -38,6 +38,7 @@
 
 | التاريخ | الحساب/الجهاز | Commit | ملاحظة |
 |---|---|---|---|
+| 2026-11-20 14:29 | admin@ | — | r34: fit start + password gate control-only + download hook + dir cache + denied race fixed; releases rebuilt |
 | 2026-11-20 01:34 | admin@ | — | تسليم: HANDOFF-20261120-0134.md |
 | 2026-11-20 01:34 | admin@ | — | r33: ui fixes deployed - relay hint, dblclick, android cursor, files fallback; releases rebuilt |
 | 2026-11-20 00:40 | admin@ | — | تسليم: HANDOFF-20261120-0040.md |
